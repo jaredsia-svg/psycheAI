@@ -44,14 +44,14 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - Free card: `STRUCTURED_FREE_SYSTEM` with `FREE_SCHEMA`.
   - Paid report: `PREMIUM_*`, anchored to the free card via `anchorFrom`/`anchorBlock`, so it explains the same conclusions.
   - Sync: `COMPATIBILITY_SYSTEM` with `COMPATIBILITY_SCHEMA`.
-  - Ask Psyche: `ASK_SYSTEM` with `ASK_SCHEMA`, given the report and card, the digest the report was written from (`psycheai_report_digest`), and the question (`/api/ask`).
+  - Ask PsycheAI: `ASK_SYSTEM` with `ASK_SCHEMA`, given the report and card, the digest the report was written from (`psycheai_report_digest`), and the question (`/api/ask`).
   - `selftest` pins load-bearing prompt phrases, so a prompt edit usually needs a test edit.
 - **Payments:** `lib/stripe.js` charges only amounts from `docs/prices.js`, a table shared by page and server with local currencies. `verifyPaid` checks the PaymentIntent's amount against the product. `lib/premiumLedger.js` caps reuse of one payment.
 - **Promo codes:** `PSYCHEAI_PROMO_CODES=CODE:cap:lastday:percent`, handled by `lib/promo.js`. A link can carry a code as `?promo=`.
 - **Persistent state:** all of it lives in `lib/store.js` (Upstash Redis when `UPSTASH_REDIS_REST_*` is set, otherwise in memory and lost on restart).
   - stats and budget: `lib/stats.js`, `lib/budget.js`;
   - the free first report (one open of the link), referral credits (3 cards each), gifts and the guess-your-character game (`judgeGuess`; a guess is judged only against a card being written, never a remembered one): `lib/referral.js`;
-  - Ask Psyche question credits (five per `ask` payment, plus the link's credits; counts only, never a question): `lib/askcredits.js`;
+  - Ask PsycheAI question credits (five per `ask` payment, plus the link's credits; counts only, never a question): `lib/askcredits.js`;
   - Syncs sent back to a link's owner: `lib/syncbox.js`;
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.
@@ -72,7 +72,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - Views are `<section id="view-*">`, switched by `show()`/`go()`.
   - `#view-profile` has two modes: `profilePage` `'hub'` (My Psyche) and `'report'` (My Report).
   - State lives in `localStorage` under the `KEYS` table; "Delete everything" clears every key in it.
-  - "Save a backup" writes the `BACKUP_KEYS` subset (card, report, digest, the latest report's own digest, syncs, Ask Psyche history, link and invite secret) to a .json file, and "Restore from a backup" in the Add your data popout validates each part (`readBackup`) before writing it back. A new stored key that a reader would miss on a new device belongs in `BACKUP_KEYS`.
+  - "Save a backup" writes the `BACKUP_KEYS` subset (card, report, digest, the latest report's own digest, syncs, Ask PsycheAI history, link and invite secret) to a .json file, and "Restore from a backup" in the Add your data popout validates each part (`readBackup`) before writing it back. A new stored key that a reader would miss on a new device belongs in `BACKUP_KEYS`.
 - **Words:** `copy.js` (`window.PsycheCopy`, used as `TEXT`/`Copy`) holds nearly all user-facing strings; edit wording there, not inline.
 - **PDFs:** `pdf.js` builds them in the browser.
 - **Character art:** `character-art.js`.

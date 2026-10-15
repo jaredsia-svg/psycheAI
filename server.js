@@ -860,7 +860,7 @@ async function handleCreatePaymentIntent(request, response) {
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
   const label = product === 'analysis' ? 'PsycheAI – additional analysis'
-    : product === 'ask' ? 'PsycheAI – Ask Psyche, 5 questions' : 'PsycheAI – Psyche Report';
+    : product === 'ask' ? 'PsycheAI – Ask PsycheAI, 5 questions' : 'PsycheAI – Psyche Report';
   // The currency the page showed its price in, from the shared table; an
   // unknown one is charged in USD.
   const currency = body && typeof body.currency === 'string' ? body.currency : '';
@@ -1104,7 +1104,7 @@ async function handleReferralClaim(request, response) {
   sendJson(response, 200, { grant, status: await referral.status(body.secret) });
 }
 
-// ---------- Ask Psyche ----------
+// ---------- Ask PsycheAI ----------
 //
 // A reader with a full Psyche Report asks it questions, one credit each
 // (lib/askcredits.js). The report, the digest it was written from and the
@@ -1188,7 +1188,7 @@ async function handleAsk(request, response) {
   };
   if (!answer.answer) {
     refund();
-    sendJson(response, 502, { error: 'Psyche could not answer that just now. Your question was not used – try again.' });
+    sendJson(response, 502, { error: 'PsycheAI could not answer that just now. Your question was not used – try again.' });
     return;
   }
   sendJson(response, 200, Object.assign(answer, { credits: await askCredits.balance(body.secret) }));
@@ -1400,7 +1400,7 @@ const API_GUARDS = {
   // claim, which spends something, takes one.
   '/api/referral': { limit: 'referral', nonce: false },
   '/api/referral/claim': { limit: 'referral', nonce: true },
-  // Ask Psyche: questions left is a read like /api/referral; buying and
+  // Ask PsycheAI: questions left is a read like /api/referral; buying and
   // asking spend, so they take a ticket, and asking calls the model.
   '/api/ask/credits': { limit: 'referral', nonce: false },
   '/api/ask/buy': { limit: 'referral', nonce: true },

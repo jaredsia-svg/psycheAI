@@ -10689,8 +10689,8 @@ try {
       const sent = text.indexOf('The only thing sent to make your card and report is a short digest');
       return never > -1 && sent > never && /can review it before anything goes/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
-  check('the media and the zip never leave, and the report only for Ask Psyche, which is named',
-    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask Psyche: then your report, the digest it was written from and\s+your question go to Google Gemini/i.test(about),
+  check('the media and the zip never leave, and the report only for Ask PsycheAI, which is named',
+    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask PsycheAI: then your report, the digest it was written from and\s+your question go to Google Gemini/i.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
@@ -11624,7 +11624,7 @@ try {
           about: body.querySelectorAll('.about-card').length,
           // The roast's own badge says what it is, not that it was paid for.
           badges: body.querySelectorAll('.part-card .mode-badge:not(.bonus-badge)').length,
-          // The last section, before the part's Ask Psyche link.
+          // The last section, before the part's Ask PsycheAI link.
           whoLast: who ? [...who.children].filter(n => !n.matches('.ask-part')).pop().className : '',
           more: body.querySelectorAll('details.more').length,
         };
@@ -11686,7 +11686,7 @@ try {
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
-          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.ask-card') ? 'ask' : n.matches('.open-report-card') ? 'open' :
+          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.open-report-card') ? 'open' :
             n.matches('.method-card') ? 'method' : n.matches('.sync-invite-slot') ? 'sync' : n.className).join(','),
         card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
@@ -11716,20 +11716,17 @@ try {
             r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
-      check('structured: Back lands on My Psyche: card, the secret roast, Ask Psyche, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
-        hubShape.order === 'roast,ask,method,link' && hubShape.card && hubShape.parts === 0 &&
+      check('structured: Back lands on My Psyche: card, the secret roast, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
+        hubShape.order === 'roast,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
 
-      // ---- Ask Psyche ----
+      // ---- Ask PsycheAI ----
       {
-        const askCard = await sp.evaluate(() => {
-          const c = document.querySelector('#profile-body .ask-card');
-          return c ? { title: c.querySelector('.ask-card-title').textContent, chips: c.querySelectorAll('.ask-chip').length,
-            button: c.querySelector('.ask-card-go').textContent } : null;
-        });
-        check('Ask Psyche: My Psyche carries its card, with three questions to start from and a button',
-          Boolean(askCard) && askCard.title === 'Ask Psyche' && askCard.chips === 3 && askCard.button === 'Ask Psyche', JSON.stringify(askCard));
-        await sp.click('#profile-body .ask-card-go');
+        const askWay = await sp.evaluate(() => ({ card: document.querySelectorAll('.ask-card').length,
+          fab: !document.querySelector('#ask-fab').hidden && document.querySelector('#ask-fab-text').textContent }));
+        check('Ask PsycheAI: no section of its own on My Psyche, just the floating Ask PsycheAI button',
+          askWay.card === 0 && askWay.fab === 'Ask PsycheAI', JSON.stringify(askWay));
+        await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 10000 });
         await sp.waitForSelector('#ask-credits:not([hidden])', { timeout: 10000 });
         const empty = await sp.evaluate(() => ({
@@ -11739,29 +11736,37 @@ try {
           fabHidden: document.querySelector('#ask-fab').hidden,
           credits: document.querySelector('#ask-credits').textContent,
           buy: !document.querySelector('#ask-buy').hidden && document.querySelector('#ask-buy-go').textContent,
-          compose: document.querySelector('#ask-compose').hidden,
+          compose: !document.querySelector('#ask-compose').hidden && document.querySelector('#ask-send').hidden &&
+            !document.querySelector('#ask-ideas-toggle').hidden,
           privacy: document.querySelector('#ask-privacy').textContent, sub: document.querySelector('#ask-sub').textContent,
           introText: /Ask anything about your report/.test(document.querySelector('#ask-dialog').textContent) ||
             /Each answer is written from your own report/.test(document.querySelector('#ask-dialog').textContent) ||
             /Credits from Your Referral count too/.test(document.querySelector('#ask-dialog').textContent),
           referral: document.querySelector('#ask-referral').hidden }));
-        check('Ask Psyche opens as a panel beside the page (not a modal), one line and no list in the way, and, with none left, the way to get five',
+        check('Ask PsycheAI opens as a panel beside the page (not a modal), one line and no list in the way, and, with none left, the way to get five',
           empty.intro && empty.suggestions === 10 && !empty.modal && empty.fabHidden && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
             empty.compose && empty.privacy === 'Your question goes to Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.' &&
             empty.sub === 'Your personal coach.' && !empty.introText && empty.referral, JSON.stringify(empty));
+        // Ideas are there before any question is bought, to look through
+        // and start a question with.
+        await sp.click('#ask-ideas-toggle');
+        check('with no questions left, Ideas still opens its ten questions',
+          await sp.evaluate(() => !document.querySelector('#ask-ideas').hidden &&
+            [...document.querySelectorAll('#ask-ideas-list .ask-chip')].filter(b => b.getBoundingClientRect().height > 0).length === 10));
+        await sp.click('#ask-ideas-toggle');
         await sp.click('#ask-buy-go');
         await sp.waitForSelector('#premium-dialog[open] #premium-mock-pay:not([hidden])', { timeout: 15000 });
         const sheet = await sp.evaluate(() => ({ title: document.querySelector('#premium-dialog-title').textContent,
           price: document.querySelector('#premium-price').textContent, promo: document.querySelector('#premium-dialog .premium-promo').hidden,
           share: document.querySelector('#premium-share').hidden }));
-        check('Ask Psyche: the payment sheet sells five questions at the report\'s price, with no promo code or share box',
-          sheet.title === 'Get 5 questions for Ask Psyche' && /US\$5/.test(sheet.price) && sheet.promo && sheet.share, JSON.stringify(sheet));
+        check('Ask PsycheAI: the payment sheet sells five questions at the report\'s price, with no promo code or share box',
+          sheet.title === 'Get 5 questions for Ask PsycheAI' && /US\$5/.test(sheet.price) && sheet.promo && sheet.share, JSON.stringify(sheet));
         await sp.click('#premium-mock-pay');
         await sp.waitForFunction(() => document.querySelector('#ask-dialog').open &&
           document.querySelector('#ask-credits').textContent === '5 questions left', null, { timeout: 15000 });
         check('paying adds five questions, says so, and opens the question box',
           await sp.evaluate(() => /Added 5 questions/.test(document.querySelector('#ask-status').textContent) &&
-            !document.querySelector('#ask-compose').hidden && document.querySelector('#ask-buy').hidden));
+            !document.querySelector('#ask-compose').hidden && !document.querySelector('#ask-send').hidden && document.querySelector('#ask-buy').hidden));
         // The ideas, folded under the box until asked for: ten, the most
         // universal first and the career one last; one fills the box.
         await sp.click('#ask-ideas-toggle');
@@ -11806,9 +11811,9 @@ try {
         // Minimised, not closed: the floating button brings it back; an
         // answer that lands while it is down is announced on the button.
         await sp.click('#ask-close');
-        check('minimising leaves the floating Ask Psyche button on the page',
+        check('minimising leaves the floating Ask PsycheAI button on the page',
           await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden &&
-            document.querySelector('#ask-fab-text').textContent === 'Ask Psyche'));
+            document.querySelector('#ask-fab-text').textContent === 'Ask PsycheAI'));
         await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
         await sp.fill('#ask-input', 'What gets in my way most?');
@@ -11839,12 +11844,10 @@ try {
         }
         await sp.click('#ask-close');
         await sp.reload({ waitUntil: 'load' });
-        await sp.waitForSelector('#profile-body .ask-card', { timeout: 20000 });
-        check('after a reload the card counts the question asked',
-          (await sp.locator('#profile-body .ask-card-asked').innerText()) === '2 questions asked');
-        await sp.click('#profile-body .ask-card-go');
+        await sp.waitForSelector('#ask-fab:not([hidden])', { timeout: 20000 });
+        await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open] #ask-thread .ask-item', { timeout: 10000 });
-        check('and Ask Psyche opens on the conversation so far, not the introduction',
+        check('after a reload Ask PsycheAI opens on the conversation so far, not the introduction',
           await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 && !document.querySelector('#ask-thread .ask-intro')));
         await sp.click('#ask-close');
       }
@@ -11856,15 +11859,43 @@ try {
         const links = await sp.evaluate(() => ({ parts: document.querySelectorAll('#profile-body .part-card').length,
           links: document.querySelectorAll('#profile-body .part-card .ask-part-link').length,
           card: Boolean(document.querySelector('#profile-body .ask-card')) }));
-        check('Ask Psyche: every part of My Report ends with a way to ask about it, and the report ends with its card',
-          links.parts > 0 && links.links === links.parts && links.card, JSON.stringify(links));
+        check('Ask PsycheAI: every part of My Report ends with a way to ask about it, and no section of its own at the end',
+          links.parts > 0 && links.links === links.parts && !links.card, JSON.stringify(links));
         await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card .ask-part-link')[1].click());
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 10000 });
         check('and asking about a part starts the question with that part\'s name',
           /^About "Who you are": $/.test(await sp.evaluate(() => document.querySelector('#ask-input').value)),
           await sp.evaluate(() => document.querySelector('#ask-input').value));
         await sp.evaluate(() => { document.querySelector('#ask-input').value = ''; });
-        await sp.click('#ask-close');
+        // On a phone the panel is a sheet, pulled down by its handle: a
+        // short pull springs back, a long one minimises it.
+        const wide = sp.viewportSize();
+        await sp.setViewportSize({ width: 390, height: 800 });
+        await sp.waitForTimeout(300);
+        const drag = async dy => {
+          const h = await sp.locator('#ask-handle').boundingBox();
+          const x = h.x + h.width / 2, y = h.y + h.height / 2;
+          await sp.mouse.move(x, y); await sp.mouse.down();
+          await sp.mouse.move(x, y + dy / 2); await sp.mouse.move(x, y + dy); await sp.mouse.up();
+          await sp.waitForTimeout(300);
+        };
+        check('on a phone the sheet is set apart from the page by an accent border along its top',
+          await sp.evaluate(() => { const c = getComputedStyle(document.querySelector('#ask-dialog'));
+            return c.borderTopWidth === '2px' && c.borderLeftWidth === '2px' && c.borderBottomWidth === '0px'; }));
+        if (process.env.UITEST_SHOTS) {
+          await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-phone.png' });
+          await sp.click('#ask-ideas-toggle');
+          await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-phone-ideas.png' });
+          await sp.click('#ask-ideas-toggle');
+        }
+        await drag(25);
+        check('a short pull on the sheet\'s handle springs back',
+          await sp.evaluate(() => document.querySelector('#ask-dialog').open && !document.querySelector('#ask-dialog').style.transform));
+        await drag(160);
+        check('pulling the sheet down by its handle minimises it to the button',
+          await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden));
+        await sp.setViewportSize(wide);
+        await sp.waitForTimeout(300);
       }
       await sp.goBack();
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
@@ -13293,7 +13324,7 @@ try {
         /Your Referral/.test(card.text) && card.stats === 4 && !card.ready &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
           /0\s*opened your link/.test(card.text) &&
-          /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use a credit to ask Psyche a question or to gift a Psyche Report\./.test(card.text) &&
+          /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use a credit to ask PsycheAI a question or to gift a Psyche Report\./.test(card.text) &&
           /Share your card or link above/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*credits/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&

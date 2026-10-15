@@ -8114,7 +8114,7 @@ check('the schema requires evidence on where they align and differ',
     (await referral.grantRefusal(gift, { mine: 1 }, { account: me, myRef: code })) || ''));
   check('and spending it leaves no credit', (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
 
-  // Ask Psyche's questions: five per payment, once per payment; the link's
+  // Ask PsycheAI's questions: five per payment, once per payment; the link's
   // credits count too; a bought one is spent first, and a failed answer
   // gives its credit back.
   {
@@ -8123,7 +8123,7 @@ check('the schema requires evidence on where they align and differ',
     await referral.afterFreeCard({ account: sha('psycheai:asker'), myRef: referral.codeOf(askSecret) });
     await new Promise(resolve => setTimeout(resolve, 10));
     let now = await askCredits.balance(askSecret);
-    check('Ask Psyche: a new reader has no questions', now && now.total === 0 && now.paid === 0 && now.perPack === 5, JSON.stringify(now));
+    check('Ask PsycheAI: a new reader has no questions', now && now.total === 0 && now.paid === 0 && now.perPack === 5, JSON.stringify(now));
     check('and none can be spent', (await askCredits.spend(askSecret)) === null);
     check('a payment adds five, once', (await askCredits.addPack(askSecret, 'pi_ask_1')) === true &&
       (await askCredits.addPack(askSecret, 'pi_ask_1')) === false && (await askCredits.balance(askSecret)).total === 5);
@@ -8145,16 +8145,16 @@ check('the schema requires evidence on where they align and differ',
   }
   {
     const Prices = (await import('../docs/prices.js'), globalThis.PsychePrices);
-    check('Ask Psyche: five questions cost what the report costs, in every currency',
+    check('Ask PsycheAI: five questions cost what the report costs, in every currency',
       Object.keys(Prices.TABLE).every(c => Prices.amount(c, 'ask') === Prices.amount(c, 'unlock')) &&
         Prices.label('sgd', 'ask') === 'S$7' && Prices.amount('usd', 'analysis') === 200);
     const P = await import('../lib/prompts.js').then(m => m.default);
     const blocks = P.askBlocks({ mbti: { type: 'INFJ' } }, 'x'.repeat(500), [{ q: 'first?', a: 'first answer' }]);
-    check('Ask Psyche: the prompt gets the report, up to three earlier answers and the question, held to 300 characters',
+    check('Ask PsycheAI: the prompt gets the report, up to three earlier answers and the question, held to 300 characters',
       /<report>/.test(blocks[0].text) && /<earlier>\nQ: first\?\nA: first answer/.test(blocks[0].text) &&
         /<question>\nx{300}\n<\/question>/.test(blocks[0].text) && P.ASK_QUESTION_MAX === 300);
     const withEvidence = P.askBlocks({ mbti: { type: 'INFJ' } }, 'why?', [], { samples: { captions: ['[2024] a caption'] } });
-    check('Ask Psyche: with the report\'s digest, the evidence follows the report; without it, there is none',
+    check('Ask PsycheAI: with the report\'s digest, the evidence follows the report; without it, there is none',
       /<\/report>\n\n<evidence>\n[\s\S]*a caption[\s\S]*<\/evidence>\n\n<question>/.test(withEvidence[0].text) &&
         !/<evidence>/.test(blocks[0].text) && /The report's conclusions stand/.test(P.ASK_SYSTEM));
     check('and is told to answer from the report, coach, never diagnose, and keep the conduct rule',

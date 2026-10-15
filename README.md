@@ -2737,7 +2737,7 @@ stack full width.
   say so, and say to keep it private because it holds the link's key. The Delete everything sheet
   suggests saving a backup first.
 
-## Ask Psyche: questions about your own report (October 2026)
+## Ask PsycheAI: questions about your own report (October 2026)
 
 A reader with a full Psyche Report can ask it questions and get coaching built on it. It is paid
 per question: **five for US$5** (`ask` in `docs/prices.js`, the report's price in every currency),
@@ -2745,7 +2745,7 @@ and every credit Your Referral earns (three friends' cards) is one more question
 
 **What the model is given: the report and card, and the digest the report was written from.** At
 first it was the report alone. Since the browser now keeps each report's own digest
-(`psycheai_report_digest`), Ask Psyche sends it too (`askDigest`), or the standard digest for a report
+(`psycheai_report_digest`), Ask PsycheAI sends it too (`askDigest`), or the standard digest for a report
 made before that was kept. The report's conclusions are what the model builds on. The digest is
 evidence for fresh, concrete examples, never a reason to overturn a conclusion (`ASK_SYSTEM`). The
 server holds the digest to `forModel` and the premium read's size, and answers from the report alone
@@ -2785,28 +2785,38 @@ is limited to 30 an hour, since each call is paid for anyway). The question is h
 characters (`ASK_QUESTION_MAX`), the report to 150,000.
 
 **Where it is:**
-- **My Psyche:** an *Ask Psyche* card under the roast, with three ready-made questions and a count
-  of questions asked.
-- **My Report:** at the foot of every part, *Ask Psyche about this →* opens it with *About "Who
-  you are": * already typed. The report ends with the same card.
+- **The floating button** (`#ask-fab`) on My Psyche and My Report is the way in. There used to be
+  an *Ask PsycheAI* card under the roast on My Psyche and again at the end of My Report; with the
+  button always on screen the cards were redundant and were removed (October 2026).
+- **My Report:** at the foot of every part, *Ask PsycheAI about this →* opens it with *About "Who
+  you are": * already typed.
+- **The name** was *Ask Psyche* until October 2026, when it became *Ask PsycheAI*, everywhere it
+  appears (panel, button, payment sheet, FAQ, privacy page, terms).
 - **A panel you can minimise, not a page or a modal** (October 2026). It opens with `show()`, not
   `showModal()`, so nothing behind it is blocked:
-  - **On a phone (760px and under):** a bottom sheet, 85% of the screen, with a handle. A tap or a
-    swipe down on the handle or the head minimises it.
+  - **On a phone (760px and under):** a bottom sheet, 85% of the screen, with a handle, edged in the
+    accent colour along its top and sides with a shadow cast up over the page, so it is plainly apart
+    from the page beneath (a thin grey line was easy to miss). On a laptop the border is a softer accent. A tap or a
+    swipe down on the handle or the head minimises it. The sheet follows the finger; let go past
+    60px and it minimises, otherwise it springs back. The handle and head carry `touch-action: none`:
+    without it a phone's browser took the drag as a scroll and cancelled the pointer, so the swipe
+    did nothing.
   - **On a laptop:** docked at the right under the site's header. From 1200px the page makes room
     for it (`body.ask-docked`): the column moves left and narrows, and on My Report the part nav and
     its actions go to the left edge, so nothing sits under the panel. Between 761 and 1199px it
     floats over the page.
   - **Minimising:** the – button, the handle, or Escape anywhere on the page (unless another popout
-    is open on top). It leaves a floating **Ask Psyche** button (`#ask-fab`) at the bottom right of
+    is open on top). It leaves a floating **Ask PsycheAI** button (`#ask-fab`) at the bottom right of
     My Psyche and My Report, shown only once the reader has the report. An answer that lands while
     minimised turns it into **Answer ready**, with a soft pulse, until it is opened.
   - **Nothing is lost:** the conversation, a half-typed question and an answer still coming all stay.
-  - **Not a separate nav page:** on a phone the nav already has four short labels, and Ask Psyche is
+  - **Not a separate nav page:** on a phone the nav already has four short labels, and Ask PsycheAI is
     most useful beside the report rather than instead of it.
 - **Ideas, out of the way.** The ready-made questions are no longer on the screen. They sit behind a
   small **💡 Ideas** button by the character count, which opens a short scrolling list above the box.
-  Tapping one fills the box and folds the list away. They are ten deeper questions the report does
+  Tapping one fills the box and folds the list away. With no questions left the box and Ideas
+  stay, and only the Ask button gives way to *Get 5 questions*. At first the whole box was hidden
+  then, which hid the Ideas button with it, so a reader without questions never saw the ideas. They are ten deeper questions the report does
   not already answer, ordered from the most universal to the most specific, career last:
   1. Who am I when I'm not being useful, impressive or needed?
   2. What do I keep trying to prove, and to whom?
@@ -2823,7 +2833,7 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
   Two of the twelve proposed were left out. *My life has no meaning and no purpose* overlapped with
   question 3 and reads as distress put in the reader's mouth. *My happiest and saddest moment* is
   something the data cannot reliably show and could surface a loss. The empty panel says one line:
-  *Ask Psyche anything about yourself. Need a starting point? Tap Ideas.*
+  *Ask PsycheAI anything about yourself. Need a starting point? Tap Ideas.*
 - **The popout** (`#ask-dialog`, `openAsk`): the conversation so far, a counter of questions left,
   and a box with a character count. When none are left, *Get 5 questions* opens the ordinary
   payment sheet for the `ask` product, with no promo code and no share box. It was trimmed to that
@@ -2836,7 +2846,7 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
   the backup file (`BACKUP_KEYS`), and goes with Delete everything.
 
 **Privacy wording changed with it.** The FAQ and privacy page used to say the finished report never
-leaves the device. They now say it stays on the device unless the reader uses Ask Psyche, when the
+leaves the device. They now say it stays on the device unless the reader uses Ask PsycheAI, when the
 report, its digest and the question go to Google Gemini for that one answer and PsycheAI keeps
 none of them. The
 privacy page also lists the question counts, and the terms describe the questions.

@@ -725,8 +725,8 @@
     // be the wrong verb for sections they already have. Same US$5, same
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
-    // The payment sheet when it sells Ask Psyche questions.
-    askDialogTitle: 'Get 5 questions for Ask Psyche',
+    // The payment sheet when it sells Ask PsycheAI questions.
+    askDialogTitle: 'Get 5 questions for Ask PsycheAI',
     askDialogBlurb: 'Five questions about your Psyche Report, each answered from it with steps to take this week. Questions you do not use stay for later.',
     askPayPrefix: 'Pay ',
     premiumRerunDialogTitle: 'Re-run your Psyche Report',
@@ -772,7 +772,7 @@
     // cards earn a credit, for gifts now and premium features later.
     referral: {
       title: 'Your Referral',
-      blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use a credit to ask Psyche a question or to gift a Psyche Report.',
+      blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use a credit to ask PsycheAI a question or to gift a Psyche Report.',
       shareHint: 'Share your card or link above to start.',
       // The small button at the head's right: the same share message and
       // link as the card's own Copy link.
@@ -1192,15 +1192,15 @@
       full: 'Your backup could not be restored: this browser has no room to store it.',
       deleteHint: 'Save a backup first to keep a copy you can restore in any browser.',
     },
-    // Ask Psyche: questions about the reader's own Psyche Report, answered
+    // Ask PsycheAI: questions about the reader's own Psyche Report, answered
     // from it (lib/prompts.js, ASK_SYSTEM), one credit each. See openAsk in
     // app.js.
     ask: {
-      title: 'Ask Psyche',
+      title: 'Ask PsycheAI',
       sub: 'Your personal coach.',
       placeholder: 'Ask about your Psyche Report…',
       send: 'Ask',
-      thinking: 'Psyche is thinking…',
+      thinking: 'PsycheAI is thinking…',
       steps: 'Your next steps',
       follow: 'Ask next',
       left: n => n === 1 ? '1 question left' : n + ' questions left',
@@ -1211,15 +1211,10 @@
       bought: 'Added 5 questions. Ask away.',
       privacy: 'Your question goes to Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.',
       tooShort: 'Ask a little more – a few words at least.',
-      failed: 'Psyche could not answer that just now. Your question was not used – try again.',
+      failed: 'PsycheAI could not answer that just now. Your question was not used – try again.',
       noCredits: 'You have no questions left.',
-      // On My Psyche and at the end of My Report.
-      cardTitle: 'Ask Psyche',
-      cardBlurb: 'Ask your report anything, and get coaching built on it: what to work on, how to use your strengths, how to handle the people in your life.',
-      cardButton: 'Ask Psyche',
-      cardAsked: n => n === 1 ? '1 question asked' : n + ' questions asked',
       // At the end of each part of My Report, the question started for them.
-      partLink: 'Ask Psyche about this',
+      partLink: 'Ask PsycheAI about this',
       partPrefill: title => 'About "' + title + '": ',
       // Questions to start from, from the most universal to the most
       // specific (career last): deep ones the report does not already
@@ -1239,9 +1234,9 @@
       ],
       ideas: 'Ideas',
       ideasTitle: 'Questions to start from – tap one, then make it yours',
-      emptyHint: 'Ask Psyche anything about yourself. Need a starting point? Tap Ideas.',
+      emptyHint: 'Ask PsycheAI anything about yourself. Need a starting point? Tap Ideas.',
       minimise: 'Minimise',
-      fab: 'Ask Psyche',
+      fab: 'Ask PsycheAI',
       fabReady: 'Answer ready',
     },
     // The page's actions: in full on My Psyche, one word each under My

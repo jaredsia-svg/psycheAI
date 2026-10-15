@@ -180,7 +180,7 @@
     giftBannerClosed: 'psycheai_gift_banner_closed',
     inviteBannerClosed: 'psycheai_invite_banner_closed',
     gifts: 'psycheai_gifts_made',
-    // Ask Psyche: every question and answer, kept in this browser only (the
+    // Ask PsycheAI: every question and answer, kept in this browser only (the
     // server keeps none), newest last; and a payment for questions that was
     // made but not yet credited, to credit on the next open (openAsk).
     ask: 'psycheai_ask',
@@ -2216,7 +2216,7 @@
    */
   function hubSectionsHtml(report) {
     // The way into My Report is a button under the card's tools (cardGuideHtml).
-    return secretRoastHtml(report.bonus) + askCardHtml() + methodCardHtml(report, false) + referralCardHtml(true);
+    return secretRoastHtml(report.bonus) + methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -2984,7 +2984,7 @@
       history.back();
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
-    // Ask Psyche goes with My Psyche and My Report, panel and button alike.
+    // Ask PsycheAI goes with My Psyche and My Report, panel and button alike.
     if (view !== 'profile' && $('#ask-dialog').open) $('#ask-dialog').close();
     refreshAskFab();
     // The front page, kept out of sight by early.js until this choice was made.
@@ -7212,8 +7212,6 @@
     // is no appendix part on the page: the roast is on My Psyche too.
     if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part, askable);
-    // After the five parts: Ask Psyche, for everything the report raised.
-    if (askable) html += askCardHtml();
     return html;
   }
 
@@ -9368,7 +9366,7 @@
     const paymentRequest = stripe.paymentRequest({
       country: intent.country,
       currency: intent.currency,
-      total: { label: premiumKind === 'ask' ? 'PsycheAI – Ask Psyche, 5 questions' : 'PsycheAI – Psyche Report', amount: intent.amount },
+      total: { label: premiumKind === 'ask' ? 'PsycheAI – Ask PsycheAI, 5 questions' : 'PsycheAI – Psyche Report', amount: intent.amount },
       requestPayerName: false,
       requestPayerEmail: false,
     });
@@ -10036,7 +10034,7 @@
     location.reload();
   });
 
-  // ---------- Ask Psyche ----------
+  // ---------- Ask PsycheAI ----------
   //
   // A reader with a full Psyche Report asks questions about it, one credit
   // each: five for US$5 (the `ask` product), and every credit Your Referral
@@ -10118,7 +10116,9 @@
     pill.textContent = n === null ? '' : n > 0 ? A.left(n) : A.none;
     pill.classList.toggle('is-empty', n === 0);
     const out = n === 0;
-    $('#ask-compose').hidden = out;
+    // With none left the box and Ideas stay, so a question can be drafted
+    // before buying; only Ask gives way to the way to get more.
+    $('#ask-send').hidden = out;
     $('#ask-buy').hidden = !out;
     if (out) $('#ask-buy-go').textContent = A.buy(Prices.label(CURRENCY, 'ask'));
     // The link's credits, named only when some of what is left is theirs.
@@ -10157,7 +10157,7 @@
   }
 
   /**
-   * Opens Ask Psyche, with a question started for the reader when one is
+   * Opens Ask PsycheAI, with a question started for the reader when one is
    * given. A panel, not a modal: the report stays readable and scrollable
    * beside it, and closing it only minimises it to the floating button.
    */
@@ -10190,7 +10190,7 @@
     // already started; a phone's keyboard is not pulled up unasked.
     const input = $('#ask-input');
     const fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
-    if (!$('#ask-compose').hidden && (fine || typeof prefill === 'string')) {
+    if (fine || typeof prefill === 'string') {
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
@@ -10229,7 +10229,6 @@
       askCount();
       renderAskThread();
       renderAskCredits();
-      refreshAskCards();
       // Answered while minimised: the button says so until it is opened.
       if (!$('#ask-dialog').open) { $('#ask-fab').classList.add('is-ready'); refreshAskFab(); }
     } catch (error) {
@@ -10263,16 +10262,34 @@
   const minimiseAsk = () => { $('#ask-dialog').close(); dockAsk(false); refreshAskFab(); };
   $('#ask-close').addEventListener('click', minimiseAsk);
   $('#ask-handle').addEventListener('click', minimiseAsk);
+  // The sheet follows the finger down from the handle or the title bar
+  // (touch-action: none there in styles.css, or the browser takes the drag
+  // as a scroll and cancels it); let go past 60px and it minimises,
+  // otherwise it springs back.
   {
-    let startY = null;
-    const head = $('#ask-dialog');
-    head.addEventListener('pointerdown', event => {
-      startY = event.target.closest('.ask-handle, .ask-head') ? event.clientY : null;
+    const sheet = $('#ask-dialog');
+    let startY = null, moved = 0;
+    const settle = () => { sheet.style.transform = ''; sheet.style.transition = ''; startY = null; };
+    sheet.addEventListener('pointerdown', event => {
+      if (!event.target.closest('.ask-handle, .ask-head') || event.target.closest('.ask-close')) return;
+      startY = event.clientY; moved = 0;
+      sheet.style.transition = 'none';
     });
-    head.addEventListener('pointerup', event => {
-      if (startY !== null && event.clientY - startY > 60) minimiseAsk();
-      startY = null;
+    sheet.addEventListener('pointermove', event => {
+      if (startY === null) return;
+      moved = Math.max(0, event.clientY - startY);
+      sheet.style.transform = moved ? 'translateY(' + moved + 'px)' : '';
     });
+    const end = () => {
+      if (startY === null) return;
+      const away = moved > 60;
+      settle();
+      if (away) minimiseAsk();
+    };
+    sheet.addEventListener('pointerup', end);
+    sheet.addEventListener('pointercancel', end);
+    // A drag that ends in a tap on the handle is not also a tap.
+    $('#ask-handle').addEventListener('click', event => { if (moved > 8) event.stopImmediatePropagation(); }, true);
   }
   // Escape anywhere on the page, since focus need not be inside the panel
   // (it leaves it while an answer is coming) — but not when a popout of its
@@ -10309,7 +10326,7 @@
     $('#ask-input').value = chip.dataset.q || '';
     askCount();
     showAskIdeas(false);
-    if (!$('#ask-compose').hidden) $('#ask-input').focus();
+    $('#ask-input').focus();
   });
   /** The floating button: on My Psyche and My Report, with the report, while the panel is down. */
   function refreshAskFab() {
@@ -10331,36 +10348,6 @@
     openAsk(part ? Copy.STRUCTURED.ask.partPrefill(part) : undefined);
   });
 
-  /** The Ask Psyche card: on My Psyche, and at the end of My Report. */
-  function askCardHtml() {
-    if (!askReady()) return '';
-    const A = Copy.STRUCTURED.ask;
-    const asked = askThread().length;
-    return '<section class="card section-card ask-card screen-only">' +
-      '<div class="ask-card-head"><span class="ask-mark" aria-hidden="true"></span><div>' +
-        '<h3 class="ask-card-title">' + esc(A.cardTitle) + '</h3>' +
-        '<p class="ask-card-blurb">' + esc(A.cardBlurb) + '</p></div></div>' +
-      '<div class="ask-suggestions">' + A.suggestions.slice(0, 3).map(q =>
-        '<button type="button" class="ask-chip" data-ask="" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' +
-      '<div class="ask-card-foot"><button type="button" class="btn ask-card-go" data-ask="">' + esc(A.cardButton) + '</button>' +
-        '<span class="ask-card-asked"' + (asked ? '' : ' hidden') + '>' + esc(A.cardAsked(asked)) + '</span></div>' +
-    '</section>';
-  }
-  function refreshAskCards() {
-    const n = askThread().length;
-    for (const span of document.querySelectorAll('.ask-card-asked')) {
-      span.textContent = Copy.STRUCTURED.ask.cardAsked(n);
-      span.hidden = !n;
-    }
-  }
-  // A suggestion on the card opens Ask Psyche with that question in the box.
-  document.addEventListener('click', event => {
-    const chip = event.target.closest && event.target.closest('.ask-card .ask-chip');
-    if (!chip) return;
-    event.preventDefault();
-    event.stopPropagation();
-    openAsk(chip.dataset.q || '');
-  }, true);
 
   // ══════════════ 3. compatibility links ══════════════
   //

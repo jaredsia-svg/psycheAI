@@ -91,7 +91,7 @@
   }
 
   // The three things sold: the report (unlock), the card run again
-  // (analysis), and five Ask Psyche questions (ask). Anything else is priced
+  // (analysis), and five Ask PsycheAI questions (ask). Anything else is priced
   // as the report.
   const productKey = product => (product === 'analysis' || product === 'ask' ? product : 'unlock');
 
