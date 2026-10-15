@@ -7949,7 +7949,8 @@ check('the schema requires evidence on where they align and differ',
   check('what is kept is a scrambled code, not the hash the browser sent, and never the username',
     !kept.includes(account) && !kept.includes('someone'), kept);
 
-  // The referral: two friends, one free report; once per friend, never yourself.
+  // The referral: one friend's card unlocks the reader's first report; every
+  // three earn a credit. Once per friend, never yourself.
   const secret = sha('a secret only this browser has');
   const code = referral.codeOf(secret);
   const me = sha('psycheai:referrer');
@@ -7961,22 +7962,52 @@ check('the schema requires evidence on where they align and differ',
   const first = await referral.afterFreeCard({ account: friend(1), ref: code, client: '10.0.0.' + 1 });
   const again = await referral.afterFreeCard({ account: friend(1), ref: code, client: '10.0.0.' + 1 });
   check('a friend\'s first free card counts once, and only once', first.credited && !again.credited);
+  {
+    const lonely = sha('a secret with no friends yet');
+    await referral.afterFreeCard({ account: sha('psycheai:lonely-referrer'), myRef: referral.codeOf(lonely) });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const none = await referral.status(lonely);
+    check('with no friend\'s card yet, the first report is locked and nothing can be claimed',
+      !none.first.unlocked && !none.first.claimed && (await referral.claimFirst(lonely)) === null &&
+        (await referral.claim(lonely)) === null, JSON.stringify(none));
+  }
   let status = await referral.status(secret);
-  check('one friend: one of two, nothing to claim yet',
-    status.friends === 1 && status.available === 0 && status.towardCards === 1 && status.code === code, JSON.stringify(status));
-  check('and nothing can be claimed', (await referral.claim(secret)) === null);
-  await referral.afterFreeCard({ account: friend(2), ref: code, client: '10.0.0.' + 2 });
-  status = await referral.status(secret);
-  check('two friends earn one free full report', status.earned === 1 && status.available === 1, JSON.stringify(status));
-  const grant = await referral.claim(secret);
-  check('claiming it gives a grant, and spends it', /^[0-9a-f]{48}$/.test(grant || '') &&
-    (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
+  check('one friend: the first report unlocks, but no credit yet (one of three)',
+    status.friends === 1 && status.first.unlocked && !status.first.claimed && status.first.needed === 1 &&
+      status.credits === 0 && status.available === 0 && status.toward === 1 && status.perCredit === 3 && status.code === code,
+    JSON.stringify(status));
+  check('and no credit can be spent', (await referral.claim(secret)) === null);
+  check('the old rewards are gone: no paid-report count or free report for two cards',
+    !('paid' in status) && !('earned' in status) && typeof referral.afterPaid === 'undefined');
+  const grant = await referral.claimFirst(secret);
+  const grantAgain = await referral.claimFirst(secret);
+  check('the first report\'s grant is claimed once, and asking again returns the same one',
+    /^[0-9a-f]{48}$/.test(grant || '') && grantAgain === grant && (await referral.status(secret)).first.claimed);
   const digestA = { a: 1 };
-  check('the grant unlocks a report', (await referral.grantRefusal(grant, digestA)) === null);
+  check('the grant unlocks a report for an account that has had none',
+    (await referral.grantRefusal(grant, digestA, { account: me, myRef: code })) === null);
+  {
+    // Only for a first report: an account that has had a full report, paid
+    // or not, is refused, so a re-run is always paid.
+    const fresh = sha('a secret whose reader already bought one');
+    const buyer = sha('psycheai:already-bought');
+    await referral.afterFreeCard({ account: buyer, myRef: referral.codeOf(fresh) });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    await referral.afterFreeCard({ account: friend(90), ref: referral.codeOf(fresh), client: '10.9.0.1' });
+    referral.afterFullReport(buyer);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const late = await referral.claimFirst(fresh);
+    const refusal = await referral.grantRefusal(late, { b: 1 }, { account: buyer });
+    check('an account that has already had a Psyche Report cannot use the free first one',
+      /^[0-9a-f]{48}$/.test(late || '') && /first Psyche Report only/.test(refusal || ''), String(refusal));
+  }
   referral.spendGrant(grant, digestA);
   await new Promise(resolve => setTimeout(resolve, 10));
-  check('the same report again with it, but not a different one',
-    (await referral.grantRefusal(grant, digestA)) === null && (await referral.grantRefusal(grant, { a: 2 })) !== null);
+  referral.afterFullReport(me);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  check('the same report again with it, even after it was written, but not a different one',
+    (await referral.grantRefusal(grant, digestA, { account: me })) === null &&
+      (await referral.grantRefusal(grant, { a: 2 }, { account: me })) !== null);
   check('a made-up grant unlocks nothing', (await referral.grantRefusal('f'.repeat(48), digestA)) !== null);
   // A friend already credited to one code cannot be credited to another.
   const other = referral.codeOf(sha('another secret'));
@@ -8016,30 +8047,13 @@ check('the schema requires evidence on where they align and differ',
     await new Promise(resolve => setTimeout(resolve, 10));
     check('and a failed report frees it for another', typeof (await referral.reserveGrant(g, { r: 2 })) === 'function');
   }
-  await referral.afterFreeCard({ account: friend(3), ref: code, client: '10.0.0.' + 3 });
+  await referral.afterFreeCard({ account: friend(2), ref: code, client: '10.0.0.' + 2 });
   status = await referral.status(secret);
-  check('every two more friends earn another', status.friends === 4 && status.earned === 2 && status.available === 1,
-    JSON.stringify(status));
+  check('three friends\' cards earn one credit', status.friends === 3 && status.credits === 1 && status.available === 1 &&
+    status.toward === 0, JSON.stringify(status));
   check('only the secret\'s holder can ask: a code alone is not a secret',
     (await referral.status(code)) === null);
 
-  // Friends who buy the full report count too: each one earns a free full
-  // report, adding to what cards earn. Once per buyer, never the referrer.
-  const buyer = n => sha('psycheai:buyer' + n);
-  check('the referrer buying through their own link earns nothing',
-    !(await referral.afterPaid({ account: me, ref: code, payment: 'pi_self' })) &&
-    !(await referral.afterPaid({ account: buyer(9), ref: code, myRef: code, payment: 'pi_mine' })));
-  const bought = await referral.afterPaid({ account: buyer(1), ref: code, payment: 'pi_1' });
-  const boughtAgain = await referral.afterPaid({ account: buyer(1), ref: code, payment: 'pi_1b' });
-  check('a friend\'s paid report counts once per buyer', bought && !boughtAgain);
-  check('a code with no owner is credited nothing',
-    !(await referral.afterPaid({ account: buyer(2), ref: referral.codeOf(sha('nobody')), payment: 'pi_2' })));
-  status = await referral.status(secret);
-  check('one paid report earns a free full report, on top of the cards\'', status.paid === 1 && status.earned === 3 &&
-    status.available === 2 && status.towardPaid === 0 && status.perCards === 2 && status.perPaid === 1, JSON.stringify(status));
-  await referral.afterPaid({ account: buyer(3), ref: code, payment: 'pi_3' });
-  status = await referral.status(secret);
-  check('and each one after it another', status.paid === 2 && status.earned === 4 && status.available === 3, JSON.stringify(status));
   // Opens are a plain count of the link's code.
   for (let i = 0; i < 3; i++) referral.countOpen(code);
   referral.countOpen('not-a-code');
@@ -8052,11 +8066,14 @@ check('the schema requires evidence on where they align and differ',
   referral.countSync('not-a-code');
   await new Promise(resolve => setTimeout(resolve, 10));
   check('friends\' syncs from the link are counted for its owner', (await referral.status(secret)).syncs === 2);
-  // A free report claimed to give away is the same grant: anyone holding it
-  // unlocks one report with it, once.
+  // A credit spent on a gift: a grant anyone else holding it can unlock one
+  // report with, once, but not the reader who gave it.
   const gift = await referral.claim(secret);
-  check('a free report can be claimed as a gift link\'s grant, and works for someone else once',
-    /^[0-9a-f]{48}$/.test(gift || '') && (await referral.grantRefusal(gift, { someoneElse: 1 })) === null);
+  check('a credit can be spent on a gift link\'s grant, which works for someone else once',
+    /^[0-9a-f]{48}$/.test(gift || '') && (await referral.grantRefusal(gift, { someoneElse: 1 }, { account: sha('psycheai:giftee') })) === null);
+  check('but not for the reader who gave it', /for someone else/.test(
+    (await referral.grantRefusal(gift, { mine: 1 }, { account: me, myRef: code })) || ''));
+  check('and spending it leaves no credit', (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
 
   // Guess your character: judged on the server against the card, once per
   // account, a right guess a grant like any other.

@@ -541,8 +541,8 @@ async function handleAnalyse(request, response) {
     return;
   }
   if (referralGrant) {
-    const grantProblem = !full ? 'A free report from inviting friends unlocks the Psyche Report only.'
-      : await referral.grantRefusal(referralGrant, body.digest);
+    const grantProblem = !full ? 'A free report from your link unlocks the Psyche Report only.'
+      : await referral.grantRefusal(referralGrant, body.digest, { account: body.account, myRef: body.myRef });
     if (grantProblem) {
       sendJson(response, 402, { error: grantProblem });
       return;
@@ -761,13 +761,10 @@ async function handleAnalyse(request, response) {
         referral.spendGrant(referralGrant, body.digest);
         stats.count('referral_report');
       }
-      // A full report really paid for, by someone who arrived on a friend's
-      // link: that friend is credited (lib/referral.js, afterPaid).
-      if (paidRun && full && body.ref) {
-        referral.afterPaid({ account, ref: body.ref, myRef: body.myRef, payment: paymentIntentId })
-          .then(credited => { if (credited) stats.count('referral_paid'); })
-          .catch(() => {});
-      }
+      // Any full report, paid or not: this account has had its first, so
+      // the free one from a friend's card is no longer theirs to use
+      // (lib/referral.js, grantRefusal).
+      if (full) referral.afterFullReport(account);
       // The free card's account, and the friend who invited them.
       if (made === 'card') {
         referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
@@ -1090,15 +1087,18 @@ async function handleReferral(request, response) {
   }
   sendJson(response, 200, status);
 }
+// `first: true` asks for the free first report a friend's card unlocked;
+// otherwise one credit is spent on a gift.
 async function handleReferralClaim(request, response) {
   const body = await readJsonBody(request);
-  const grant = await referral.claim(body && body.secret);
+  const first = Boolean(body && body.first === true);
+  const grant = first ? await referral.claimFirst(body && body.secret) : await referral.claim(body && body.secret);
   if (!grant) {
-    sendJson(response, 402, { error: 'There is no free report to claim yet.' });
+    sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection makes their card from your link.'
+      : 'You have no credits to spend yet.' });
     return;
   }
-  // Claimed to use, or to give away: the grant is the same either way.
-  stats.count(body.gift === true ? 'referral_gifted' : 'referral_claimed');
+  stats.count(first ? 'referral_first' : 'referral_gifted');
   sendJson(response, 200, { grant, status: await referral.status(body.secret) });
 }
 

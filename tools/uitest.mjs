@@ -12558,12 +12558,24 @@ try {
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the Psyche Report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
         offerParts.intro);
-      check('structured: the unlock button gives the price and the other way in: two connections\' cards from the reader\'s link',
-        await sp.evaluate(() => {
-          const b = document.querySelector('#profile-body .full-report-locked .premium-unlock');
-          return Boolean(b) && /Unlock your Psyche Report – US\$5/.test(b.textContent) &&
-            b.querySelector('.premium-unlock-alt').textContent === 'or get 2 connections to make their Psyche Card from your link';
-        }));
+      const shareFirst = await sp.evaluate(() => {
+        const panel = document.querySelector('#profile-body .full-report-locked');
+        const box = panel.querySelector('.unlock-share');
+        const go = box && box.querySelector('.unlock-share-go');
+        const pay = panel.querySelector('.premium-unlock');
+        const size = el => parseFloat(getComputedStyle(el).fontSize);
+        return { title: box && box.querySelector('.unlock-share-title').textContent,
+          sub: box && box.querySelector('.unlock-share-sub').textContent,
+          share: go && !go.hidden && go.textContent, claimHidden: box && box.querySelector('.unlock-share-claim').hidden,
+          pay: pay && pay.textContent, payAfter: Boolean(box && pay && (box.compareDocumentPosition(pay) & Node.DOCUMENT_POSITION_FOLLOWING)),
+          quieter: Boolean(go && pay) && size(pay) < size(go) && pay.classList.contains('link-btn'),
+          onePremium: panel.querySelectorAll('.premium-unlock').length };
+      });
+      check('structured: the unlock offer leads with sharing the link with 1 connection, and paying US$5 is the small link under it',
+        shareFirst.title === 'Unlock by sharing your link with 1 connection' &&
+          /unlocks free as soon as 1 connection makes their Psyche Card from your link/.test(shareFirst.sub) &&
+          shareFirst.share === 'Share my link' && shareFirst.claimHidden && shareFirst.pay === 'or pay US$5' &&
+          shareFirst.payAfter && shareFirst.quieter && shareFirst.onePremium === 1, JSON.stringify(shareFirst));
       check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
         await sp.evaluate(() => {
           const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
@@ -13077,13 +13089,13 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows "Your Referral": what it earns, four boxes (opens first, then cards, paid, syncs), only a Copy link button and nothing to claim yet',
+      check('the free report shows "Your Referral": what credits it earns, four boxes (opens, cards, syncs, credits), only a Copy link button and nothing to spend yet',
         /Your Referral/.test(card.text) && card.stats === 4 && !card.ready &&
-          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,paid,syncs') &&
+          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
           /0\s*opened your link/.test(card.text) &&
-          /Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report/.test(card.text) &&
-          /Share your card or link above/.test(card.text) &&
-          /0\s*made a card/.test(card.text) && /0\s*bought the Psyche Report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
+          /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use credits to gift a Psyche Report, with more premium features coming soon\./.test(card.text) &&
+          /Share your card or link above/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
+          /0\s*made a card/.test(card.text) && /0\s*credits/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&
           await rp.evaluate(() => {
             const nodes = [...document.querySelectorAll('#profile-body > *')];
@@ -13544,19 +13556,39 @@ try {
         shown: document.querySelector('#profile-body .referral-n[data-stat="opens"]').textContent,
         opens: (await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json())).opens }));
-      check('with three friends in, the card counts them, says a free Psyche Report is ready, and offers to use or gift it',
-        ready.cards === '3' && /1 free Psyche Report ready/.test(ready.text) && /Use it/.test(ready.text) && /Gift it/.test(ready.text),
-        JSON.stringify(ready));
+      check('with three friends in, the card counts them, shows 1 credit, and offers to gift a report with it, not to use it',
+        ready.cards === '3' && /1\s*credits/.test(ready.text) && /You have 1 credit/.test(ready.text) &&
+          /Gift a Psyche Report \(1 credit\)/.test(ready.text) && !/Use it/.test(ready.text), JSON.stringify(ready));
       check('and the card shows how many opened the link, the server\'s own count', ready.opens >= 1 && ready.shown === String(ready.opens), JSON.stringify(ready));
 
-      await rp.click('#profile-body .referral-claim');
+      // A connection's card unlocked the first report: the panel says so and
+      // offers it free, with paying still the small link under it.
+      await rp.waitForSelector('#profile-body .unlock-share.is-ready', { timeout: 15000 });
+      const panelReady = await rp.evaluate(() => {
+        const box = document.querySelector('#profile-body .unlock-share');
+        return { sub: box.querySelector('.unlock-share-sub').textContent, share: box.querySelector('.unlock-share-go').hidden,
+          claim: !box.querySelector('.unlock-share-claim').hidden && box.querySelector('.unlock-share-claim').textContent,
+          pay: (document.querySelector('#profile-body .full-report-locked .premium-unlock') || {}).textContent };
+      });
+      check('once a connection has made their card, the unlock panel offers the Psyche Report free, paying still under it',
+        /A connection made their Psyche Card from your link/.test(panelReady.sub) && panelReady.share &&
+          panelReady.claim === 'Unlock my Psyche Report free' && panelReady.pay === 'or pay US$5', JSON.stringify(panelReady));
+      await rp.click('#profile-body .unlock-share-claim');
       await skipPremiumDataOffer(rp);
       await rp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-      await rp.waitForSelector('#premium-referral:not([hidden])', { timeout: 15000 });
-      check('the unlock\'s sheet offers the free report from inviting friends',
-        /Use your free Psyche Report/.test(await rp.locator('#premium-referral').innerText()));
+      await rp.waitForSelector('#premium-first:not([hidden])', { timeout: 15000 });
+      const sheet = await rp.evaluate(() => {
+        const box = document.querySelector('#premium-share');
+        const head = document.querySelector('#premium-pay-head');
+        return { first: document.querySelector('#premium-first').textContent, box: !box.hidden,
+          head: !head.hidden && head.textContent,
+          headBelow: Boolean(box.compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING) };
+      });
+      check('the payment sheet leads with the free unlock, and paying comes under "Or pay US$5"',
+        sheet.first === 'Unlock my Psyche Report free' && sheet.box && sheet.head === 'Or pay US$5' && sheet.headBelow,
+        JSON.stringify(sheet));
       const before = bodies.length;
-      await rp.click('#premium-referral');
+      await rp.click('#premium-first');
       await rp.waitForFunction(() => {
         const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
         return Boolean(p && p.premiumAnalysis);
@@ -13584,24 +13616,25 @@ try {
         return fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: mine.secret }) }).then(r => r.json());
       });
-      check('and it is spent: none left until three more friends', after.available === 0 && after.claimed === 1 && after.friends === 3,
+      check('and the free first report is spent, while the credit is untouched',
+        after.first && after.first.claimed && after.available === 1 && after.credits === 1 && after.friends === 3,
         JSON.stringify(after));
+      // Only once: the same grant cannot write a different report (a re-run is paid).
+      const rerunRefused = await rp.evaluate(async ([grant, text]) => {
+        const digest = window.PsycheDigest.forModel(JSON.parse(text));
+        digest.counts = Object.assign({}, digest.counts, { posts: 9999 });
+        try {
+          const result = await window.PsycheLLM.analyseProfile(digest, { referralGrant: grant, product: 'unlock' });
+          return { written: Boolean(result && result.data) };
+        } catch (error) { return { error: String(error && error.message) }; }
+      }, [paidWith.referralGrant, digestText]);
+      check('and it cannot pay for a re-run: the same grant on another read is refused',
+        !rerunRefused.written && /already been used/.test(rerunRefused.error || ''), JSON.stringify(rerunRefused));
+      check('nor is it offered again on the re-run\'s sheet: the reader now has a Psyche Report',
+        await rp.evaluate(() => typeof window !== 'undefined' && document.querySelectorAll('#profile-body .unlock-share').length === 0));
 
-      // One more friend makes four, two reports' worth, and the second is
-      // given away: a gift link that unlocks one full report for whoever opens it.
-      await rp.route('**/api/analyse', asOwnPhone);
-      await rp.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
-      await rp.evaluate(async ([text, code]) => {
-        const sha = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
-          b => b.toString(16).padStart(2, '0')).join('');
-        for (let n = 4; n <= 4; n++) {
-          const digest = window.PsycheDigest.forModel(JSON.parse(text));
-          digest.counts = Object.assign({}, digest.counts, { posts: 2000 + n });
-          await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend' + n), ref: code });
-        }
-      }, [digestText, mine.code]);
-      await rp.unroute('**/api/analyse', asOwnPhone);
-      await new Promise(resolve => setTimeout(resolve, 400));
+      // The credit three cards earned is given away: a gift link that unlocks
+      // one full report for whoever opens it.
       await rp.reload({ waitUntil: 'load' });
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
       await rp.waitForFunction(() => {
@@ -13617,7 +13650,7 @@ try {
         list: document.querySelector('#profile-body .referral-gifts').innerText,
         ready: !document.querySelector('#profile-body .referral-ready-row').hidden,
       }));
-      check('"Gift it" makes a gift link, copies it and lists it under the card, and the credit is spent',
+      check('"Gift a Psyche Report" makes a gift link, copies it and lists it under the card, and the credit is spent',
         /^http:\/\/localhost:\d+\/\?gift=[0-9a-f]{48}$/.test(giftLink) && /Gift links you have made/.test(giftState.list) &&
           !giftState.ready, JSON.stringify({ giftLink, ...giftState }));
       const giftPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
@@ -13648,7 +13681,7 @@ try {
       const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
       check('the journey is counted per campaign link: arrived, export read, card made',
         day['via:uitest-creator:open'] >= 1 && day['via:uitest-creator:export_loaded'] >= 1 && day['via:uitest-creator'] >= 1 &&
-          day['step:unlock_open'] >= 1 && day.referral_friend === 4 && day.referral_claimed === 1 && day.referral_report === 1 &&
+          day['step:unlock_open'] >= 1 && day.referral_friend === 3 && day.referral_first === 1 && day.referral_report === 1 &&
           day.referral_gifted === 1 &&
           day.free_refused_account === 1, JSON.stringify(day));
       check('the invite-friends flow runs with no page errors', rpErrors.length === 0, rpErrors.join(' | '));

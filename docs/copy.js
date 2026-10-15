@@ -648,8 +648,21 @@
     premiumSourcesBlurb: 'Add a source or replace one with newer data – more data, a fuller report. ' +
       'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
-    // Under the price on the free card's unlock button: the other way in.
-    premiumUnlockFriends: 'or get 2 connections to make their Psyche Card from your link',
+    // The free card's unlock offer leads with sharing: one connection's card
+    // from the reader's link unlocks their first Psyche Report free
+    // (lib/referral.js, claimFirst). Paying is the quiet second way in.
+    unlockShare: {
+      title: 'Unlock by sharing your link with 1 connection',
+      sub: 'Your Psyche Report unlocks free as soon as 1 connection makes their Psyche Card from your link.',
+      subReady: 'A connection made their Psyche Card from your link – your Psyche Report is free.',
+      share: 'Share my link',
+      copied: 'Link copied – send it to a connection',
+      claim: 'Unlock my Psyche Report free',
+      pay: 'or pay US$5',
+      // On the payment sheet, above the ways to pay.
+      sheetTitle: 'Free when you share your link',
+      payHead: 'Or pay US$5',
+    },
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
     // reason: a long structured response with thinking enabled. The dialog
@@ -745,11 +758,11 @@
     // The account's free card is spent (one per Instagram account): said on
     // the US$2 sheet that follows.
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Run it again for US$2.',
-    // Invite three friends, get the full report free (lib/referral.js).
+    // Your link's numbers and credits (lib/referral.js): every 3 connections'
+    // cards earn a credit, for gifts now and premium features later.
     referral: {
       title: 'Your Referral',
-      blurb: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – use it yourself or gift it.',
-      blurbPaid: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – gift it, or use it for a re-run with new data.',
+      blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use credits to gift a Psyche Report, with more premium features coming soon.',
       shareHint: 'Share your card or link above to start.',
       // The small button at the head's right: the same share message and
       // link as the card's own Copy link.
@@ -758,16 +771,15 @@
       // Opens of the link by others, once a day per browser (never the reader's own).
       opens: 'opened your link',
       cards: 'made a card',
-      paid: 'bought the Psyche Report',
       syncs: 'synced with you',
-      ready: n => n === 1 ? '🎉 1 free Psyche Report ready' : '🎉 ' + n + ' free Psyche Reports ready',
+      credits: 'credits',
+      ready: n => n === 1 ? '🎉 You have 1 credit' : '🎉 You have ' + n + ' credits',
       copyShort: 'Copy',
-      claim: 'Use it',
-      claimPaid: 'Use it for a re-run',
-      gift: 'Gift it',
-      useFree: 'Use your free Psyche Report – from your link',
+      gift: 'Gift a Psyche Report (1 credit)',
+      useFree: 'Unlock free – a connection made their card from your link',
       useGift: 'Use your gifted free Psyche Report',
-      claimFailed: 'There is no free report to claim yet.',
+      claimFailed: 'You have no credits to spend yet.',
+      firstFailed: 'Your free Psyche Report unlocks once 1 connection makes their card from your link.',
       giftShareText: 'A free Psyche Report, from me 🎁 Make your free Psyche Card, then unlock the Psyche Report with this link:',
       giftCopied: 'Gift link copied. It unlocks one Psyche Report, once, within 60 days.',
       giftsHead: 'Gift links you have made (each works once, for 60 days)',

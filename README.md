@@ -14,9 +14,9 @@ keeps no copy of it.
   roast on My Psyche. The card's wording is always neutral or positive and never romantic.
 - **Psyche Report (US$5, local prices in `docs/prices.js`).** The full report, which explains
   every part of the card with evidence from your data. It is anchored to the card, so it never
-  contradicts it, and it downloads as a PDF typeset in the browser. You can also get it free:
-  two friends make a card from your link, one friend buys a report, a 100% promo code, or a
-  correct guess of your character before your first card.
+  contradicts it, and it downloads as a PDF typeset in the browser. Your **first** one is free
+  once one connection makes their card from your link; re-runs are always paid. It can also come
+  free from a gift link, a 100% promo code, or a correct guess of your character before your first card.
 - **Psyche Sync (free).** Each reader has one personal link (`/c/<id>#<key>`), also printed on the
   card as a QR code for someone to open. A connection who opens it sees your card and makes their
   own. Psyche Sync then reads what clicks between the two of you, where you differ and how to
@@ -2383,13 +2383,13 @@ Each sync spends only its own friend's link, and only once it lands. A sync with
 a referral code also sends `/api/event` `sync_done` with that code, counted in `ref:<code>:syncs`. The free card credits the most
 recent link the reader arrived on.
 
-## Your Referral: its numbers, free reports, and gifts
+## Your Referral: its numbers, credits, and gifts
 
 My Psyche ends with a **Your Referral** card (titled *Your link* until October 2026), below Evidence
-and method, free or paid. It opens with what the link earns: *Every 2 connections who make their card
-from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report.* It was 3 cards or 2
-purchases; it was lowered so a reader sees a reward after two shares, and one friend paying is
-worth a report of its own. Then it says *Share your card or link above*. A small **Copy link**
+and method, free or paid. It opens with what the link earns: *Every 3 connections who make their
+Psyche Card from your link earn you 1 credit. Use credits to gift a Psyche Report, with more premium
+features coming soon.* (Before the October 2026 change below it was 2 cards, or 1 friend's paid
+report, for a free Psyche Report of the reader's own.) Then it says *Share your card or link above*. A small **Copy link**
 sits at the right of the title (`.referral-copy`, since October 2026). It does exactly what the
 card's own **Copy link** does (`copyShareMessage`): the one share message with the short link, and
 *Copied ✓* on the button for two seconds. It runs before the click handler awaits anything, so the
@@ -2400,36 +2400,60 @@ Four purple boxes give the counts, opens first (leftmost) so a reader sees the l
 anyone has made a card:
 - **opened your link**
 - **made a card**
-- **bought the full report**
 - **synced with you**
+- **credits** (left to spend)
 
 Where each number comes from:
 - *opened your link*: each browser's first open of someone's link that day (never the owner's own), sent with `/api/event`
   `referral_open` and the link's code, then `ref:<code>:opens`.
 - *made a card*: friends' first free cards, `ref:<code>:friends`.
-- *bought the full report*: friends who paid for the full report with a real Stripe payment, not
-  a promo code or a grant. Counted once per buyer account, never the owner's own:
-  `ref:<code>:paid`, written by `referral.afterPaid` after the report is written.
+- *credits*: `floor(friends / 3) − spent` (`CARDS_PER_CREDIT`; spent is `ref:<code>:spent`).
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
-**Credits.** Every 2 friends' cards earn a free full report, and so does each paid report. The
-two add up: `earned = floor(friends/2) + paid` (`FRIENDS_PER_REPORT`, `PAID_PER_REPORT` in
-`lib/referral.js`). The farming limits below are unchanged, so made-up accounts from one connection
-now reach a free report within the hour, and one referrer at most 3 a day from cards. Syncs are shown but earn nothing. The card
-shows progress towards both. Only when a report is ready does it show two buttons:
-- **Use it** opens the unlock, or on a full report the re-run with new data. The sheet's *Use your
-  free full report* claims a grant.
-- **Gift it** claims the grant with `{ gift: true }` (counted as `referral_gifted`) and shares or
-  copies `psycheai.io/?gift=<grant>`. The link is listed under the card
-  (`psycheai_gifts_made`) so it can be copied again.
+### Share-first: the first Psyche Report free for one connection's card (October 2026)
+
+The free card's unlock offer used to lead with *Unlock your Psyche Report – US$5*, with *or get 2
+connections to make their Psyche Card from your link* in small type under the price. It now leads
+with sharing, because a shared link brings a new reader and a US$5 sale brings one payment:
+
+- **The panel** (`unlockShareHtml`, inside `.full-report-locked`): *Unlock by sharing your link with
+  1 connection*, the line *Your Psyche Report unlocks free as soon as 1 connection makes their
+  Psyche Card from your link*, and **Share my link** (the share sheet with the one share message, or
+  copied where there is none). Under the box, as a small grey link, **or pay US$5**, the only
+  `.premium-unlock` in the panel. Once a connection's card is in (`status.first.unlocked`,
+  `refreshUnlockShare`), the line says so and the button becomes **Unlock my Psyche Report free**.
+- **The payment sheet** (`showReferralOffer`) carries the same offer in a box above the ways to pay
+  (`#premium-share`), then a small *Or pay US$5* heading. While the box shows, the sheet takes
+  `.share-first` and the pay button is drawn as an outline. **Unlock my Psyche Report free**
+  (`#premium-first`) posts `/api/referral/claim` with `{ first: true }` and runs the report on the
+  grant. A gifted report waiting on the device is offered instead, as before.
+- **"Sharing" is a connection's card, not a share.** The server cannot see a share, and an open is
+  free to fake from a second browser. A card needs an Instagram export for an account that has not
+  had one, and the farming limits under "Invite three friends" still apply.
+- **First report only.** `claimFirst` gives one grant per code, the same token each time it is
+  asked (so a failed report can be asked again), stored as `first:<code>`. Every full report, paid
+  or not, adds its account to `full:accounts`. `grantRefusal` refuses a `first:` grant's first use
+  for an account already there: *for your first Psyche Report only. A re-run is paid.* A spent grant
+  refuses any other digest, as every grant does, so it can never pay for a re-run. The panel and the
+  sheet offer it only while the reader has no Psyche Report (`firstFreeOffered`).
+- **Credits are separate.** Every 3 friends' cards earn one credit, and the friend who unlocked the
+  first report counts toward them. A credit is spent only on a gift today
+  (**Gift a Psyche Report (1 credit)**, `claim`, a `gift:<code>` grant). A gift grant is refused for
+  the code that made it, so it is for someone else. Premium features to spend credits on are to come.
+  *Use it* is gone, and friends' paid reports are no longer counted (`afterPaid` is removed). Old
+  grants keep working until they expire; old unclaimed rewards were not carried over, and credits
+  start from `ref:<code>:spent`, not the old `claimed`.
+- **Terms, privacy and FAQ** say the same: the first report free for 1 connection's card, re-runs
+  paid, 3 cards a credit, and that the scrambled account code also notes whether an account has had
+  a Psyche Report.
 
 **Receiving a gift.** The grant is a bearer token: it unlocks one full report, once, within 60
 days, for whoever holds it.
 - Opening the link keeps it on the device (`psycheai_gift`) and takes it out of the address.
 - A 🎁 banner says a free full report is waiting. On the welcome page it says to make a card first;
   on a report it offers to unlock.
-- The unlock sheet offers *Use your gifted free full report* ahead of the reader's own credit.
+- The unlock sheet offers *Use your gifted free Psyche Report* ahead of the share-first offer.
 - The gift is cleared once a full report is written with it.
 
 ## The QR code's explanation

@@ -1816,15 +1816,16 @@
    * refreshReferral once the server says where this reader's code stands.
    */
   /**
-   * "Your Referral": how many opened it, made a card and bought the full report,
-   * and the free full reports that earns — two friends' cards or one paid
-   * report each, adding up. On a free report under the unlock offer, on a
-   * full one at its end. A free report earned can be used or given away.
+   * "Your Referral": how many opened it, made a card and synced, and the
+   * credits that earns: one for every three friends' cards. A credit is
+   * spent on a gift today (Gift a Psyche Report), premium features later.
+   * The free first report a single friend's card unlocks is offered on the
+   * unlock panel and the payment sheet instead (unlockShareHtml).
    */
   function referralCardHtml(paid) {
     const R = TEXT.referral;
     // Four purple boxes: opens of the link first, then friends who made a
-    // card, bought the full report, and synced with the reader. A small Copy
+    // card and synced with the reader, then the credits left to spend. A small Copy
     // link at the head's right does what the card's own Copy link does: the
     // share message with the link. "Use it" and "Gift it" appear only once a
     // free report is earned.
@@ -1838,10 +1839,9 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
         '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>' +
         '<span>' + esc(R.copyLink) + '</span></button></div>' +
-        '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
-      '<ul class="referral-stats">' + stat('opens', R.opens) + stat('friends', R.cards) + stat('paid', R.paid) + stat('syncs', R.syncs) + '</ul>' +
+        '<p class="referral-blurb">' + esc(R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
+      '<ul class="referral-stats">' + stat('opens', R.opens) + stat('friends', R.cards) + stat('syncs', R.syncs) + stat('credits', R.credits) + '</ul>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
-        '<button class="btn btn-sm referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
         '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
       '<p class="referral-status" role="status" hidden></p>' +
       '<div class="referral-gifts"></div>' +
@@ -1885,6 +1885,8 @@
       '</ul>';
   }
   async function refreshReferral() {
+    // The unlock panel's share-first offer reads the same status.
+    if (document.querySelector('#profile-body .unlock-share')) fetchReferralStatus().then(refreshUnlockShare).catch(() => {});
     const cards = document.querySelectorAll('.referral-card');
     if (!cards.length) return;
     for (const card of cards) card.querySelector('.referral-gifts').innerHTML = giftsHtml();
@@ -1892,10 +1894,12 @@
     if (!status) return;
     const R = TEXT.referral;
     for (const card of cards) {
-      for (const key of ['opens', 'friends', 'paid', 'syncs']) {
+      for (const key of ['opens', 'friends', 'syncs']) {
         const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
         if (n) n.textContent = String(Number(status[key]) || 0);
       }
+      const credits = card.querySelector('.referral-n[data-stat="credits"]');
+      if (credits) credits.textContent = String(Number(status.available) || 0);
       const row = card.querySelector('.referral-ready-row');
       row.hidden = !(status.available > 0);
       card.querySelector('.referral-ready').textContent = status.available > 0 ? R.ready(status.available) : '';
@@ -1943,11 +1947,6 @@
       } finally {
         button.disabled = false;
       }
-    } else if (event.target.closest('.referral-claim')) {
-      // The unlock (or, with the report already unlocked, the re-run with new
-      // data); the payment sheet then offers the free report.
-      const target = card.dataset.paid === '1' ? $('#rerun-with-data') : document.querySelector('.premium-unlock');
-      if (target) target.click();
     }
   });
 
@@ -2014,14 +2013,82 @@
     if (target) target.click();
   });
 
-  /** On the unlock's sheet: the free report from inviting friends, when one is ready. */
-  function showReferralOffer(kind) {
+  // ---------- the first Psyche Report, free for sharing the link ----------
+  //
+  // One connection's card from the reader's link unlocks their first Psyche
+  // Report free (lib/referral.js, claimFirst); every re-run is paid. So the
+  // unlock offer, and the payment sheet behind it, lead with sharing the link,
+  // and paying US$5 is the quiet second way in. Offered only while this
+  // reader has no Psyche Report, since the server refuses it after.
+  function firstFreeOffered() {
+    return Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length &&
+      !hasUnfetchedUnlock();
+  }
+  const firstFreeReady = status => Boolean(status && status.first && status.first.unlocked);
+
+  /** The unlock panel's share-first block, before the server has said anything. */
+  function unlockShareHtml() {
+    const U = TEXT.unlockShare;
+    return '<div class="unlock-share">' +
+      '<p class="unlock-share-title">' + Copy.lineIcon('🔗') + '<span>' + esc(U.title) + '</span></p>' +
+      '<p class="unlock-share-sub">' + esc(U.sub) + '</p>' +
+      '<button class="btn unlock-share-go" type="button">' + esc(U.share) + '</button>' +
+      // Once a connection's card has unlocked it: the same sheet as paying,
+      // where the free unlock is the first thing offered.
+      '<button class="btn unlock-share-claim" type="button" hidden>' + esc(U.claim) + '</button>' +
+      '<p class="unlock-share-status" role="status" hidden></p>' +
+      '</div>' +
+      '<button class="link-btn premium-unlock unlock-pay" type="button">' + esc(U.pay) + '</button>';
+  }
+  function refreshUnlockShare(status) {
+    const U = TEXT.unlockShare;
+    for (const box of document.querySelectorAll('#profile-body .unlock-share')) {
+      const ready = firstFreeReady(status);
+      box.classList.toggle('is-ready', ready);
+      box.querySelector('.unlock-share-sub').textContent = ready ? U.subReady : U.sub;
+      box.querySelector('.unlock-share-go').hidden = ready;
+      box.querySelector('.unlock-share-claim').hidden = !ready;
+    }
+  }
+
+  /** The share message with the link: the share sheet where there is one, else copied. */
+  async function shareMyLink(button, say) {
+    const text = shareMessage();
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; }
+      catch (error) { if (error && error.name === 'AbortError') return; }
+    }
+    writeClipboard(text).then(() => say(TEXT.unlockShare.copied), () => window.prompt(TEXT.linkCopyPrompt, text));
+  }
+  document.addEventListener('click', event => {
+    const claim = event.target.closest && event.target.closest('.unlock-share-claim');
+    if (claim) { openPremiumDialog(claim, 'unlock'); return; }
+    const go = event.target.closest && event.target.closest('.unlock-share-go');
+    if (!go) return;
+    const status = go.closest('.unlock-share').querySelector('.unlock-share-status');
+    shareMyLink(go, message => {
+      status.textContent = message;
+      status.hidden = !message;
+      setTimeout(() => { status.hidden = true; }, 4000);
+    });
+  });
+
+  /**
+   * On the unlock's sheet: a gifted report first, as it is someone else's
+   * present and expires; otherwise, for a first report, the share-first box
+   * above the ways to pay, with the free unlock once a connection's card has
+   * earned it.
+   */
+  function showReferralOffer(kind, rerun) {
     const button = $('#premium-referral');
-    if (!button) return;
+    const box = $('#premium-share');
+    if (!button || !box) return;
     button.hidden = true;
+    box.hidden = true;
+    $('#premium-pay-head').hidden = true;
+    $('#premium-dialog').classList.remove('share-first');
     delete button.dataset.gift;
     if (kind !== 'unlock') return;
-    // A gifted one first: it is someone else's present and expires.
     const gift = giftWaiting();
     if (gift) {
       button.textContent = TEXT.referral.useGift;
@@ -2029,36 +2096,57 @@
       button.hidden = false;
       return;
     }
+    if (rerun || !firstFreeOffered()) return;
+    const U = TEXT.unlockShare;
     const show = status => {
-      if (!status || !(status.available > 0) || premiumKind !== 'unlock' || button.dataset.gift) return;
-      button.textContent = TEXT.referral.useFree;
-      button.hidden = false;
+      if (premiumKind !== 'unlock') return;
+      const ready = firstFreeReady(status);
+      $('#premium-share-title').textContent = ready ? U.sheetTitle : U.title;
+      $('#premium-share-sub').textContent = ready ? U.subReady : U.sub;
+      $('#premium-share-go').textContent = U.share;
+      $('#premium-share-go').hidden = ready;
+      $('#premium-first').textContent = U.claim;
+      $('#premium-first').hidden = !ready;
+      $('#premium-pay-head').textContent = U.payHead;
+      box.hidden = false;
+      $('#premium-pay-head').hidden = false;
+      $('#premium-dialog').classList.add('share-first');
     };
     show(referralStatus);
     fetchReferralStatus(true).then(show).catch(() => {});
   }
   if ($('#premium-referral')) {
-    $('#premium-referral').addEventListener('click', async () => {
+    $('#premium-referral').addEventListener('click', () => {
       const button = $('#premium-referral');
-      if (button.dataset.gift) {
-        button.hidden = true;
-        onPaymentAuthorised({ referralGrant: button.dataset.gift }, $('#premium-dialog'));
-        return;
-      }
+      if (!button.dataset.gift) return;
+      button.hidden = true;
+      onPaymentAuthorised({ referralGrant: button.dataset.gift }, $('#premium-dialog'));
+    });
+  }
+  if ($('#premium-first')) {
+    $('#premium-first').addEventListener('click', async () => {
+      const button = $('#premium-first');
       const mine = await ensureReferral();
       if (!mine) return;
       button.disabled = true;
       try {
-        const answer = await LLM.postWithTicket('api/referral/claim', { secret: mine.secret });
+        const answer = await LLM.postWithTicket('api/referral/claim', { secret: mine.secret, first: true });
         referralStatus = answer && answer.status ? answer.status : referralStatus;
-        if (!answer || !answer.grant) throw new Error(TEXT.referral.claimFailed);
-        button.hidden = true;
+        if (!answer || !answer.grant) throw new Error(TEXT.referral.firstFailed);
+        $('#premium-share').hidden = true;
+        $('#premium-pay-head').hidden = true;
+        $('#premium-dialog').classList.remove('share-first');
         onPaymentAuthorised({ referralGrant: answer.grant }, $('#premium-dialog'));
       } catch (error) {
-        premiumStatus((error && error.message) || TEXT.referral.claimFailed, 'bad');
+        premiumStatus((error && error.message) || TEXT.referral.firstFailed, 'bad');
       } finally {
         button.disabled = false;
       }
+    });
+  }
+  if ($('#premium-share-go')) {
+    $('#premium-share-go').addEventListener('click', () => {
+      shareMyLink($('#premium-share-go'), message => premiumStatus(message));
     });
   }
 
@@ -2087,11 +2175,10 @@
       (reportLayout() === 'structured' ? unlockPartsHtml()
         : '<ul class="premium-tier-list">' + tierItemsHtml(explainedSections(), row => row.blurb()) +
           tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>') +
-      '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
-      premiumUnlockLabel(false) +
-      // The other way in, under the price: two friends' cards from their link.
-      (hasUnfetchedUnlock() ? '' : '<span class="premium-unlock-alt">' + esc(TEXT.premiumUnlockFriends) + '</span>') +
-      '</button>' +
+      // A first report: share the link first, paying second. Otherwise (a
+      // purchase still to collect) the one button.
+      (firstFreeOffered() ? unlockShareHtml()
+        : '<button class="btn premium-unlock" type="button" aria-expanded="false">' + premiumUnlockLabel(false) + '</button>') +
       // A code from the link this reader came in on, said before they tap.
       linkPromoNoteHtml() +
       '</div>';
@@ -9340,7 +9427,7 @@
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
     renderPremiumPrice(kind, CURRENCY, null);
-    showReferralOffer(kind);
+    showReferralOffer(kind, rerunAll);
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');

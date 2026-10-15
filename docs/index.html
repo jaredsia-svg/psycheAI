@@ -765,7 +765,8 @@
     <p>PsycheAI’s administrator does not see your data or your results: there is no admin view of
       them, and nothing from your digest or report is stored or logged.</p>
     <p>PsycheAI keeps only a few small things, and none of them names you: the daily totals below and
-      a scrambled code that lets each Instagram account have one free card. The
+      a scrambled code that lets each Instagram account have one free card and one free first
+      Psyche Report. The
       <a href="/privacy">privacy policy</a> lists every one.</p>
     <p>Your card summary and any Psyche Sync someone sends you are encrypted on your device, and the key
       lives only in your link. PsycheAI stores them but never has the key, so no one at PsycheAI can read
@@ -803,7 +804,8 @@
     <p>Your first Psyche Card is free, and so is every Psyche Sync. Running your Psyche
       Card again is <span data-price="analysis">US$2</span>. The Psyche Report – every section explained, plus your wellbeing,
       attachment style, ideal partner, career coaching and development plan – is a single
-      <span data-price="unlock">US$5</span>. You see the price before you pay.</p>
+      <span data-price="unlock">US$5</span>, or free for your first one once 1 connection makes their
+      Psyche Card from your link. Re-runs are paid. You see the price before you pay.</p>
 
     <h3>How does Psyche Sync work?</h3>
     <p>You get one personal link, also printed on your Psyche Card as a QR code. Send it to a
@@ -813,8 +815,8 @@
       result reaches you too, with their Psyche Card: their device locks it with your link’s key, so
       PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days.</p>
     <p>Your link carries only your card’s short summary, never your data, messages or report, and
-      PsycheAI cannot read it. Every 2 people who make a card from your link, or 1 who buys the full
-      report, earns you a free Psyche Report to use or gift.</p>
+      PsycheAI cannot read it. The first person who makes a card from your link unlocks your first
+      Psyche Report free, and every 3 earn you a credit, to gift a Psyche Report to someone.</p>
 
     <h3>How do I contact PsycheAI?</h3>
     <p>Email <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> – for questions, payment
@@ -853,6 +855,16 @@
 <dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
   <h2 id="premium-dialog-title"></h2>
   <p class="muted" id="premium-dialog-blurb"></p>
+  <!-- A first Psyche Report: free once 1 connection makes their card from
+       this reader's link (lib/referral.js, claimFirst). Offered first, with
+       paying under "Or pay US$5" — see showReferralOffer. -->
+  <div class="premium-share" id="premium-share" hidden>
+    <p class="premium-share-title" id="premium-share-title"></p>
+    <p class="premium-share-sub" id="premium-share-sub"></p>
+    <button class="btn" id="premium-share-go" type="button"></button>
+    <button class="btn" id="premium-first" type="button" hidden></button>
+  </div>
+  <p class="premium-pay-head" id="premium-pay-head" hidden></p>
   <!-- The price, and with a discount code the price, the discount and what
        is left to pay — see renderPremiumPrice. -->
   <dl class="premium-price" id="premium-price" hidden></dl>
@@ -875,8 +887,7 @@
     <p class="premium-progress-time" id="premium-progress-time"></p>
   </div>
   <div class="premium-promo">
-    <!-- A free Psyche Report earned by inviting friends (lib/referral.js), offered
-         on the unlock's sheet when one is ready. -->
+    <!-- A gifted free Psyche Report (?gift=), offered on the unlock's sheet. -->
     <button class="btn btn-outline premium-referral" id="premium-referral" type="button" hidden></button>
     <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
     <div class="premium-promo-row">
