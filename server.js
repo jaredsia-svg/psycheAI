@@ -1094,7 +1094,7 @@ async function handleReferralClaim(request, response) {
   const first = Boolean(body && body.first === true);
   const grant = first ? await referral.claimFirst(body && body.secret) : await referral.claim(body && body.secret);
   if (!grant) {
-    sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection makes their card from your link.'
+    sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection opens your link.'
       : 'You have no credits to spend yet.' });
     return;
   }

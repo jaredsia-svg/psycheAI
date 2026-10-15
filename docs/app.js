@@ -2015,7 +2015,7 @@
 
   // ---------- the first Psyche Report, free for sharing the link ----------
   //
-  // One connection's card from the reader's link unlocks their first Psyche
+  // One connection opening the reader's link unlocks their first Psyche
   // Report free (lib/referral.js, claimFirst); every re-run is paid. So the
   // unlock offer, and the payment sheet behind it, lead with sharing the link,
   // and paying US$5 is the quiet second way in. Offered only while this
@@ -2033,7 +2033,7 @@
       '<p class="unlock-share-title">' + Copy.lineIcon('🔗') + '<span>' + esc(U.title) + '</span></p>' +
       '<p class="unlock-share-sub">' + esc(U.sub) + '</p>' +
       '<button class="btn unlock-share-go" type="button">' + esc(U.share) + '</button>' +
-      // Once a connection's card has unlocked it: the same sheet as paying,
+      // Once a connection's open has unlocked it: the same sheet as paying,
       // where the free unlock is the first thing offered.
       '<button class="btn unlock-share-claim" type="button" hidden>' + esc(U.claim) + '</button>' +
       '<p class="unlock-share-status" role="status" hidden></p>' +
@@ -2076,7 +2076,7 @@
   /**
    * On the unlock's sheet: a gifted report first, as it is someone else's
    * present and expires; otherwise, for a first report, the share-first box
-   * above the ways to pay, with the free unlock once a connection's card has
+   * above the ways to pay, with the free unlock once a connection's open has
    * earned it.
    */
   function showReferralOffer(kind, rerun) {

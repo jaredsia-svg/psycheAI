@@ -15,7 +15,7 @@ keeps no copy of it.
 - **Psyche Report (US$5, local prices in `docs/prices.js`).** The full report, which explains
   every part of the card with evidence from your data. It is anchored to the card, so it never
   contradicts it, and it downloads as a PDF typeset in the browser. Your **first** one is free
-  once one connection makes their card from your link; re-runs are always paid. It can also come
+  once one connection opens your link; re-runs are always paid. It can also come
   free from a gift link, a 100% promo code, or a correct guess of your character before your first card.
 - **Psyche Sync (free).** Each reader has one personal link (`/c/<id>#<key>`), also printed on the
   card as a QR code for someone to open. A connection who opens it sees your card and makes their
@@ -2411,26 +2411,30 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
-### Share-first: the first Psyche Report free for one connection's card (October 2026)
+### Share-first: the first Psyche Report free for one connection opening the link (October 2026)
 
 The free card's unlock offer used to lead with *Unlock your Psyche Report – US$5*, with *or get 2
 connections to make their Psyche Card from your link* in small type under the price. It now leads
 with sharing, because a shared link brings a new reader and a US$5 sale brings one payment:
 
 - **The panel** (`unlockShareHtml`, inside `.full-report-locked`): *Unlock by sharing your link with
-  1 connection*, the line *Your Psyche Report unlocks free as soon as 1 connection makes their
-  Psyche Card from your link*, and **Share my link** (the share sheet with the one share message, or
+  1 connection*, the line *Your Psyche Report unlocks free as soon as 1 connection opens
+  your link*, and **Share my link** (the share sheet with the one share message, or
   copied where there is none). Under the box, as a small grey link, **or pay US$5**, the only
-  `.premium-unlock` in the panel. Once a connection's card is in (`status.first.unlocked`,
+  `.premium-unlock` in the panel. Once someone has opened the link (`status.first.unlocked`,
   `refreshUnlockShare`), the line says so and the button becomes **Unlock my Psyche Report free**.
 - **The payment sheet** (`showReferralOffer`) carries the same offer in a box above the ways to pay
   (`#premium-share`), then a small *Or pay US$5* heading. While the box shows, the sheet takes
   `.share-first` and the pay button is drawn as an outline. **Unlock my Psyche Report free**
   (`#premium-first`) posts `/api/referral/claim` with `{ first: true }` and runs the report on the
   grant. A gifted report waiting on the device is offered instead, as before.
-- **"Sharing" is a connection's card, not a share.** The server cannot see a share, and an open is
-  free to fake from a second browser. A card needs an Instagram export for an account that has not
-  had one, and the farming limits under "Invite three friends" still apply.
+- **"Sharing" is one open of the link by someone else** (`ref:<code>:opens`, from `/api/event`
+  `referral_open`; the owner's own browser never sends one), or one friend's card. It began as a
+  friend's card only. A week later it was lowered to an open, to make the free report easy to get
+  for now: a friend no longer needs their own Instagram export first. The cost is that an open is
+  easy to fake, for example by the reader opening their own link in a private window. That
+  is accepted for now and bounded by the first-report-only rule below; to tighten it again, set
+  `first.unlocked` in `status()` back to cards only.
 - **First report only.** `claimFirst` gives one grant per code, the same token each time it is
   asked (so a failed report can be asked again), stored as `first:<code>`. Every full report, paid
   or not, adds its account to `full:accounts`. `grantRefusal` refuses a `first:` grant's first use
@@ -2444,7 +2448,7 @@ with sharing, because a shared link brings a new reader and a US$5 sale brings o
   *Use it* is gone, and friends' paid reports are no longer counted (`afterPaid` is removed). Old
   grants keep working until they expire; old unclaimed rewards were not carried over, and credits
   start from `ref:<code>:spent`, not the old `claimed`.
-- **Terms, privacy and FAQ** say the same: the first report free for 1 connection's card, re-runs
+- **Terms, privacy and FAQ** say the same: the first report free once 1 connection opens the link, re-runs
   paid, 3 cards a credit, and that the scrambled account code also notes whether an account has had
   a Psyche Report.
 

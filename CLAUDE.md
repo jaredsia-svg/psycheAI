@@ -49,7 +49,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 - **Promo codes:** `PSYCHEAI_PROMO_CODES=CODE:cap:lastday:percent`, handled by `lib/promo.js`. A link can carry a code as `?promo=`.
 - **Persistent state:** all of it lives in `lib/store.js` (Upstash Redis when `UPSTASH_REDIS_REST_*` is set, otherwise in memory and lost on restart).
   - stats and budget: `lib/stats.js`, `lib/budget.js`;
-  - the free first report (one connection's card), referral credits (3 cards each), gifts and the guess-your-character game (`judgeGuess`; a guess is judged only against a card being written, never a remembered one): `lib/referral.js`;
+  - the free first report (one open of the link), referral credits (3 cards each), gifts and the guess-your-character game (`judgeGuess`; a guess is judged only against a card being written, never a remembered one): `lib/referral.js`;
   - Syncs sent back to a link's owner: `lib/syncbox.js`;
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.

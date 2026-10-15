@@ -648,13 +648,13 @@
     premiumSourcesBlurb: 'Add a source or replace one with newer data – more data, a fuller report. ' +
       'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
-    // The free card's unlock offer leads with sharing: one connection's card
-    // from the reader's link unlocks their first Psyche Report free
+    // The free card's unlock offer leads with sharing: one connection opening
+    // the reader's link unlocks their first Psyche Report free
     // (lib/referral.js, claimFirst). Paying is the quiet second way in.
     unlockShare: {
       title: 'Unlock by sharing your link with 1 connection',
-      sub: 'Your Psyche Report unlocks free as soon as 1 connection makes their Psyche Card from your link.',
-      subReady: 'A connection made their Psyche Card from your link – your Psyche Report is free.',
+      sub: 'Your Psyche Report unlocks free as soon as 1 connection opens your link.',
+      subReady: 'A connection opened your link – your Psyche Report is free.',
       share: 'Share my link',
       copied: 'Link copied – send it to a connection',
       claim: 'Unlock my Psyche Report free',
@@ -776,10 +776,10 @@
       ready: n => n === 1 ? '🎉 You have 1 credit' : '🎉 You have ' + n + ' credits',
       copyShort: 'Copy',
       gift: 'Gift a Psyche Report (1 credit)',
-      useFree: 'Unlock free – a connection made their card from your link',
+      useFree: 'Unlock free – a connection opened your link',
       useGift: 'Use your gifted free Psyche Report',
       claimFailed: 'You have no credits to spend yet.',
-      firstFailed: 'Your free Psyche Report unlocks once 1 connection makes their card from your link.',
+      firstFailed: 'Your free Psyche Report unlocks once 1 connection opens your link.',
       giftShareText: 'A free Psyche Report, from me 🎁 Make your free Psyche Card, then unlock the Psyche Report with this link:',
       giftCopied: 'Gift link copied. It unlocks one Psyche Report, once, within 60 days.',
       giftsHead: 'Gift links you have made (each works once, for 60 days)',

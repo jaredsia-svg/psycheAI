@@ -12574,7 +12574,7 @@ try {
       });
       check('structured: the unlock offer leads with sharing the link with 1 connection, and paying US$5 is the small link under it',
         shareFirst.title === 'Unlock by sharing your link with 1 connection' &&
-          /unlocks free as soon as 1 connection makes their Psyche Card from your link/.test(shareFirst.sub) &&
+          /unlocks free as soon as 1 connection opens your link/.test(shareFirst.sub) &&
           shareFirst.share === 'Share my link' && shareFirst.claimHidden && shareFirst.pay === 'or pay US$5' &&
           shareFirst.payAfter && shareFirst.quieter && shareFirst.onePremium === 1, JSON.stringify(shareFirst));
       check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
@@ -13571,8 +13571,8 @@ try {
           claim: !box.querySelector('.unlock-share-claim').hidden && box.querySelector('.unlock-share-claim').textContent,
           pay: (document.querySelector('#profile-body .full-report-locked .premium-unlock') || {}).textContent };
       });
-      check('once a connection has made their card, the unlock panel offers the Psyche Report free, paying still under it',
-        /A connection made their Psyche Card from your link/.test(panelReady.sub) && panelReady.share &&
+      check('once a connection has opened the link, the unlock panel offers the Psyche Report free, paying still under it',
+        /A connection opened your link/.test(panelReady.sub) && panelReady.share &&
           panelReady.claim === 'Unlock my Psyche Report free' && panelReady.pay === 'or pay US$5', JSON.stringify(panelReady));
       await rp.click('#profile-body .unlock-share-claim');
       await skipPremiumDataOffer(rp);

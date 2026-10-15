@@ -7967,9 +7967,17 @@ check('the schema requires evidence on where they align and differ',
     await referral.afterFreeCard({ account: sha('psycheai:lonely-referrer'), myRef: referral.codeOf(lonely) });
     await new Promise(resolve => setTimeout(resolve, 10));
     const none = await referral.status(lonely);
-    check('with no friend\'s card yet, the first report is locked and nothing can be claimed',
+    check('with no open and no friend\'s card yet, the first report is locked and nothing can be claimed',
       !none.first.unlocked && !none.first.claimed && (await referral.claimFirst(lonely)) === null &&
         (await referral.claim(lonely)) === null, JSON.stringify(none));
+    // One open of the link by someone else is enough: no card needed.
+    referral.countOpen(referral.codeOf(lonely));
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const opened = await referral.status(lonely);
+    const openGrant = await referral.claimFirst(lonely);
+    check('one open of the link unlocks the first report, with no friend\'s card and no credit',
+      opened.opens === 1 && opened.friends === 0 && opened.first.unlocked && opened.credits === 0 &&
+        /^[0-9a-f]{48}$/.test(openGrant || ''), JSON.stringify(opened));
   }
   let status = await referral.status(secret);
   check('one friend: the first report unlocks, but no credit yet (one of three)',
