@@ -11274,15 +11274,27 @@ try {
 
   // ---- restoring the backup in a browser with nothing in it ----
   const runsBefore = await page.evaluate(() => localStorage.getItem('psycheai_runs'));
-  check('a browser with no card offers to restore from a backup file',
-    await page.locator('#restore-open').isVisible());
+  check('the main page itself no longer carries a restore link',
+    (await page.locator('#view-welcome #restore-open').count()) === 0);
+  await page.click('#hero-load');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
+  const restoreSpot = await page.evaluate(() => {
+    const link = document.querySelector('#restore-open').getBoundingClientRect();
+    const go = document.querySelector('#datasources-continue').getBoundingClientRect();
+    const size = el => parseFloat(getComputedStyle(document.querySelector(el)).fontSize);
+    return { left: link.right <= go.left + 1, level: Math.abs((link.top + link.bottom) / 2 - (go.top + go.bottom) / 2) < 12,
+      small: size('#restore-open') < size('#datasources-continue'), text: document.querySelector('#restore-open').textContent };
+  });
+  check('a browser with no card is offered Restore from a backup in Add your data, small, left of Continue',
+    await page.locator('#restore-open').isVisible() && restoreSpot.left && restoreSpot.level && restoreSpot.small &&
+      restoreSpot.text === 'Restore from a backup', JSON.stringify(restoreSpot));
   await page.setInputFiles('#restore-input', { name: 'notes.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ kind: 'something-else', data: {} })) });
   await page.waitForSelector('#restore-alert:not([hidden])', { timeout: 5000 }).catch(() => {});
   check('a file that is not a backup is refused, and says so, with nothing stored',
     /not a PsycheAI backup/.test(await page.locator('#restore-alert').innerText().catch(() => '')) &&
       (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null &&
-      await page.locator('#view-welcome').isVisible());
+      await page.evaluate(() => document.querySelector('#datasources-dialog').open));
   // An edited file: a card that does not decode from its payload is refused too.
   if (backup) {
     const broken = JSON.parse(backupText);
@@ -11296,6 +11308,11 @@ try {
   await page.setInputFiles('#restore-input', { name: 'backup.json', mimeType: 'application/json',
     buffer: Buffer.from(backupText || '{}') });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 }).catch(() => {});
+  // The popout's own Back must not then take the reader to the main page.
+  await page.waitForTimeout(500);
+  check('restoring closes the popout and stays on My Psyche',
+    !(await page.evaluate(() => document.querySelector('#datasources-dialog').open)) &&
+      await page.locator('#view-profile').isVisible());
   const after = await page.evaluate(() => ({
     profile: localStorage.getItem('psycheai_profile'), history: localStorage.getItem('psycheai_history'),
     digest: localStorage.getItem('psycheai_digest'), link: localStorage.getItem('psycheai_link'),
@@ -11317,7 +11334,11 @@ try {
   check('a browser with a card is not offered a restore over it', await (async () => {
     await page.click('[data-nav="main"]').catch(() => {});
     await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 5000 }).catch(() => {});
-    return (await page.locator('#view-welcome').isVisible()) && !(await page.locator('#restore-open').isVisible());
+    await page.click('#hero-load');
+    await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 }).catch(() => {});
+    const offered = await page.locator('#restore-open').isVisible();
+    await page.click('#datasources-back').catch(() => {});
+    return !offered;
   })());
   // Leave this browser as the checks after this expect it: deleted, with the
   // runs count as it was.
@@ -12225,21 +12246,21 @@ try {
             .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
           const boxes = buttons.map(b => b.getBoundingClientRect());
           const r = row.getBoundingClientRect();
-          return { two: buttons.length === 2, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
+          return { three: buttons.length === 3, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
             sameHeight: boxes.every(b => Math.abs(b.height - boxes[0].height) <= 1),
             // No Delete on My Report: the two share the row evenly.
             noDelete: document.querySelector('#delete-profile').hidden &&
               getComputedStyle(document.querySelector('#delete-profile')).display === 'none' &&
-              Math.abs(boxes[0].width - boxes[1].width) <= 1,
+              boxes.every(b => Math.abs(b.width - boxes[0].width) <= 1),
             across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
             thinCompat: !document.querySelector('#profile-side .cx-compat'),
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone My Report\'s two actions sit side by side — Back to card, Download — and no Delete everything',
-          phoneActions.two && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.noDelete &&
+        check('structured: on a phone My Report\'s three actions sit side by side — Back, Report, Backup — and no Delete everything',
+          phoneActions.three && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.noDelete &&
             phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Back to card|Download Report' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+            phoneActions.labels === 'Back|Report|Backup' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -12309,7 +12330,10 @@ try {
       });
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons, each labelled under it, and no Delete everything',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.labels === 'Back to card|Download Report', JSON.stringify(actions));
+          actions.labels === 'Back|Report|Backup', JSON.stringify(actions));
+      check('structured: My Report\'s one-word actions still read out their full names',
+        await sp.evaluate(() => ['#report-back', '#export-pdf-bottom', '#save-backup'].map(id =>
+          document.querySelector(id).getAttribute('aria-label')).join('|')) === 'Back to card|Download Report|Save a backup');
       // Every laptop has the nav down the left — a small one too, where the
       // report moves right to make room — with the actions under it.
       for (const [w, h] of [[1280, 620], [1024, 600]]) {
@@ -12524,6 +12548,13 @@ try {
         freeFoot.stamp[0] > freeFoot.del[0] && Math.abs(freeFoot.del[1] - freeFoot.stamp[1]) <= 1 &&
           Math.abs(freeFoot.del[2] - freeFoot.stamp[2]) <= 1, JSON.stringify(freeFoot));
       check('structured: on a laptop the delete button at the foot of My Psyche is its bin alone, no words', freeFoot.iconOnly, JSON.stringify(freeFoot));
+      const hubBackup = await sp.evaluate(() => {
+        const label = document.querySelector('#save-backup .cta-label');
+        return { words: label.getBoundingClientRect().width > 40 && label.textContent === 'Save a backup',
+          tip: getComputedStyle(document.querySelector('#delete-profile'), '::after').content };
+      });
+      check('structured: My Psyche\'s backup button says Save a backup in full, and the bin\'s tooltip says Delete everything',
+        hubBackup.words && hubBackup.tip === '"Delete everything"', JSON.stringify(hubBackup));
       // The unlock offer, by the report's five parts, and the panel saying
       // where the reasoning behind the card is.
       const offerParts = await sp.evaluate(() => {

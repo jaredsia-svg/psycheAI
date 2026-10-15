@@ -3419,7 +3419,13 @@
       }
       // Back or Escape at the popout: nothing touched, and the reader is put
       // back where they were standing rather than at the top of the page.
-      if (!collected) { abandonUpload(scrollBefore); return; }
+      if (!collected) {
+        // Closed by a restored backup, which has already put the reader on
+        // My Psyche: nothing to go back to.
+        if (restoredBackup) { restoredBackup = false; return; }
+        abandonUpload(scrollBefore);
+        return;
+      }
 
       // The same merge order addDataAndRerun uses, and for the same reason:
       // a fresh Instagram read replaces `state.signals` wholesale and carries
@@ -4935,6 +4941,10 @@
     $('#datasources-confirm').hidden = true;
     // Asked once per opening, at the unlock, before the first file picker.
     let warned = !settings.cardNote;
+    // Restoring a backup instead: a first upload only, in a browser with no
+    // card, since a restore would replace one.
+    $('#restore-open').hidden = !(settings.first && !state.profile);
+    sayRestore('');
     $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
     $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
     const digest = state.digest;
@@ -7732,8 +7742,14 @@
     $('#report-back').hidden = !reportPage;
     // Delete everything is on My Psyche only, at its foot: never beside the report.
     $('#delete-profile').hidden = reportPage;
-    // So is the backup: it is of everything, not of the report.
-    $('#save-backup').hidden = reportPage;
+    // Under My Report's part nav the row is narrow: one word each, with the
+    // full name still read out.
+    const words = Copy.STRUCTURED.actions;
+    for (const [id, full, short] of [['#report-back', words.back, words.backShort],
+      ['#export-pdf-bottom', words.download, words.downloadShort], ['#save-backup', words.backup, words.backupShort]]) {
+      $(id + ' .cta-label').textContent = reportPage ? short : full;
+      if (reportPage) $(id).setAttribute('aria-label', full); else $(id).removeAttribute('aria-label');
+    }
     // Both open on the card with what it means beside it.
     const side = $('#profile-side');
     side.hidden = !structured || reportPage;
@@ -9813,6 +9829,9 @@
     alert.hidden = !message;
   }
 
+  // Set when a restore closes the Add your data popout, so the upload that
+  // opened it ends quietly rather than going back to the main page.
+  let restoredBackup = false;
   $('#restore-open').addEventListener('click', () => {
     sayRestore('');
     $('#restore-input').value = '';
@@ -9846,6 +9865,7 @@
     sayRestore('');
     state.profile = parts.profile;
     state.digest = store.read(KEYS.digest, null);
+    if ($('#datasources-dialog').open) { restoredBackup = true; $('#datasources-back').click(); }
     // Where a reader with a card starts, as boot() would land them.
     renderProfile();
     show('profile');

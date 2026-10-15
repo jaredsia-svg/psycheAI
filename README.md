@@ -2580,11 +2580,25 @@ one page.
 
 Everything a reader has lives in one browser's `localStorage`, and the server keeps no copy. A
 cleared browser, a new phone or **Delete everything** therefore meant starting again, and paying
-again for a report already bought. **Save a backup** (`#save-backup`, beside Delete everything on My
-Psyche, never on My Report) writes it all to one file, *Psyche Backup - Name - DDMMYYYY.json*. On the
-main page, a browser with no card has **Restore from a backup file** under the two hero buttons.
-It is hidden once the browser has a card (`.is-returning`), and the handler refuses anyway, so a
-restore can never replace a card.
+again for a report already bought. **Save a backup** (`#save-backup`) writes it all to one file,
+*Psyche Backup - Name - DDMMYYYY.json*. It is on both pages:
+
+- **On My Psyche** it sits at the foot, spelled out in full, beside Delete everything. Delete
+  everything is its red bin alone, and shows the tooltip *Delete everything* on hover or focus
+  (`::after` with `attr(data-tip)`). On a phone the two buttons share the first line and the
+  run's note takes the next, across the screen; beside the wider backup button the note had been
+  squeezed into a narrow column.
+- **On My Report** it is the third of the actions under the part nav. Those are one word each
+  there (**Back**, **Report**, **Backup**; `Copy.STRUCTURED.actions`), since the row is 232px wide,
+  and each keeps its full name as its `aria-label`.
+
+**Restore from a backup** is a small link left of Continue in the *Add your data* popout
+(`#restore-open`). It is shown only on a first upload in a browser with no card (`askDataSources`
+with `first`), and the handler refuses anyway, so a restore can never replace a card. On a phone the
+link takes two short lines rather than pushing Continue under Back. A good file closes the popout
+and lands on My Psyche. `restoredBackup` stops the upload that opened the popout from treating that
+close as Back and returning to the main page. A bad file leaves the popout open, with the reason
+above its buttons.
 
 - **What goes in** (`BACKUP_KEYS` in `docs/app.js`): the profile (card, report, paid sections),
   the digest (so the full report can still be bought without loading the export again), every Psyche

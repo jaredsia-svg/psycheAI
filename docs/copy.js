@@ -1158,11 +1158,19 @@
     // in app.js. It goes straight to the reader's disk, never to PsycheAI.
     backup: {
       label: 'Save a backup',
-      restore: 'Restore from a backup file',
+      restore: 'Restore from a backup',
       restoring: 'Restoring your Psyche…',
       bad: 'That file is not a PsycheAI backup, or it is damaged. Choose the .json file saved from “Save a backup”.',
       full: 'Your backup could not be restored: this browser has no room to store it.',
       deleteHint: 'Save a backup first to keep a copy you can restore in any browser.',
+    },
+    // The page's actions: in full on My Psyche, one word each under My
+    // Report's part nav, where the row is narrow (each still has its full
+    // name read out).
+    actions: {
+      back: 'Back to card', backShort: 'Back',
+      download: 'Download Report', downloadShort: 'Report',
+      backup: 'Save a backup', backupShort: 'Backup',
     },
     // Beside a free report's Psyche Card: what each part means, popped out
     // when the reader points at it. Each has one short paragraph on what it is and why
