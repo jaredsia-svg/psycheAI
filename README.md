@@ -318,8 +318,12 @@ Facebook posts and messages, 600 WhatsApp messages…) are wide enough that the 
 
 The paid call sends `deep: true` only when something was added; the server allows the larger digest
 only on a paid unlock that asks for it, rebuilds it field by field and re-applies the weights if
-anything is over. The premium digest is not kept afterwards: the next unlock starts from the standard
-digest again. The two calls an unlock can make are held to **$0.247 together** at their worst: $0.079
+anything is over. The next unlock starts from the standard digest again, but since October 2026 the
+premium read is also kept as the latest report's own evidence (`psycheai_report_digest`), exactly
+as it was sent (`Digest.forModel`: no names, no numbering). It is written as
+`psycheai_report_digest_next` just before the call and promoted when the report lands, here or in a
+tab that rejoins the job (`keepReportDigest`). A paid re-run replaces it. It is in the backup file
+and goes with Delete everything. It is never the base for another run. The two calls an unlock can make are held to **$0.247 together** at their worst: $0.079
 for the card and $0.168 for the full report (`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`), against a US$5
 payment.
 
@@ -2739,13 +2743,25 @@ A reader with a full Psyche Report can ask it questions and get coaching built o
 per question: **five for US$5** (`ask` in `docs/prices.js`, the report's price in every currency),
 and every credit Your Referral earns (three friends' cards) is one more question.
 
-**What the model is given: the report and the card, not the digest.** The report already holds
-every conclusion and the evidence for each, so answers stay consistent with what the reader read.
-The digest would cost three to five times as much per question (about 45,000 input tokens against
-about 8,000). The premium read it was written from is not kept, and the server holds neither. The
-reader's own name goes back to "PsycheUser" before it is sent (`askReport`) and comes back into the
-answer on the device (`askOwnName`). The last three questions and answers go along for follow-ups.
-At Gemini flash prices a question costs about one to two cents.
+**What the model is given: the report and card, and the digest the report was written from.** At
+first it was the report alone. Since the browser now keeps each report's own digest
+(`psycheai_report_digest`), Ask Psyche sends it too (`askDigest`), or the standard digest for a report
+made before that was kept. The report's conclusions are what the model builds on. The digest is
+evidence for fresh, concrete examples, never a reason to overturn a conclusion (`ASK_SYSTEM`). The
+server holds the digest to `forModel` and the premium read's size, and answers from the report alone
+when there is no digest or it is over. The reader's own name goes back to "PsycheUser" before the
+report is sent (`askReport`) and comes back into the answer on the device (`askOwnName`). The last
+three questions and answers go along for follow-ups.
+
+| Context | Input tokens | Per question | Per 5-question pack |
+|---|---|---|---|
+| Report only (the first version) | ~12,000 | ~1.7¢ | ~8¢ |
+| Digest only | ~38,000–53,000 | ~3.6–4.8¢ | ~18–24¢ |
+| **Report + digest (chosen)** | ~48,000–64,000 | **~4.4–5.5¢** | **~22–28¢** |
+
+These are at Gemini flash prices ($0.75 per million input tokens, $3.75 per million output), at 3.5
+characters a token, with about 2,000 tokens out (answer plus thinking). Stripe's fee on US$5, about
+55¢, is larger than any of them.
 
 **Coaching, not just answers.** The prompt (`ASK_SYSTEM`, `ASK_SCHEMA` in lib/prompts.js) answers
 from the report, names the finding it rests on, never invents evidence, stays on the reader's own
@@ -2775,13 +2791,19 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
   you are": * already typed. The report ends with the same card.
 - **The popout** (`#ask-dialog`, `openAsk`): the conversation so far, a counter of questions left,
   and a box with a character count. When none are left, *Get 5 questions* opens the ordinary
-  payment sheet for the `ask` product, with no promo code and no share box.
+  payment sheet for the `ask` product, with no promo code and no share box. It was trimmed to that
+  in October 2026: the subtitle is *Your personal coach.*, the empty state is the six questions under
+  *Try one of these*, and the line under the box reads *Your question goes to Gemini for this one
+  answer; PsycheAI keeps no copy. Answers are saved only in this browser.* Referral credits are named
+  only when some of the questions left are theirs (*Includes 1 question from your Referral
+  credits.*).
 - **Storage:** every question and answer is kept in this browser (`psycheai_ask`, the latest 50), in
   the backup file (`BACKUP_KEYS`), and goes with Delete everything.
 
 **Privacy wording changed with it.** The FAQ and privacy page used to say the finished report never
 leaves the device. They now say it stays on the device unless the reader uses Ask Psyche, when the
-report and the question go to Google Gemini for that one answer and PsycheAI keeps neither. The
+report, its digest and the question go to Google Gemini for that one answer and PsycheAI keeps
+none of them. The
 privacy page also lists the question counts, and the terms describe the questions.
 
 **On the front page** the Psyche Report's price has a gift tag under it, *Share with a friend and

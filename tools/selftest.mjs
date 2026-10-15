@@ -8153,6 +8153,10 @@ check('the schema requires evidence on where they align and differ',
     check('Ask Psyche: the prompt gets the report, up to three earlier answers and the question, held to 300 characters',
       /<report>/.test(blocks[0].text) && /<earlier>\nQ: first\?\nA: first answer/.test(blocks[0].text) &&
         /<question>\nx{300}\n<\/question>/.test(blocks[0].text) && P.ASK_QUESTION_MAX === 300);
+    const withEvidence = P.askBlocks({ mbti: { type: 'INFJ' } }, 'why?', [], { samples: { captions: ['[2024] a caption'] } });
+    check('Ask Psyche: with the report\'s digest, the evidence follows the report; without it, there is none',
+      /<\/report>\n\n<evidence>\n[\s\S]*a caption[\s\S]*<\/evidence>\n\n<question>/.test(withEvidence[0].text) &&
+        !/<evidence>/.test(blocks[0].text) && /The report's conclusions stand/.test(P.ASK_SYSTEM));
     check('and is told to answer from the report, coach, never diagnose, and keep the conduct rule',
       /Answer from the report/.test(P.ASK_SYSTEM) && /Never invent evidence/.test(P.ASK_SYSTEM) &&
         /Not therapy and not a diagnosis/.test(P.ASK_SYSTEM) && P.ASK_SYSTEM.includes(P.CONDUCT_RULE_REPORT) &&

@@ -1107,9 +1107,10 @@ async function handleReferralClaim(request, response) {
 // ---------- Ask Psyche ----------
 //
 // A reader with a full Psyche Report asks it questions, one credit each
-// (lib/askcredits.js). The report and the question come in, the answer goes
-// back, and nothing is kept: no question, report or answer is stored or
-// logged here, and the browser keeps the conversation (docs/app.js).
+// (lib/askcredits.js). The report, the digest it was written from and the
+// question come in, the answer goes back, and nothing is kept: no question,
+// report, digest or answer is stored or logged here, and the browser keeps
+// the conversation (docs/app.js).
 async function handleAskCredits(request, response) {
   const body = await readJsonBody(request);
   const now = await askCredits.balance(body && body.secret);
@@ -1152,6 +1153,14 @@ async function handleAsk(request, response) {
   }
   const history = (Array.isArray(body.history) ? body.history : []).slice(-prompts.ASK_HISTORY_MAX)
     .filter(h => h && typeof h.q === 'string' && typeof h.a === 'string');
+  // The digest the report was written from, held to what a digest may carry
+  // (forModel) and to the premium read's size; one over it is left out, and
+  // the question is answered from the report alone.
+  let digest = null;
+  if (body.digest && typeof body.digest === 'object' && !Array.isArray(body.digest)) {
+    const sent = Digest.forModel(body.digest, { deep: true });
+    if (Digest.evidenceChars(sent) <= Digest.budgetFor(sent, true)) digest = sent;
+  }
   const engine = requirePremiumEngine(response);
   if (!engine) return;
   // The credit first, so two questions at once cannot both spend the last;
@@ -1163,7 +1172,7 @@ async function handleAsk(request, response) {
   }
   let result;
   try {
-    result = await engine.ask(report, question, history);
+    result = await engine.ask(report, question, history, digest);
   } catch (error) {
     refund();
     if (error && error.usage) usage.record('ask', { usage: error.usage, model: error.model }, true, { failed: error.finishReason || 'error' });

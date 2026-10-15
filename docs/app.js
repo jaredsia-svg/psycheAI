@@ -185,6 +185,13 @@
     // made but not yet credited, to credit on the next open (openAsk).
     ask: 'psycheai_ask',
     askPending: 'psycheai_ask_pending',
+    // The digest the latest Psyche Report was written from, exactly as it was
+    // sent (Digest.forModel: no numbering, no names), so the report's own
+    // evidence stays on the device beside it. Written as `reportDigestNext`
+    // just before the call and promoted when the report lands, here or in a
+    // tab that rejoins the job (keepReportDigest).
+    reportDigest: 'psycheai_report_digest',
+    reportDigestNext: 'psycheai_report_digest_next',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -5801,6 +5808,17 @@
   // reports racing to be adopted.
   let resuming = false;
 
+  /**
+   * The report just landed: the digest written for it becomes the latest
+   * report's digest. A browser that runs out of room keeps the older one
+   * rather than failing the report.
+   */
+  function keepReportDigest() {
+    const next = store.read(KEYS.reportDigestNext, null);
+    if (!next || typeof next !== 'object') return;
+    if (store.write(KEYS.reportDigest, next)) store.remove(KEYS.reportDigestNext);
+  }
+
   async function resumeRunningJob() {
     const job = runningJob();
     if (!job || resuming) return false;
@@ -5843,6 +5861,7 @@
         // sections, laid under the card the reader has. ('explain' is the
         // record a page from the previous deploy wrote for the same thing.)
         await adoptFullReport(result, Boolean(job.replaceCard), job.ownName);
+        keepReportDigest();
         renderProfile();
         show('profile');
         openPaidSections();
@@ -9232,7 +9251,9 @@
       // that still lacks the source they just added; the popout shows it
       // unticked and asks for it again. That is worse than the unbroken path
       // and better than losing the report.
-      const full = await LLM.analyseProfile(Digest.forModel(paidDigest, { deep: deepRead }), await withAttribution(request),
+      const sentDigest = Digest.forModel(paidDigest, { deep: deepRead });
+      store.write(KEYS.reportDigestNext, sentDigest);
+      const full = await LLM.analyseProfile(sentDigest, await withAttribution(request),
         { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
       // A gifted report, now used.
       const gift = giftWaiting();
@@ -9246,9 +9267,10 @@
       // shared pendingPremiumDigest variable again: a reopened dialog resets
       // that, and reading it here would be one stray caller away from a null.
       if (deepRead) {
-        // The premium read is not kept: every later free run reads the
-        // standard digest, which takes the sources added here, and the next
-        // unlock starts from it again.
+        // Every later free run reads the standard digest, which takes the
+        // sources added here, and the next unlock starts from it again. The
+        // premium read itself is kept only as the latest report's own
+        // evidence (KEYS.reportDigest), never as the base for another run.
         const standard = paidDigest.__standard;
         delete paidDigest.__standard;
         delete paidDigest.__fresh;
@@ -9272,6 +9294,7 @@
         recordRun();
       }
       clearJob();
+      keepReportDigest();
       // What was loaded for this unlock is now part of it.
       pendingDataSourceReads = {};
       await adoptFullReport(full, dataChanged, undefined,
@@ -9886,7 +9909,7 @@
   // What it leaves out: anything mid-purchase or mid-run (unlock, pending,
   // job), other people's invites, banners, and the runs count (see below).
   const BACKUP_KIND = 'psycheai-backup';
-  const BACKUP_KEYS = ['profile', 'digest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account', 'ask'];
+  const BACKUP_KEYS = ['profile', 'digest', 'reportDigest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account', 'ask'];
 
   function backupFile() {
     const data = {};
@@ -9940,6 +9963,7 @@
     try { if (!(await Card.decodeCard(profile.payload))) return null; } catch (error) { return null; }
     const out = { profile };
     if (isRecord(data.digest)) out.digest = data.digest;
+    if (isRecord(data.reportDigest)) out.reportDigest = data.reportDigest;
     if (Array.isArray(data.history)) out.history = data.history.filter(isRecord).slice(0, 25);
     if (isRecord(data.plan)) out.plan = data.plan;
     if (Array.isArray(data.ask)) {
@@ -10037,6 +10061,18 @@
     }
     return JSON.parse(text);
   }
+  /**
+   * The evidence beside the report: the digest the latest report was written
+   * from (KEYS.reportDigest), or for a report made before that was kept, the
+   * standard digest the card was read from. Null when there is neither, and
+   * the question is answered from the report alone.
+   */
+  async function askDigest() {
+    const kept = store.read(KEYS.reportDigest, null);
+    if (kept && typeof kept === 'object') return kept;
+    if (!state.digest) return null;
+    try { await loadReaders(); return Digest.forModel(state.digest); } catch (error) { return null; }
+  }
   /** "PsycheUser" in an answer, back to the reader's first name. */
   function askOwnName(text) {
     const first = String((state.profile && state.profile.card && state.profile.card.name) || '').trim().split(/\s+/)[0] || 'you';
@@ -10057,7 +10093,7 @@
   function renderAskThread(pendingQuestion) {
     const A = Copy.STRUCTURED.ask;
     const items = askThread();
-    const intro = '<div class="ask-intro"><p>' + esc(A.intro) + '</p><p class="ask-try">' + esc(A.tryOne) + '</p>' +
+    const intro = '<div class="ask-intro"><p class="ask-try">' + esc(A.tryOne) + '</p>' +
       '<div class="ask-suggestions">' + A.suggestions.map(q =>
         '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div></div>';
     setHtml($('#ask-thread'), (items.length ? '' : intro) + items.map(item => askItemHtml(item)).join('') +
@@ -10081,12 +10117,11 @@
     const out = n === 0;
     $('#ask-compose').hidden = out;
     $('#ask-buy').hidden = !out;
-    if (out) {
-      const price = Prices.label(CURRENCY, 'ask');
-      $('#ask-buy-text').textContent = A.buyText(price, 5);
-      $('#ask-buy-go').textContent = A.buy(price);
-      $('#ask-buy-note').textContent = A.buyNote;
-    }
+    if (out) $('#ask-buy-go').textContent = A.buy(Prices.label(CURRENCY, 'ask'));
+    // The link's credits, named only when some of what is left is theirs.
+    const fromLink = askCreditsNow && !out ? Number(askCreditsNow.referral) || 0 : 0;
+    $('#ask-referral').hidden = !fromLink;
+    $('#ask-referral').textContent = fromLink ? A.fromReferral(fromLink) : '';
   }
   async function refreshAskCredits() {
     const mine = await ensureReferral();
@@ -10162,7 +10197,9 @@
     renderAskThread(question);
     try {
       const history = askThread().slice(-3).map(item => ({ q: item.q, a: item.a }));
-      const answer = await LLM.postWithTicket('api/ask', { secret: mine.secret, question, report: askReport(), history });
+      const digest = await askDigest();
+      const answer = await LLM.postWithTicket('api/ask', Object.assign({ secret: mine.secret, question, report: askReport(), history },
+        digest ? { digest } : {}));
       const item = { q: question, a: askOwnName(answer.answer), steps: (answer.nextSteps || []).map(askOwnName),
         follow: answer.followUps || [], at: Date.now() };
       store.write(KEYS.ask, askThread().concat([item]).slice(-ASK_KEEP));

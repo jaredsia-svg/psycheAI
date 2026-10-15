@@ -10690,7 +10690,7 @@ try {
       return never > -1 && sent > never && /can review it before anything goes/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
   check('the media and the zip never leave, and the report only for Ask Psyche, which is named',
-    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask Psyche/i.test(about),
+    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask Psyche: then your report, the digest it was written from and\s+your question go to Google Gemini/i.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
@@ -11738,10 +11738,15 @@ try {
           credits: document.querySelector('#ask-credits').textContent,
           buy: !document.querySelector('#ask-buy').hidden && document.querySelector('#ask-buy-go').textContent,
           compose: document.querySelector('#ask-compose').hidden,
-          privacy: document.querySelector('#ask-privacy').textContent }));
+          privacy: document.querySelector('#ask-privacy').textContent, sub: document.querySelector('#ask-sub').textContent,
+          introText: /Ask anything about your report/.test(document.querySelector('#ask-dialog').textContent) ||
+            /Each answer is written from your own report/.test(document.querySelector('#ask-dialog').textContent) ||
+            /Credits from Your Referral count too/.test(document.querySelector('#ask-dialog').textContent),
+          referral: document.querySelector('#ask-referral').hidden }));
         check('Ask Psyche opens on what it is, six questions to try, and, with none left, the way to get five',
           empty.intro && empty.suggestions === 6 && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
-            empty.compose && /go to Google Gemini for this one answer; PsycheAI keeps no copy/.test(empty.privacy), JSON.stringify(empty));
+            empty.compose && empty.privacy === 'Your question goes to Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.' &&
+            empty.sub === 'Your personal coach.' && !empty.introText && empty.referral, JSON.stringify(empty));
         await sp.click('#ask-buy-go');
         await sp.waitForSelector('#premium-dialog[open] #premium-mock-pay:not([hidden])', { timeout: 15000 });
         const sheet = await sp.evaluate(() => ({ title: document.querySelector('#premium-dialog-title').textContent,
@@ -11762,6 +11767,9 @@ try {
         check('a suggested question fills the box, counted against its 300 characters',
           filled.value === 'What should I focus on this week to grow?' && filled.count === filled.value.length + '/300' && filled.max === 300,
           JSON.stringify(filled));
+        // The digest the report was written from, as an unlock keeps it.
+        await sp.evaluate(() => localStorage.setItem('psycheai_report_digest',
+          JSON.stringify({ profile: { bio: 'runs at dawn' }, samples: { captions: ['[2024] first light on the river'] } })));
         const [askRequest] = await Promise.all([
           sp.waitForRequest(r => r.url().endsWith('/api/ask') && r.method() === 'POST', { timeout: 15000 }),
           sp.click('#ask-send'),
@@ -11769,8 +11777,9 @@ try {
         await sp.waitForSelector('#ask-thread .ask-item:not(.is-pending) .ask-a', { timeout: 30000 });
         const sent = askRequest.postDataJSON();
         const realName = await sp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.name);
-        check('the question goes with the report and the card, not the digest, and the reader\'s own name as PsycheUser',
-          sent.question === filled.value && sent.report && sent.report.report && sent.report.card && !('digest' in sent) &&
+        check('the question goes with the report, the card and the digest, de-identified, and the reader\'s own name as PsycheUser',
+          sent.question === filled.value && sent.report && sent.report.report && sent.report.card &&
+            sent.digest && typeof sent.digest === 'object' && !/__names|__people/.test(JSON.stringify(sent.digest)) &&
             !JSON.stringify(sent.report).includes(String(realName).split(' ')[0]) && sent.report.card.name === 'PsycheUser',
           JSON.stringify(Object.keys(sent)) + ' ' + realName);
         const answered = await sp.evaluate(() => {
@@ -11781,7 +11790,8 @@ try {
             stored: JSON.parse(localStorage.getItem('psycheai_ask') || '[]') };
         });
         check('the answer comes back under the question, with next steps and two questions to ask next, and one credit is spent',
-          /Mock answer to "What should I focus on this week to grow\?"/.test(answered.a) && answered.steps === 2 && answered.follow === 2 &&
+          /Mock answer to "What should I focus on this week to grow\?"/.test(answered.a) && /With examples from your data/.test(answered.a) &&
+            answered.steps === 2 && answered.follow === 2 &&
             answered.credits === '4 questions left' && answered.input === '', JSON.stringify(answered));
         check('and the question and answer are kept in this browser',
           answered.stored.length === 1 && answered.stored[0].q === filled.value && /Mock answer/.test(answered.stored[0].a));
@@ -13788,6 +13798,13 @@ try {
       check('and using it writes the Psyche Report on the free report, with no payment',
         /^[0-9a-f]{48}$/.test(paidWith.referralGrant || '') && !paidWith.paymentIntentId && !paidWith.promoCode,
         JSON.stringify(Object.keys(paidWith)));
+      {
+        const kept = await rp.evaluate(() => ({ digest: localStorage.getItem('psycheai_report_digest'),
+          next: localStorage.getItem('psycheai_report_digest_next') }));
+        check('the digest the report was written from is kept in this browser, exactly as it was sent',
+          Boolean(kept.digest) && JSON.stringify(JSON.parse(kept.digest)) === JSON.stringify(paidWith.digest) && kept.next === null &&
+            !/__names|__people/.test(kept.digest), String(kept.digest).slice(0, 120));
+      }
       const after = await rp.evaluate(async () => {
         const mine = JSON.parse(localStorage.getItem('psycheai_referral'));
         return fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },

@@ -1197,8 +1197,7 @@
     // app.js.
     ask: {
       title: 'Ask Psyche',
-      sub: 'Your personal coach, who has read your whole Psyche Report.',
-      intro: 'Ask anything about your report – how to use your strengths at work, why some people drain you, what to work on next. Each answer ends with steps you can take this week.',
+      sub: 'Your personal coach.',
       tryOne: 'Try one of these',
       placeholder: 'Ask about your Psyche Report…',
       send: 'Ask',
@@ -1207,11 +1206,11 @@
       follow: 'Ask next',
       left: n => n === 1 ? '1 question left' : n + ' questions left',
       none: 'No questions left',
-      buyText: (price, n) => 'Get ' + n + ' questions for ' + price + '. Each answer is written from your own report, with steps to take this week.',
       buy: price => 'Get 5 questions – ' + price,
-      buyNote: 'Credits from Your Referral count too: every 3 connections who make their Psyche Card from your link = 1 question.',
+      // Said only when some of the questions left are the link's credits.
+      fromReferral: n => 'Includes ' + n + (n === 1 ? ' question' : ' questions') + ' from your Referral credits.',
       bought: 'Added 5 questions. Ask away.',
-      privacy: 'Your question and your Psyche Report go to Google Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.',
+      privacy: 'Your question goes to Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.',
       tooShort: 'Ask a little more – a few words at least.',
       failed: 'Psyche could not answer that just now. Your question was not used – try again.',
       noCredits: 'You have no questions left.',
