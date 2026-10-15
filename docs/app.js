@@ -1786,13 +1786,18 @@
     ].map((part, i) => Object.assign(part, { number: String(i + 1).padStart(2, '0'), rows: part.rows.filter(Boolean) }));
   }
 
+  // The five parts, each its numeral, its title and its sections as small
+  // chips: the front page's shape, at a size a phone can take in about one
+  // screen. Each section's long description was dropped here in October
+  // 2026; "See sample report" in the head shows what each one holds.
   function unlockPartsHtml() {
     const S = Copy.STRUCTURED;
     return '<ol class="unlock-parts">' + explainedParts().map(part =>
       '<li class="unlock-part">' +
         '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
         '<h4>' + esc(S.parts[part.key].title) + '</h4></div>' +
-        '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) + '</ul>' +
+        '<ul class="unlock-chips">' + part.rows.map(row =>
+          '<li class="premium-tier-item"><strong>' + esc(row.title()) + '</strong></li>').join('') + '</ul>' +
       '</li>').join('') + '</ol>';
   }
 
@@ -1830,7 +1835,7 @@
     // share message with the link. "Use it" and "Gift it" appear only once a
     // free report is earned.
     // The number and its label, no icon: the small ones could not be seen.
-    const stat = (key, label) => '<li class="referral-stat">' +
+    const stat = (key, label) => '<li class="referral-stat' + (key === 'credits' ? ' referral-stat-credits' : '') + '">' +
       '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
     return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
       '<div class="referral-head"><span class="referral-icon" aria-hidden="true">' + Copy.lineIcon('🔗') + '</span><div>' +
@@ -1886,7 +1891,10 @@
   }
   async function refreshReferral() {
     // The unlock panel's share-first offer reads the same status.
-    if (document.querySelector('#profile-body .unlock-share')) fetchReferralStatus().then(refreshUnlockShare).catch(() => {});
+    if (document.querySelector('#profile-body .unlock-share')) {
+      fetchReferralStatus().then(refreshUnlockShare).catch(() => {});
+      watchUnlockShare();
+    }
     const cards = document.querySelectorAll('.referral-card');
     if (!cards.length) return;
     for (const card of cards) card.querySelector('.referral-gifts').innerHTML = giftsHtml();
@@ -2050,6 +2058,45 @@
       box.querySelector('.unlock-share-claim').hidden = !ready;
     }
   }
+
+  // Watching for the open that unlocks it. The reader shares the link and
+  // waits on this page, so the panel asks the server again every 20 seconds
+  // while it is on screen, the tab is visible and the report is still locked,
+  // and at once when the reader comes back to the tab (from the app they
+  // shared in). It stops itself once unlocked, or after 30 minutes of asking;
+  // coming back to the tab starts it again. /api/referral allows 300 an hour.
+  const UNLOCK_POLL_MS = 20000;
+  const UNLOCK_POLL_FOR_MS = 30 * 60000;
+  let unlockPoll = null;
+  let unlockPollSince = 0;
+  function unlockShareWaiting() {
+    const box = document.querySelector('#profile-body .unlock-share');
+    return Boolean(box && !box.classList.contains('is-ready') && !$('#view-profile').hidden &&
+      document.visibilityState === 'visible');
+  }
+  async function checkUnlockShare() {
+    if (!unlockShareWaiting()) return;
+    const status = await fetchReferralStatus(true).catch(() => null);
+    if (status) refreshUnlockShare(status);
+  }
+  function watchUnlockShare() {
+    if (unlockPoll) return;
+    unlockPollSince = Date.now();
+    unlockPoll = setInterval(() => {
+      if (!document.querySelector('#profile-body .unlock-share') ||
+          document.querySelector('#profile-body .unlock-share.is-ready') || Date.now() - unlockPollSince > UNLOCK_POLL_FOR_MS) {
+        clearInterval(unlockPoll);
+        unlockPoll = null;
+        return;
+      }
+      checkUnlockShare();
+    }, UNLOCK_POLL_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!unlockShareWaiting()) return;
+    checkUnlockShare();
+    watchUnlockShare();
+  });
 
   /** The share message with the link: the share sheet where there is one, else copied. */
   async function shareMyLink(button, say) {
@@ -2357,6 +2404,7 @@
         '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span>' +
       '</div>' +
       '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +
+      '<p class="insight-premium-how">' + Copy.lineIcon('🔗') + '<span>' + esc(I.premiumHow) + '</span></p>' +
       '<ol class="insight-parts">' + parts.map((key, i) =>
         '<li class="insight-part">' +
           '<span class="insight-part-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' +
@@ -4764,7 +4812,7 @@
         resolve(answer);
       }, { once: true });
 
-      $('#review-send').textContent = paymentDue ? 'Make payment' : 'Send this';
+      $('#review-send').textContent = paymentDue ? TEXT.reviewProceed : TEXT.reviewSend;
 
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
@@ -8104,8 +8152,7 @@
       keepNoteClosed = true;
       removeHeadNote(note);
     });
-    const ready = body.querySelector('.report-ready-note');
-    if (ready) ready.after(note); else body.prepend(note);
+    body.prepend(note);
   }
 
   async function exportPdf() {
@@ -9079,6 +9126,10 @@
       $('#premium-card-fallback').hidden = true;
       $('#premium-mock-pay').hidden = true;
     }
+    // A free report (from the reader's link, or a gift): nothing is being
+    // paid, so the price and every way to pay go while it is written
+    // (.is-free-run). openPremiumDialog clears it.
+    $('#premium-dialog').classList.toggle('is-free-run', Boolean(auth.referralGrant));
     $('#premium-retry').hidden = true;
     $('#premium-promo-input').disabled = true;
     $('#premium-promo-apply').disabled = true;
@@ -9185,26 +9236,11 @@
       // having bodies spliced into a page still showing the locked block.
       // renderProfile calls renderAnalysedBy and redraws the re-run price
       // note, which says US$5 from this point on. Where the report has a page
-      // of its own, that page is where the reader lands, with a line saying so.
+      // of its own, that page is where the reader lands.
       if (fullReportPage()) {
+        // The keep note at the report's head says it is ready, and where it is
+        // kept (showKeepNote); there is no separate "ready" note any more.
         go('full');
-        // Said once, then out of the way: its ✕, or by itself after ten seconds.
-        const note = document.createElement('div');
-        note.className = 'report-ready-note';
-        note.setAttribute('role', 'status');
-        note.innerHTML = '<span>' + esc(Copy.STRUCTURED.reportPage.ready) + '</span>' +
-          '<button type="button" class="report-ready-close" aria-label="' + esc(TEXT.close) + '">✕</button>';
-        const dismiss = () => {
-          if (!note.isConnected) return;
-          note.classList.add('is-leaving');
-          setTimeout(() => removeHeadNote(note), 300);
-        };
-        note.querySelector('.report-ready-close').addEventListener('click', dismiss);
-        setTimeout(dismiss, 10000);
-        $('#profile-body').prepend(note);
-        // The note saying where the report lives goes under it.
-        const keep = $('#profile-body .report-keep-note');
-        if (keep) note.after(keep);
       } else {
         renderProfile();
       }
@@ -9413,6 +9449,7 @@
     // every purchase, so a dialog opened after a completed unlock would
     // otherwise open with no way out at all.
     $('#premium-cancel').disabled = false;
+    dialog.classList.remove('is-free-run');
     $('#premium-payment-request-button').innerHTML = '';
     $('#premium-card-fallback').hidden = true;
     $('#premium-card-element').innerHTML = '';

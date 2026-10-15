@@ -569,7 +569,7 @@
     // Each line says what that part of the report actually contains, at the
     // length the four premium covers already run to, so the reader is deciding
     // on specifics rather than on section names.
-    fullReportBlurb: 'Your card shows the conclusions. The Psyche Report shows the working, and goes further.',
+    fullReportBlurb: 'Your card shows the conclusions. The Psyche Report explains each one with the evidence from your own data, adds what the card leaves out, and ends with a plan for your personal growth.',
     explainWho: 'Why that character fits you and not a neighbouring one, then the long read on who you ' +
       'are – the patterns that run through years of your posts and messages, drawn together into a ' +
       'portrait specific enough that it could not be anyone else\'s.',
@@ -757,6 +757,12 @@
     premiumPromoLabel: 'Have a promo code?',
     // The account's free card is spent (one per Instagram account): said on
     // the US$2 sheet that follows.
+    // The review sheet's forward button. Where something is still to be paid
+    // it opens the payment sheet, which is where any charge is made, so it
+    // says Proceed rather than "Make payment": on the free unlock there is
+    // nothing to pay at all.
+    reviewProceed: 'Proceed',
+    reviewSend: 'Send this',
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Run it again for US$2.',
     // Your link's numbers and credits (lib/referral.js): every 3 connections'
     // cards earn a credit, for gifts now and premium features later.
@@ -1143,6 +1149,8 @@
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts – plus the sections only the Psyche Report has.',
+      // Under the blurb: the two ways to it (lib/referral.js, claimFirst).
+      premiumHow: 'US$5 – or free for your first one when you share your link with a friend and they open it.',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
@@ -1199,10 +1207,9 @@
       pill: (parts, pages) => parts + ' parts' + (pages ? ' · ' + pages + ' pages' : ''),
       lede: 'The working behind your Psyche Card: what each result means, the evidence for it in your own data, and what to do with it.',
       open: 'See Psyche Report',
-      ready: 'Your Psyche Report is ready.',
       // Until the reader has saved the PDF once: where the report lives, and
       // the one way to keep it.
-      keep: 'Your Psyche Report is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.',
+      keep: 'Your Psyche Report is ready! It is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.',
       keepButton: 'Download PDF',
     },
     cardGuide: {

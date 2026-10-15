@@ -467,18 +467,29 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    copy there is no button at all. */
 .paid-consolidated { margin-bottom: 1.2rem; }
 /* The unlock offer on a free structured report, by the report's five parts:
-   each a white panel led by its numeral, its title and a line on what it
-   holds, then its sections. */
-.unlock-parts { list-style: none; margin: .9rem 0 0; padding: 0; display: grid; gap: .65rem; }
-.unlock-part { padding: .85rem clamp(.8rem, 2.5vw, 1rem) .9rem; border-radius: 14px; background: var(--bg-alt); }
-.unlock-part-head { display: flex; align-items: center; gap: .75rem; }
+   each a white panel led by its numeral and title, its sections as small
+   chips under the title. Compact, so the whole offer and the share box under
+   it fit in about one phone screen. */
+.insight-premium-how {
+  display: flex; align-items: flex-start; gap: .45rem; margin: .5rem 0 0; padding: .5rem .75rem; border-radius: 10px;
+  font-size: .86rem; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--bg-alt));
+}
+.insight-premium-how svg { flex: none; width: 16px; height: 16px; margin-top: .15rem; color: var(--accent); }
+.unlock-parts { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .45rem; }
+.unlock-part { padding: .6rem clamp(.7rem, 2.5vw, .9rem); border-radius: 14px; background: var(--bg-alt); }
+.unlock-part-head { display: flex; align-items: center; gap: .65rem; }
+.unlock-chips { list-style: none; display: flex; flex-wrap: wrap; gap: .3rem; margin: .4rem 0 0 2.65rem; padding: 0; }
+.unlock-chips li {
+  margin: 0; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem; line-height: 1.35;
+  background: var(--accent-soft); color: var(--accent);
+}
+.unlock-chips strong { font-weight: 600; }
 .unlock-part-num {
-  flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 12px;
+  flex: none; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 10px;
   font-size: .9rem; font-weight: 800; letter-spacing: .02em; color: #fff; font-variant-numeric: tabular-nums;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 .unlock-part-head h4 { margin: 0; font-size: 1rem; line-height: 1.3; }
-.unlock-part .premium-tier-list { margin-top: .75rem; }
 .paid-consolidated .btn { margin-top: 1rem; width: 100%; }
 
 /* The sample dialog. The head is pinned and only the report scrolls, so the
@@ -4265,7 +4276,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .referral-title { margin: .1rem 0 .25rem; font-size: 1.05rem; }
 /* The head's title, with a small Copy link at its right. */
 .referral-head > div { flex: 1; min-width: 0; }
-.referral-title-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.referral-title-row { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: .3rem .6rem; }
 .referral-card .btn-sm.referral-copy {
   flex: none; display: inline-flex; align-items: center; gap: .35rem;
   padding: .25rem .65rem; min-height: 0; font-size: .78rem;
@@ -4279,6 +4290,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .72rem; line-height: 1.25; color: var(--ink-soft);
 }
 .referral-stat .referral-n { font-size: 1.15rem; font-weight: 800; color: var(--ink); line-height: 1.15; }
+/* Credits are what the counts earn, not another count: set apart in gold,
+   with a border. */
+.referral-stat.referral-stat-credits {
+  background: var(--warn-soft); border: 1.5px solid color-mix(in srgb, var(--warn) 45%, transparent); color: var(--warn);
+}
+.referral-stat.referral-stat-credits .referral-n { color: var(--warn); }
 .referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; margin: .8rem 0 0; }
 .referral-ready-row[hidden] { display: none; }
 .referral-ready { font-weight: 800; flex: 1 1 100%; }
@@ -4402,6 +4419,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 .premium-share[hidden], .premium-pay-head[hidden], .premium-share .btn[hidden] { display: none; }
 .premium-share-title { margin: 0; font-weight: 800; }
 .premium-share-sub { margin: .25rem 0 .7rem; font-size: .84rem; color: var(--ink-soft); }
+/* A free report being written: no price and no way to pay on the sheet. */
+.premium-dialog.is-free-run .premium-price, .premium-dialog.is-free-run #premium-payment-request-button,
+.premium-dialog.is-free-run .premium-card-fallback, .premium-dialog.is-free-run #premium-mock-pay,
+.premium-dialog.is-free-run .premium-promo, .premium-dialog.is-free-run .premium-pay-head,
+.premium-dialog.is-free-run .premium-share, .premium-dialog.is-free-run .premium-legal { display: none !important; }
 /* With the free way offered first, paying is drawn as the second choice. */
 .premium-dialog.share-first #premium-card-pay, .premium-dialog.share-first #premium-mock-pay {
   background: transparent; color: var(--accent); border: 2px solid var(--accent);
@@ -4423,18 +4445,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 
 /* My Report: Back sits first in the actions, left of Download. */
 #report-back[hidden] { display: none !important; }
-.report-ready-note {
-  display: flex; align-items: center; justify-content: space-between; gap: .8rem;
-  margin: 0 0 1rem; padding: .6rem .5rem .6rem .9rem; border-radius: 12px; font-weight: 700; font-size: .92rem;
-  color: var(--good); background: var(--good-soft);
-  transition: opacity .3s ease;
-}
-.report-ready-note.is-leaving { opacity: 0; }
-.report-ready-close {
-  flex: none; appearance: none; border: 0; background: none; cursor: pointer;
-  color: inherit; font: inherit; font-size: 1rem; line-height: 1; padding: .25rem .45rem; border-radius: 8px; opacity: .75;
-}
-.report-ready-close:hover, .report-ready-close:focus-visible { opacity: 1; background: color-mix(in srgb, var(--good) 12%, transparent); }
 /* The full report lives only in this browser: until its PDF is saved, a note
    says so, with the button (app.js, showKeepNote). */
 .report-keep-note {

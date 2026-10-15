@@ -304,7 +304,7 @@ Facebook posts and messages, 600 WhatsApp messages…) are wide enough that the 
 
 - **Nothing added:** the card's own 80,000-character digest is sent, and the card is **anchored, not
   redrawn** — the report explains the card the reader already has. The review still opens first
-  (October 2026), with **Make payment** as its button, so a reader can untick a part or download the
+  (October 2026), with **Proceed** as its button, so a reader can untick a part or download the
   file before paying; it works on a copy marked `__unchanged`, so an unticked part leaves this report
   out of it without touching the card's own digest or redrawing the card. It used to go straight to
   the payment sheet, which left no way to look at what the report would be written from.
@@ -2419,7 +2419,7 @@ and method, free or paid. It opens with what the link earns: *Every 3 connection
 Psyche Card from your link earn you 1 credit. Use credits to gift a Psyche Report, with more premium
 features coming soon.* (Before the October 2026 change below it was 2 cards, or 1 friend's paid
 report, for a free Psyche Report of the reader's own.) Then it says *Share your card or link above*. A small **Copy link**
-sits at the right of the title (`.referral-copy`, since October 2026). It does exactly what the
+sits right beside the title (`.referral-copy`, since October 2026; at first at the card's far right). It does exactly what the
 card's own **Copy link** does (`copyShareMessage`): the one share message with the short link, and
 *Copied ✓* on the button for two seconds. It runs before the click handler awaits anything, so the
 copy still counts as the tap's own in Safari. It used to have no buttons of its own, but a reader
@@ -2436,7 +2436,8 @@ Where each number comes from:
 - *opened your link*: each browser's first open of someone's link that day (never the owner's own), sent with `/api/event`
   `referral_open` and the link's code, then `ref:<code>:opens`.
 - *made a card*: friends' first free cards, `ref:<code>:friends`.
-- *credits*: `floor(friends / 3) − spent` (`CARDS_PER_CREDIT`; spent is `ref:<code>:spent`).
+- *credits*: drawn apart from the three counts, in gold with a border (`.referral-stat-credits`),
+  because it is what the counts earn rather than another count. `floor(friends / 3) − spent` (`CARDS_PER_CREDIT`; spent is `ref:<code>:spent`).
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
@@ -2470,6 +2471,24 @@ with sharing, because a shared link brings a new reader and a US$5 sale brings o
   for an account already there: *for your first Psyche Report only. A re-run is paid.* A spent grant
   refuses any other digest, as every grant does, so it can never pay for a re-run. The panel and the
   sheet offer it only while the reader has no Psyche Report (`firstFreeOffered`).
+- **Short enough for a phone** (October 2026). The panel had a paragraph under each of its eleven
+  sections and took 2,208 pixels on a 390×844 phone, about two and a half screens. Each part is now
+  its numeral, its title and its sections as small chips (`.unlock-chips`), the front page's shape,
+  under one line saying what the report is for: *explains each one with the evidence from your own
+  data, adds what the card leaves out, and ends with a plan for your personal growth.* "See sample
+  report" in the head shows what each section holds. A check holds the whole panel, share box
+  included, under one and a half screens.
+- **It notices the open by itself.** The status used to be asked for once, when My Psyche was drawn,
+  so the free unlock appeared only after a reload. Now, while the share box is on screen, the tab is
+  visible and the report is still locked, it asks again every 20 seconds (`watchUnlockShare`), and at
+  once when the reader comes back to the tab, which is the likeliest moment after sharing from
+  another app. It stops once unlocked, or after 30 minutes. That is at most 180 calls an hour against
+  `/api/referral`'s 300.
+- **Nothing to pay, nothing shown.** While a free report is written, the sheet takes `.is-free-run`:
+  the price, the wallet and card buttons, the promo code, the *Or pay* heading and the payment terms
+  all go, and only the progress is left.
+- **The front page** says it under the Psyche Report's blurb (`insights.premiumHow`): *US$5 – or
+  free for your first one when you share your link with a friend and they open it.*
 - **Credits are separate.** Every 3 friends' cards earn one credit, and the friend who unlocked the
   first report counts toward them. A credit is spent only on a gift today
   (**Gift a Psyche Report (1 credit)**, `claim`, a `gift:<code>` grant). A gift grant is refused for
@@ -2638,7 +2657,7 @@ The nav shows My Report only once the report is unlocked. The current page is ma
 on every link (My Psyche, My Report, My Syncs, FAQ): `.is-current` with `aria-current="page"`, in
 bold purple and nothing more. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
 gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
-lands on My Report at Part 00, with a note: *Your Psyche Report is ready.* It has a ✕ and fades by itself after ten seconds. A classic-layout report stays on
+lands on My Report at Part 00. The note at its head says *Your Psyche Report is ready! It is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.* There used to be a second, green *Your Psyche Report is ready.* note above it, with a ✕, fading after ten seconds; it was removed in October 2026 as one note too many, and its words went into the keep note. A classic-layout report stays on
 one page.
 
 ## Save a backup, and restore it in another browser
@@ -3418,7 +3437,10 @@ first upload and a report-page rerun both call the existing `mustPayForAnalysis(
 browser's free allowance is spent — and the premium unlock's own data offer (`collectExtraDataForPremium`)
 is never reached except on the way into a US$5 charge, so payment is unconditionally due there. Each
 now passes that single fact in as `options.paymentDue`, and `askReview()` sets the button's own text
-right before `showModal()`: `'Make payment'` when true, the unchanged `'Send this'` otherwise. Nothing
+right before `showModal()`: `'Make payment'` when true, the unchanged `'Send this'` otherwise.
+(October 2026: `'Make payment'` became **Proceed** — `TEXT.reviewProceed` — everywhere. The button
+never charged anything; it opens the payment sheet, where the charge is made, and on the free unlock
+from a shared link there is nothing to pay at all. The checks below now look for `'Proceed'`.) Nothing
 about what the button *does* changes — it still only ever hands the reviewed decision back to
 whichever caller opened the dialog, which is what actually goes on to ask for money — only what it
 *says* does.
@@ -3582,7 +3604,7 @@ US$2-or-free rerun, free report only. Non-empty, and the whole shape of the reru
   `collectExtraDataForPremium`'s own no-photos rule below. Offering photos here and quietly dropping
   them afterwards would be worse than never offering them, so the review's photos row explains why
   instead.
-- The review's Send button always reads "Make payment" — unconditionally, regardless of whether a free
+- The review's Send button always reads "Make payment" (now "Proceed") — unconditionally, regardless of whether a free
   run is still available, because this is no longer the free-run allowance's price to set.
 - Send does not lead to `authoriseAnalysis()`/`runAnalysis()` at all. It leads to `openPremiumDialog()`
   with a third product, `'rerunAll'`, and the digest just reviewed handed in as `pendingPremiumDigest`.

@@ -3546,8 +3546,11 @@ try {
       connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       careerChips: tier ? [...tier.querySelectorAll('.insight-part')[3].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       togetherChips: tier ? tier.querySelectorAll('.insight-part')[4].querySelectorAll('.insight-part-chips').length : -1,
+      how: tier && tier.querySelector('.insight-premium-how') ? tier.querySelector('.insight-premium-how').textContent : '',
     };
   });
+  check('the front page says the Psyche Report is US$5, or free for sharing your link with a friend',
+    premiumTier.how === 'US$5 – or free for your first one when you share your link with a friend and they open it.', premiumTier.how);
   check('the premium tier is the Psyche Report, by its five numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04,05' &&
       premiumTier.parts.join('|') === 'Who you are|What drives you|How you connect|How you work|Putting it together',
@@ -9499,7 +9502,7 @@ try {
   // button has to say so before it is pressed, not leave the charge to be
   // discovered on the sheet that follows.
   check('the send button reads as a payment when this run is going to cost one',
-    (await page.locator('#review-send').innerText()).trim() === 'Make payment');
+    (await page.locator('#review-send').innerText()).trim() === 'Proceed');
   await page.click('#review-send');
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
   // This run is paid — run #1 already spent the free allowance — so the
@@ -9860,7 +9863,7 @@ try {
   check('and still no photos row, on the paid re-run path as on every other',
     (await page.locator('#review-images').count()) === 0);
   check('the send button already reads as a payment, since premium is already unlocked',
-    (await page.locator('#review-send').innerText()).trim() === 'Make payment');
+    (await page.locator('#review-send').innerText()).trim() === 'Proceed');
 
   const analysesBeforeSend = analyseBodies.length;
   const rerunPremiumBodies = [];
@@ -10001,7 +10004,7 @@ try {
   // This review sits inside the unlock itself — a payment sheet is always
   // the very next step here, never just "send it to the model".
   check('the send button already reads as a payment, since this review sits inside the unlock',
-    (await page.locator('#review-send').innerText()).trim() === 'Make payment');
+    (await page.locator('#review-send').innerText()).trim() === 'Proceed');
   await page.click('#review-send');
 
   // Only now is the reader asked to pay.
@@ -12577,6 +12580,22 @@ try {
           /unlocks free as soon as 1 connection opens your link/.test(shareFirst.sub) &&
           shareFirst.share === 'Share my link' && shareFirst.claimHidden && shareFirst.pay === 'or pay US$5' &&
           shareFirst.payAfter && shareFirst.quieter && shareFirst.onePremium === 1, JSON.stringify(shareFirst));
+      {
+        // Short enough for a phone: the whole offer, share box included, in
+        // under one and a half screens, its sections as chips with no paragraphs.
+        const vp = sp.viewportSize();
+        await sp.setViewportSize({ width: 390, height: 844 });
+        await sp.waitForTimeout(300);
+        const offer = await sp.evaluate(() => {
+          const panel = document.querySelector('#profile-body .full-report-locked');
+          return { height: Math.round(panel.getBoundingClientRect().height), screen: innerHeight,
+            chips: panel.querySelectorAll('.unlock-chips li').length, paragraphs: panel.querySelectorAll('.unlock-part .premium-tier-text').length,
+            growth: /plan for your personal growth/.test(panel.querySelector('.premium-tier-blurb').textContent) };
+        });
+        await sp.setViewportSize(vp);
+        check('structured: on a phone the unlock offer takes under one and a half screens, its sections as chips, and says it is for personal growth',
+          offer.height < offer.screen * 1.5 && offer.chips === 11 && offer.paragraphs === 0 && offer.growth, JSON.stringify(offer));
+      }
       check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
         await sp.evaluate(() => {
           const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
@@ -12619,7 +12638,7 @@ try {
       await sp.click('#datasources-continue');
       await sp.waitForSelector('#review-dialog[open]', { timeout: 15000 });
       check('structured: with nothing changed the review still comes first, its button the payment',
-        (await sp.locator('#review-send').innerText()) === 'Make payment' && (await sp.locator('#review-download').count()) === 1);
+        (await sp.locator('#review-send').innerText()) === 'Proceed' && (await sp.locator('#review-download').count()) === 1);
       await sp.click('#review-send');
       await sp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
       check('structured: with nothing changed it goes to the US$5 unlock — never the US$2 re-run — and asks no consent',
@@ -13117,18 +13136,23 @@ try {
         /^I got .+ for my Psyche Card\. Get yours now for free: /.test(copiedMessage) &&
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
-      // Your Referral's own Copy link, small at the right of its title: the
-      // same message and link.
+      // Your Referral's own Copy link, small and right beside its title: the
+      // same message and link. The credits box is set apart from the counts.
       const refCopy = await rp.evaluate(() => {
         const button = document.querySelector('#profile-body .referral-card .referral-copy');
         const title = document.querySelector('#profile-body .referral-card .referral-title').getBoundingClientRect();
         const head = document.querySelector('#profile-body .referral-card .referral-head').getBoundingClientRect();
         const b = button.getBoundingClientRect();
-        return { right: head.right - b.right < 2 && b.left > title.right, level: Math.abs((b.top + b.bottom) / 2 - (title.top + title.bottom) / 2) < 8,
-          small: b.height < 34, text: button.textContent.trim() };
+        const style = sel => getComputedStyle(document.querySelector('#profile-body .referral-card ' + sel));
+        return { beside: b.left > title.right && b.left - title.right < 20 && head.right - b.right > 20,
+          level: Math.abs((b.top + b.bottom) / 2 - (title.top + title.bottom) / 2) < 8,
+          small: b.height < 34, text: button.textContent.trim(),
+          credits: style('.referral-stat-credits').backgroundColor !== style('.referral-stat:not(.referral-stat-credits)').backgroundColor &&
+            parseFloat(style('.referral-stat-credits').borderTopWidth) >= 1 &&
+            parseFloat(style('.referral-stat:not(.referral-stat-credits)').borderTopWidth) === 0 };
       });
-      check('Your Referral has a small Copy link at the right of its title',
-        refCopy.right && refCopy.level && refCopy.small && refCopy.text === 'Copy link', JSON.stringify(refCopy));
+      check('Your Referral has a small Copy link right beside its title, and its credits box is coloured apart, with a border',
+        refCopy.beside && refCopy.level && refCopy.small && refCopy.text === 'Copy link' && refCopy.credits, JSON.stringify(refCopy));
       await rp.evaluate(() => navigator.clipboard.writeText('').catch(() => {}));
       await rp.click('#profile-body .referral-card .referral-copy');
       await rp.waitForTimeout(300);
@@ -13136,6 +13160,22 @@ try {
       check('and it copies the same share message and link as the card\'s Copy link, saying so on the button',
         refCopied === copiedMessage &&
           (await rp.locator('#profile-body .referral-card .referral-copy').innerText()).trim() === 'Copied ✓', refCopied);
+      // Someone opens the link while the reader waits on My Psyche: the free
+      // unlock appears without a reload, as soon as the reader is back on the tab.
+      check('before anyone opens the link, the unlock panel asks the reader to share it',
+        await rp.evaluate(() => Boolean(document.querySelector('#profile-body .unlock-share:not(.is-ready)'))));
+      {
+        const other = await browser.newPage();
+        try {
+          await other.goto(base, { waitUntil: 'load' });
+          await other.evaluate(code => fetch('api/event', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: 'referral_open', ref: code }) }), mine.code);
+        } finally { await other.close(); }
+      }
+      await rp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      const appeared = await rp.waitForSelector('#profile-body .unlock-share.is-ready', { timeout: 10000 }).then(() => true).catch(() => false);
+      check('one open of the link and the free unlock appears on its own, without a reload',
+        appeared && await rp.evaluate(() => !document.querySelector('#profile-body .unlock-share-claim').hidden));
       // The same link as a QR code in the foot of the reader's own card, on
       // the page and in its full-screen copy, so any copy of the image leads
       // back to it.
@@ -13589,25 +13629,33 @@ try {
         sheet.first === 'Unlock my Psyche Report free' && sheet.box && sheet.head === 'Or pay US$5' && sheet.headBelow,
         JSON.stringify(sheet));
       const before = bodies.length;
+      // What the sheet shows while the free report is written: no price, no
+      // way to pay, no promo code — recorded the moment the run starts.
+      await rp.evaluate(() => {
+        const dialog = document.querySelector('#premium-dialog');
+        window.__freeRun = null;
+        new MutationObserver(() => {
+          if (window.__freeRun || !dialog.classList.contains('is-free-run')) return;
+          const shown = sel => { const n = dialog.querySelector(sel); return Boolean(n) && getComputedStyle(n).display !== 'none'; };
+          window.__freeRun = { price: shown('.premium-price'), mock: shown('#premium-mock-pay'), promo: shown('.premium-promo'),
+            payHead: shown('.premium-pay-head'), legal: shown('.premium-legal'), progress: shown('#premium-progress') };
+        }).observe(dialog, { attributes: true, attributeFilter: ['class'], subtree: true });
+      });
       await rp.click('#premium-first');
       await rp.waitForFunction(() => {
         const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
         return Boolean(p && p.premiumAnalysis);
       }, null, { timeout: 60000 });
-      await rp.waitForSelector('#profile-body .report-ready-note', { timeout: 15000 });
-      check('once unlocked, the reader lands on My Report, told it is ready, and My Report joins the nav',
+      await rp.waitForSelector('#profile-body .report-keep-note', { timeout: 15000 });
+      check('once unlocked, the reader lands on My Report, told it is ready in the one note at its head, and My Report joins the nav',
         await rp.evaluate(() => document.querySelectorAll('#profile-body .part-card').length > 0 &&
-          /Your Psyche Report is ready/.test(document.querySelector('#profile-body .report-ready-note').textContent) &&
+          /^Your Psyche Report is ready! It is saved only in this browser/.test(document.querySelector('#profile-body .report-keep-note').textContent) &&
+          !document.querySelector('#profile-body .report-ready-note') &&
           !document.querySelector('#nav-full').hidden && document.querySelector('#profile-top').hidden));
-      check('the ready note has a ✕ that puts it away',
-        await rp.evaluate(async () => {
-          const note = document.querySelector('#profile-body .report-ready-note');
-          const close = note && note.querySelector('.report-ready-close');
-          if (!close || close.getAttribute('aria-label') !== 'Close') return false;
-          close.click();
-          await new Promise(resolve => setTimeout(resolve, 450));
-          return !document.querySelector('#profile-body .report-ready-note');
-        }));
+      const freeRun = await rp.evaluate(() => window.__freeRun);
+      check('while a free report is written the sheet shows no price, no way to pay and no promo code',
+        Boolean(freeRun) && !freeRun.price && !freeRun.mock && !freeRun.promo && !freeRun.payHead && !freeRun.legal,
+        JSON.stringify(freeRun));
       const paidWith = bodies.slice(before).find(body => body.product === 'unlock') || {};
       check('and using it writes the Psyche Report on the free report, with no payment',
         /^[0-9a-f]{48}$/.test(paidWith.referralGrant || '') && !paidWith.paymentIntentId && !paidWith.promoCode,
