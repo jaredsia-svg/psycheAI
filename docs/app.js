@@ -3547,6 +3547,7 @@
           // already be.
           sources: ['instagram', 'whatsapp', 'google'],
           first: true,
+          requireInstagram: true,
           sublines: { instagram: TEXT.dataSourcesFirstInstagram },
           // Up to three chats with close connections, and Google, both optional.
           titles: { whatsapp: TEXT.whatsappFirstTitle },
@@ -3674,6 +3675,27 @@
     const svg = Copy.lineIcon(node.textContent);
     if (svg) node.innerHTML = svg;
   });
+
+  /** A how-to list as plain steps: labels instead of screenshot buttons, the settings as one sentence. */
+  function plainHowto(list) {
+    for (const peek of list.querySelectorAll('.ui-peek')) {
+      const label = document.createElement('span');
+      label.className = 'ui-label';
+      label.textContent = peek.textContent;
+      peek.replaceWith(label);
+    }
+    // "Date range | All time, Format | JSON (not HTML), …" → "Date range to All time, Format to JSON (not HTML), …".
+    for (const set of list.querySelectorAll('.howto-set')) {
+      const cells = [...set.children];
+      const out = document.createDocumentFragment();
+      for (let i = 0; i + 1 < cells.length; i += 2) {
+        out.append(cells[i].textContent.trim() + ' to ');
+        out.append(...[...cells[i + 1].childNodes].map(node => node.cloneNode(true)));
+        out.append(i + 2 < cells.length ? ', ' : '. ');
+      }
+      set.replaceWith(out);
+    }
+  }
 
   /**
    * The welcome hero's video, with a player of its own: a timing bar to drag,
@@ -4146,6 +4168,10 @@
   for (const list of document.querySelectorAll('ol[data-howto]')) {
     const steps = document.getElementById('howto-' + list.dataset.howto);
     if (steps) list.replaceChildren(steps.content.cloneNode(true));
+    // Inside a popout's "See download instructions" the Instagram steps are
+    // plain text like the others: the purple screenshot labels and the set
+    // of three rows were too small there to read or tap.
+    if (list.closest('.supplement-help-body')) plainHowto(list);
   }
   mountPeeks();
 
@@ -5366,7 +5392,12 @@
         }
       };
 
-      const done = () => dialog.close();
+      // A first upload cannot go on without Instagram: said here, in the
+      // popout, rather than closing it and saying so on the page behind.
+      const done = () => {
+        if (settings.requireInstagram && !added.instagram) { say(TEXT.startNeedsInstagram, 'bad'); return; }
+        dialog.close();
+      };
       const goBack = () => { cancelled = true; dialog.close(); };
       // Escape has no button of its own to route through goBack, but it must
       // still mean the same thing Back does — "not right now", never a silent
@@ -9803,6 +9834,9 @@
     $('#delete-cancel').focus();
   });
   $('#delete-cancel').addEventListener('click', () => $('#delete-dialog').close());
+  // Saves the backup and leaves the sheet open: deleting is still the
+  // reader's next choice to make, now with a copy kept.
+  $('#delete-backup').addEventListener('click', saveBackup);
   $('#delete-dialog').addEventListener('click', event => {
     if (event.target === $('#delete-dialog')) $('#delete-dialog').close();
   });
@@ -9945,15 +9979,12 @@
     // a way to a fresh free analysis.
     if (runCount() < 1) store.write(RUNS_KEY, 1);
     sayRestore('');
-    state.profile = parts.profile;
-    state.digest = store.read(KEYS.digest, null);
+    // Then the page starts again, as it does for any returning reader: boot()
+    // lands on My Psyche and sets up the link, the Syncs and the referral the
+    // ordinary way. Drawing the profile in place could leave the reader on the
+    // main page if anything in that drawing failed; a fresh start cannot.
     if ($('#datasources-dialog').open) { restoredBackup = true; $('#datasources-back').click(); }
-    // Where a reader with a card starts, as boot() would land them.
-    renderProfile();
-    show('profile');
-    window.scrollTo(0, 0);
-    refreshSyncsDot();
-    collectSyncs();
+    location.reload();
   });
 
   // ══════════════ 3. compatibility links ══════════════

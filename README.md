@@ -1,6 +1,6 @@
 # 🧠 PsycheAI
 
-*The personality analysis you didn't know you needed.*
+*A personality study. No questions asked.*
 
 Load your own Instagram data, and optionally up to three WhatsApp chats with close connections and
 your Google data. PsycheAI reads them in your browser and reduces them to a de-identified **digest**:
@@ -2024,6 +2024,18 @@ in [`marketing/PLAN.md`](marketing/PLAN.md).
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
 
+### The headline, and "Continue" with no Instagram (October 2026)
+
+The front page's headline is **A personality study.** with **No questions asked.** under it in the
+accent gradient, and the line below reads *Discover your MBTI, love languages, mental wellbeing, and
+career strengths directly from your Instagram and digital footprint — zero quizzes required.* It
+replaced *The personality analysis you didn't know you needed*. The checks pin the two lines and
+"zero quizzes required", the claim no quiz can make.
+
+In the Add your data popout, **Continue** with no Instagram loaded used to close the popout, say
+*Load your Instagram data to get started.* on the page behind it, and open the popout again. Now
+the popout stays open and says it in its own status line (`requireInstagram` in `askDataSources`).
+
 ### A lighter front page
 
 Measured on an emulated mid-range phone (Chrome with the CPU slowed 4×, 9 Mbps 4G), a first visit was
@@ -2683,6 +2695,17 @@ link takes two short lines rather than pushing Continue under Back. A good file 
 and lands on My Psyche. `restoredBackup` stops the upload that opened the popout from treating that
 close as Back and returning to the main page. A bad file leaves the popout open, with the reason
 above its buttons.
+
+Since October 2026 a good file reloads the page instead of drawing My Psyche in place. A reader
+reported landing back on the main page after a restore. The cause did not reproduce here, but
+drawing in place depended on every part of the drawing succeeding. A reload takes the path every
+returning reader takes: `boot()` lands on My Psyche and sets up the link, the Syncs and the
+referral as usual.
+
+**Save a backup from the Delete everything sheet.** Its buttons are *Cancel*, *Save a backup*
+(`#delete-backup`) and *Delete everything*, in that order. Saving keeps the sheet open, so deleting
+is still the reader's next choice, now with a copy kept. On a phone (480px and under) the three
+stack full width.
 
 - **What goes in** (`BACKUP_KEYS` in `docs/app.js`): the profile (card, report, paid sections),
   the digest (so the full report can still be bought without loading the export again), every Psyche
@@ -4149,6 +4172,12 @@ screenshot is cropped to the rows from its title down to Ad preferences. The gui
 repeats the route as a sentence: its screenshots carry it. On a phone, See illustration is a link under
 the steps, *See the illustrated walkthrough* (`#steps-guide-open`), rather than the button beside the
 title, which stays on a laptop.
+
+**In a popout they are plain text again (October 2026).** Inside the Add your data popout's *See
+download instructions*, the purple pills and the numbered rows were too small to read or tap, so
+that copy is drawn like the WhatsApp and Google steps (`plainHowto`): each pill becomes an ordinary
+label, and the three settings become one sentence: *set: Date range to All time, Format to JSON (not
+HTML), Media quality to Lower.* The front page keeps the rows and the screenshots.
 
 **The steps as rows (October 2026).** Five numbered rows (`ol.howto-rows`), each a full sentence, with
 every screen name that has a screenshot as a purple pill, and plain or bold text for one that has none

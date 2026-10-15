@@ -3903,6 +3903,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 .delete-dialog h2 { margin: 0 0 .5rem; font-size: 1.3rem; }
 .delete-dialog p { margin: 0 0 .7rem; color: var(--ink-soft); line-height: 1.5; }
 .delete-dialog-actions { display: flex; gap: .6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+/* Three choices on a phone: one under another, full width, Save a backup in the middle. */
+@media (max-width: 480px) {
+  .delete-dialog-actions { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .delete-dialog-actions .btn { width: 100%; }
+}
 .delete-confirm { background: #b3261e; border-color: #b3261e; color: #fff; }
 .delete-confirm:hover, .delete-confirm:focus-visible { background: #8f1d17; border-color: #8f1d17; }
 .free-method-card { margin-top: 1rem; }

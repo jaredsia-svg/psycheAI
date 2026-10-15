@@ -411,9 +411,10 @@ try {
       return svg.getAttribute('stroke') === 'currentColor' &&
         getComputedStyle(svg).color !== 'rgb(0, 0, 0)';
     }));
-  check('the headline is the new one',
-    /The personality analysis\s+you didn't know you needed/.test(
-      await page.locator('#view-welcome h1').innerText()));
+  check('the headline is the new one, its second line in the accent',
+    /^A personality study\.\s+No questions asked\.$/.test(
+      (await page.locator('#view-welcome h1').innerText()).trim()) &&
+      (await page.locator('#view-welcome h1 .accent').innerText()).trim() === 'No questions asked.');
   // The tab title is also the search result's headline, so it says what
   // people search for rather than repeating the page's tagline.
   check('the tab title names the app and what people search for',
@@ -2483,7 +2484,7 @@ try {
       const lede = document.querySelector('#view-welcome .hero .lede');
       if (!lede) return false;
       const said = lede.textContent;
-      return /MBTI/.test(said) && /Big Five/.test(said) &&
+      return /MBTI/.test(said) && /mental wellbeing/.test(said) &&
         /love languages/i.test(said) && /career strengths/i.test(said);
     }),
     (await page.locator('#view-welcome .hero .lede').count())
@@ -2493,8 +2494,8 @@ try {
   // competitor can make: nothing was asked, the report comes off behaviour
   // that already happened. Pinned because it is the sentence most likely to be
   // softened by accident in a later rewrite.
-  check('and says the report needs no questionnaire, which is the actual differentiator',
-    /no questionnaire/i.test(await page.locator('#view-welcome .hero .lede').innerText()),
+  check('and says the report needs no quiz, which is the actual differentiator',
+    /zero quizzes required/i.test(await page.locator('#view-welcome .hero .lede').innerText()),
     (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim());
   // The privacy badge moved out of the hero and down to the upload card, then
   // further down to sit under the thing that asks for the file — once the two
@@ -2914,10 +2915,23 @@ try {
   // somebody else's UI, so it is a genuine link instead of a ui-label —
   // checked separately below.
   check('each source\'s steps are one text, the same on the front page and in both popouts',
-    await page.evaluate(() => ['instagram', 'google', 'facebook'].every(source => {
+    await page.evaluate(() => ['google', 'facebook'].every(source => {
       const texts = [...document.querySelectorAll('ol[data-howto="' + source + '"]')].map(ol => ol.textContent.replace(/\s+/g, ' ').trim());
       return texts.length >= 2 && texts[0].length > 40 && texts.every(text => text === texts[0]);
     })));
+  // Instagram's steps in a popout are plain text like the others: the same
+  // labels as the front page, but no screenshot buttons, no numbered rows, and
+  // the three settings as one sentence.
+  const igPopout = await page.evaluate(() => {
+    const front = document.querySelector('.help-card ol[data-howto="instagram"]');
+    const pop = document.querySelector('#datasources-dialog ol[data-howto="instagram"]');
+    const labels = ol => [...ol.querySelectorAll('.ui-label')].map(n => n.textContent.trim()).join('|');
+    return { same: labels(front) === labels(pop), peeks: pop.querySelectorAll('.ui-peek, .howto-set').length,
+      rows: pop.classList.contains('howto-rows'), frontPeeks: front.querySelectorAll('.ui-peek').length,
+      sentence: /set: Date range to All time, Format to JSON \(not HTML\), Media quality to Lower\. Then tap Start export/.test(pop.textContent.replace(/\s+/g, ' ')) };
+  });
+  check('in the Add your data popout Instagram\'s steps are plain text with the same labels, the settings as one sentence',
+    igPopout.same && igPopout.peeks === 0 && !igPopout.rows && igPopout.frontPeeks > 0 && igPopout.sentence, JSON.stringify(igPopout));
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
@@ -11226,6 +11240,18 @@ try {
     /cannot be undone/i.test(await page.locator('#delete-dialog').innerText()));
   check('and suggests saving a backup first',
     /Save a backup first/.test(await page.locator('#delete-dialog-note').innerText()));
+  check('with Save a backup between Cancel and Delete everything',
+    (await page.locator('#delete-dialog .delete-dialog-actions button').allInnerTexts()).map(t => t.trim()).join('|') ===
+      'Cancel|Save a backup|Delete everything');
+  {
+    const [saved] = await Promise.all([
+      page.waitForEvent('download', { timeout: 15000 }).catch(() => null),
+      page.click('#delete-backup'),
+    ]);
+    check('which saves the backup and leaves the sheet open to decide',
+      Boolean(saved) && /^Psyche Backup - .+\.json$/.test(saved.suggestedFilename()) &&
+        await page.evaluate(() => document.querySelector('#delete-dialog').open), saved && saved.suggestedFilename());
+  }
   await page.click('#delete-cancel');
   await page.waitForTimeout(200);
   check('and Cancel keeps everything where it was',
@@ -11256,6 +11282,15 @@ try {
     (await page.locator('#view-welcome #restore-open').count()) === 0);
   await page.click('#hero-load');
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
+  // Continue with no Instagram: said inside the popout, which stays open.
+  await page.click('#datasources-continue');
+  await page.waitForTimeout(300);
+  const needsIg = await page.evaluate(() => ({ open: document.querySelector('#datasources-dialog').open,
+    said: document.querySelector('#datasources-status').textContent,
+    page: (document.querySelector('#upload-error') || {}).textContent || '' }));
+  check('Continue with no Instagram says so inside the popout, which stays open, not on the page behind',
+    needsIg.open && needsIg.said === 'Load your Instagram data to get started.' && !/Load your Instagram/.test(needsIg.page),
+    JSON.stringify(needsIg));
   const restoreSpot = await page.evaluate(() => {
     const link = document.querySelector('#restore-open').getBoundingClientRect();
     const go = document.querySelector('#datasources-continue').getBoundingClientRect();

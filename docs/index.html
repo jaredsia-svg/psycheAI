@@ -178,9 +178,9 @@
       <!-- The page's only <h1>. Every other view's title is a div with
            role="heading" aria-level="1" (class .h1): one <h1> in the document for
            search engines, and still a level-1 heading per view for screen readers. -->
-      <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
-      <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights &ndash;
-        all derived from your Instagram and digital footprint with no questionnaire required.</p>
+      <h1>A personality study.<br><span class="accent">No questions asked.</span></h1>
+      <p class="lede">Discover your MBTI, love languages, mental wellbeing, and career strengths directly
+        from your Instagram and digital footprint &mdash; zero quizzes required.</p>
       <!-- One button for each kind of visitor: one who still has to ask
            Instagram for their data (it takes hours to arrive, so that is the
            first useful thing to do), and one who has the file already, who
@@ -610,6 +610,8 @@
   <p class="fineprint" id="delete-dialog-note"></p>
   <div class="delete-dialog-actions">
     <button class="btn btn-outline" id="delete-cancel" type="button">Cancel</button>
+    <!-- The way to keep a copy, between keeping everything and losing it. -->
+    <button class="btn btn-outline" id="delete-backup" type="button">Save a backup</button>
     <button class="btn delete-confirm" id="delete-confirm" type="button">Delete everything</button>
   </div>
 </dialog>
@@ -1309,7 +1311,7 @@
            row is not offered. -->
       <div class="help-instagram" data-help="instagram">
         <h3>Instagram</h3>
-        <ol class="howto-rows" data-howto="instagram"></ol>
+        <ol data-howto="instagram"></ol>
       </div>
       <div class="help-google" data-help="google">
         <h3>Google Takeout</h3>
