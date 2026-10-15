@@ -8087,9 +8087,26 @@ check('the schema requires evidence on where they align and differ',
     // The model never sees the guess: the server reads body.guess only to
     // judge it, after the card is written.
     const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
-    check('the server reads the guess only to judge it, against a card already written or remembered',
-      (serverSource.match(/body\.guess/g) || []).length === 3 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource) &&
-        /const remembered = kind === 'card' && !paying && body\.guess \? results\.get\(kind, key\) : null;/.test(serverSource));
+    check('the server reads the guess only to judge it, against the card just written',
+      (serverSource.match(/body\.guess/g) || []).length === 6 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource) &&
+        (serverSource.match(/await judgeFor\(/g) || []).length === 1 &&
+        /const guess = made === 'card' && body\.guess \? await judgeFor\(body, result, request\) : null;/.test(serverSource));
+    // A card already made has been seen: a guess sent with it again is not
+    // judged (it was a free report on demand, with a fresh account each time),
+    // and the card's first judgement (its token included) is never handed out again.
+    const rememberedBlock = (serverSource.match(/const remembered = [\s\S]*?\n  \}\n/) || [''])[0];
+    check('a guess sent with a remembered card is not judged again: it is told it came too late',
+      /const remembered = kind === 'card' && !paying && body\.guess \? results\.get\(kind, key\) : null;/.test(rememberedBlock) &&
+        !/judgeFor|judgeGuess/.test(rememberedBlock) && /reason: 'guessed'/.test(rememberedBlock) &&
+        /Object\.assign\(\{\}, remembered, \{ guess: late \}\)/.test(rememberedBlock), rememberedBlock.slice(0, 200));
+    await referral.afterFreeCard({ account: who(4) });
+    await referral.afterFreeCard({ account: who(5), guessed: true });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const afterPlain = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(4), names, client: '10.1.0.4' });
+    const afterGuessed = await store.run([['GET', 'guess:' + store.keyed('acct', who(5))]]);
+    check('a card made without a guess spends the account\'s guess; one made with a guess leaves judging to judgeGuess',
+      afterPlain && afterPlain.counted === false && afterPlain.reason === 'guessed' && !afterPlain.token &&
+        afterGuessed && afterGuessed[0] === null, JSON.stringify([afterPlain, afterGuessed]));
   }
 }
 

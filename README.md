@@ -2,12 +2,25 @@
 
 *The personality analysis you didn't know you needed.*
 
-Upload your Instagram data export. PsycheAI unpacks it in your browser, distils it into an evidence
-summary, and hands that to a language model — **Google Gemini**, **Anthropic Claude** or **xAI Grok**
-— which writes you a detailed profile: your Big Five and a long-form MBTI reading with the reasoning behind
-each, a behavioural read of how you actually use Instagram, your interests, beliefs and values, and
-your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
-PDF when you are done.
+Load your own Instagram data, and optionally up to three WhatsApp chats with close connections and
+your Google data. PsycheAI reads them in your browser and reduces them to a de-identified **digest**:
+names become a blank, other people's handles become `[P1]`, and contact details and links are
+removed. You review the digest and untick anything you like. The server then relays it to a language
+model (**Google Gemini**, directly or through Vertex AI, **Anthropic Claude** or **xAI Grok**) and
+keeps no copy of it.
+
+- **Psyche Card (free).** A 1080×1920 story card: the character you are most like, your MBTI and
+  Big Five, signature patterns, motivators, values, interests and love languages, plus a secret
+  roast on My Psyche. The card's wording is always neutral or positive and never romantic.
+- **Psyche Report (US$5, local prices in `docs/prices.js`).** The full report, which explains
+  every part of the card with evidence from your data. It is anchored to the card, so it never
+  contradicts it, and it downloads as a PDF typeset in the browser. You can also get it free:
+  two friends make a card from your link, one friend buys a report, a 100% promo code, or a
+  correct guess of your character before your first card.
+- **Psyche Sync (free).** Each reader has one personal link (`/c/<id>#<key>`), also printed on the
+  card as a QR code for someone to open. A connection who opens it sees your card and makes their
+  own. Psyche Sync then reads what clicks between the two of you, where you differ and how to
+  relate better. It is for friends, family or anyone close, never romance, and it has no score.
 
 > **Current behaviour, in short.** The free result is a **Psyche Card**, a shareable story card; the
 > paid **Psyche Report** (US$5) explains it. Each reader has one **personal link** (`/c/<id>#<key>`,
@@ -44,8 +57,12 @@ Or click through the whole app with canned analyses and no API calls:
 npm run mock              # http://localhost:3000, PSYCHEAI_MOCK=1
 ```
 
-Camera scanning needs HTTPS or `localhost`; pasting a link and uploading a photo of a code always
-work.
+Gemini can also be reached through Vertex AI with a service account (`GOOGLE_GENAI_USE_VERTEXAI=true`
+and the variables listed at the top of `lib/gemini.js`). When `GEMINI_API_KEY` is set as well, the
+key is the fallback.
+
+`npm test` runs the unit and integration suite, and `npm run test:ui` runs the browser suite against
+mock servers it starts itself.
 
 ### "Download full report", and the address list that used to stand in front of it
 
@@ -2062,8 +2079,15 @@ written (`referral.judgeGuess`):
     game is for a first free Psyche Card, and this device has made one already.*;
   - **an account that has guessed before** (`reason: 'guessed'`) or an export with no username
     (`'account'`), each now answered by the server rather than dropped;
-  - **the same card asked for again within the hours a result is held** (`lib/results.js`): it is
-    never written again, so the server judges the guess against the remembered card before answering.
+  - **the same card asked for again within the hours a result is held** (`lib/results.js`). This
+    used to be judged against the remembered card, and that was a free report on demand: make a
+    card with no guess, read the character off it, then send the same request again with that
+    character as the guess and any new account. Each "guess" won, and only the day's two limits
+    stood in the way. A remembered card is now never judged: the guess is told it was not counted
+    (`reason: 'guessed'`), and any judgement the card first came with, token included, is left
+    off. A reader whose connection dropped gets that from the background job they resume, not
+    from asking again. A card made without a guess also marks the account's one guess as spent
+    (`afterFreeCard({ guessed: false })`), as the first bullet always said it did.
   A won report has no banner on the card as well: the popout says it, and the report waits on the
   unlock's sheet, which the slim *Unlock your Psyche Report* bar leads back to once the popout is
   closed. A report gifted by someone else keeps its banner, since nothing else announces it.

@@ -631,12 +631,18 @@ async function handleAnalyse(request, response) {
   // the reader's payment a second time.
   const background = wantsBackground(body);
   // The same free card asked for again within the hours a result is held
-  // (lib/results.js): the guess with it is judged against that card here,
-  // since it is never written again and so never judged below.
+  // (lib/results.js). A guess is judged only against a card being written:
+  // this one was written already, and whoever asked for it has seen which
+  // character it names, so a guess sent now is a guess at a known answer
+  // (and was, with a fresh account each time, a free report on demand). It
+  // is told the guess was not counted, and any judgement the card first came
+  // with is left off; a reader whose connection dropped gets that one from
+  // the background job they resume, not from asking again.
   const remembered = kind === 'card' && !paying && body.guess ? results.get(kind, key) : null;
   if (remembered) {
-    const guess = await judgeFor(body, remembered, request);
-    sendJson(response, 200, guess ? Object.assign({}, remembered, { guess }) : remembered);
+    const late = prompts.CHARACTER_NAMES.includes(body.guess)
+      ? { guess: body.guess, counted: false, reason: 'guessed' } : undefined;
+    sendJson(response, 200, Object.assign({}, remembered, { guess: late }));
     return;
   }
   const answered = servedFromMemory(response, kind, key, background);
@@ -764,7 +770,8 @@ async function handleAnalyse(request, response) {
       }
       // The free card's account, and the friend who invited them.
       if (made === 'card') {
-        referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request) })
+        referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
+          guessed: Boolean(body.guess) })
           .then(outcome => {
             if (outcome && outcome.credited) {
               stats.count('referral_friend');

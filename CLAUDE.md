@@ -9,7 +9,7 @@ PsycheAI (psycheai.io): a reader loads their own Instagram export (plus, optiona
 - a paid **full premium report** (US$5);
 - free **Psyche Sync** friendship-compatibility reads between two people's cards, via each reader's personal link.
 
-The server never stores exports, digests or reports.
+The server never stores exports, digests or reports. The only content it holds is ciphertext it cannot read: short-link cards (`lib/links.js`) and Psyche Syncs waiting for a link's owner (`lib/syncbox.js`, deleted once collected or after 30 days).
 
 ## Commands
 
@@ -17,8 +17,8 @@ The server never stores exports, digests or reports.
 npm install
 npm run mock          # whole app with canned analyses, no API keys, no Stripe (PSYCHEAI_MOCK=1)
 npm start             # real providers: needs GEMINI_API_KEY / ANTHROPIC_API_KEY / XAI_API_KEY
-npm test              # tools/selftest.mjs — ~1,260 unit/integration checks, no browser
-npm run test:ui       # tools/uitest.mjs — ~1,450 Playwright checks against mock servers it spawns
+npm test              # tools/selftest.mjs — ~1,370 unit/integration checks, no browser
+npm run test:ui       # tools/uitest.mjs — ~1,580 Playwright checks against mock servers it spawns
 npm run test:live     # real API calls (costs tokens); PSYCHEAI_LIVETEST=premium runs only the paid call
 node tools/seo-pages.mjs    # regenerate the search pages, sitemap.xml and llms.txt (npm test fails while stale)
 node tools/cast-sprite.mjs  # redraw the cast strip's tile image after a scene or the catalogue changes (npm test fails while stale)
@@ -38,9 +38,9 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 ## Architecture
 
 **Server (`server.js` + `lib/`).** Plain `node:http`, with no framework.
-- **Static files:** `serveStatic` serves `docs/` through `lib/staticfiles.js`, which adds Brotli/gzip, weak ETags and 304s. Unknown page addresses get `docs/404.html`. Short links `/c/<id>` 302 to `/?c=<id>`, keeping the rest of the query string.
+- **Static files:** `serveStatic` serves `docs/` through `lib/staticfiles.js`, which adds Brotli/gzip, weak ETags and 304s, and rewrites each page's own `src`/`href` to `x.js?v=<content hash>` so those assets are cached for a year (`immutable`) while pages revalidate. Unknown page addresses get `docs/404.html`. Short links `/c/<id>` 302 to `/?c=<id>`, keeping the rest of the query string.
 - **Routing:** the `API_GUARDS` table applies rate limits (`lib/ratelimit.js`) and single-use nonces (`lib/nonce.js`) to the routes that cost money.
-- **Providers:** `lib/provider.js` picks gemini, claude, grok or mock (`lib/mock.js`). Every provider shares the prompts and JSON schemas in `lib/prompts.js`.
+- **Providers:** `lib/provider.js` picks gemini, claude, grok or mock (`lib/mock.js`). Gemini can go through Vertex AI (service account), with `GEMINI_API_KEY` as the fallback. Every provider shares the prompts and JSON schemas in `lib/prompts.js`.
   - Free card: `STRUCTURED_FREE_SYSTEM` with `FREE_SCHEMA`.
   - Paid report: `PREMIUM_*`, anchored to the free card via `anchorFrom`/`anchorBlock`, so it explains the same conclusions.
   - Sync: `COMPATIBILITY_SYSTEM` with `COMPATIBILITY_SCHEMA`.
@@ -49,7 +49,8 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 - **Promo codes:** `PSYCHEAI_PROMO_CODES=CODE:cap:lastday:percent`, handled by `lib/promo.js`. A link can carry a code as `?promo=`.
 - **Persistent state:** all of it lives in `lib/store.js` (Upstash Redis when `UPSTASH_REDIS_REST_*` is set, otherwise in memory and lost on restart).
   - stats and budget: `lib/stats.js`, `lib/budget.js`;
-  - referral credits and gifts: `lib/referral.js`;
+  - referral credits, gifts and the guess-your-character game (`judgeGuess`; a guess is judged only against a card being written, never a remembered one): `lib/referral.js`;
+  - Syncs sent back to a link's owner: `lib/syncbox.js`;
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.
 - **Results cache:** finished reports are held in memory only (`lib/results.js`, about 4h) so a dropped connection is not charged twice.
