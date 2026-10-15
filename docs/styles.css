@@ -345,6 +345,11 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 /* A reader who already has a card, back on the main page from the logo: the
    steps for getting data and the upload card are for someone starting out. */
 #view-welcome.is-returning .help-card, #view-welcome.is-returning .upload-card { display: none; }
+/* Restoring a backup is for a browser with no card yet: one with a card would
+   have it replaced. */
+.hero-restore { margin: .7rem 0 0; }
+.hero-restore-alert { margin: .4rem 0 0; font-size: .86rem; color: var(--danger); }
+#view-welcome.is-returning .hero-restore, #view-welcome.is-returning .hero-restore-alert { display: none; }
 
 /* The two hero actions stay on one row on a phone. Left to wrap they stack,
    which pushes the privacy badge and everything under it a button's height

@@ -1153,6 +1153,17 @@
     deleteText: 'This removes your Psyche Card, your Psyche Report, your evidence summary and every saved ' +
       'Psyche Sync from this browser. It cannot be undone.',
     deleteNote: 'Your count of analyses already run is kept, so this does not restore a free analysis.',
+    // The backup file: the card, the report, every Psyche Sync and the
+    // personal link, to bring them back in another browser. See backupFile()
+    // in app.js. It goes straight to the reader's disk, never to PsycheAI.
+    backup: {
+      label: 'Save a backup',
+      restore: 'Restore from a backup file',
+      restoring: 'Restoring your Psyche…',
+      bad: 'That file is not a PsycheAI backup, or it is damaged. Choose the .json file saved from “Save a backup”.',
+      full: 'Your backup could not be restored: this browser has no room to store it.',
+      deleteHint: 'Save a backup first to keep a copy you can restore in any browser.',
+    },
     // Beside a free report's Psyche Card: what each part means, popped out
     // when the reader points at it. Each has one short paragraph on what it is and why
     // it is worth knowing (`about`), then the reader's own reading (`yours`);

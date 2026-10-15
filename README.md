@@ -2547,8 +2547,8 @@ A paid structured report is split into two pages, which are two modes of `#view-
   cannot clip (the card's popouts spill out of it), so a strip ran square past its rounded corners.
 
   A free reader sees the same page, with the unlock box in place of the tile. My Psyche has no
-  *Download full report*; its footer is **Delete everything** with the run's note (model and
-  date) right beside it.
+  *Download full report*; its footer is **Save a backup** and **Delete everything**, with the
+  run's note (model and date) right beside them.
 - **My Report** (`go('full')`, nav `#nav-full`) opens with a header built like My Syncs' one
   (`reportHeroHtml`, `.report-hero`): a purple pill, the title **Your Psyche Report**, a one-line
   lede (*The working behind your Psyche Card: what each result means, the evidence for it in your
@@ -2575,6 +2575,40 @@ bold purple and nothing more. At 640px and below the nav uses short labels: Psyc
 gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
 lands on My Report at Part 00, with a note: *Your Psyche Report is ready.* It has a ✕ and fades by itself after ten seconds. A classic-layout report stays on
 one page.
+
+## Save a backup, and restore it in another browser
+
+Everything a reader has lives in one browser's `localStorage`, and the server keeps no copy. A
+cleared browser, a new phone or **Delete everything** therefore meant starting again, and paying
+again for a report already bought. **Save a backup** (`#save-backup`, beside Delete everything on My
+Psyche, never on My Report) writes it all to one file, *Psyche Backup - Name - DDMMYYYY.json*. On the
+main page, a browser with no card has **Restore from a backup file** under the two hero buttons.
+It is hidden once the browser has a card (`.is-returning`), and the handler refuses anyway, so a
+restore can never replace a card.
+
+- **What goes in** (`BACKUP_KEYS` in `docs/app.js`): the profile (card, report, paid sections),
+  the digest (so the full report can still be bought without loading the export again), every Psyche
+  Sync (`history`), the ticked plan, `pdfSaved`, and the personal link with its invite secret
+  (`link`, `referral`) and the account code. The link and secret matter: with them, the restored
+  browser has the same `/c/<id>#<key>` link, and Syncs sent back to it (`lib/syncbox.js`) are still
+  collected there.
+- **What stays out:** anything mid-purchase or mid-run (`unlock`, `pending`, `job`), other people's
+  invites, banners, and the runs count.
+- **Format:** `{ kind: 'psycheai-backup', v: 1, savedAt, data: { … } }`, the stored values exactly
+  as they are.
+- **Restoring checks every part** (`readBackup`). The file could be any .json, or could have been
+  edited, so a part with the wrong shape is left out rather than stored. The card must decode from
+  its own payload, or nothing is restored. The invite code is worked out again from its secret, and
+  the link is kept only beside a valid secret, since it is saved under that code. Files over 5 MB are
+  refused. A restored card counts as an analysis already had (`psycheai_runs` becomes at least 1), so
+  restoring is not a way to a fresh free analysis. The server's one-free-card-per-account rule
+  holds regardless.
+- **No new trust:** a reader could always edit their own storage, so a hand-edited backup unlocks
+  nothing they could not already fake locally. Giving a backup to someone else gives them the
+  report and the link, the same as sending the PDF and the link.
+- **Privacy:** the file is made and read in the browser, like the PDF. The FAQ and the privacy page
+  say so, and say to keep it private because it holds the link's key. The Delete everything sheet
+  suggests saving a backup first.
 
 ## Counting what works, without counting anyone
 

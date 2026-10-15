@@ -70,6 +70,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - Views are `<section id="view-*">`, switched by `show()`/`go()`.
   - `#view-profile` has two modes: `profilePage` `'hub'` (My Psyche) and `'report'` (My Report).
   - State lives in `localStorage` under the `KEYS` table; "Delete everything" clears every key in it.
+  - "Save a backup" writes the `BACKUP_KEYS` subset (card, report, digest, syncs, link and invite secret) to a .json file, and "Restore from a backup file" on the main page validates each part (`readBackup`) before writing it back. A new stored key that a reader would miss on a new device belongs in `BACKUP_KEYS`.
 - **Words:** `copy.js` (`window.PsycheCopy`, used as `TEXT`/`Copy`) holds nearly all user-facing strings; edit wording there, not inline.
 - **PDFs:** `pdf.js` builds them in the browser.
 - **Character art:** `character-art.js`.

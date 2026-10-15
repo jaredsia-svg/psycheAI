@@ -7198,9 +7198,9 @@ try {
   // on the *same* export. #rerun-with-data lives inside the confidence card's
   // "Data sources" subsection now, not this row — see the checks further down
   // for that path.
-  check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
+  check('the report closes on exactly the four housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Back to card | Download Report | Psyche Sync | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Back to card | Download Report | Psyche Sync | Save a backup | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
@@ -11201,8 +11201,33 @@ try {
   check('no horizontal overflow on a phone', overflow <= 1, overflow + 'px of overflow');
   await shot('6-mobile');
 
-  // ---- deleting everything puts the links away again ----
+  // ---- a backup, saved before deleting everything ----
   await page.setViewportSize({ width: 1100, height: 900 });
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden]) #save-backup', { timeout: 10000 });
+  const before = await page.evaluate(() => ({
+    profile: localStorage.getItem('psycheai_profile'), history: localStorage.getItem('psycheai_history'),
+    digest: localStorage.getItem('psycheai_digest'), link: localStorage.getItem('psycheai_link'),
+    referral: localStorage.getItem('psycheai_referral') }));
+  const [backupDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 15000 }).catch(() => null),
+    page.click('#save-backup'),
+  ]);
+  const backupPath = backupDownload ? await backupDownload.path() : '';
+  const backupText = backupPath ? readFileSync(backupPath, 'utf8') : '';
+  const backup = (() => { try { return JSON.parse(backupText); } catch (error) { return null; } })();
+  check('Save a backup downloads one .json file named like the PDF',
+    Boolean(backupDownload) && /^Psyche Backup - .+ - \d{8}\.json$/.test(backupDownload.suggestedFilename()),
+    backupDownload && backupDownload.suggestedFilename());
+  check('and it holds the card, the report, the evidence summary and every Psyche Sync, exactly as stored',
+    Boolean(backup) && backup.kind === 'psycheai-backup' && backup.v === 1 &&
+      JSON.stringify(backup.data.profile) === before.profile && JSON.stringify(backup.data.history) === before.history &&
+      JSON.parse(before.history).length > 0 && JSON.stringify(backup.data.digest) === before.digest,
+    backupText.slice(0, 200));
+  check('and nothing mid-purchase or mid-run goes into it',
+    Boolean(backup) && !('unlock' in backup.data) && !('pending' in backup.data) && !('job' in backup.data));
+
+  // ---- deleting everything puts the links away again ----
   // The unlock receipt is proof of purchase, so it has to go with everything
   // else — left behind, it would offer to fetch a paid analysis for a profile
   // the reader asked to be rid of. Asserted present first, or the check below
@@ -11221,6 +11246,8 @@ try {
   check('Delete everything asks first, in a warning sheet of its own',
     /Delete everything\?/.test(await page.locator('#delete-dialog').innerText()) &&
     /cannot be undone/i.test(await page.locator('#delete-dialog').innerText()));
+  check('and suggests saving a backup first',
+    /Save a backup first/.test(await page.locator('#delete-dialog-note').innerText()));
   await page.click('#delete-cancel');
   await page.waitForTimeout(200);
   check('and Cancel keeps everything where it was',
@@ -11244,6 +11271,61 @@ try {
     await page.reload({ waitUntil: 'load' });
     return (await visibleNav()).join('|') === 'FAQ';
   })());
+
+  // ---- restoring the backup in a browser with nothing in it ----
+  const runsBefore = await page.evaluate(() => localStorage.getItem('psycheai_runs'));
+  check('a browser with no card offers to restore from a backup file',
+    await page.locator('#restore-open').isVisible());
+  await page.setInputFiles('#restore-input', { name: 'notes.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ kind: 'something-else', data: {} })) });
+  await page.waitForSelector('#restore-alert:not([hidden])', { timeout: 5000 }).catch(() => {});
+  check('a file that is not a backup is refused, and says so, with nothing stored',
+    /not a PsycheAI backup/.test(await page.locator('#restore-alert').innerText().catch(() => '')) &&
+      (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null &&
+      await page.locator('#view-welcome').isVisible());
+  // An edited file: a card that does not decode from its payload is refused too.
+  if (backup) {
+    const broken = JSON.parse(backupText);
+    broken.data.profile.payload = 'not-a-card';
+    await page.setInputFiles('#restore-input', { name: 'edited.json', mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(broken)) });
+    await page.waitForTimeout(300);
+    check('a backup whose card does not decode is refused',
+      (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+  }
+  await page.setInputFiles('#restore-input', { name: 'backup.json', mimeType: 'application/json',
+    buffer: Buffer.from(backupText || '{}') });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 }).catch(() => {});
+  const after = await page.evaluate(() => ({
+    profile: localStorage.getItem('psycheai_profile'), history: localStorage.getItem('psycheai_history'),
+    digest: localStorage.getItem('psycheai_digest'), link: localStorage.getItem('psycheai_link'),
+    referral: localStorage.getItem('psycheai_referral'), runs: localStorage.getItem('psycheai_runs') }));
+  check('restoring it lands on My Psyche with the same card, report, evidence summary and syncs',
+    await page.locator('#view-profile').isVisible() && after.profile === before.profile &&
+      after.history === before.history && after.digest === before.digest,
+    JSON.stringify({ profile: after.profile === before.profile, history: after.history === before.history }));
+  check('and the same personal link and invite code, so syncs sent back to it still arrive',
+    after.link === before.link && after.referral === before.referral, after.link + ' / ' + before.link);
+  check('and a restored card counts as an analysis already had',
+    Number(after.runs) >= 1, String(after.runs));
+  check('and the Syncs are listed again',
+    await (async () => {
+      await page.click('[data-nav="scan"]');
+      await page.waitForSelector('#scan-history .match-name', { timeout: 10000 }).catch(() => {});
+      return (await page.locator('#scan-history .match-name').count()) === JSON.parse(before.history).length;
+    })());
+  check('a browser with a card is not offered a restore over it', await (async () => {
+    await page.click('[data-nav="main"]').catch(() => {});
+    await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 5000 }).catch(() => {});
+    return (await page.locator('#view-welcome').isVisible()) && !(await page.locator('#restore-open').isVisible());
+  })());
+  // Leave this browser as the checks after this expect it: deleted, with the
+  // runs count as it was.
+  await page.evaluate(runs => {
+    for (const key of Object.keys(localStorage)) if (key.startsWith('psycheai_')) localStorage.removeItem(key);
+    if (runs !== null) localStorage.setItem('psycheai_runs', runs);
+  }, runsBefore);
+  await page.reload({ waitUntil: 'load' });
 
   // What every model call cost, written by lib/usage.js from what the engine
   // reported. The engines have always returned `usage`; until this ledger

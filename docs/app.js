@@ -7732,6 +7732,8 @@
     $('#report-back').hidden = !reportPage;
     // Delete everything is on My Psyche only, at its foot: never beside the report.
     $('#delete-profile').hidden = reportPage;
+    // So is the backup: it is of everything, not of the report.
+    $('#save-backup').hidden = reportPage;
     // Both open on the card with what it means beside it.
     const side = $('#profile-side');
     side.hidden = !structured || reportPage;
@@ -9698,7 +9700,7 @@
   $('#delete-profile').addEventListener('click', () => {
     const dialog = $('#delete-dialog');
     $('#delete-dialog-text').textContent = Copy.STRUCTURED.deleteText;
-    $('#delete-dialog-note').textContent = Copy.STRUCTURED.deleteNote;
+    $('#delete-dialog-note').textContent = Copy.STRUCTURED.deleteNote + ' ' + Copy.STRUCTURED.backup.deleteHint;
     if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
     $('#delete-cancel').focus();
   });
@@ -9715,6 +9717,141 @@
     // Back to the page a new reader starts on, from its top.
     show('welcome');
     window.scrollTo(0, 0);
+  });
+
+  // ---------- a backup, to restore in another browser ----------
+  //
+  // Everything here lives in one browser's storage and nowhere else, so a
+  // cleared browser, a new phone or Delete everything used to mean starting
+  // over. The backup is that storage, as one .json file the reader keeps: the
+  // card and report, the evidence summary (so the full report can still be
+  // bought without loading the export again), every Psyche Sync, the ticked
+  // plan, and the personal link with its invite code, so the same link keeps
+  // working and syncs sent back to it are still collected.
+  //
+  // Made in the browser and handed straight to the reader's disk, like the
+  // PDF. Restoring reads it in the browser too: nothing goes to PsycheAI.
+  //
+  // What it leaves out: anything mid-purchase or mid-run (unlock, pending,
+  // job), other people's invites, banners, and the runs count (see below).
+  const BACKUP_KIND = 'psycheai-backup';
+  const BACKUP_KEYS = ['profile', 'digest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account'];
+
+  function backupFile() {
+    const data = {};
+    for (const name of BACKUP_KEYS) {
+      const value = store.read(KEYS[name], null);
+      if (value !== null) data[name] = value;
+    }
+    return { kind: BACKUP_KIND, v: 1, savedAt: new Date().toISOString(), data };
+  }
+
+  /** "Psyche Backup - Jared Sia - 15102026.json": the PDF's name, for today. */
+  function backupFileName(profile) {
+    return reportFileName(Object.assign({}, profile, { createdAt: Date.now() }))
+      .replace(/^Psyche Report/, 'Psyche Backup').replace(/\.pdf$/, '.json');
+  }
+
+  function saveBackup() {
+    if (!state.profile) return;
+    const blob = new Blob([JSON.stringify(backupFile())], { type: 'application/json' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = backupFileName(state.profile);
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+  }
+  $('#save-backup').addEventListener('click', saveBackup);
+
+  const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+  /**
+   * The parts of a backup file that are safe to put back, or null.
+   *
+   * The file is the reader's own and could have been edited, or could be any
+   * .json at all, so each part is checked for the shape the app expects and
+   * anything else is left out rather than written into storage. The card has
+   * to decode from its own payload, which is what the link and every sync
+   * are made from. The invite code is worked out again from its secret rather
+   * than taken from the file.
+   */
+  async function readBackup(text) {
+    let file;
+    try { file = JSON.parse(text); } catch (error) { return null; }
+    if (!isRecord(file) || file.kind !== BACKUP_KIND || file.v !== 1 || !isRecord(file.data)) return null;
+    const data = file.data;
+    const profile = data.profile;
+    if (!isRecord(profile) || !isRecord(profile.card) || !isRecord(profile.report) ||
+        typeof profile.payload !== 'string') return null;
+    try { if (!(await Card.decodeCard(profile.payload))) return null; } catch (error) { return null; }
+    const out = { profile };
+    if (isRecord(data.digest)) out.digest = data.digest;
+    if (Array.isArray(data.history)) out.history = data.history.filter(isRecord).slice(0, 25);
+    if (isRecord(data.plan)) out.plan = data.plan;
+    if (data.pdfSaved === true) out.pdfSaved = true;
+    if (isRecord(data.referral) && /^[0-9a-f]{64}$/.test(data.referral.secret || '')) {
+      out.referral = { secret: data.referral.secret, code: (await sha256Hex(data.referral.secret)).slice(0, 12) };
+      // The link is locked with its key and saved under this invite code, so
+      // one is only any use with the other.
+      const link = data.link;
+      if (isRecord(link) && LINK_KEY.test(link.key || '')) {
+        out.link = LINK_ID.test(link.id || '') && /^[0-9a-f]{16}$/.test(link.card || '')
+          ? { key: link.key, id: link.id, card: link.card, secret: out.referral.code }
+          : { key: link.key };
+      }
+    }
+    if (typeof data.account === 'string' && /^[0-9a-f]{64}$/.test(data.account)) out.account = data.account;
+    return out;
+  }
+
+  function sayRestore(message) {
+    const alert = $('#restore-alert');
+    alert.textContent = message || '';
+    alert.hidden = !message;
+  }
+
+  $('#restore-open').addEventListener('click', () => {
+    sayRestore('');
+    $('#restore-input').value = '';
+    $('#restore-input').click();
+  });
+  $('#restore-input').addEventListener('change', async () => {
+    const file = $('#restore-input').files && $('#restore-input').files[0];
+    // Never over a card this browser already has: that one would be lost.
+    if (!file || state.profile) return;
+    const button = $('#restore-open');
+    button.disabled = true;
+    button.textContent = Copy.STRUCTURED.backup.restoring;
+    let parts = null;
+    // A backup is a few hundred kilobytes; a much larger file is not one.
+    try { parts = file.size < 5 * 1024 * 1024 ? await readBackup(await file.text()) : null; } catch (error) { parts = null; }
+    button.disabled = false;
+    button.textContent = Copy.STRUCTURED.backup.restore;
+    if (!parts) { sayRestore(Copy.STRUCTURED.backup.bad); return; }
+    if (!store.write(KEYS.profile, parts.profile)) {
+      store.remove(KEYS.profile);
+      sayRestore(Copy.STRUCTURED.backup.full);
+      return;
+    }
+    for (const name of BACKUP_KEYS) {
+      if (name !== 'profile' && name in parts) store.write(KEYS[name], parts[name]);
+    }
+    // The card restored was an analysis this reader already had, so it counts
+    // as one here too, as it did in the browser it came from: restoring is not
+    // a way to a fresh free analysis.
+    if (runCount() < 1) store.write(RUNS_KEY, 1);
+    sayRestore('');
+    state.profile = parts.profile;
+    state.digest = store.read(KEYS.digest, null);
+    // Where a reader with a card starts, as boot() would land them.
+    renderProfile();
+    show('profile');
+    window.scrollTo(0, 0);
+    refreshSyncsDot();
+    collectSyncs();
   });
 
   // ══════════════ 3. compatibility links ══════════════
