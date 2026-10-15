@@ -180,6 +180,11 @@
     giftBannerClosed: 'psycheai_gift_banner_closed',
     inviteBannerClosed: 'psycheai_invite_banner_closed',
     gifts: 'psycheai_gifts_made',
+    // Ask Psyche: every question and answer, kept in this browser only (the
+    // server keeps none), newest last; and a payment for questions that was
+    // made but not yet credited, to credit on the next open (openAsk).
+    ask: 'psycheai_ask',
+    askPending: 'psycheai_ask_pending',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -2204,7 +2209,7 @@
    */
   function hubSectionsHtml(report) {
     // The way into My Report is a button under the card's tools (cardGuideHtml).
-    return secretRoastHtml(report.bonus) + methodCardHtml(report, false) + referralCardHtml(true);
+    return secretRoastHtml(report.bonus) + askCardHtml() + methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -2401,10 +2406,11 @@
       '<div class="premium-tier-head">' +
         '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
         '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
-        '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span>' +
+        // The price, and under it the other way in: share the link.
+        '<span class="premium-tier-pricebox"><span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span>' +
+        '<span class="premium-free-badge">' + Copy.lineIcon('🎁') + '<span>' + esc(I.premiumFree) + '</span></span></span>' +
       '</div>' +
       '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +
-      '<p class="insight-premium-how">' + Copy.lineIcon('🔗') + '<span>' + esc(I.premiumHow) + '</span></p>' +
       '<ol class="insight-parts">' + parts.map((key, i) =>
         '<li class="insight-part">' +
           '<span class="insight-part-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' +
@@ -6336,8 +6342,12 @@
    * its numbered heading is the toggle, and every section inside stays open.
    * Numeral and title only: the sections inside say what they are.
    */
-  function partCardHtml(key, inner) {
+  function partCardHtml(key, inner, askable) {
     const part = Copy.STRUCTURED.parts[key];
+    // On the reader's own My Report: a way to ask about this part, the
+    // question started for them (openAsk).
+    const ask = askable ? '<p class="ask-part"><button type="button" class="ask-part-link" data-ask="' + esc(part.title) + '">' +
+      '<span class="ask-mark" aria-hidden="true"></span>' + esc(Copy.STRUCTURED.ask.partLink) + ' <span aria-hidden="true">→</span></button></p>' : '';
     const numeral = String(Math.max(0, PART_ORDER.indexOf(key))).padStart(2, '0');
     return '<section class="card section-card part-card" data-part-card="' + esc(key) + '" data-start-open>' +
       '<div class="card-head card-head-toggle part-card-head"><div class="report-part" data-part="' + esc(key) + '">' +
@@ -6345,7 +6355,7 @@
       '<h2 class="part-title"><button class="card-toggle" type="button" aria-expanded="true">' +
       '<span class="card-toggle-text">' + esc(part.title) + '</span><span class="card-chevron" aria-hidden="true"></span>' +
       '</button></h2></div></div>' +
-      '<div class="part-body">' + inner + '</div></section>';
+      '<div class="part-body">' + inner + ask + '</div></section>';
   }
 
   /**
@@ -7094,6 +7104,7 @@
     // My Report opens with its own header, as My Syncs does; the part nav
     // under it (or down the left) carries no title of its own.
     let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(ownPage);
+    const askable = ownPage && askReady();
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -7103,7 +7114,7 @@
       head('👤', esc(S.titles.summary), 'summary') +
       essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
     if (patterns.length) part += patternsCardHtml(patterns);
-    html += partCardHtml('overview', part);
+    html += partCardHtml('overview', part, askable);
 
     // Part 1: who you are. MBTI first: the type is what most readers know and
     // look for. The model still writes the Big Five first (the E/I letter is
@@ -7120,7 +7131,7 @@
       bigFiveStructuredHtml(report.bigFive) + '</div>';
     part += paidCard(paid('wellness'), unlocked, { sample, flat: true, title: S.titles.wellness, sub: S.definitions.wellness,
       body: wellnessStructuredBody });
-    html += partCardHtml('who', part);
+    html += partCardHtml('who', part, askable);
 
     // Part 2: what drives you.
     part = '';
@@ -7133,7 +7144,7 @@
       interestsStructuredHtml(report.interests) + '</div>';
     part += '<div class="card section-card">' + head('🧿', esc(TEXT.valuesBeliefs), 'values') +
       standForHtml(report) + '</div>';
-    html += partCardHtml('drives', part);
+    html += partCardHtml('drives', part, askable);
 
     // Part 3: how you connect.
     const relationship = report.relationship || {};
@@ -7147,7 +7158,7 @@
     // Locked (the sample), the two premium halves keep their own covers.
     if (!attachment) part += paidCard(paid('attachment'), unlocked, { sample, flat: true });
     if (!idealPartner) part += paidCard(paid('idealPartner'), unlocked, { sample, flat: true });
-    html += partCardHtml('connect', part);
+    html += partCardHtml('connect', part, askable);
 
     // Part 4: how you work — the description and the coach's read as one
     // section, under the part's own title rather than a second "How you work".
@@ -7157,7 +7168,7 @@
     part = '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
       workStructuredBody(career, coaching) + '</div>';
     if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
-    html += partCardHtml('career', part);
+    html += partCardHtml('career', part, askable);
 
     // Part 5: putting it together.
     part = '';
@@ -7178,7 +7189,9 @@
     // sample, which has no My Psyche, keeps it at the end of Part 05. There
     // is no appendix part on the page: the roast is on My Psyche too.
     if (!ownPage) part += methodCardHtml(report, sample);
-    html += partCardHtml('together', part);
+    html += partCardHtml('together', part, askable);
+    // After the five parts: Ask Psyche, for everything the report raised.
+    if (askable) html += askCardHtml();
     return html;
   }
 
@@ -9329,7 +9342,7 @@
     const paymentRequest = stripe.paymentRequest({
       country: intent.country,
       currency: intent.currency,
-      total: { label: 'PsycheAI – Psyche Report', amount: intent.amount },
+      total: { label: premiumKind === 'ask' ? 'PsycheAI – Ask Psyche, 5 questions' : 'PsycheAI – Psyche Report', amount: intent.amount },
       requestPayerName: false,
       requestPayerEmail: false,
     });
@@ -9385,6 +9398,7 @@
     // Named for what this sheet sells: the card run again, or the report.
     payButton.textContent = premiumKind === 'analysis'
       ? TEXT.analysisPayPrefix + Prices.label(intent.currency, 'analysis', intent.discount ? intent.amount : undefined)
+      : premiumKind === 'ask' ? TEXT.askPayPrefix + Prices.label(intent.currency, 'ask')
       : TEXT.premiumUnlockPrefix +
         (intent.discount ? Prices.label(intent.currency, 'unlock', intent.amount) : TEXT.premiumPriceLabel);
     errorEl.hidden = true;
@@ -9433,7 +9447,8 @@
     // explicit default rather than a chain of ternaries that grows a bug each
     // time a product is added.
     const kind = product === 'analysis' ? 'analysis'
-      : product === 'compatibility' ? 'compatibility' : 'unlock';
+      : product === 'compatibility' ? 'compatibility'
+      : product === 'ask' ? 'ask' : 'unlock';
     // The re-run button's own route to this same US$5 product, used only
     // when premium is already unlocked and the reader is adding/changing
     // data — see rerunWithAdditionalData. Ledgers and prices exactly like a
@@ -9465,12 +9480,14 @@
     if (kind === 'unlock') trackStep('unlock_open');
     $('#premium-dialog-title').textContent =
       kind === 'analysis' ? TEXT.analysisDialogTitle
+        : kind === 'ask' ? TEXT.askDialogTitle
         : rerunAll ? TEXT.premiumRerunDialogTitle
         : TEXT.premiumDialogTitle;
     // The unlock's sheet is its title and the ways to pay: what it opens was
     // set out in the offer, and that new data redraws the card was said in
     // the data popout before the first file was picked (#datasources-confirm).
     const blurb = kind === 'analysis' ? (analysisNote || TEXT.analysisDialogBlurb)
+      : kind === 'ask' ? TEXT.askDialogBlurb
       : rerunAll ? TEXT.premiumRerunDialogBlurb : '';
     $('#premium-dialog-blurb').textContent = blurb;
     $('#premium-dialog-blurb').hidden = !blurb;
@@ -9495,6 +9512,8 @@
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
     renderPremiumPrice(kind, CURRENCY, null);
+    // Questions are not discounted by a promo code: no code field on that sheet.
+    dialog.querySelector('.premium-promo').hidden = kind === 'ask';
     showReferralOffer(kind, rerunAll);
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -9572,7 +9591,7 @@
    */
   function renderPremiumPrice(product, currency, discount) {
     const box = $('#premium-price');
-    if (product !== 'unlock' && product !== 'analysis') { box.hidden = true; box.innerHTML = ''; return; }
+    if (product !== 'unlock' && product !== 'analysis' && product !== 'ask') { box.hidden = true; box.innerHTML = ''; return; }
     const row = (term, value, cls) => '<div class="premium-price-row' + (cls ? ' ' + cls : '') + '"><dt>' + esc(term) +
       '</dt><dd>' + value + '</dd></div>';
     const full = Prices.label(currency, product);
@@ -9867,7 +9886,7 @@
   // What it leaves out: anything mid-purchase or mid-run (unlock, pending,
   // job), other people's invites, banners, and the runs count (see below).
   const BACKUP_KIND = 'psycheai-backup';
-  const BACKUP_KEYS = ['profile', 'digest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account'];
+  const BACKUP_KEYS = ['profile', 'digest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account', 'ask'];
 
   function backupFile() {
     const data = {};
@@ -9923,6 +9942,9 @@
     if (isRecord(data.digest)) out.digest = data.digest;
     if (Array.isArray(data.history)) out.history = data.history.filter(isRecord).slice(0, 25);
     if (isRecord(data.plan)) out.plan = data.plan;
+    if (Array.isArray(data.ask)) {
+      out.ask = data.ask.filter(item => isRecord(item) && typeof item.q === 'string' && typeof item.a === 'string').slice(-ASK_KEEP);
+    }
     if (data.pdfSaved === true) out.pdfSaved = true;
     if (isRecord(data.referral) && /^[0-9a-f]{64}$/.test(data.referral.secret || '')) {
       out.referral = { secret: data.referral.secret, code: (await sha256Hex(data.referral.secret)).slice(0, 12) };
@@ -9986,6 +10008,243 @@
     if ($('#datasources-dialog').open) { restoredBackup = true; $('#datasources-back').click(); }
     location.reload();
   });
+
+  // ---------- Ask Psyche ----------
+  //
+  // A reader with a full Psyche Report asks questions about it, one credit
+  // each: five for US$5 (the `ask` product), and every credit Your Referral
+  // earns counts as one more (lib/askcredits.js). Each question goes to the
+  // server with the report and card — never the digest — and the last few
+  // questions for context; the answer comes back with next steps and two
+  // follow-ups. The whole thread is kept here, in this browser, and in the
+  // backup file; the server keeps none of it.
+  const ASK_KEEP = 50;
+  const ASK_MAX = 300;
+  let askCreditsNow = null;
+  let askBusy = false;
+  const askThread = () => (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string');
+  const askReady = () => Boolean(state.profile) && hasExplanations(state.profile);
+
+  /** The report and card as the model sees them: the reader's own name back to PsycheUser. */
+  function askReport() {
+    const p = state.profile;
+    const body = { card: p.card, report: p.report };
+    if (p.premiumAnalysis) body.premiumAnalysis = p.premiumAnalysis;
+    let text = JSON.stringify(body);
+    const name = String((p.card && p.card.name) || '').trim();
+    for (const part of [name, name.split(/\s+/)[0]].filter(n => n && n.length >= 2)) {
+      text = text.replace(new RegExp(part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'PsycheUser');
+    }
+    return JSON.parse(text);
+  }
+  /** "PsycheUser" in an answer, back to the reader's first name. */
+  function askOwnName(text) {
+    const first = String((state.profile && state.profile.card && state.profile.card.name) || '').trim().split(/\s+/)[0] || 'you';
+    return String(text || '').replace(/PsycheUser/g, first);
+  }
+
+  function askItemHtml(item, pending) {
+    const A = Copy.STRUCTURED.ask;
+    const answer = pending ? '<p class="ask-typing">' + esc(A.thinking) + '</p>'
+      : paragraphs(item.a) +
+        (item.steps && item.steps.length ? '<p class="ask-steps-head">' + esc(A.steps) + '</p><ul class="ask-steps">' +
+          item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +
+        (item.follow && item.follow.length ? '<div class="ask-follow"><span>' + esc(A.follow) + '</span>' +
+          item.follow.map(q => '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' : '');
+    return '<div class="ask-item' + (pending ? ' is-pending' : '') + '"><p class="ask-q">' + esc(item.q) + '</p>' +
+      '<div class="ask-a">' + answer + '</div></div>';
+  }
+  function renderAskThread(pendingQuestion) {
+    const A = Copy.STRUCTURED.ask;
+    const items = askThread();
+    const intro = '<div class="ask-intro"><p>' + esc(A.intro) + '</p><p class="ask-try">' + esc(A.tryOne) + '</p>' +
+      '<div class="ask-suggestions">' + A.suggestions.map(q =>
+        '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div></div>';
+    setHtml($('#ask-thread'), (items.length ? '' : intro) + items.map(item => askItemHtml(item)).join('') +
+      (pendingQuestion ? askItemHtml({ q: pendingQuestion }, true) : ''));
+    const thread = $('#ask-thread');
+    thread.scrollTop = thread.scrollHeight;
+  }
+  function sayAsk(message, tone) {
+    const line = $('#ask-status');
+    line.textContent = message || '';
+    line.hidden = !message;
+    line.className = 'ask-status' + (tone ? ' is-' + tone : '');
+  }
+  function renderAskCredits() {
+    const A = Copy.STRUCTURED.ask;
+    const n = askCreditsNow ? askCreditsNow.total : null;
+    const pill = $('#ask-credits');
+    pill.hidden = n === null;
+    pill.textContent = n === null ? '' : n > 0 ? A.left(n) : A.none;
+    pill.classList.toggle('is-empty', n === 0);
+    const out = n === 0;
+    $('#ask-compose').hidden = out;
+    $('#ask-buy').hidden = !out;
+    if (out) {
+      const price = Prices.label(CURRENCY, 'ask');
+      $('#ask-buy-text').textContent = A.buyText(price, 5);
+      $('#ask-buy-go').textContent = A.buy(price);
+      $('#ask-buy-note').textContent = A.buyNote;
+    }
+  }
+  async function refreshAskCredits() {
+    const mine = await ensureReferral();
+    if (!mine) return null;
+    try {
+      const response = await fetch('api/ask/credits', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: mine.secret }) });
+      if (response.ok) askCreditsNow = await response.json();
+    } catch (error) { /* keep what we had */ }
+    renderAskCredits();
+    return askCreditsNow;
+  }
+  // A payment for questions is credited by the server once; written down
+  // first, so a closed tab between paying and crediting is credited on the
+  // next open rather than lost.
+  async function creditAskPayment(paymentIntentId) {
+    const mine = await ensureReferral();
+    if (!mine || !paymentIntentId) return false;
+    store.write(KEYS.askPending, { paymentIntentId, at: Date.now() });
+    try {
+      const answer = await LLM.postWithTicket('api/ask/buy', { secret: mine.secret, paymentIntentId });
+      store.remove(KEYS.askPending);
+      if (answer && typeof answer.total === 'number') askCreditsNow = answer;
+      renderAskCredits();
+      return true;
+    } catch (error) {
+      sayAsk((error && error.message) || TEXT.premiumFailed, 'bad');
+      return false;
+    }
+  }
+
+  /** Opens Ask Psyche, with a question started for the reader when one is given. */
+  async function openAsk(prefill) {
+    if (!askReady()) return;
+    const A = Copy.STRUCTURED.ask;
+    const dialog = $('#ask-dialog');
+    $('#ask-sub').textContent = A.sub;
+    $('#ask-privacy').textContent = A.privacy;
+    $('#ask-send').textContent = A.send;
+    $('#ask-input').placeholder = A.placeholder;
+    $('#ask-input').maxLength = ASK_MAX;
+    sayAsk('');
+    renderAskThread();
+    renderAskCredits();
+    if (typeof prefill === 'string') $('#ask-input').value = prefill;
+    askCount();
+    if (!dialog.open) {
+      if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+    }
+    const input = $('#ask-input');
+    if (!$('#ask-compose').hidden) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    const pending = store.read(KEYS.askPending, null);
+    if (pending && pending.paymentIntentId) await creditAskPayment(pending.paymentIntentId);
+    await refreshAskCredits();
+  }
+  function askCount() {
+    const n = $('#ask-input').value.length;
+    $('#ask-count').textContent = n + '/' + ASK_MAX;
+    $('#ask-count').classList.toggle('is-near', n > ASK_MAX - 30);
+  }
+
+  async function sendAsk() {
+    const A = Copy.STRUCTURED.ask;
+    const question = $('#ask-input').value.replace(/\s+/g, ' ').trim().slice(0, ASK_MAX);
+    if (askBusy) return;
+    if (question.length < 3) { sayAsk(A.tooShort, 'bad'); return; }
+    if (askCreditsNow && askCreditsNow.total < 1) { renderAskCredits(); return; }
+    const mine = await ensureReferral();
+    if (!mine) return;
+    askBusy = true;
+    $('#ask-send').disabled = true;
+    sayAsk('');
+    renderAskThread(question);
+    try {
+      const history = askThread().slice(-3).map(item => ({ q: item.q, a: item.a }));
+      const answer = await LLM.postWithTicket('api/ask', { secret: mine.secret, question, report: askReport(), history });
+      const item = { q: question, a: askOwnName(answer.answer), steps: (answer.nextSteps || []).map(askOwnName),
+        follow: answer.followUps || [], at: Date.now() };
+      store.write(KEYS.ask, askThread().concat([item]).slice(-ASK_KEEP));
+      if (answer.credits) askCreditsNow = answer.credits;
+      $('#ask-input').value = '';
+      askCount();
+      renderAskThread();
+      renderAskCredits();
+      refreshAskCards();
+    } catch (error) {
+      renderAskThread();
+      if (error && error.status === 402) { await refreshAskCredits(); sayAsk(A.noCredits, 'bad'); }
+      else sayAsk((error && error.message) || A.failed, 'bad');
+    } finally {
+      askBusy = false;
+      $('#ask-send').disabled = false;
+    }
+  }
+
+  async function buyAsk() {
+    const A = Copy.STRUCTURED.ask;
+    $('#ask-dialog').close();
+    const auth = await askPaymentFor('ask', null);
+    await openAsk();
+    if (auth && auth.paymentIntentId && await creditAskPayment(auth.paymentIntentId)) sayAsk(A.bought, 'good');
+  }
+
+  $('#ask-send').addEventListener('click', sendAsk);
+  $('#ask-input').addEventListener('input', askCount);
+  $('#ask-input').addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); sendAsk(); }
+  });
+  $('#ask-buy-go').addEventListener('click', buyAsk);
+  $('#ask-close').addEventListener('click', () => $('#ask-dialog').close());
+  $('#ask-dialog').addEventListener('click', event => {
+    if (event.target === $('#ask-dialog')) { $('#ask-dialog').close(); return; }
+    const chip = event.target.closest('.ask-chip');
+    if (!chip) return;
+    $('#ask-input').value = chip.dataset.q || '';
+    askCount();
+    if (!$('#ask-compose').hidden) $('#ask-input').focus();
+  });
+  // Every way in: the card on My Psyche and at the end of My Report, and the
+  // link at the foot of each part of My Report, which starts the question.
+  document.addEventListener('click', event => {
+    const open = event.target.closest && event.target.closest('[data-ask]');
+    if (!open) return;
+    event.preventDefault();
+    const part = open.getAttribute('data-ask');
+    openAsk(part ? Copy.STRUCTURED.ask.partPrefill(part) : undefined);
+  });
+
+  /** The Ask Psyche card: on My Psyche, and at the end of My Report. */
+  function askCardHtml() {
+    if (!askReady()) return '';
+    const A = Copy.STRUCTURED.ask;
+    const asked = askThread().length;
+    return '<section class="card section-card ask-card screen-only">' +
+      '<div class="ask-card-head"><span class="ask-mark" aria-hidden="true"></span><div>' +
+        '<h3 class="ask-card-title">' + esc(A.cardTitle) + '</h3>' +
+        '<p class="ask-card-blurb">' + esc(A.cardBlurb) + '</p></div></div>' +
+      '<div class="ask-suggestions">' + A.suggestions.slice(0, 3).map(q =>
+        '<button type="button" class="ask-chip" data-ask="" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' +
+      '<div class="ask-card-foot"><button type="button" class="btn ask-card-go" data-ask="">' + esc(A.cardButton) + '</button>' +
+        '<span class="ask-card-asked"' + (asked ? '' : ' hidden') + '>' + esc(A.cardAsked(asked)) + '</span></div>' +
+    '</section>';
+  }
+  function refreshAskCards() {
+    const n = askThread().length;
+    for (const span of document.querySelectorAll('.ask-card-asked')) {
+      span.textContent = Copy.STRUCTURED.ask.cardAsked(n);
+      span.hidden = !n;
+    }
+  }
+  // A suggestion on the card opens Ask Psyche with that question in the box.
+  document.addEventListener('click', event => {
+    const chip = event.target.closest && event.target.closest('.ask-card .ask-chip');
+    if (!chip) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openAsk(chip.dataset.q || '');
+  }, true);
 
   // ══════════════ 3. compatibility links ══════════════
   //

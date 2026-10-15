@@ -725,6 +725,10 @@
     // be the wrong verb for sections they already have. Same US$5, same
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
+    // The payment sheet when it sells Ask Psyche questions.
+    askDialogTitle: 'Get 5 questions for Ask Psyche',
+    askDialogBlurb: 'Five questions about your Psyche Report, each answered from it with steps to take this week. Questions you do not use stay for later.',
+    askPayPrefix: 'Pay ',
     premiumRerunDialogTitle: 'Re-run your Psyche Report',
     premiumRerunDialogBlurb: 'One charge regenerates everything against your new data – your card and the Psyche Report together.',
     premiumMockPay: 'Simulate payment (mock mode)',
@@ -768,7 +772,7 @@
     // cards earn a credit, for gifts now and premium features later.
     referral: {
       title: 'Your Referral',
-      blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use credits to gift a Psyche Report, with more premium features coming soon.',
+      blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use a credit to ask Psyche a question or to gift a Psyche Report.',
       shareHint: 'Share your card or link above to start.',
       // The small button at the head's right: the same share message and
       // link as the card's own Copy link.
@@ -1149,8 +1153,8 @@
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts – plus the sections only the Psyche Report has.',
-      // Under the blurb: the two ways to it (lib/referral.js, claimFirst).
-      premiumHow: 'US$5 – or free for your first one when you share your link with a friend and they open it.',
+      // Under the price in the head: the other way to it (lib/referral.js, claimFirst).
+      premiumFree: 'Share with a friend and get it free!',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
@@ -1187,6 +1191,47 @@
       bad: 'That file is not a PsycheAI backup, or it is damaged. Choose the .json file saved from “Save a backup”.',
       full: 'Your backup could not be restored: this browser has no room to store it.',
       deleteHint: 'Save a backup first to keep a copy you can restore in any browser.',
+    },
+    // Ask Psyche: questions about the reader's own Psyche Report, answered
+    // from it (lib/prompts.js, ASK_SYSTEM), one credit each. See openAsk in
+    // app.js.
+    ask: {
+      title: 'Ask Psyche',
+      sub: 'Your personal coach, who has read your whole Psyche Report.',
+      intro: 'Ask anything about your report – how to use your strengths at work, why some people drain you, what to work on next. Each answer ends with steps you can take this week.',
+      tryOne: 'Try one of these',
+      placeholder: 'Ask about your Psyche Report…',
+      send: 'Ask',
+      thinking: 'Psyche is thinking…',
+      steps: 'Your next steps',
+      follow: 'Ask next',
+      left: n => n === 1 ? '1 question left' : n + ' questions left',
+      none: 'No questions left',
+      buyText: (price, n) => 'Get ' + n + ' questions for ' + price + '. Each answer is written from your own report, with steps to take this week.',
+      buy: price => 'Get 5 questions – ' + price,
+      buyNote: 'Credits from Your Referral count too: every 3 connections who make their Psyche Card from your link = 1 question.',
+      bought: 'Added 5 questions. Ask away.',
+      privacy: 'Your question and your Psyche Report go to Google Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.',
+      tooShort: 'Ask a little more – a few words at least.',
+      failed: 'Psyche could not answer that just now. Your question was not used – try again.',
+      noCredits: 'You have no questions left.',
+      // On My Psyche and at the end of My Report.
+      cardTitle: 'Ask Psyche',
+      cardBlurb: 'Ask your report anything, and get coaching built on it: what to work on, how to use your strengths, how to handle the people in your life.',
+      cardButton: 'Ask Psyche',
+      cardAsked: n => n === 1 ? '1 question asked' : n + ' questions asked',
+      // At the end of each part of My Report, the question started for them.
+      partLink: 'Ask Psyche about this',
+      partPrefill: title => 'About "' + title + '": ',
+      // Ready-made questions: coaching first.
+      suggestions: [
+        'What should I focus on this week to grow?',
+        'How can I use my strengths better at work?',
+        'Why do I clash with some people, and how do I handle it?',
+        'What does my personality type mean for my relationships?',
+        'Which careers suit me best right now, and why?',
+        'Coach me: one habit to build from my development plan.',
+      ],
     },
     // The page's actions: in full on My Psyche, one word each under My
     // Report's part nav, where the row is narrow (each still has its full

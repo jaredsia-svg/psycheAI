@@ -2733,6 +2733,60 @@ stack full width.
   say so, and say to keep it private because it holds the link's key. The Delete everything sheet
   suggests saving a backup first.
 
+## Ask Psyche: questions about your own report (October 2026)
+
+A reader with a full Psyche Report can ask it questions and get coaching built on it. It is paid
+per question: **five for US$5** (`ask` in `docs/prices.js`, the report's price in every currency),
+and every credit Your Referral earns (three friends' cards) is one more question.
+
+**What the model is given: the report and the card, not the digest.** The report already holds
+every conclusion and the evidence for each, so answers stay consistent with what the reader read.
+The digest would cost three to five times as much per question (about 45,000 input tokens against
+about 8,000). The premium read it was written from is not kept, and the server holds neither. The
+reader's own name goes back to "PsycheUser" before it is sent (`askReport`) and comes back into the
+answer on the device (`askOwnName`). The last three questions and answers go along for follow-ups.
+At Gemini flash prices a question costs about one to two cents.
+
+**Coaching, not just answers.** The prompt (`ASK_SYSTEM`, `ASK_SCHEMA` in lib/prompts.js) answers
+from the report, names the finding it rests on, never invents evidence, stays on the reader's own
+growth, is not therapy or diagnosis, and keeps the report's conduct rule. Each answer is 120 to 250
+words, then *Your next steps* (one to three things for this week), then two follow-up questions as
+chips. The empty popout offers six ready-made questions, coaching first (*What should I focus on
+this week to grow?*).
+
+**Credits** (`lib/askcredits.js`): kept under the reader's referral code, which only the holder of
+its secret can spend from. That secret is in the backup file, so questions bought survive a new
+browser.
+- `addPack` adds five per verified `ask` payment, once per PaymentIntent.
+- `spend` takes a bought question first, then a link credit (`referral.spendCredit`), before the
+  model is asked, and gives it back if no answer comes.
+- A payment is written down on the device before it is credited (`psycheai_ask_pending`), so a tab
+  closed in between is credited on the next open.
+- The stored record is counts only: no question, report or answer.
+
+**Routes:** `/api/ask/credits` (a read, no ticket), `/api/ask/buy` and `/api/ask` (ticketed; `ask`
+is limited to 30 an hour, since each call is paid for anyway). The question is held to 300
+characters (`ASK_QUESTION_MAX`), the report to 150,000.
+
+**Where it is:**
+- **My Psyche:** an *Ask Psyche* card under the roast, with three ready-made questions and a count
+  of questions asked.
+- **My Report:** at the foot of every part, *Ask Psyche about this →* opens it with *About "Who
+  you are": * already typed. The report ends with the same card.
+- **The popout** (`#ask-dialog`, `openAsk`): the conversation so far, a counter of questions left,
+  and a box with a character count. When none are left, *Get 5 questions* opens the ordinary
+  payment sheet for the `ask` product, with no promo code and no share box.
+- **Storage:** every question and answer is kept in this browser (`psycheai_ask`, the latest 50), in
+  the backup file (`BACKUP_KEYS`), and goes with Delete everything.
+
+**Privacy wording changed with it.** The FAQ and privacy page used to say the finished report never
+leaves the device. They now say it stays on the device unless the reader uses Ask Psyche, when the
+report and the question go to Google Gemini for that one answer and PsycheAI keeps neither. The
+privacy page also lists the question counts, and the terms describe the questions.
+
+**On the front page** the Psyche Report's price has a gift tag under it, *Share with a friend and
+get it free!* (`.premium-free-badge`). It replaced the longer line under the blurb.
+
 ## Counting what works, without counting anyone
 
 The site promises no trackers, no cookies and no third-party analytics, and that no one can see

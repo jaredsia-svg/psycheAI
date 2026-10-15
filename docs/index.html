@@ -617,6 +617,38 @@
 </dialog>
 
 
+<!-- Ask Psyche: questions about the reader's own Psyche Report, one credit
+     each. The thread is kept in this browser (psycheai_ask) and drawn by
+     openAsk in app.js; the words are in copy.js (STRUCTURED.ask). -->
+<dialog id="ask-dialog" class="mode-dialog ask-dialog" aria-labelledby="ask-title">
+  <div class="ask-head">
+    <span class="ask-mark" aria-hidden="true"></span>
+    <div class="ask-head-text">
+      <h2 id="ask-title">Ask Psyche</h2>
+      <p class="ask-sub" id="ask-sub"></p>
+    </div>
+    <span class="ask-credits" id="ask-credits" hidden></span>
+    <button class="ask-close" id="ask-close" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="ask-thread" id="ask-thread" aria-live="polite"></div>
+  <div class="ask-foot">
+    <p class="ask-status" id="ask-status" role="status" hidden></p>
+    <div class="ask-compose" id="ask-compose">
+      <textarea id="ask-input" rows="2" maxlength="300" aria-label="Your question"></textarea>
+      <div class="ask-compose-row">
+        <span class="ask-count" id="ask-count">0/300</span>
+        <button class="btn" id="ask-send" type="button">Ask</button>
+      </div>
+    </div>
+    <div class="ask-buy" id="ask-buy" hidden>
+      <p class="ask-buy-text" id="ask-buy-text"></p>
+      <button class="btn" id="ask-buy-go" type="button"></button>
+      <p class="fineprint ask-buy-note" id="ask-buy-note"></p>
+    </div>
+    <p class="fineprint ask-privacy" id="ask-privacy"></p>
+  </div>
+</dialog>
+
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>
   <!-- The page's header: who it belongs to, the three ways two people can be
@@ -740,9 +772,10 @@
     </div></div>
 
     <h3>What data leaves this device?</h3>
-    <p>Your Instagram zip file, your photos and videos, and your finished report never leave this
-      device.</p>
-    <p>The only thing sent is a short digest of your own activity, usually about 100 KB of text: your
+    <p>Your Instagram zip file and your photos and videos never leave this device. Your finished report
+      stays on it too, unless you use Ask Psyche: then your report and your question go to Google Gemini
+      for that one answer, and PsycheAI keeps no copy of either.</p>
+    <p>The only thing sent to make your card and report is a short digest of your own activity, usually about 100 KB of text: your
       posts, stories, captions, likes, searches, saves, follows and messages. You see it and can review
       it before anything goes.</p>
     <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI uses their
@@ -808,7 +841,8 @@
       Card again is <span data-price="analysis">US$2</span>. The Psyche Report – every section explained, plus your wellbeing,
       attachment style, ideal partner, career coaching and development plan – is a single
       <span data-price="unlock">US$5</span>, or free for your first one once 1 connection opens your
-      link. Re-runs are paid. You see the price before you pay.</p>
+      link. Re-runs are paid. With a Psyche Report you can also ask Psyche questions about it: five for
+      <span data-price="ask">US$5</span>. You see the price before you pay.</p>
 
     <h3>How does Psyche Sync work?</h3>
     <p>You get one personal link, also printed on your Psyche Card as a QR code. Send it to a

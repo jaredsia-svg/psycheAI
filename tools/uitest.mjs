@@ -3560,11 +3560,12 @@ try {
       connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       careerChips: tier ? [...tier.querySelectorAll('.insight-part')[3].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       togetherChips: tier ? tier.querySelectorAll('.insight-part')[4].querySelectorAll('.insight-part-chips').length : -1,
-      how: tier && tier.querySelector('.insight-premium-how') ? tier.querySelector('.insight-premium-how').textContent : '',
+      how: tier && tier.querySelector('.premium-tier-pricebox .premium-free-badge') ? tier.querySelector('.premium-free-badge').textContent : '',
+      oldLine: tier ? tier.querySelectorAll('.insight-premium-how').length : -1,
     };
   });
-  check('the front page says the Psyche Report is US$5, or free for sharing your link with a friend',
-    premiumTier.how === 'US$5 – or free for your first one when you share your link with a friend and they open it.', premiumTier.how);
+  check('the front page\'s Psyche Report shows its price with a gift tag under it: share with a friend and get it free',
+    premiumTier.how === 'Share with a friend and get it free!' && premiumTier.oldLine === 0, JSON.stringify(premiumTier.how));
   check('the premium tier is the Psyche Report, by its five numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04,05' &&
       premiumTier.parts.join('|') === 'Who you are|What drives you|How you connect|How you work|Putting it together',
@@ -10685,11 +10686,11 @@ try {
     await page.evaluate(() => {
       const text = document.querySelector('#view-about').innerText;
       const never = text.indexOf('never leave this');
-      const sent = text.indexOf('The only thing sent is a short digest');
+      const sent = text.indexOf('The only thing sent to make your card and report is a short digest');
       return never > -1 && sent > never && /can review it before anything goes/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
-  check('the media, the zip and the finished report are named as never leaving',
-    /Your Instagram zip file, your photos and videos, and your finished report never leave this\s+device/i.test(about),
+  check('the media and the zip never leave, and the report only for Ask Psyche, which is named',
+    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask Psyche/i.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
@@ -11623,7 +11624,8 @@ try {
           about: body.querySelectorAll('.about-card').length,
           // The roast's own badge says what it is, not that it was paid for.
           badges: body.querySelectorAll('.part-card .mode-badge:not(.bonus-badge)').length,
-          whoLast: who ? who.lastElementChild.className : '',
+          // The last section, before the part's Ask Psyche link.
+          whoLast: who ? [...who.children].filter(n => !n.matches('.ask-part')).pop().className : '',
           more: body.querySelectorAll('details.more').length,
         };
       });
@@ -11684,7 +11686,7 @@ try {
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
-          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.open-report-card') ? 'open' :
+          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.ask-card') ? 'ask' : n.matches('.open-report-card') ? 'open' :
             n.matches('.method-card') ? 'method' : n.matches('.sync-invite-slot') ? 'sync' : n.className).join(','),
         card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
@@ -11714,13 +11716,104 @@ try {
             r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
-      check('structured: Back lands on My Psyche: card, the secret roast, Beyond your card, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
-        hubShape.order === 'roast,method,link' && hubShape.card && hubShape.parts === 0 &&
+      check('structured: Back lands on My Psyche: card, the secret roast, Ask Psyche, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
+        hubShape.order === 'roast,ask,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
+
+      // ---- Ask Psyche ----
+      {
+        const askCard = await sp.evaluate(() => {
+          const c = document.querySelector('#profile-body .ask-card');
+          return c ? { title: c.querySelector('.ask-card-title').textContent, chips: c.querySelectorAll('.ask-chip').length,
+            button: c.querySelector('.ask-card-go').textContent } : null;
+        });
+        check('Ask Psyche: My Psyche carries its card, with three questions to start from and a button',
+          Boolean(askCard) && askCard.title === 'Ask Psyche' && askCard.chips === 3 && askCard.button === 'Ask Psyche', JSON.stringify(askCard));
+        await sp.click('#profile-body .ask-card-go');
+        await sp.waitForSelector('#ask-dialog[open]', { timeout: 10000 });
+        await sp.waitForSelector('#ask-credits:not([hidden])', { timeout: 10000 });
+        const empty = await sp.evaluate(() => ({
+          intro: Boolean(document.querySelector('#ask-thread .ask-intro')),
+          suggestions: document.querySelectorAll('#ask-thread .ask-chip').length,
+          credits: document.querySelector('#ask-credits').textContent,
+          buy: !document.querySelector('#ask-buy').hidden && document.querySelector('#ask-buy-go').textContent,
+          compose: document.querySelector('#ask-compose').hidden,
+          privacy: document.querySelector('#ask-privacy').textContent }));
+        check('Ask Psyche opens on what it is, six questions to try, and, with none left, the way to get five',
+          empty.intro && empty.suggestions === 6 && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
+            empty.compose && /go to Google Gemini for this one answer; PsycheAI keeps no copy/.test(empty.privacy), JSON.stringify(empty));
+        await sp.click('#ask-buy-go');
+        await sp.waitForSelector('#premium-dialog[open] #premium-mock-pay:not([hidden])', { timeout: 15000 });
+        const sheet = await sp.evaluate(() => ({ title: document.querySelector('#premium-dialog-title').textContent,
+          price: document.querySelector('#premium-price').textContent, promo: document.querySelector('#premium-dialog .premium-promo').hidden,
+          share: document.querySelector('#premium-share').hidden }));
+        check('Ask Psyche: the payment sheet sells five questions at the report\'s price, with no promo code or share box',
+          sheet.title === 'Get 5 questions for Ask Psyche' && /US\$5/.test(sheet.price) && sheet.promo && sheet.share, JSON.stringify(sheet));
+        await sp.click('#premium-mock-pay');
+        await sp.waitForFunction(() => document.querySelector('#ask-dialog').open &&
+          document.querySelector('#ask-credits').textContent === '5 questions left', null, { timeout: 15000 });
+        check('paying adds five questions, says so, and opens the question box',
+          await sp.evaluate(() => /Added 5 questions/.test(document.querySelector('#ask-status').textContent) &&
+            !document.querySelector('#ask-compose').hidden && document.querySelector('#ask-buy').hidden));
+        // A ready-made question, then sent.
+        await sp.click('#ask-thread .ask-chip');
+        const filled = await sp.evaluate(() => ({ value: document.querySelector('#ask-input').value, count: document.querySelector('#ask-count').textContent,
+          max: document.querySelector('#ask-input').maxLength }));
+        check('a suggested question fills the box, counted against its 300 characters',
+          filled.value === 'What should I focus on this week to grow?' && filled.count === filled.value.length + '/300' && filled.max === 300,
+          JSON.stringify(filled));
+        const [askRequest] = await Promise.all([
+          sp.waitForRequest(r => r.url().endsWith('/api/ask') && r.method() === 'POST', { timeout: 15000 }),
+          sp.click('#ask-send'),
+        ]);
+        await sp.waitForSelector('#ask-thread .ask-item:not(.is-pending) .ask-a', { timeout: 30000 });
+        const sent = askRequest.postDataJSON();
+        const realName = await sp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.name);
+        check('the question goes with the report and the card, not the digest, and the reader\'s own name as PsycheUser',
+          sent.question === filled.value && sent.report && sent.report.report && sent.report.card && !('digest' in sent) &&
+            !JSON.stringify(sent.report).includes(String(realName).split(' ')[0]) && sent.report.card.name === 'PsycheUser',
+          JSON.stringify(Object.keys(sent)) + ' ' + realName);
+        const answered = await sp.evaluate(() => {
+          const item = document.querySelector('#ask-thread .ask-item');
+          return { q: item.querySelector('.ask-q').textContent, a: item.querySelector('.ask-a').textContent,
+            steps: item.querySelectorAll('.ask-steps li').length, follow: item.querySelectorAll('.ask-follow .ask-chip').length,
+            credits: document.querySelector('#ask-credits').textContent, input: document.querySelector('#ask-input').value,
+            stored: JSON.parse(localStorage.getItem('psycheai_ask') || '[]') };
+        });
+        check('the answer comes back under the question, with next steps and two questions to ask next, and one credit is spent',
+          /Mock answer to "What should I focus on this week to grow\?"/.test(answered.a) && answered.steps === 2 && answered.follow === 2 &&
+            answered.credits === '4 questions left' && answered.input === '', JSON.stringify(answered));
+        check('and the question and answer are kept in this browser',
+          answered.stored.length === 1 && answered.stored[0].q === filled.value && /Mock answer/.test(answered.stored[0].a));
+        await sp.click('#ask-close');
+        await sp.reload({ waitUntil: 'load' });
+        await sp.waitForSelector('#profile-body .ask-card', { timeout: 20000 });
+        check('after a reload the card counts the question asked',
+          (await sp.locator('#profile-body .ask-card-asked').innerText()) === '1 question asked');
+        await sp.click('#profile-body .ask-card-go');
+        await sp.waitForSelector('#ask-dialog[open] #ask-thread .ask-item', { timeout: 10000 });
+        check('and Ask Psyche opens on the conversation so far, not the introduction',
+          await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 1 && !document.querySelector('#ask-thread .ask-intro')));
+        await sp.click('#ask-close');
+      }
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
         (await sp.locator('.nav-links a.is-current .nav-long').textContent()) === 'My Report');
+      {
+        const links = await sp.evaluate(() => ({ parts: document.querySelectorAll('#profile-body .part-card').length,
+          links: document.querySelectorAll('#profile-body .part-card .ask-part-link').length,
+          card: Boolean(document.querySelector('#profile-body .ask-card')) }));
+        check('Ask Psyche: every part of My Report ends with a way to ask about it, and the report ends with its card',
+          links.parts > 0 && links.links === links.parts && links.card, JSON.stringify(links));
+        await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card .ask-part-link')[1].click());
+        await sp.waitForSelector('#ask-dialog[open]', { timeout: 10000 });
+        check('and asking about a part starts the question with that part\'s name',
+          /^About "Who you are": $/.test(await sp.evaluate(() => document.querySelector('#ask-input').value)),
+          await sp.evaluate(() => document.querySelector('#ask-input').value));
+        await sp.evaluate(() => { document.querySelector('#ask-input').value = ''; });
+        await sp.click('#ask-close');
+      }
       await sp.goBack();
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       check('structured: the phone\'s Back from My Report returns to My Psyche, not off the site',
@@ -13148,7 +13241,7 @@ try {
         /Your Referral/.test(card.text) && card.stats === 4 && !card.ready &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
           /0\s*opened your link/.test(card.text) &&
-          /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use credits to gift a Psyche Report, with more premium features coming soon\./.test(card.text) &&
+          /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use a credit to ask Psyche a question or to gift a Psyche Report\./.test(card.text) &&
           /Share your card or link above/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*credits/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&

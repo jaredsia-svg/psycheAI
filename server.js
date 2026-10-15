@@ -25,6 +25,7 @@ const stats = require('./lib/stats');
 const promo = require('./lib/promo');
 const store = require('./lib/store');
 const referral = require('./lib/referral');
+const askCredits = require('./lib/askcredits');
 const links = require('./lib/links');
 const syncbox = require('./lib/syncbox');
 const staticFiles = require('./lib/staticfiles');
@@ -858,7 +859,8 @@ async function handleCreatePaymentIntent(request, response) {
   // fallback to the cheaper one.
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
-  const label = product === 'analysis' ? 'PsycheAI – additional analysis' : 'PsycheAI – Psyche Report';
+  const label = product === 'analysis' ? 'PsycheAI – additional analysis'
+    : product === 'ask' ? 'PsycheAI – Ask Psyche, 5 questions' : 'PsycheAI – Psyche Report';
   // The currency the page showed its price in, from the shared table; an
   // unknown one is charged in USD.
   const currency = body && typeof body.currency === 'string' ? body.currency : '';
@@ -1102,6 +1104,87 @@ async function handleReferralClaim(request, response) {
   sendJson(response, 200, { grant, status: await referral.status(body.secret) });
 }
 
+// ---------- Ask Psyche ----------
+//
+// A reader with a full Psyche Report asks it questions, one credit each
+// (lib/askcredits.js). The report and the question come in, the answer goes
+// back, and nothing is kept: no question, report or answer is stored or
+// logged here, and the browser keeps the conversation (docs/app.js).
+async function handleAskCredits(request, response) {
+  const body = await readJsonBody(request);
+  const now = await askCredits.balance(body && body.secret);
+  if (!now) {
+    sendJson(response, 400, { error: 'That referral code is not valid.' });
+    return;
+  }
+  sendJson(response, 200, now);
+}
+
+// Five questions for a payment of the `ask` product, credited once per
+// PaymentIntent: a retry of the same payment answers with the balance.
+async function handleAskBuy(request, response) {
+  const body = await readJsonBody(request);
+  const paymentIntentId = body && typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  if (!paymentIntentId || !(await askCredits.balance(body.secret))) {
+    sendJson(response, 400, { error: 'Expected a payment and a referral code.' });
+    return;
+  }
+  await payments.verifyPaid(paymentIntentId, 'ask');
+  const added = await askCredits.addPack(body.secret, paymentIntentId);
+  if (added) stats.count('ask_bought');
+  sendJson(response, 200, Object.assign({ added: Boolean(added) }, await askCredits.balance(body.secret)));
+}
+
+/** The report the reader sends, held to what a report is, or null. */
+function askReport(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const text = JSON.stringify(value);
+  return text.length > 2 && text.length <= prompts.ASK_REPORT_MAX ? value : null;
+}
+
+async function handleAsk(request, response) {
+  const body = await readJsonBody(request);
+  const question = body && typeof body.question === 'string' ? body.question.replace(/\s+/g, ' ').trim() : '';
+  const report = askReport(body && body.report);
+  if (question.length < 3 || question.length > prompts.ASK_QUESTION_MAX || !report) {
+    sendJson(response, 400, { error: 'Ask a question of up to ' + prompts.ASK_QUESTION_MAX + ' characters about your Psyche Report.' });
+    return;
+  }
+  const history = (Array.isArray(body.history) ? body.history : []).slice(-prompts.ASK_HISTORY_MAX)
+    .filter(h => h && typeof h.q === 'string' && typeof h.a === 'string');
+  const engine = requirePremiumEngine(response);
+  if (!engine) return;
+  // The credit first, so two questions at once cannot both spend the last;
+  // given back when no answer comes.
+  const refund = await askCredits.spend(body.secret);
+  if (!refund) {
+    sendJson(response, 402, { error: 'You have no questions left.', noCredits: true });
+    return;
+  }
+  let result;
+  try {
+    result = await engine.ask(report, question, history);
+  } catch (error) {
+    refund();
+    if (error && error.usage) usage.record('ask', { usage: error.usage, model: error.model }, true, { failed: error.finishReason || 'error' });
+    throw error;
+  }
+  usage.record('ask', result, true);
+  stats.count('ask');
+  const data = readerText(result.data || {});
+  const answer = {
+    answer: String(data.answer || '').trim(),
+    nextSteps: (Array.isArray(data.nextSteps) ? data.nextSteps : []).map(String).filter(Boolean).slice(0, 3),
+    followUps: (Array.isArray(data.followUps) ? data.followUps : []).map(String).filter(Boolean).slice(0, 2),
+  };
+  if (!answer.answer) {
+    refund();
+    sendJson(response, 502, { error: 'Psyche could not answer that just now. Your question was not used – try again.' });
+    return;
+  }
+  sendJson(response, 200, Object.assign(answer, { credits: await askCredits.balance(body.secret) }));
+}
+
 // The short personal link (lib/links.js): saving the reader's locked card under
 // their id, and opening one.
 async function handleLinkSave(request, response) {
@@ -1308,6 +1391,11 @@ const API_GUARDS = {
   // claim, which spends something, takes one.
   '/api/referral': { limit: 'referral', nonce: false },
   '/api/referral/claim': { limit: 'referral', nonce: true },
+  // Ask Psyche: questions left is a read like /api/referral; buying and
+  // asking spend, so they take a ticket, and asking calls the model.
+  '/api/ask/credits': { limit: 'referral', nonce: false },
+  '/api/ask/buy': { limit: 'referral', nonce: true },
+  '/api/ask': { limit: 'ask', nonce: true },
   // The short personal link: saving one writes, so it takes a ticket; opening
   // one is a read of something the link's own id names.
   '/api/link': { limit: 'link', nonce: false },
@@ -1536,6 +1624,9 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/event' && request.method === 'POST' ? () => handleEvent(request, response)
                   : route === '/api/referral' && request.method === 'POST' ? () => handleReferral(request, response)
                   : route === '/api/referral/claim' && request.method === 'POST' ? () => handleReferralClaim(request, response)
+                  : route === '/api/ask/credits' && request.method === 'POST' ? () => handleAskCredits(request, response)
+                  : route === '/api/ask/buy' && request.method === 'POST' ? () => handleAskBuy(request, response)
+                  : route === '/api/ask' && request.method === 'POST' ? () => handleAsk(request, response)
                   : route === '/api/link' && request.method === 'GET' ? () => handleLinkOpen(response, url)
                   : route === '/api/link/save' && request.method === 'POST' ? () => handleLinkSave(request, response)
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)

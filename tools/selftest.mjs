@@ -8114,6 +8114,50 @@ check('the schema requires evidence on where they align and differ',
     (await referral.grantRefusal(gift, { mine: 1 }, { account: me, myRef: code })) || ''));
   check('and spending it leaves no credit', (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
 
+  // Ask Psyche's questions: five per payment, once per payment; the link's
+  // credits count too; a bought one is spent first, and a failed answer
+  // gives its credit back.
+  {
+    const askCredits = await import('../lib/askcredits.js').then(m => m.default);
+    const askSecret = sha('a reader who asks');
+    await referral.afterFreeCard({ account: sha('psycheai:asker'), myRef: referral.codeOf(askSecret) });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    let now = await askCredits.balance(askSecret);
+    check('Ask Psyche: a new reader has no questions', now && now.total === 0 && now.paid === 0 && now.perPack === 5, JSON.stringify(now));
+    check('and none can be spent', (await askCredits.spend(askSecret)) === null);
+    check('a payment adds five, once', (await askCredits.addPack(askSecret, 'pi_ask_1')) === true &&
+      (await askCredits.addPack(askSecret, 'pi_ask_1')) === false && (await askCredits.balance(askSecret)).total === 5);
+    const refund = await askCredits.spend(askSecret);
+    check('a question spends one, and a failed answer gives it back',
+      typeof refund === 'function' && (await askCredits.balance(askSecret)).paid === 4 &&
+        (refund(), await new Promise(r => setTimeout(r, 10)), (await askCredits.balance(askSecret)).paid === 5));
+    // Three friends' cards: one referral credit, usable as a question once the bought ones are gone.
+    for (let n = 1; n <= 3; n++) await referral.afterFreeCard({ account: sha('psycheai:askfriend' + n), ref: referral.codeOf(askSecret), client: '10.7.0.' + n });
+    now = await askCredits.balance(askSecret);
+    check('the link\'s credits count as questions too', now.paid === 5 && now.referral === 1 && now.total === 6, JSON.stringify(now));
+    for (let i = 0; i < 5; i++) await askCredits.spend(askSecret);
+    now = await askCredits.balance(askSecret);
+    check('bought questions are spent before the link\'s credit', now.paid === 0 && now.referral === 1, JSON.stringify(now));
+    await askCredits.spend(askSecret);
+    now = await askCredits.balance(askSecret);
+    check('then the link\'s credit, and then none', now.total === 0 && (await askCredits.spend(askSecret)) === null, JSON.stringify(now));
+    check('a code alone cannot see or spend questions', (await askCredits.balance(referral.codeOf(askSecret))) === null);
+  }
+  {
+    const Prices = (await import('../docs/prices.js'), globalThis.PsychePrices);
+    check('Ask Psyche: five questions cost what the report costs, in every currency',
+      Object.keys(Prices.TABLE).every(c => Prices.amount(c, 'ask') === Prices.amount(c, 'unlock')) &&
+        Prices.label('sgd', 'ask') === 'S$7' && Prices.amount('usd', 'analysis') === 200);
+    const P = await import('../lib/prompts.js').then(m => m.default);
+    const blocks = P.askBlocks({ mbti: { type: 'INFJ' } }, 'x'.repeat(500), [{ q: 'first?', a: 'first answer' }]);
+    check('Ask Psyche: the prompt gets the report, up to three earlier answers and the question, held to 300 characters',
+      /<report>/.test(blocks[0].text) && /<earlier>\nQ: first\?\nA: first answer/.test(blocks[0].text) &&
+        /<question>\nx{300}\n<\/question>/.test(blocks[0].text) && P.ASK_QUESTION_MAX === 300);
+    check('and is told to answer from the report, coach, never diagnose, and keep the conduct rule',
+      /Answer from the report/.test(P.ASK_SYSTEM) && /Never invent evidence/.test(P.ASK_SYSTEM) &&
+        /Not therapy and not a diagnosis/.test(P.ASK_SYSTEM) && P.ASK_SYSTEM.includes(P.CONDUCT_RULE_REPORT) &&
+        JSON.stringify(Object.keys(P.ASK_SCHEMA.properties)) === JSON.stringify(['answer', 'nextSteps', 'followUps']));
+  }
   // Guess your character: judged on the server against the card, once per
   // account, a right guess a grant like any other.
   {
@@ -8507,7 +8551,7 @@ check('the schema requires evidence on where they align and differ',
   const guarded = Object.keys(server.API_GUARDS).sort();
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
-      '/api/analyse', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/link', '/api/link/save',
+      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
       '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
@@ -8524,7 +8568,7 @@ check('the schema requires evidence on where they align and differ',
   // /api/link opens a short link by the id the link itself names.
   // /api/sync/inbox and /api/sync/done are the link owner's own reads and
   // clears, keyed by their secret, as /api/referral is.
-  const TICKETLESS = ['/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result',
+  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result',
     '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>

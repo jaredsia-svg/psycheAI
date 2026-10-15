@@ -14,17 +14,17 @@
   'use strict';
 
   const TABLE = {
-    usd: { symbol: 'US$', unlock: 500, analysis: 200 },
-    sgd: { symbol: 'S$', unlock: 700, analysis: 300 },
-    gbp: { symbol: '£', unlock: 400, analysis: 150 },
-    eur: { symbol: '€', unlock: 500, analysis: 200 },
-    aud: { symbol: 'A$', unlock: 800, analysis: 300 },
-    cad: { symbol: 'C$', unlock: 700, analysis: 300 },
-    nzd: { symbol: 'NZ$', unlock: 900, analysis: 350 },
-    hkd: { symbol: 'HK$', unlock: 3900, analysis: 1500 },
-    jpy: { symbol: '¥', unlock: 800, analysis: 300, zeroDecimal: true },
-    chf: { symbol: 'CHF ', unlock: 500, analysis: 200 },
-    myr: { symbol: 'RM', unlock: 2200, analysis: 900 },
+    usd: { symbol: 'US$', unlock: 500, ask: 500, analysis: 200 },
+    sgd: { symbol: 'S$', unlock: 700, ask: 700, analysis: 300 },
+    gbp: { symbol: '£', unlock: 400, ask: 400, analysis: 150 },
+    eur: { symbol: '€', unlock: 500, ask: 500, analysis: 200 },
+    aud: { symbol: 'A$', unlock: 800, ask: 800, analysis: 300 },
+    cad: { symbol: 'C$', unlock: 700, ask: 700, analysis: 300 },
+    nzd: { symbol: 'NZ$', unlock: 900, ask: 900, analysis: 350 },
+    hkd: { symbol: 'HK$', unlock: 3900, ask: 3900, analysis: 1500 },
+    jpy: { symbol: '¥', unlock: 800, ask: 800, analysis: 300, zeroDecimal: true },
+    chf: { symbol: 'CHF ', unlock: 500, ask: 500, analysis: 200 },
+    myr: { symbol: 'RM', unlock: 2200, ask: 2200, analysis: 900 },
   };
   const DEFAULT_CURRENCY = 'usd';
   // Stripe's smallest charge in each currency, in the same minor unit. A
@@ -90,10 +90,15 @@
     return TABLE[c] ? c : DEFAULT_CURRENCY;
   }
 
+  // The three things sold: the report (unlock), the card run again
+  // (analysis), and five Ask Psyche questions (ask). Anything else is priced
+  // as the report.
+  const productKey = product => (product === 'analysis' || product === 'ask' ? product : 'unlock');
+
   /** What a product costs in a currency, in its minor unit. */
   function amount(currency, product) {
     const row = TABLE[known(currency)];
-    const value = row[product === 'analysis' ? 'analysis' : 'unlock'];
+    const value = row[productKey(product)];
     return value;
   }
 
@@ -121,5 +126,5 @@
     return row.symbol + text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  root.PsychePrices = { TABLE, DEFAULT_CURRENCY, COUNTRY_CURRENCY, guessCountry, countryFromZone, currencyFor, known, amount, discounted, label, MINIMUM };
+  root.PsychePrices = { productKey, TABLE, DEFAULT_CURRENCY, COUNTRY_CURRENCY, guessCountry, countryFromZone, currencyFor, known, amount, discounted, label, MINIMUM };
 })(typeof window !== 'undefined' ? window : globalThis);
