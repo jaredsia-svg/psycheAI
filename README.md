@@ -4,7 +4,7 @@
 
 Load your own Instagram data, and optionally up to three WhatsApp chats with close connections and
 your Google data. PsycheAI reads them in your browser and reduces them to a de-identified **digest**:
-names become a blank, other people's handles become `[P1]`, and contact details and links are
+your name becomes a blank, other people's handles become `[P1]` and the names of people you message `[N1]`, and contact details and links are
 removed. You review the digest and untick anything you like. The server then relays it to a language
 model (**Google Gemini**, directly or through Vertex AI, **Anthropic Claude** or **xAI Grok**) and
 keeps no copy of it.
@@ -215,6 +215,35 @@ is a friend, a brand or a newsroom is the evidence there. The saving is small �
 2.8% of a real digest's tokens — but the privacy is not. The reader's own "PsycheUser" marker appeared
 twice in a real digest, so it was left as it is.
 
+**The names of people the reader messages are numbered too** (`pseudonymiseNames`, October 2026).
+Handles were covered, but names were not: "dinner with Sarah" went to the model as written, and in
+messages a name was blanked only when its owner was in that same conversation. Now every name the
+export itself holds is collected on the device: the participants of the Instagram DMs
+(`threadPartners`, `messageSenders`), Messenger threads and WhatsApp chats (each source's `names`,
+held in memory and never copied into the digest), and Facebook friends. Each one becomes "[N1]",
+"[N2]" wherever the reader's captions, comments, liked captions, messages, Facebook text or bio
+mention it, the same number for the same person, kept as `__names` beside `__people` and never sent.
+- **What counts as a match:** the whole name in any case, or the first name alone (three letters or
+  more) in any case. A first name that is also a word (`COMMON_WORD_NAMES`: Will, Grace, May…) counts
+  only capitalised and never as a sentence's first word, so "Will you come?" and "I will" stay.
+  Chinese, Japanese and Korean names match inside their own script, which has no spaces. Surnames
+  alone, two-letter names, placeholders such as "Instagram User", and the reader's own name are left
+  alone.
+- **The limit:** nothing here guesses. A friend who is mentioned but never messaged keeps their
+  name, which is why the FAQ, privacy page and review note say "the names of people you message",
+  not every name. A built-in list of common first names, or a name-recognition model in the browser
+  (50–100 MB), were weighed and left out: the first misses many non-English names and catches
+  ordinary capitalised words, and the second is too heavy for a phone.
+- **The model is told:** the evidence's opening line and the prompt's marker rule name `[N1]`
+  beside `[P1]`. The prompt line was rewritten shorter to make room, because the free prompt is held
+  to `FREE_FIXED_INPUT_TOKENS` (9,998).
+- **Wording made exact on the way:** the FAQ and the review popout's note used to say everyone
+  else's @handles are removed. The ranked account lists keep real account names by design, so the
+  FAQ now says "in your posts, comments and messages", and the note says *Your name, contact
+  details, ID numbers and the handles in your own words are removed.* The note does not mention
+  names: a longer one gave the review popout a second scrollbar at 560px tall, which a check
+  forbids. The FAQ, privacy page and guide pages carry the names sentence.
+
 **The name comes back on the device.** Everything the model returns says "PsycheUser" where the reader
 is meant (the server sets the card's name to it outright), so the app gives the real name back before
 anything is stored, shown, put in a compatibility link or printed (`withOwnName`): the card, the page's "…'s
@@ -232,7 +261,7 @@ grouped card number, a postcode after "Singapore"); other people's @handles beco
 links are stripped; and activity dates — `rhythm.firstActivity`/`lastActivity` and each source's span —
 are given to the month (`monthSpan`, applied again in `forModel` for digests stored before). The review
 popout says so at its top in one line (`.deid-note`: "De-identified before sending. Your name, contact
-details, ID numbers and other people's handles are removed.", set small at `.76rem` so it does not crowd
+details, ID numbers and the handles in your own words are removed.", set small at `.76rem` so it does not crowd
 the list; the list itself scrolls inside a dialog up to 42rem tall and is never shorter than
 `min(14rem, 35vh)`), and the FAQ has "Can the digest be linked back to me?". Both
 say *de-identified*, not anonymous, on purpose: the reader's own writing, the real names of the accounts

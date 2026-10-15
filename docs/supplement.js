@@ -429,11 +429,11 @@
       searchTerms: new Map(),
       searches: [],
       ownMessages: [],
-      // Deliberately no partner map. instagram.js keeps `threadPartners` to
-      // work out which participant is the account owner; here the owner comes
-      // from profile_information instead, so there is no reason to hold other
-      // people's names at all — and the cheapest way to guarantee they never
-      // reach the digest is to never put them in a field.
+      // The names of the people in the reader's Messenger threads, held in
+      // memory only so digest.js can number them wherever the reader's own
+      // words mention them (pseudonymiseNames). applySupplements never copies
+      // this field into the digest, so no name in it is sent.
+      names: [],
       counts: { posts: 0, comments: 0, friends: 0, searches: 0, threads: 0, messages: 0, received: 0 },
       kinds: {},
       span: { first: 0, last: 0 },
@@ -555,6 +555,7 @@
       if (out.owner) {
         const participants = (Array.isArray(data && data.participants) ? data.participants : [])
           .map(p => trimText(p && p.name, 80)).filter(Boolean);
+        for (const name of participants) if (name !== out.owner && !out.names.includes(name)) out.names.push(name);
         for (const own of root.PsycheInstagram.ownSide(list, out.owner, { blankOwnText: true, otherNames: participants.filter(n => n !== out.owner) })) {
           if (out.ownMessages.length >= LIMITS.commentBuffer) break;
           out.ownMessages.push(Object.assign(own, { thread, len: own.text.length, text: root.PsycheInstagram.keepEnds(own.text) }));

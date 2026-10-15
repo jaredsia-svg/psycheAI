@@ -1934,6 +1934,7 @@
     // actually be sent rather than a slightly longer draft of it.
     redactOwnHandle(digest, signals.profile.username, signals.profile.name);
     pseudonymiseHandles(digest);
+    pseudonymiseNames(digest, instagramNames(signals), [signals.profile.name, messages.owner]);
     // The line for this digest's tier (budgetFor), or a test's own.
     trimToBudget(digest, opts.maxChars || budgetFor(digest));
     return digest;
@@ -2003,6 +2004,131 @@
     if (digest.profile && typeof digest.profile.bio === 'string') digest.profile.bio = swap(digest.profile.bio);
     if (Object.keys(people).length) digest.__people = people;
     return digest;
+  }
+
+  /**
+   * Other people's names in the reader's text, replaced by a number: "dinner
+   * with Sarah" becomes "dinner with [N1]", the same number for the same
+   * person everywhere in the digest.
+   *
+   * Which names: only ones the export itself holds — everyone the reader has
+   * a conversation with, from the participants of their Instagram DMs,
+   * Messenger threads and WhatsApp chats. Nothing here guesses at names it
+   * was not given, so a friend mentioned but never messaged is left as
+   * written. That is the honest limit of this, and the FAQ says "the names of
+   * people you message", not "every name".
+   *
+   * Matching:
+   *   · the whole name, whatever its case ("sarah lim", "Sarah Lim");
+   *   · the first name alone, three letters or more, whatever its case —
+   *     unless it is also an ordinary word (COMMON_WORD_NAMES: "Will",
+   *     "Grace"), when only the capitalised form counts, and never as the
+   *     first word of a sentence ("Will you come?").
+   *   · Chinese, Japanese and Korean names are matched inside a run of their
+   *     own script, which has no spaces between words.
+   * Surnames alone are not matched: they are short and often words too.
+   *
+   * The numbering is kept on the digest (`__names`, never sent — forModel
+   * copies known fields only), so a source merged in later — or merged in a
+   * fresh tab, from the stored digest alone — numbers a person already seen
+   * the same again.
+   */
+  const COMMON_WORD_NAMES = new Set(('will may june april august grace hope joy faith rose lily daisy ruby pearl amber ' +
+    'ivy holly iris jade violet summer autumn winter dawn eve sky star sunny rain storm river ocean brook ' +
+    'mark bill rich frank jack chase hunter drew gene pat sue max don van kim art ray guy rob nick ' +
+    'miles chip buck bob dash gem honey melody harmony charity patience mercy unity bliss destiny ' +
+    'king prince duke earl baron major angel bear wolf fox hawk robin jay wren lark finch ' +
+    'cliff dale glen heath forest wood stone rock clay flint gray grey brown green white black ' +
+    'sandy rusty dusty penny candy ginger cookie bunny happy lucky lovely sweet sugar sage basil ' +
+    'pepper olive cherry berry apple peach plum hazel ash oak willow aspen cedar ' +
+    'young long short little noble love dear baby babe bro sis mom mum dad papa mama nana ' +
+    'tiny big bean boo bae bestie buddy pal mate').split(' '));
+  const NAME_PLACEHOLDERS = /^(?:instagram user|facebook user|meta ai|deleted user|unknown|you)$/i;
+  const CJK = /[぀-ヿ㐀-鿿가-힯]/;
+  const reEsc = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function cleanPersonName(raw) {
+    return String(raw || '').normalize('NFKC').replace(/[^\p{L}\p{M}\s'’.-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function pseudonymiseNames(digest, names, ownNames) {
+    const known = digest.__names || {};
+    const own = new Set((ownNames || []).map(cleanPersonName).filter(Boolean)
+      .flatMap(n => [n.toLowerCase(), ...n.toLowerCase().split(' ')]));
+    let next = Object.values(known).reduce((max, n) => Math.max(max, n), 0) + 1;
+    for (const raw of (names || []).concat(Object.keys(known))) {
+      const name = cleanPersonName(raw);
+      const key = name.toLowerCase();
+      if (!name || NAME_PLACEHOLDERS.test(name) || own.has(key)) continue;
+      if (!CJK.test(name) && name.replace(/[^\p{L}]/gu, '').length < 3) continue;
+      if (!known[key]) known[key] = next++;
+    }
+    if (!Object.keys(known).length) return digest;
+    // Each spelling once, the longest first, so "Sarah Lim" is taken whole
+    // before "Sarah" could take half of it.
+    const anyCase = new Map();
+    const capitalOnly = new Map();
+    const inScript = new Map();
+    for (const [key, n] of Object.entries(known)) {
+      if (CJK.test(key)) { if (!inScript.has(key)) inScript.set(key, n); continue; }
+      if (key.includes(' ') && !anyCase.has(key)) anyCase.set(key, n);
+      const first = key.split(' ')[0];
+      if (first.length < 3 || own.has(first)) continue;
+      if (COMMON_WORD_NAMES.has(first)) {
+        const cap = first.charAt(0).toUpperCase() + first.slice(1);
+        if (!capitalOnly.has(cap)) capitalOnly.set(cap, n);
+      } else if (!anyCase.has(first)) anyCase.set(first, n);
+    }
+    const byLength = map => [...map.keys()].sort((a, b) => b.length - a.length).map(reEsc).join('|');
+    const rules = [];
+    if (inScript.size) rules.push({ re: new RegExp('(' + byLength(inScript) + ')', 'gu'), find: m => inScript.get(m.toLowerCase()), bare: true });
+    if (anyCase.size) {
+      rules.push({ re: new RegExp('(^|[^\\p{L}\\p{N}_@])(' + byLength(anyCase) + ')(?![\\p{L}\\p{N}_])', 'giu'),
+        find: m => anyCase.get(m.toLowerCase()) });
+    }
+    if (capitalOnly.size) {
+      rules.push({ re: new RegExp('(^|[^\\p{L}\\p{N}_@])(' + byLength(capitalOnly) + ')(?![\\p{L}\\p{N}_])', 'gu'),
+        find: m => capitalOnly.get(m), notFirst: true });
+    }
+    const swap = text => rules.reduce((out, rule) => out.replace(rule.re, (all, before, name, offset, whole) => {
+      // The in-script rule has no boundary group: its one group is the name.
+      if (rule.bare) { const n = rule.find(before); return n ? '[N' + n + ']' : all; }
+      if (rule.notFirst) {
+        // The first word of a sentence is capitalised anyway: "Will you…".
+        const lead = whole.slice(0, offset + before.length).replace(/\s+$/, '');
+        if (!lead || /[.!?:«"“(\]]$/.test(lead)) return all;
+      }
+      const n = rule.find(name);
+      return n ? before + '[N' + n + ']' : all;
+    }), String(text));
+    const lists = [
+      digest.samples && digest.samples.captions, digest.samples && digest.samples.comments,
+      digest.samples && digest.samples.likedPostCaptions,
+      digest.directMessages && digest.directMessages.ownMessageSample,
+      digest.facebook && digest.facebook.postSample, digest.facebook && digest.facebook.commentSample,
+      digest.facebook && digest.facebook.ownMessageSample,
+      digest.whatsapp && digest.whatsapp.ownMessageSample,
+    ];
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (let i = 0; i < list.length; i++) if (typeof list[i] === 'string') list[i] = swap(list[i]);
+    }
+    if (digest.profile && typeof digest.profile.bio === 'string') digest.profile.bio = swap(digest.profile.bio);
+    digest.__names = known;
+    return digest;
+  }
+  /** Everyone the reader has an Instagram conversation with, by display name. */
+  function instagramNames(signals) {
+    return [...new Set([...(signals.threadPartners instanceof Map ? signals.threadPartners.keys() : []),
+      ...(signals.messageSenders instanceof Map ? signals.messageSenders.keys() : [])])];
+  }
+  /** The reader's own name in each added source, never numbered. */
+  function supplementOwners(supplements) {
+    return ['whatsapp', 'facebook'].map(key => supplements && supplements[key] && supplements[key].owner).filter(Boolean);
+  }
+  /** Everyone in the added sources' conversations (whatsapp.js, supplement.js `names`), and Facebook friends. */
+  function supplementNames(supplements) {
+    const s = supplements || {};
+    return ['whatsapp', 'facebook'].flatMap(key => (s[key] && Array.isArray(s[key].names)) ? s[key].names : [])
+      .concat(s.facebook && Array.isArray(s.facebook.friends) ? s.facebook.friends : []);
   }
 
   // The markers. Coined words rather than ordinary ones, and that is the whole
@@ -2356,6 +2482,7 @@
     // Instagram export again to close.
     redactOwnHandle(digest, opts.ownHandle, opts.ownName);
     pseudonymiseHandles(digest);
+    pseudonymiseNames(digest, supplementNames(supplements), [opts.ownName].concat(supplementOwners(supplements)));
     // Each added source goes into its pool (trimToPools): a WhatsApp chat
     // takes its room from the Instagram DMs, Facebook from what the public
     // pool has left. `protect` keeps a source whole — the premium read's
@@ -2426,8 +2553,8 @@
     return 'Structured fields first, as JSON. Every list follows under its own path, one item per line; ' +
       'a ranked entry is written "name ×count". Lines that share tags — a year, a conversation — sit ' +
       'under one line of those tags, such as "[2024] [t3]:", which applies to every line below it ' +
-      'until the next. [P1], [P2] … stand for other people\'s @handles, the same number for the same ' +
-      'person throughout.\n' + JSON.stringify(skeleton) +
+      'until the next. [P1], [P2] … stand for other people\'s @handles and [N1], [N2] … for their names, ' +
+      'the same number for the same person throughout.\n' + JSON.stringify(skeleton) +
       (sections.length ? '\n\n' + sections.join('\n\n') : '');
   }
 

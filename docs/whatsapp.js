@@ -234,6 +234,11 @@
     const hour = LIMITS.newConversationHours * 3600000;
     const window = LIMITS.replyWindowHours * 3600000;
     return {
+      // Who is in these chats, and who the reader is, held in memory only for
+      // digest.js to number those names wherever the reader's own words
+      // mention them (pseudonymiseNames). Neither is copied into the digest.
+      owner,
+      names: [...new Set(chats.flatMap(chat => chat.participants.map(p => p.name)))].filter(name => name && name !== owner),
       chats: chats.map((chat, index) => {
         const messages = chat.messages;
         const others = chat.participants.map(p => p.name).filter(name => name !== owner);

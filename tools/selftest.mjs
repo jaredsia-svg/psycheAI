@@ -2946,6 +2946,37 @@ check('other people\'s handles are replaced by numbered markers, never sent',
   check('the evidence tells the model what the markers are',
     Digest.renderEvidence(Digest.forModel(people)).includes('[P1], [P2] … stand for other people'));
 }
+// Other people's names, from the export's own conversations, replaced by
+// numbered markers wherever the reader's words mention them.
+{
+  const named = Digest.build({
+    ...signals,
+    profile: Object.assign({}, signals.profile, { name: 'Jo Park' }),
+    threadPartners: new Map([['Jo Park', 9], ['Sarah Lim', 4], ['Will Tan', 2], ['陈小明', 1], ['Instagram User', 1], ['Al', 1]]),
+    captions: [{ text: 'dinner with Sarah Lim, then sarah again. Sarahs dog is not Sarah', ts: 1700000000 },
+      { text: 'Will you come? I will. Coffee with Will on Sunday, 和陈小明一起吃饭 with Al and Jo', ts: 1700000100 }],
+  }, { includeMessages: false });
+  const caps = named.samples.captions.join(' | ');
+  const sentNamed = JSON.stringify(Digest.forModel(named));
+  check('the names of people the reader messages are numbered in their captions, whole or first name, any case',
+    /dinner with \[N1\], then \[N1\] again/.test(caps), caps);
+  check('a first name that is also a word is taken only capitalised, and never as a sentence\'s first word',
+    /Will you come\? I will\. Coffee with \[N2\] on Sunday/.test(caps), caps);
+  check('a Chinese name is found inside Chinese text',
+    /和\[N3\]一起吃饭/.test(caps), caps);
+  check('placeholders, two-letter names and the reader\'s own name are left alone',
+    /with Al and PsycheUser|with Al and Jo/.test(caps) && !/Instagram User|\[N4\]/.test(caps), caps);
+  check('only whole words: "Sarahs" is not "Sarah"',
+    /Sarahs dog is not \[N1\]/.test(caps), caps);
+  check('and the names never leave the device: no name, and no numbering, is in what is sent',
+    !/Sarah|Lim\b|Will Tan|陈小明/.test(sentNamed.replace(/Sarahs/, '')) && !('__names' in Digest.forModel(named)), sentNamed.slice(0, 300));
+  // A source merged later, from the stored digest alone, numbers the same person the same.
+  const merged = Digest.addSupplements(named, { whatsapp: { owner: 'Jo Park', names: ['Sarah Lim', 'Ben Ode'], chats: [] } }, {});
+  check('a later merge keeps the same numbers and adds new people after them',
+    merged.__names['sarah lim'] === 1 && merged.__names['ben ode'] > 3, JSON.stringify(merged.__names));
+  check('the evidence tells the model what the name markers are',
+    Digest.renderEvidence(Digest.forModel(named)).includes('[N1], [N2] … for their names'));
+}
 
 {
   // A handle short enough to be an ordinary word is only replaced in its
@@ -8241,7 +8272,11 @@ check('the schema requires evidence on where they align and differ',
     WA.titleFromFileName('WhatsApp Chat with Ben Ode.txt') === 'Ben Ode' &&
       WA.titleFromFileName('WhatsApp Chat - Ben Ode.zip') === 'Ben Ode' && WA.titleFromFileName('_chat.txt') === '');
   const summary = WA.summarise([c1, c2], 'Jo Park');
-  const sumText = JSON.stringify(summary);
+  // The chats themselves name no one; who is in them rides beside them, in
+  // memory only, for digest.js to number (pseudonymiseNames).
+  const sumText = JSON.stringify(summary.chats);
+  check('WhatsApp: the participants ride beside the chats for the digest, the reader apart',
+    summary.owner === 'Jo Park' && summary.names.join() === 'Ben Ode,Kim Lee', JSON.stringify([summary.owner, summary.names]));
   check('WhatsApp: only the reader\'s words are kept, with everyone else\'s names blanked out of them',
     summary.chats[0].ownMessages.map(m => m.text).join('|') === 'are you coming tonight, someone?|morning someone' &&
       !/Ben|Kim|Ode|Lee/.test(sumText) && summary.chats[0].kind === 'one-to-one' &&
