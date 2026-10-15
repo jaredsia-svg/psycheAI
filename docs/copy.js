@@ -1198,7 +1198,6 @@
     ask: {
       title: 'Ask Psyche',
       sub: 'Your personal coach.',
-      tryOne: 'Try one of these',
       placeholder: 'Ask about your Psyche Report…',
       send: 'Ask',
       thinking: 'Psyche is thinking…',
@@ -1222,15 +1221,28 @@
       // At the end of each part of My Report, the question started for them.
       partLink: 'Ask Psyche about this',
       partPrefill: title => 'About "' + title + '": ',
-      // Ready-made questions: coaching first.
+      // Questions to start from, from the most universal to the most
+      // specific (career last): deep ones the report does not already
+      // answer, there to spark the reader's own. Tucked behind "Ideas" so
+      // they never crowd the conversation.
       suggestions: [
-        'What should I focus on this week to grow?',
-        'How can I use my strengths better at work?',
-        'Why do I clash with some people, and how do I handle it?',
-        'What does my personality type mean for my relationships?',
-        'Which careers suit me best right now, and why?',
-        'Coach me: one habit to build from my development plan.',
+        'Who am I when I\u2019m not being useful, impressive or needed?',
+        'What do I keep trying to prove, and to whom?',
+        'What would make my life worthwhile, even if nobody ever knew what I achieved?',
+        'What would I regret most about my life when I\u2019m old?',
+        'What do I already know needs attention in my life, but keep putting off because it means a hard choice?',
+        'Which commitments deserve my loyalty, and which need rethinking?',
+        'How can I show up better for my partner, my family and the people closest to me?',
+        'Should I move abroad and start again? If you picked one country for me, which would it be, and why?',
+        'How can I become a better leader, at work and with the people around me?',
+        'I\u2019m thinking about a big change in my career. Is it right for me, given everything else in my life?',
       ],
+      ideas: 'Ideas',
+      ideasTitle: 'Questions to start from – tap one, then make it yours',
+      emptyHint: 'Ask Psyche anything about yourself. Need a starting point? Tap Ideas.',
+      minimise: 'Minimise',
+      fab: 'Ask Psyche',
+      fabReady: 'Answer ready',
     },
     // The page's actions: in full on My Psyche, one word each under My
     // Report's part nav, where the row is narrow (each still has its full

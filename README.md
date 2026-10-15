@@ -1,6 +1,6 @@
 # 🧠 PsycheAI
 
-*A personality study. No questions asked.*
+*A full personality study. No questions asked.*
 
 Load your own Instagram data, and optionally up to three WhatsApp chats with close connections and
 your Google data. PsycheAI reads them in your browser and reduces them to a de-identified **digest**:
@@ -2030,8 +2030,8 @@ follows a guide's sample link into the open sample.
 
 ### The headline, and "Continue" with no Instagram (October 2026)
 
-The front page's headline is **A personality study.** with **No questions asked.** under it in the
-accent gradient, and the line below reads *Discover your MBTI, love languages, mental wellbeing, and
+The front page's headline is **A full personality study.** with **No questions asked.** under it in
+the accent gradient, and the line below reads *Discover your MBTI, love languages, mental wellbeing, and
 career strengths directly from your Instagram and digital footprint — zero quizzes required.* It
 replaced *The personality analysis you didn't know you needed*. The checks pin the two lines and
 "zero quizzes required", the claim no quiz can make.
@@ -2789,6 +2789,41 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
   of questions asked.
 - **My Report:** at the foot of every part, *Ask Psyche about this →* opens it with *About "Who
   you are": * already typed. The report ends with the same card.
+- **A panel you can minimise, not a page or a modal** (October 2026). It opens with `show()`, not
+  `showModal()`, so nothing behind it is blocked:
+  - **On a phone (760px and under):** a bottom sheet, 85% of the screen, with a handle. A tap or a
+    swipe down on the handle or the head minimises it.
+  - **On a laptop:** docked at the right under the site's header. From 1200px the page makes room
+    for it (`body.ask-docked`): the column moves left and narrows, and on My Report the part nav and
+    its actions go to the left edge, so nothing sits under the panel. Between 761 and 1199px it
+    floats over the page.
+  - **Minimising:** the – button, the handle, or Escape anywhere on the page (unless another popout
+    is open on top). It leaves a floating **Ask Psyche** button (`#ask-fab`) at the bottom right of
+    My Psyche and My Report, shown only once the reader has the report. An answer that lands while
+    minimised turns it into **Answer ready**, with a soft pulse, until it is opened.
+  - **Nothing is lost:** the conversation, a half-typed question and an answer still coming all stay.
+  - **Not a separate nav page:** on a phone the nav already has four short labels, and Ask Psyche is
+    most useful beside the report rather than instead of it.
+- **Ideas, out of the way.** The ready-made questions are no longer on the screen. They sit behind a
+  small **💡 Ideas** button by the character count, which opens a short scrolling list above the box.
+  Tapping one fills the box and folds the list away. They are ten deeper questions the report does
+  not already answer, ordered from the most universal to the most specific, career last:
+  1. Who am I when I'm not being useful, impressive or needed?
+  2. What do I keep trying to prove, and to whom?
+  3. What would make my life worthwhile, even if nobody ever knew what I achieved?
+  4. What would I regret most about my life when I'm old?
+  5. What do I already know needs attention in my life, but keep putting off because it means a hard
+     choice?
+  6. Which commitments deserve my loyalty, and which need rethinking?
+  7. How can I show up better for my partner, my family and the people closest to me?
+  8. Should I move abroad and start again? If you picked one country for me, which would it be, and why?
+  9. How can I become a better leader, at work and with the people around me?
+  10. I'm thinking about a big change in my career. Is it right for me, given everything else in my life?
+
+  Two of the twelve proposed were left out. *My life has no meaning and no purpose* overlapped with
+  question 3 and reads as distress put in the reader's mouth. *My happiest and saddest moment* is
+  something the data cannot reliably show and could surface a loss. The empty panel says one line:
+  *Ask Psyche anything about yourself. Need a starting point? Tap Ideas.*
 - **The popout** (`#ask-dialog`, `openAsk`): the conversation so far, a counter of questions left,
   and a box with a character count. When none are left, *Get 5 questions* opens the ordinary
   payment sheet for the `ask` product, with no promo code and no share box. It was trimmed to that

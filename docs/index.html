@@ -178,7 +178,7 @@
       <!-- The page's only <h1>. Every other view's title is a div with
            role="heading" aria-level="1" (class .h1): one <h1> in the document for
            search engines, and still a level-1 heading per view for screen readers. -->
-      <h1>A personality study.<br><span class="accent">No questions asked.</span></h1>
+      <h1>A full personality study.<br><span class="accent">No questions asked.</span></h1>
       <p class="lede">Discover your MBTI, love languages, mental wellbeing, and career strengths directly
         from your Instagram and digital footprint &mdash; zero quizzes required.</p>
       <!-- One button for each kind of visitor: one who still has to ask
@@ -618,9 +618,14 @@
 
 
 <!-- Ask Psyche: questions about the reader's own Psyche Report, one credit
-     each. The thread is kept in this browser (psycheai_ask) and drawn by
-     openAsk in app.js; the words are in copy.js (STRUCTURED.ask). -->
-<dialog id="ask-dialog" class="mode-dialog ask-dialog" aria-labelledby="ask-title">
+     each. A panel rather than a page: opened without a backdrop (show(), not
+     showModal()), so the report stays readable and scrollable beside it — a
+     bottom sheet on a phone, docked at the right on a laptop — and minimised
+     to the floating button (#ask-fab) rather than closed. The thread is kept
+     in this browser (psycheai_ask) and drawn by openAsk in app.js; the words
+     are in copy.js (STRUCTURED.ask). -->
+<dialog id="ask-dialog" class="ask-dialog" aria-labelledby="ask-title">
+  <button class="ask-handle" id="ask-handle" type="button" aria-label="Minimise"><span></span></button>
   <div class="ask-head">
     <span class="ask-mark" aria-hidden="true"></span>
     <div class="ask-head-text">
@@ -628,14 +633,19 @@
       <p class="ask-sub" id="ask-sub"></p>
     </div>
     <span class="ask-credits" id="ask-credits" hidden></span>
-    <button class="ask-close" id="ask-close" type="button" aria-label="Close">✕</button>
+    <button class="ask-close" id="ask-close" type="button" aria-label="Minimise"><span aria-hidden="true">–</span></button>
   </div>
   <div class="ask-thread" id="ask-thread" aria-live="polite"></div>
   <div class="ask-foot">
+    <div class="ask-ideas" id="ask-ideas" hidden>
+      <p class="ask-ideas-title" id="ask-ideas-title"></p>
+      <div class="ask-ideas-list" id="ask-ideas-list"></div>
+    </div>
     <p class="ask-status" id="ask-status" role="status" hidden></p>
     <div class="ask-compose" id="ask-compose">
       <textarea id="ask-input" rows="2" maxlength="300" aria-label="Your question"></textarea>
       <div class="ask-compose-row">
+        <button class="ask-ideas-toggle" id="ask-ideas-toggle" type="button" aria-expanded="false" aria-controls="ask-ideas"></button>
         <span class="ask-count" id="ask-count">0/300</span>
         <button class="btn" id="ask-send" type="button">Ask</button>
       </div>
@@ -647,6 +657,11 @@
     <p class="fineprint ask-privacy" id="ask-privacy"></p>
   </div>
 </dialog>
+<!-- Ask Psyche, minimised: on My Psyche and My Report once the reader has
+     the report. Says when an answer has come in while it was down. -->
+<button class="ask-fab" id="ask-fab" type="button" hidden>
+  <span class="ask-mark" aria-hidden="true"></span><span class="ask-fab-text" id="ask-fab-text">Ask Psyche</span>
+</button>
 
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>

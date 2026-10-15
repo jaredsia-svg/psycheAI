@@ -2984,6 +2984,9 @@
       history.back();
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
+    // Ask Psyche goes with My Psyche and My Report, panel and button alike.
+    if (view !== 'profile' && $('#ask-dialog').open) $('#ask-dialog').close();
+    refreshAskFab();
     // The front page, kept out of sight by early.js until this choice was made.
     document.documentElement.classList.remove('view-pending');
     syncNav();
@@ -10047,7 +10050,8 @@
   let askCreditsNow = null;
   let askBusy = false;
   const askThread = () => (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string');
-  const askReady = () => Boolean(state.profile) && hasExplanations(state.profile);
+  // A function rather than a const: show() asks it, and can run first.
+  function askReady() { return Boolean(state.profile) && hasExplanations(state.profile); }
 
   /** The report and card as the model sees them: the reader's own name back to PsycheUser. */
   function askReport() {
@@ -10093,9 +10097,8 @@
   function renderAskThread(pendingQuestion) {
     const A = Copy.STRUCTURED.ask;
     const items = askThread();
-    const intro = '<div class="ask-intro"><p class="ask-try">' + esc(A.tryOne) + '</p>' +
-      '<div class="ask-suggestions">' + A.suggestions.map(q =>
-        '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div></div>';
+    // Nothing asked yet: one line, and the ideas a tap away under the box.
+    const intro = '<p class="ask-intro">' + esc(A.emptyHint) + '</p>';
     setHtml($('#ask-thread'), (items.length ? '' : intro) + items.map(item => askItemHtml(item)).join('') +
       (pendingQuestion ? askItemHtml({ q: pendingQuestion }, true) : ''));
     const thread = $('#ask-thread');
@@ -10153,12 +10156,21 @@
     }
   }
 
-  /** Opens Ask Psyche, with a question started for the reader when one is given. */
+  /**
+   * Opens Ask Psyche, with a question started for the reader when one is
+   * given. A panel, not a modal: the report stays readable and scrollable
+   * beside it, and closing it only minimises it to the floating button.
+   */
   async function openAsk(prefill) {
     if (!askReady()) return;
     const A = Copy.STRUCTURED.ask;
     const dialog = $('#ask-dialog');
     $('#ask-sub').textContent = A.sub;
+    $('#ask-ideas-toggle').innerHTML = '<span aria-hidden="true">💡</span> ' + esc(A.ideas);
+    $('#ask-ideas-title').textContent = A.ideasTitle;
+    $('#ask-close').setAttribute('aria-label', A.minimise);
+    $('#ask-handle').setAttribute('aria-label', A.minimise);
+    showAskIdeas(false);
     $('#ask-privacy').textContent = A.privacy;
     $('#ask-send').textContent = A.send;
     $('#ask-input').placeholder = A.placeholder;
@@ -10169,10 +10181,19 @@
     if (typeof prefill === 'string') $('#ask-input').value = prefill;
     askCount();
     if (!dialog.open) {
-      if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+      if (typeof dialog.show === 'function') dialog.show(); else dialog.setAttribute('open', '');
     }
+    $('#ask-fab').classList.remove('is-ready');
+    dockAsk(true);
+    refreshAskFab();
+    // The box takes focus where there is a keyboard to spare, or a question
+    // already started; a phone's keyboard is not pulled up unasked.
     const input = $('#ask-input');
-    if (!$('#ask-compose').hidden) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    const fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+    if (!$('#ask-compose').hidden && (fine || typeof prefill === 'string')) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
     const pending = store.read(KEYS.askPending, null);
     if (pending && pending.paymentIntentId) await creditAskPayment(pending.paymentIntentId);
     await refreshAskCredits();
@@ -10209,6 +10230,8 @@
       renderAskThread();
       renderAskCredits();
       refreshAskCards();
+      // Answered while minimised: the button says so until it is opened.
+      if (!$('#ask-dialog').open) { $('#ask-fab').classList.add('is-ready'); refreshAskFab(); }
     } catch (error) {
       renderAskThread();
       if (error && error.status === 402) { await refreshAskCredits(); sayAsk(A.noCredits, 'bad'); }
@@ -10233,15 +10256,71 @@
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); sendAsk(); }
   });
   $('#ask-buy-go').addEventListener('click', buyAsk);
-  $('#ask-close').addEventListener('click', () => $('#ask-dialog').close());
+  // Minimising: the – button, the handle on a phone (a tap, or a swipe down),
+  // and Escape. The conversation, a half-typed question and an answer still
+  // coming all stay.
+  // The close event comes a moment later, so the button is put back at once.
+  const minimiseAsk = () => { $('#ask-dialog').close(); dockAsk(false); refreshAskFab(); };
+  $('#ask-close').addEventListener('click', minimiseAsk);
+  $('#ask-handle').addEventListener('click', minimiseAsk);
+  {
+    let startY = null;
+    const head = $('#ask-dialog');
+    head.addEventListener('pointerdown', event => {
+      startY = event.target.closest('.ask-handle, .ask-head') ? event.clientY : null;
+    });
+    head.addEventListener('pointerup', event => {
+      if (startY !== null && event.clientY - startY > 60) minimiseAsk();
+      startY = null;
+    });
+  }
+  // Escape anywhere on the page, since focus need not be inside the panel
+  // (it leaves it while an answer is coming) — but not when a popout of its
+  // own is open on top, whose Escape that is.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !$('#ask-dialog').open || document.querySelector('dialog:modal')) return;
+    event.preventDefault();
+    minimiseAsk();
+  });
+  $('#ask-dialog').addEventListener('close', () => { dockAsk(false); refreshAskFab(); });
+  // The page makes room for the docked panel on a wide screen (styles.css,
+  // body.ask-docked); the card and the report's side column are fitted again.
+  function dockAsk(on) {
+    document.body.classList.toggle('ask-docked', on);
+    requestAnimationFrame(() => { try { layoutPsycheCard(); } catch (error) { /* nothing drawn yet */ } });
+  }
+  $('#ask-fab').addEventListener('click', () => openAsk());
+  // Ideas: the ready-made questions, out of the way until asked for. One
+  // fills the box and the list folds away again.
+  function showAskIdeas(open) {
+    const list = $('#ask-ideas-list');
+    if (open && !list.children.length) {
+      setHtml(list, Copy.STRUCTURED.ask.suggestions.map(q =>
+        '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join(''));
+    }
+    $('#ask-ideas').hidden = !open;
+    $('#ask-ideas-toggle').setAttribute('aria-expanded', String(open));
+    $('#ask-ideas-toggle').classList.toggle('is-open', open);
+  }
+  $('#ask-ideas-toggle').addEventListener('click', () => showAskIdeas($('#ask-ideas').hidden));
   $('#ask-dialog').addEventListener('click', event => {
-    if (event.target === $('#ask-dialog')) { $('#ask-dialog').close(); return; }
     const chip = event.target.closest('.ask-chip');
     if (!chip) return;
     $('#ask-input').value = chip.dataset.q || '';
     askCount();
+    showAskIdeas(false);
     if (!$('#ask-compose').hidden) $('#ask-input').focus();
   });
+  /** The floating button: on My Psyche and My Report, with the report, while the panel is down. */
+  function refreshAskFab() {
+    const fab = document.getElementById('ask-fab');
+    const panel = document.getElementById('ask-dialog');
+    const profile = document.getElementById('view-profile');
+    if (!fab || !panel || !profile) return;
+    fab.hidden = !(askReady() && !profile.hidden && !panel.open);
+    const text = document.getElementById('ask-fab-text');
+    if (text) text.textContent = fab.classList.contains('is-ready') ? Copy.STRUCTURED.ask.fabReady : Copy.STRUCTURED.ask.fab;
+  }
   // Every way in: the card on My Psyche and at the end of My Report, and the
   // link at the foot of each part of My Report, which starts the question.
   document.addEventListener('click', event => {

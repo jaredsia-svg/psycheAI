@@ -4541,8 +4541,17 @@ details.more[open] > summary::after { content: ' ▴'; }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z'/%3E%3Cpath d='M12 8.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z' fill='black'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z'/%3E%3Cpath d='M12 8.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z' fill='black'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.ask-dialog { width: min(40rem, 94vw); max-width: 40rem; padding: 0; }
-.ask-dialog[open] { display: flex; flex-direction: column; max-height: min(52rem, 92vh); overflow: hidden; }
+/* A panel, not a modal (opened with show()): docked at the right below the
+   site's header on a laptop, a bottom sheet on a phone (below). The page
+   behind stays scrollable. */
+.ask-dialog {
+  position: fixed; z-index: 50; margin: 0; padding: 0; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 18px 50px rgba(30, 10, 50, .25);
+  inset: 4.25rem 1rem 1rem auto; width: min(400px, calc(100vw - 2rem)); max-width: none; max-height: none; height: auto;
+}
+.ask-dialog:not([open]) { display: none; }
+.ask-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+.ask-handle { display: none; }
 .ask-head { display: flex; align-items: center; gap: .7rem; padding: 1rem 1.1rem .8rem; border-bottom: 1px solid var(--line); }
 .ask-head-text { flex: 1; min-width: 0; }
 .ask-head h2 { margin: 0; font-size: 1.15rem; }
@@ -4558,7 +4567,32 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .ask-close:hover, .ask-close:focus-visible { background: var(--accent-soft); color: var(--accent); }
 .ask-thread { flex: 1 1 auto; min-height: 8rem; overflow-y: auto; padding: 1rem 1.1rem; display: grid; gap: 1rem; align-content: start; }
-.ask-intro .ask-try { margin: 0 0 .5rem; font-size: .74rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
+.ask-intro { margin: auto 0; text-align: center; font-size: .9rem; line-height: 1.5; color: var(--ink-soft); }
+/* Ideas: folded away under a small button by the counter; open, a short
+   scrolling list of questions above the box. */
+.ask-ideas[hidden] { display: none; }
+.ask-ideas { border: 1px solid var(--line); border-radius: 12px; padding: .55rem .6rem; background: var(--bg-alt); }
+.ask-ideas-title { margin: 0 0 .45rem; font-size: .74rem; font-weight: 700; color: var(--ink-soft); }
+.ask-ideas-list { display: grid; gap: .35rem; max-height: min(15rem, 35vh); overflow-y: auto; }
+.ask-ideas-list .ask-chip { border-radius: 10px; }
+.ask-ideas-toggle {
+  appearance: none; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 600; margin-right: auto;
+  padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink-soft);
+}
+.ask-ideas-toggle:hover, .ask-ideas-toggle.is-open { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* Ask Psyche minimised: a pill at the bottom right of My Psyche and My Report. */
+.ask-fab {
+  position: fixed; z-index: 45; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: .5rem; padding: .45rem 1rem .45rem .45rem;
+  border: 0; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700; font-size: .92rem; color: #fff;
+  background: linear-gradient(100deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 28px rgba(60, 20, 90, .35);
+}
+.ask-fab[hidden] { display: none; }
+.ask-fab .ask-mark { width: 2rem; height: 2rem; border-radius: 999px; background: rgba(255, 255, 255, .22); }
+.ask-fab:hover, .ask-fab:focus-visible { filter: brightness(1.06); }
+.ask-fab.is-ready { animation: ask-ready 1.6s ease-in-out infinite; }
+@keyframes ask-ready { 0%, 100% { box-shadow: 0 10px 28px rgba(60, 20, 90, .35); } 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .ask-fab.is-ready { animation: none; } }
 .ask-suggestions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .ask-chip {
   appearance: none; cursor: pointer; font: inherit; text-align: left; font-size: .82rem; line-height: 1.3;
@@ -4595,7 +4629,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   padding: .6rem .75rem; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink);
 }
 .ask-compose textarea:focus { outline: none; border-color: var(--accent); }
-.ask-compose-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .4rem; }
+.ask-compose-row { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .4rem; }
 .ask-count { font-size: .74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .ask-count.is-near { color: var(--warn); font-weight: 700; }
 .ask-buy { text-align: center; }
@@ -4622,9 +4656,29 @@ details.more[open] > summary::after { content: ' ▴'; }
 .ask-part-link .ask-mark { width: 1.4rem; height: 1.4rem; border-radius: 8px; }
 .ask-part-link:hover, .ask-part-link:focus-visible { background: var(--accent); color: #fff; }
 .premium-promo[hidden] { display: none; }
-@media (max-width: 560px) {
-  .ask-dialog[open] { max-height: 96vh; }
+@media (max-width: 760px) {
+  /* A bottom sheet: the full width, most of the height, a handle to pull it down. */
+  .ask-dialog { inset: auto 0 0 0; width: 100%; height: 85vh; height: 85dvh; border-radius: 18px 18px 0 0; border-bottom: 0; }
+  .ask-handle {
+    display: block; flex: none; appearance: none; border: 0; background: none; cursor: pointer; padding: .5rem 0 .1rem; width: 100%;
+  }
+  .ask-handle span { display: block; width: 2.6rem; height: .3rem; margin: 0 auto; border-radius: 999px; background: var(--line); }
+  .ask-head { padding-top: .4rem; }
   .ask-q { max-width: 92%; }
   .ask-a { max-width: 100%; }
 }
-@media print { .ask-part, .ask-card { display: none !important; } }
+@media print { .ask-part, .ask-card, .ask-fab, .ask-dialog { display: none !important; } }
+/* Ask Psyche docked on a wide screen: the page makes room for it rather than
+   sitting under it — the column moves left and narrows, and on My Report the
+   part nav and its actions go to the left edge. Narrower than this, the panel
+   floats over the page and is minimised to read what is under it. */
+@media (min-width: 1200px) {
+  body.ask-docked main.container {
+    margin-left: auto; margin-right: 432px; max-width: min(var(--page-w), calc(100vw - 432px - 1rem));
+  }
+  body.ask-docked:has(#view-profile:not([hidden]) #profile-body .part-nav) main.container {
+    margin-left: 248px; margin-right: 432px; max-width: min(var(--page-w), calc(100vw - 248px - 432px));
+  }
+  body.ask-docked #profile-body .part-nav,
+  body.ask-docked #view-profile.profile-paid .cta-row { left: 1rem; }
+}

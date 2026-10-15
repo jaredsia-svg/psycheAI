@@ -412,7 +412,7 @@ try {
         getComputedStyle(svg).color !== 'rgb(0, 0, 0)';
     }));
   check('the headline is the new one, its second line in the accent',
-    /^A personality study\.\s+No questions asked\.$/.test(
+    /^A full personality study\.\s+No questions asked\.$/.test(
       (await page.locator('#view-welcome h1').innerText()).trim()) &&
       (await page.locator('#view-welcome h1 .accent').innerText()).trim() === 'No questions asked.');
   // The tab title is also the search result's headline, so it says what
@@ -11734,7 +11734,9 @@ try {
         await sp.waitForSelector('#ask-credits:not([hidden])', { timeout: 10000 });
         const empty = await sp.evaluate(() => ({
           intro: Boolean(document.querySelector('#ask-thread .ask-intro')),
-          suggestions: document.querySelectorAll('#ask-thread .ask-chip').length,
+          suggestions: document.querySelectorAll('#ask-thread .ask-chip').length === 0 && document.querySelector('#ask-ideas').hidden ? 10 : -1,
+          modal: document.querySelector('#ask-dialog').matches(':modal'),
+          fabHidden: document.querySelector('#ask-fab').hidden,
           credits: document.querySelector('#ask-credits').textContent,
           buy: !document.querySelector('#ask-buy').hidden && document.querySelector('#ask-buy-go').textContent,
           compose: document.querySelector('#ask-compose').hidden,
@@ -11743,8 +11745,8 @@ try {
             /Each answer is written from your own report/.test(document.querySelector('#ask-dialog').textContent) ||
             /Credits from Your Referral count too/.test(document.querySelector('#ask-dialog').textContent),
           referral: document.querySelector('#ask-referral').hidden }));
-        check('Ask Psyche opens on what it is, six questions to try, and, with none left, the way to get five',
-          empty.intro && empty.suggestions === 6 && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
+        check('Ask Psyche opens as a panel beside the page (not a modal), one line and no list in the way, and, with none left, the way to get five',
+          empty.intro && empty.suggestions === 10 && !empty.modal && empty.fabHidden && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
             empty.compose && empty.privacy === 'Your question goes to Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.' &&
             empty.sub === 'Your personal coach.' && !empty.introText && empty.referral, JSON.stringify(empty));
         await sp.click('#ask-buy-go');
@@ -11760,13 +11762,19 @@ try {
         check('paying adds five questions, says so, and opens the question box',
           await sp.evaluate(() => /Added 5 questions/.test(document.querySelector('#ask-status').textContent) &&
             !document.querySelector('#ask-compose').hidden && document.querySelector('#ask-buy').hidden));
-        // A ready-made question, then sent.
-        await sp.click('#ask-thread .ask-chip');
+        // The ideas, folded under the box until asked for: ten, the most
+        // universal first and the career one last; one fills the box.
+        await sp.click('#ask-ideas-toggle');
+        const ideas = await sp.evaluate(() => [...document.querySelectorAll('#ask-ideas-list .ask-chip')].map(b => b.textContent));
+        check('Ideas opens ten questions to start from, the most universal first and career last',
+          ideas.length === 10 && /^Who am I when I.m not being useful/.test(ideas[0]) && /big change in my career/.test(ideas[9]),
+          JSON.stringify(ideas));
+        await sp.click('#ask-ideas-list .ask-chip');
         const filled = await sp.evaluate(() => ({ value: document.querySelector('#ask-input').value, count: document.querySelector('#ask-count').textContent,
           max: document.querySelector('#ask-input').maxLength }));
-        check('a suggested question fills the box, counted against its 300 characters',
-          filled.value === 'What should I focus on this week to grow?' && filled.count === filled.value.length + '/300' && filled.max === 300,
-          JSON.stringify(filled));
+        check('an idea fills the box, counted against its 300 characters, and the list folds away',
+          filled.value === ideas[0] && filled.count === filled.value.length + '/300' && filled.max === 300 &&
+            await sp.evaluate(() => document.querySelector('#ask-ideas').hidden), JSON.stringify(filled));
         // The digest the report was written from, as an unlock keeps it.
         await sp.evaluate(() => localStorage.setItem('psycheai_report_digest',
           JSON.stringify({ profile: { bio: 'runs at dawn' }, samples: { captions: ['[2024] first light on the river'] } })));
@@ -11790,20 +11798,54 @@ try {
             stored: JSON.parse(localStorage.getItem('psycheai_ask') || '[]') };
         });
         check('the answer comes back under the question, with next steps and two questions to ask next, and one credit is spent',
-          /Mock answer to "What should I focus on this week to grow\?"/.test(answered.a) && /With examples from your data/.test(answered.a) &&
+          /Mock answer to "Who am I when I.m not being useful/.test(answered.a) && /With examples from your data/.test(answered.a) &&
             answered.steps === 2 && answered.follow === 2 &&
             answered.credits === '4 questions left' && answered.input === '', JSON.stringify(answered));
         check('and the question and answer are kept in this browser',
           answered.stored.length === 1 && answered.stored[0].q === filled.value && /Mock answer/.test(answered.stored[0].a));
+        // Minimised, not closed: the floating button brings it back; an
+        // answer that lands while it is down is announced on the button.
+        await sp.click('#ask-close');
+        check('minimising leaves the floating Ask Psyche button on the page',
+          await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden &&
+            document.querySelector('#ask-fab-text').textContent === 'Ask Psyche'));
+        await sp.click('#ask-fab');
+        await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
+        await sp.fill('#ask-input', 'What gets in my way most?');
+        // A real answer takes seconds; held back here so it lands after the minimise.
+        const slow = async route => { await new Promise(r => setTimeout(r, 1500)); await route.continue(); };
+        await sp.route('**/api/ask', slow);
+        await sp.click('#ask-send');
+        await sp.keyboard.press('Escape');
+        await sp.waitForFunction(() => document.querySelector('#ask-fab').classList.contains('is-ready'), null, { timeout: 30000 }).catch(() => {});
+        await sp.unroute('**/api/ask', slow);
+        check('an answer that comes in while minimised turns the button into "Answer ready"',
+          await sp.evaluate(() => !document.querySelector('#ask-dialog').open &&
+            document.querySelector('#ask-fab-text').textContent === 'Answer ready'));
+        await sp.click('#ask-fab');
+        await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
+        check('and opening it shows the answer and puts the button back as it was',
+          await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 &&
+            !document.querySelector('#ask-fab').classList.contains('is-ready')));
+        {
+          const vp = sp.viewportSize();
+          await sp.setViewportSize({ width: 1440, height: 900 });
+          await sp.waitForTimeout(300);
+          const room = await sp.evaluate(() => ({ page: Math.round(document.querySelector('main.container').getBoundingClientRect().right),
+            panel: Math.round(document.querySelector('#ask-dialog').getBoundingClientRect().left) }));
+          await sp.setViewportSize(vp);
+          check('on a wide screen the page makes room for the docked panel: nothing sits under it',
+            room.page <= room.panel, JSON.stringify(room));
+        }
         await sp.click('#ask-close');
         await sp.reload({ waitUntil: 'load' });
         await sp.waitForSelector('#profile-body .ask-card', { timeout: 20000 });
         check('after a reload the card counts the question asked',
-          (await sp.locator('#profile-body .ask-card-asked').innerText()) === '1 question asked');
+          (await sp.locator('#profile-body .ask-card-asked').innerText()) === '2 questions asked');
         await sp.click('#profile-body .ask-card-go');
         await sp.waitForSelector('#ask-dialog[open] #ask-thread .ask-item', { timeout: 10000 });
         check('and Ask Psyche opens on the conversation so far, not the introduction',
-          await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 1 && !document.querySelector('#ask-thread .ask-intro')));
+          await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 && !document.querySelector('#ask-thread .ask-intro')));
         await sp.click('#ask-close');
       }
       await sp.click('#open-report');
