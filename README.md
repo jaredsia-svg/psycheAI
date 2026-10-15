@@ -2652,6 +2652,8 @@ above its buttons.
 - **No new trust:** a reader could always edit their own storage, so a hand-edited backup unlocks
   nothing they could not already fake locally. Giving a backup to someone else gives them the
   report and the link, the same as sending the PDF and the link.
+- **FAQ:** *How do I keep my report from getting lost?* (October 2026) says the card, report and
+  syncs live only in this browser, and points to Save a backup and Restore from a backup.
 - **Privacy:** the file is made and read in the browser, like the PDF. The FAQ and the privacy page
   say so, and say to keep it private because it holds the link's key. The Delete everything sheet
   suggests saving a backup first.
@@ -3940,6 +3942,11 @@ steps and gave three fields the same visual weight as the four screens around th
 step numbers as the literal sequence `1,2,3,4`, because that is the claim — "there are four of these"
 — rather than counting elements, which stayed true the whole time the labels said otherwise.
 
+The step 3 capture (`guide/07-confirm-export.jpg`) was cropped in October 2026 to drop the empty
+back-arrow bar above *Confirm your export*: 80 pixels off the top, 480×866 to 480×786. Its ring
+(`.guide-mark-7`) moved with it, from 70.4% / 25.8% to 67.4% / 28.4%, so it still frames the Date
+range, Format and Media quality rows.
+
 The first version drew the screens as CSS sketches, because Meta's UI is theirs and a capture goes
 stale silently the next time they move a menu. That was the wrong call: a sketch tells a reader a list
 exists, where a capture tells them what the row they are hunting for actually looks like — which is
@@ -5043,6 +5050,24 @@ so the model was only re-deciding them to be overwritten. The pinned schema is s
 classic one on every count, and a self-test holds it there. An unlock with no card to anchor to (a
 reader who added a source while paying) runs the card first and the pinned report after it
 (`cardThenFull` in server.js), and the new card comes back beside the report as `freeCard`.
+
+**Why those two calls are not merged into one (looked at again in October 2026).** One call that
+writes the card and the report together would need the unpinned structured schema, and that is the
+schema Gemini refuses. Merging would also save little:
+
+- The card call on this path reads the same premium-size digest the report does. At its worst
+  case (`DEEP_FREE_COST_CAP` in docs/digest.js) that is about 61,000 input tokens ($0.046) and up to
+  10,000 output tokens ($0.0375): $0.084. Typically it is nearer $0.06.
+- Merged, the digest and a prompt would be read once instead of twice, saving about $0.045. The
+  card's ~2,000 tokens of writing, and its thinking, would move into the report call rather than
+  disappear.
+- Net: about **4 to 6 cents per unlock that adds data**, about 1% of the US$5. It applies only on
+  that path; an ordinary unlock is already one call.
+
+A cheaper route, if it is ever wanted, is to draw the new card from the standard digest rather
+than the premium one (about 1.5 cents less), or Gemini context caching of the digest across the
+two calls. Caching cannot share a cached entry between two different system prompts, and the
+storage arithmetic under "Context caching" applies.
 
 ### The report opens as an index, not a scroll
 

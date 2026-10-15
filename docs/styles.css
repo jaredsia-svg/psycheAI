@@ -635,7 +635,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .guide-mark-4 { top: 60.6%; left: 4%; width: 92%; height: 15.9%; }
 .guide-mark-5 { top: 69.9%; left: 4%; width: 92%; height: 19.4%; }
 .guide-mark-6 { top: 58.6%; left: 4%; width: 92%; height: 17.0%; }
-.guide-mark-7 { top: 70.4%; left: 4%; width: 92%; height: 25.8%; }
+.guide-mark-7 { top: 67.4%; left: 4%; width: 92%; height: 28.4%; }
 .guide-shot figcaption {
   margin-bottom: .5rem; font-size: .84rem; line-height: 1.4; color: var(--ink-soft);
 }

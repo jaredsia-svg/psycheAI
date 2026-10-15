@@ -10611,6 +10611,7 @@ try {
       'How accurate is it?',
       'What does it cost?',
       'How does Psyche Sync work?',
+      'How do I keep my report from getting lost?',
       'How do I contact PsycheAI?',
     ]), JSON.stringify(faqQuestions));
 
