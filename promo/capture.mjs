@@ -25,7 +25,7 @@ await new Promise((resolve, reject) => {
 // measured by its whole panel.
 const TARGETS = {
   confidence: '.pc-sconf', character: '.pc-shero', patterns: '.pc-spatterns', motives: '.pc-smotives',
-  type: '.pc-sletters', bigFive: '.pc-straits', standFor: '.pc-schips', love: '.pc-slove-panel',
+  type: '.pc-sletters', bigFive: '.pc-straits', standFor: '.pc-schips', love: '.pc-slove-panel', syncs: '.pc-ssync-panel',
 };
 const browser = await chromium.launch();
 try {

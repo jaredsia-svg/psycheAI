@@ -1517,6 +1517,18 @@ Under 560px the button is its red bin alone, its label kept for screen readers, 
 from 720px up, mostly off the edge and fainter (opacity .09) so the headline reads over it; the top right
 of the header on a phone, smaller (165px).
 
+**The promo video, brought up to date** (October 2026; scene by scene in `promo/README.md`). It
+had fallen behind the product: no WhatsApp, a card without *Most in sync with*, a "full report" of four
+parts and no Psyche Sync. Now WhatsApp is the fourth source flying in; the card's list ends on
+*and who you're most in sync with*, highlighted; *Then unlock your Psyche Report, which has the full explanations,
+how you connect, how you work, and a plan to grow* shows all five parts, lighting 01 and 02 together
+on "the full explanations" (of what the card scene just showed), then 03 to 05 as each is named,
+*How you work* its own with a compass; a new Sync scene follows (two friends' cards, a ring closing between
+them on a tick, since Sync has no score); and the end card opens on a carousel of every character on the site's strip,
+sliding across and slowing to stop on the sample card's Mulan, before the card itself. The ripped-up questionnaire now lands on
+*No questions asked.*, the front page's headline, rather than "0 questions". About 53 seconds, from 45.
+The sample card was recaptured for it (`npm run promo:card`).
+
 **The welcome hero plays the promo video** (`.hero-video`, `docs/media/psycheai-intro.mp4`, built by
 `npm run promo` — see `promo/README.md`). It is 9:16, so it is sized by its width and never
 stretched: on a phone it sits centred under the two buttons, as wide as fits without taking more than

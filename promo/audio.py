@@ -17,7 +17,9 @@ def load(path):
                          capture_output=True, check=True).stdout
     return np.frombuffer(out, dtype=np.int16).astype(np.float32) / 32768.0
 
-lines = [load(f'{VO}/l{i:02d}.wav') for i in range(1, 9)] + [load(f'{VO}/l09-{VERSION}.wav')]
+# Nine shared lines, then this version's closing line.
+SHARED = 9
+lines = [load(f'{VO}/l{i:02d}.wav') for i in range(1, SHARED + 1)] + [load(f'{VO}/l{SHARED + 1:02d}-{VERSION}.wav')]
 dur = [len(x) / SR for x in lines]
 
 # Each scene starts just as the last line ends and its own voice comes 0.2 s later: the same 0.22 s between
@@ -25,17 +27,19 @@ dur = [len(x) / SR for x in lines]
 GAP, LEAD = 0.02, 0.2
 marks = json.load(open(VO + '/marks.json'))
 # When each word is said, per line, for the on-screen words to appear in time with the voice.
-word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, 9)] + [marks['words']['l09-' + VERSION]]
+word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, SHARED + 1)] + [marks['words'][f'l{SHARED + 1:02d}-' + VERSION]]
 marks = marks['lines'] + [marks['end'][VERSION]]
 # The question scene holds on a little after its line, for the questionnaire being ripped up.
 minimum = {0: 1.5, 2: LEAD + dur[2] + 0.61}
-# The Psyche Card scene lets the card land before the voice names it.
-EXTRA_LEAD = {5: 0.35}
+# The Psyche Card scene lets the card land before the voice names it; the end card starts
+# its roll through the characters before the closing line.
+EXTRA_LEAD = {5: 0.35, 9: 0.5}
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
     lead = 0.35 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
     length = max(lead + d + GAP, minimum.get(i, 0))
-    if i == len(dur) - 1: length = lead + d + 0.86
+    # The end card holds a little longer, on the card the roll landed on.
+    if i == len(dur) - 1: length = lead + d + 1.2
     scenes.append({'start': round(t, 3), 'end': round(t + length, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
                    'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})
@@ -125,8 +129,8 @@ def impact():
 sc = scenes
 INTRO_END = sc[3]['start']      # the hook: plucks and a light pulse
 DROP = sc[4]['start']           # the data goes in: full beat
-BREAK = sc[7]['start']          # privacy: pads, plucks, no kick
-FINAL = sc[8]['start']          # the end card: back in, then out
+BREAK = sc[8]['start']          # privacy: pads, plucks, no kick
+FINAL = sc[9]['start']          # the end card: back in, then out
 
 K, C = kick(), clap()
 H, HO = hat(), hat(True)
@@ -172,7 +176,7 @@ for bar in range(int(TOTAL / BAR) + 2):
         at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
 
 at(DROP - 2.2, riser(2.2), 1.0); at(DROP, impact(), 1.0)
-at(sc[5]['start'], impact(), 0.6); at(sc[6]['start'], impact(), 0.6)
+at(sc[5]['start'], impact(), 0.6); at(sc[6]['start'], impact(), 0.6); at(sc[7]['start'], impact(), 0.6)
 at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]

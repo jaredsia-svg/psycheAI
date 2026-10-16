@@ -1,6 +1,6 @@
 # PsycheAI promo video
 
-A 9:16 video (about 45 seconds) for Instagram Reels and Stories, built entirely from this folder:
+A 9:16 video (about 53 seconds) for Instagram Reels and Stories, built entirely from this folder:
 the voice, the music and every frame. The website version also plays at the top of the front page.
 
 ```
@@ -61,6 +61,32 @@ A version with any other name is built too, into `out/PsycheAI-<name>.mp4`.
 The script itself (what each scene says) is in `vo.py` (`LINES`) and `stage.html` (the on-screen
 words). Change both together.
 
+The ten scenes, as of October 2026:
+
+| # | Scene | What changed then |
+| --- | --- | --- |
+| 0–2 | The hook: no questionnaire; it is ripped up and *No questions asked.* lands | was "0 questions", now the site's headline |
+| 3 | Digital footprint | |
+| 4 | The data sources fly into the mark | WhatsApp added: four files, two by two |
+| 5 | The Psyche Card, part by part | ends on *Most in sync with* |
+| 6 | The Psyche Report | was "full report"; all five parts, *How you work* its own (a compass). The voice names 01 and 02 together as "the full explanations" (of what the card just showed) and lights them as one, then 03, 04 and 05 in turn |
+| 7 | Psyche Sync | new: two friends' cards, a ring closing between them on a tick (Sync has no score, so none is shown); the line ends on "sync." so its pitch falls |
+| 8 | Privacy | |
+| 9 | Your first Psyche Card is free | first a carousel of every character sliding across, slowing to stop on the sample card's Mulan (no names: the faces carry it) |
+
+`audio.py` counts nine shared lines and a closing one (`SHARED`); `BREAK` and `FINAL` in both it and
+`stage.html` are scene 8 and 9. The roll and the Sync scene's two characters use the site's own
+character strip, `docs/media/cast-sprite.webp` and its `.json` (`tools/cast-sprite.mjs`), which
+`render.mjs` passes in as `CAST`, so a new character joins the roll by itself.
+
+## Words the voice says oddly
+
+Write them the way the voice says them right, and check the result with the recogniser:
+**PsycheAI** is given as sounds (`{B}`); **Whatsapp** is spelled with a small *a*, because
+"WhatsApp" is read as two words, slowly, stressed on "app"; a list of single words is recorded in
+longer phrases, since a word on its own ("Google,") comes out garbled; and a line that should fall at
+its end ends on a full stop ("see how you sync.", where "sync," before "for free" rose).
+
 ## When the Psyche Card changes
 
 The card in the video is a picture of the sample card, `assets/card.png`, with where each part
@@ -71,7 +97,8 @@ npm run promo:card
 ```
 
 It starts the app in mock mode on its own port, opens the sample card full screen, saves the
-picture and measures each part with the same selectors the card guide uses.
+picture and measures each part with the same selectors the card guide uses (`syncs` included, for
+the *Most in sync with* highlight).
 
 ## Checking a scene without rendering it all
 

@@ -6,7 +6,8 @@
 // The first argument is a version in config.json.
 //
 // The stage reads the timeline audio.py wrote, the card parts capture.mjs measured,
-// the brand mark from docs/copy.js and the closing link from config.json.
+// the brand mark from docs/copy.js, the closing link from config.json and the
+// character strip from docs/media.
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -29,7 +30,9 @@ vm.createContext(sandbox);
 vm.runInContext(readFileSync(dir + '/../docs/copy.js', 'utf8'), sandbox);
 const mark = JSON.stringify((sandbox.PsycheCopy || sandbox.window.PsycheCopy).BRAND_MARK);
 const html = readFileSync(dir + '/stage.html', 'utf8').replace('__TIMELINE__', tl).replace('__PARTS__', parts)
-  .replace('__MARK__', mark).replace('__CONFIG__', config);
+  .replace('__MARK__', mark).replace('__CONFIG__', config)
+  // The site's character strip (tools/cast-sprite.mjs), for the end card's roll and the Sync scene.
+  .replace('__CAST__', readFileSync(dir + '/../docs/media/cast-sprite.json', 'utf8'));
 writeFileSync(dir + '/stage-built.html', html);
 
 const browser = await chromium.launch();

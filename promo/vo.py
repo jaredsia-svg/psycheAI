@@ -38,11 +38,19 @@ LINES = [
     (['without answering a single question?'], 0.87, None),
     # Slower than the rest, and a beat after "footprint" so the idea lands before the payoff.
     (["And what if your digital footprint,", "could show you patterns you have never noticed before?"], 1.0, True, 0.38),
-    (['{B} reads the Instagram,', 'Google,', 'and Facebook data you already have.'], 1.0, None),
+    # Two halves, each checked on its own: as one take "data you" kept coming back "debtor you", and a
+    # single word on its own ("WhatsApp,", "Google,") comes out garbled.
+    # "Whatsapp" as one word: spelled "WhatsApp" the voice says two, slowly, stressed on "app".
+    (['{B} reads the Instagram, Whatsapp,', 'Google, and Facebook data you already have.'], 1.0, True, 0.08),
     # The card's own line is said slower than the list after it, with a beat before the list starts.
     ([("You will get a Psyche Card.", 1.0), "Which character you're most like,", 'your signature patterns,', 'your motivations,',
-      'your type,', 'your traits,', 'your interests and values,', 'and your love languages.'], 0.87, True, [0.45] + [0.06] * 6),
-    (['Then unlock the full report.', 'Who you are,', 'what drives you,', 'how you connect and work,', 'and a plan to grow.'], 0.87, True),
+      'your type,', 'your traits,', 'your interests and values,', 'your love languages,', "and who you're most in sync with."],
+     0.87, True, [0.45] + [0.06] * 7),
+    # Parts 1 and 2 together as "the full explanations" (the card already showed what they explain).
+    (['Then unlock your Psyche Report,', 'which has the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
+    # Psyche Sync, after the report: a beat between the two halves.
+    # Ending on "sync." so its pitch falls; "sync," before "for free" rose.
+    (['Send your link to a friend,', 'and see how you sync.'], 0.92, True, 0.12),
     (['Your files never leave your device.', 'Only a de-identified summary is analysed by Gemini,', 'and {B} keeps no copy.'], 0.92, None),
 ]
 # The closing line: this, then each version's own words from config.json.
@@ -169,9 +177,9 @@ def write(name, phrases, ls, split, pause=0.06):
     word_marks[name] = word_times(a, ' '.join(p[0] if isinstance(p, tuple) else p for p in phrases))
     return [0.0] + cuts
 
-# Lines 1-8 are shared; the closing line is spoken once per version in config.json.
+# Lines 1-9 are shared; the closing line is spoken once per version in config.json.
 word_marks = {}
 marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}, 'words': word_marks}
 for version, settings in CONFIG.items():
-    marks['end'][version] = write('l09-' + version, [END, settings['spoken']], 0.9, True)
+    marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [END, settings['spoken']], 0.9, True)
 json.dump(marks, open(OUT + '/marks.json', 'w'))

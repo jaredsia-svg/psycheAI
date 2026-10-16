@@ -36,7 +36,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
   box-shadow: 0 6px 14px rgba(60,20,90,.25); }
 .scrap::after { content: ''; position: absolute; left: 10px; right: 10px; top: 16px; height: 6px; border-radius: 3px; background: #e6d9f0; }
 #flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 60; pointer-events: none; }
-.nope { position: absolute; z-index: 45; left: 0; right: 0; top: 1160px; text-align: center; font-size: 120px; font-weight: 900; color: #ffd36e;
+.nope { position: absolute; z-index: 45; left: 0; right: 0; top: 1160px; text-align: center; font-size: 96px; font-weight: 900; letter-spacing: -0.02em; color: #ffd36e;
   text-shadow: 0 10px 40px rgba(0,0,0,.5); }
 /* footprint */
 .chip { position: absolute; z-index: 1; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35);
@@ -64,18 +64,33 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .tag { position: absolute; padding: 10px 24px; border-radius: 999px; background: #ffd36e; color: #2a0f22; font-weight: 900; font-size: 30px; white-space: nowrap;
   left: 50%; top: -30px; transform: translate(-50%,-50%); }
 /* the report grid */
-.tile { position: absolute; width: 440px; height: 430px; border-radius: 30px; overflow: hidden; background: #fff; color: #241a2e;
+.tile { position: absolute; width: 440px; height: 360px; border-radius: 30px; overflow: hidden; background: #fff; color: #241a2e;
   box-shadow: 0 30px 80px rgba(0,0,0,.45); }
-.tile .thumb { height: 200px; overflow: hidden; position: relative; background: #f6f0fa; }
+.tile .thumb { height: 160px; overflow: hidden; position: relative; background: #f6f0fa; }
 .tile .thumb svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .th1 { background: linear-gradient(120deg, #6a2a94, #c2407a 70%, #ff7eb3); }
-.th1 .name { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: #fff; font-size: 40px; font-weight: 900; letter-spacing: .02em; }
+.th1 .name { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; color: #fff; font-size: 32px; font-weight: 900; letter-spacing: .02em; }
 .th3 text { font-family: Inter, sans-serif; font-weight: 800; }
-.tile .body { padding: 20px 26px; }
-.tile .n { font-size: 30px; font-weight: 900; color: #c2407a; letter-spacing: .04em; }
-.tile .t { font-size: 37px; font-weight: 850; line-height: 1.08; margin-top: 4px; letter-spacing: -0.02em; }
-.tile .k { margin-top: 12px; font-size: 25px; font-weight: 650; color: #6b5a7b; line-height: 1.32; }
+.tile .body { padding: 16px 26px; }
+.tile .n { font-size: 26px; font-weight: 900; color: #c2407a; letter-spacing: .04em; }
+.tile .t { font-size: 34px; font-weight: 850; line-height: 1.08; margin-top: 4px; letter-spacing: -0.02em; }
+.tile .k { margin-top: 8px; font-size: 22px; font-weight: 650; color: #6b5a7b; line-height: 1.32; }
 .tile.on { outline: 6px solid #ffd36e; }
+/* Psyche Sync: two friends' cards, the score between them */
+.mini { position: absolute; width: 330px; padding: 30px 20px 26px; border-radius: 30px; background: #fff; color: #241a2e; text-align: center;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.mini .av { width: 170px; height: 170px; margin: 0 auto; border-radius: 50%; background: url(../docs/media/cast-sprite.webp) no-repeat, linear-gradient(150deg, #7b3fa0, #e0457b);
+  background-size: auto 100%; box-shadow: 0 0 0 6px #f3e6fb; }
+.mini .who { margin-top: 18px; font-size: 34px; font-weight: 850; }
+.mini .as { margin-top: 4px; font-size: 26px; font-weight: 650; color: #7a6a88; }
+#ring { position: absolute; left: 420px; top: 740px; width: 240px; height: 240px; }
+.sync-pill { position: absolute; left: 50%; padding: 18px 40px; border-radius: 999px; font-size: 44px; font-weight: 850; white-space: nowrap;
+  background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.4); }
+/* the end card's carousel of characters, sliding across and stopping on Mulan */
+#reel { position: absolute; left: 0; right: 0; top: 0; height: 0; }
+.reel-item { position: absolute; top: 900px; width: 200px; height: 200px; border-radius: 50%;
+  background: url(../docs/media/cast-sprite.webp) no-repeat, linear-gradient(150deg, #7b3fa0, #e0457b); background-size: auto 100%;
+  box-shadow: 0 0 0 7px rgba(255,255,255,.9), 0 24px 60px rgba(0,0,0,.4); }
 /* privacy */
 .line { position: absolute; z-index: 20; left: 80px; right: 80px; font-size: 64px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.1; }
 .code { position: absolute; left: 130px; right: 130px; top: 1150px; padding: 40px 46px; border-radius: 28px; background: rgba(255,255,255,.12);
@@ -91,7 +106,9 @@ body.light .blob { mix-blend-mode: multiply; filter: blur(90px); }
 body.light .spark { background: #ff9ec4; box-shadow: 0 0 12px 3px rgba(224,69,123,.35); }
 body.light .grad, body.light .grad .w { background-image: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); }
 body.light .soft { color: #6b3f8f; }
-body.light .page, body.light .file, body.light .tile { box-shadow: 0 30px 70px rgba(90,40,120,.2); }
+body.light .page, body.light .file, body.light .tile, body.light .mini { box-shadow: 0 30px 70px rgba(90,40,120,.2); }
+body.light .sync-pill { background: #fff; border-color: #e4d2f3; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
+body.light .reel-item { box-shadow: 0 0 0 7px #fff, 0 24px 60px rgba(90,40,120,.28); }
 body.light .nope { color: #e0457b; text-shadow: none; }
 body.light .chip { background: rgba(255,255,255,.92); border-color: #e4d2f3; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
 body.light #mark path { stroke: #7b3fa0; }
@@ -116,7 +133,7 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
     <svg id="nosign" viewBox="-300 -300 600 600"><circle r="240" fill="rgba(229,56,59,.08)" stroke="#e5383b" stroke-width="46"/>
       <line x1="-170" y1="-170" x2="170" y2="170" stroke="#e5383b" stroke-width="46" stroke-linecap="round"/></svg>
     <div id="scraps"></div>
-    <div class="nope" id="nope">0 questions</div>
+    <div class="nope" id="nope">No questions asked.</div>
   </div>
 
   <section class="scene" id="s0"><div class="big" style="top:760px;font-size:118px;text-align:center" data-words>What if I told you…</div></section>
@@ -136,12 +153,13 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
   </section>
 
   <section class="scene" id="s4">
-    <div class="big" style="top:250px;font-size:78px" data-words><span class="grad">PsycheAI</span> reads the <span class="grad">Instagram, Google</span> and <span class="grad">Facebook</span> data you already have.</div>
+    <div class="big" style="top:250px;font-size:74px" data-words><span class="grad">PsycheAI</span> reads the <span class="grad">Instagram, WhatsApp, Google</span> and <span class="grad">Facebook</span> data you already have.</div>
     <div class="glow" id="glow"></div>
     <svg id="mark" viewBox="0 0 140 140"></svg>
     <div class="file" id="f1"><span class="ext" style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)">ZIP</span><div class="name">Instagram</div><div class="sub">posts, likes, messages</div></div>
     <div class="file" id="f2"><span class="ext" style="background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335)">ZIP</span><div class="name">Google</div><div class="sub">searches, YouTube</div></div>
     <div class="file" id="f3"><span class="ext" style="background:#1877f2">ZIP</span><div class="name">Facebook</div><div class="sub">posts, friends, chats</div></div>
+    <div class="file" id="f4"><span class="ext" style="background:#25d366">TXT</span><div class="name">WhatsApp</div><div class="sub">your own messages</div></div>
   </section>
 
   <section class="scene" id="s5">
@@ -150,11 +168,22 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
   </section>
 
   <section class="scene" id="s6">
-    <div class="big" style="top:250px;font-size:80px;text-align:center" data-words>Then unlock the<br><span class="grad">full report</span></div>
+    <div class="big" style="top:230px;font-size:80px;text-align:center" data-words>Then unlock your<br><span class="grad">Psyche Report</span></div>
     <div id="tiles"></div>
   </section>
 
   <section class="scene" id="s7">
+    <div class="big" style="top:250px;font-size:78px;text-align:center" data-words>Send your link to a friend, and see how you <span class="grad">sync</span></div>
+    <div class="mini" id="m1"><div class="av" id="av1"></div><div class="who">You</div><div class="as" id="as1"></div></div>
+    <div class="mini" id="m2"><div class="av" id="av2"></div><div class="who">Your friend</div><div class="as" id="as2"></div></div>
+    <svg id="ring" viewBox="0 0 200 200"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset=".5" stop-color="#ff7eb3"/><stop offset="1" stop-color="#c792ff"/></linearGradient></defs><circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="18" id="ringBg"/>
+      <circle cx="100" cy="100" r="80" fill="none" stroke="url(#rg)" stroke-width="18" stroke-linecap="round" id="ringArc" transform="rotate(-90 100 100)"/>
+      <path d="M64 102 L90 128 L138 76" fill="none" stroke="url(#rg)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" id="ringTick" stroke-dasharray="120" stroke-dashoffset="120"/></svg>
+    <div class="sync-pill" id="sy1" style="top:1180px">✓ What clicks</div>
+    <div class="sync-pill" id="sy2" style="top:1300px">⇄ Where you differ</div>
+  </section>
+
+  <section class="scene" id="s8">
     <svg id="shield" viewBox="0 0 110 125"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset="1" stop-color="#ff7eb3"/></linearGradient></defs>
       <path d="M55 4 L102 22 V60 C102 92 80 112 55 121 C30 112 8 92 8 60 V22 Z" fill="rgba(255,255,255,.12)" stroke="url(#sg)" stroke-width="5"/>
       <path id="tick" d="M34 63 L50 79 L78 47" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -168,20 +197,23 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
     </div>
   </section>
 
-  <section class="scene" id="s8">
+  <section class="scene" id="s9">
     <svg id="mark2" viewBox="0 0 140 140" style="position:absolute;left:450px;top:240px;width:180px;height:180px"></svg>
     <div class="big" style="top:440px;font-size:54px;text-align:center;letter-spacing:.02em">PsycheAI</div>
     <div class="big" style="top:530px;font-size:92px;text-align:center" data-words>Your first <span class="grad">Psyche Card</span> is free!</div>
+    <div id="reel"></div>
     <img id="endCard" src="assets/card.png" style="position:absolute;left:390px;top:800px;width:300px;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
     <div class="pill" id="cta" style="top:1370px"></div>
   </section>
   <div id="flash"></div>
+  <img src="../docs/media/cast-sprite.webp" alt="" style="display:none">
 </div>
 <script>
 const TL = __TIMELINE__;
 const PARTS = __PARTS__;
 const MARK = __MARK__;
 const CONFIG = __CONFIG__;
+const CAST = __CAST__;
 const S = TL.scenes; const BEAT = 60 / TL.bpm;
 const $ = id => document.getElementById(id);
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -189,7 +221,7 @@ const prog = (t, a, b) => clamp((t - a) / (b - a));
 const ease = x => 1 - Math.pow(1 - x, 3);
 const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
-const DROP = S[4].start, BREAK = S[7].start, FINAL = S[8].start;
+const DROP = S[4].start, BREAK = S[8].start, FINAL = S[9].start;
 
 // Word-by-word pop: wrap every word of [data-words] in its own span, keeping the colour spans.
 document.querySelectorAll('[data-words]').forEach(el => {
@@ -213,12 +245,13 @@ document.body.classList.toggle('light', LIGHT);
 // Pale yellow vanishes on the light ground, so the gradients that start with it start deeper there.
 if (LIGHT) {
   document.querySelectorAll('#pg stop').forEach((stop, i) => stop.setAttribute('stop-color', ['#ff7a45', '#e0457b', '#8a3fd0'][i]));
+  document.querySelectorAll('#rg stop').forEach((stop, i) => stop.setAttribute('stop-color', ['#ff7a45', '#e0457b', '#8a3fd0'][i]));
   document.querySelectorAll('#sg stop').forEach((stop, i) => stop.setAttribute('stop-color', ['#ff7a45', '#e0457b'][i]));
 }
 const PAL_LIGHT = [['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#dfe3ff', '#f0d6ff'],
-  ['#ffd9ec', '#ffe2c7'], ['#f0dcff', '#ffd3e6'], ['#e2dcff', '#ffd6e8'], ['#d9ecff', '#e6dcff'], ['#f3d6ff', '#ffd9e8']];
+  ['#ffd9ec', '#ffe2c7'], ['#f0dcff', '#ffd3e6'], ['#e2dcff', '#ffd6e8'], ['#ffdcef', '#dfe6ff'], ['#d9ecff', '#e6dcff'], ['#f3d6ff', '#ffd9e8']];
 const PAL_DARK = [['#5b1d8f', '#c2407a'], ['#4a1e9a', '#d0507a'], ['#6a1c86', '#e06666'], ['#2e2a9e', '#b04fd6'],
-  ['#8a1f78', '#ff7a59'], ['#5b1d8f', '#ff6fae'], ['#3d2aa8', '#e2558c'], ['#1f4d8f', '#6b4fd6'], ['#7a1f8f', '#ff7eb3']];
+  ['#8a1f78', '#ff7a59'], ['#5b1d8f', '#ff6fae'], ['#3d2aa8', '#e2558c'], ['#7a2a9e', '#ff6f9e'], ['#1f4d8f', '#6b4fd6'], ['#7a1f8f', '#ff7eb3']];
 const PAL = LIGHT ? PAL_LIGHT : PAL_DARK;
 const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
   return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
@@ -285,21 +318,26 @@ prints.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L;
 const CHIPS = ['Scrolls at 2 a.m.', 'Saves recipes, never cooks', 'Searches \u201chow to say no\u201d', 'Replies within a minute',
   'Only posts on holidays', 'Loops the same 3 creators'];
 const chipEls = CHIPS.map(c => { const d = document.createElement('div'); d.className = 'chip'; d.textContent = c; $('chips').appendChild(d); return d; });
-PARTS.interestsValues = { x: PARTS.standFor.x, y: PARTS.standFor.y, w: PARTS.love.w, h: PARTS.standFor.h };
+// Values on the left and interests on the right of the same row: one box across both.
+PARTS.interestsValues = { x: PARTS.standFor.x, y: PARTS.standFor.y, w: PARTS.bigFive.x + PARTS.bigFive.w - PARTS.standFor.x, h: PARTS.standFor.h };
 // One box per phrase of the card line, after "You'll get a Psyche Card."
 const HL = [['character', 'Which character you are most like'], ['patterns', 'Signature patterns'], ['motives', 'Your motivations'],
-  ['type', 'Your type'], ['bigFive', 'Your traits'], ['interestsValues', 'Interests & values'], ['love', 'Love languages']];
+  ['type', 'Your type'], ['bigFive', 'Your traits'], ['interestsValues', 'Interests & values'], ['love', 'Love languages'],
+  ['syncs', 'Most in sync with']];
 const hlEls = HL.map(([key, label]) => {
   const p = PARTS[key], CW = 740, CH = CW * PARTS.aspect, box = document.createElement('div'); box.className = 'hl';
   Object.assign(box.style, { left: (p.x * CW - 6) + 'px', top: (p.y * CH - 6) + 'px', width: (p.w * CW + 12) + 'px', height: (p.h * CH + 12) + 'px' });
   const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = label; box.appendChild(tag);
   $('hls').appendChild(box); return box;
 });
+// The Psyche Report's five parts, as on the site. The first two light together, as "the full
+// explanations" of what the card showed.
 const TILES = [
   ['01', 'Who you are', 'Signature patterns · MBTI & Big Five · Wellbeing'],
   ['02', 'What drives you', 'Motivators · Interests · Values'],
-  ['03', 'How you connect & work', 'Love · Attachment style · Ideal partner · Career'],
-  ['04', 'Putting it together', 'Your development plan'],
+  ['03', 'How you connect', 'Love languages · Attachment style · Who suits you'],
+  ['04', 'How you work', 'Work style · Career fit · Next moves'],
+  ['05', 'Putting it together', 'Your development plan'],
 ];
 // 01: the character's emblem (the app's own Mulan sword), on the card's gradient.
 const SWORD = '<path d="M37 6h5v5L24 29l-5-5z" fill="currentColor" fill-opacity=".18"/><path d="M40 8L23 25"/><path d="M13 20c3 5 10 12 15 15"/><path d="M18 30l-7 7"/><path d="M15.5 30.5l2 2M13 33l2 2"/><circle cx="8.5" cy="39.5" r="3" fill="currentColor" fill-opacity=".18"/><path d="M36 18v5M33.5 20.5h5"/>';
@@ -342,10 +380,17 @@ const THUMB4 = '<svg viewBox="0 0 440 200">' + [0, 1, 2, 3].map(i => {
     '<path id="tk' + i + '" d="M' + 102 + ' ' + (y + 15) + ' l7 8 l15 -16" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="40"/>' +
     '<rect x="146" y="' + (y + 9) + '" width="' + [190, 150, 210, 130][i] + '" height="12" rx="6" fill="#e6d9f0" id="bar' + i + '"/>';
 }).join('') + '</svg>';
-const THUMBS = [THUMB1, THUMB2, THUMB3, THUMB4];
+// 04, How you work: a compass whose needle swings and settles on a direction.
+const COMPASS = '<svg viewBox="0 0 440 200"><circle cx="220" cy="100" r="80" fill="#fff" stroke="#d9c8e8" stroke-width="3"/>' +
+  [0, 90, 180, 270].map(a => '<line x1="220" y1="26" x2="220" y2="40" stroke="#c9b6d8" stroke-width="4" stroke-linecap="round" transform="rotate(' + a + ' 220 100)"/>').join('') +
+  [['N', 220, 62], ['E', 274, 106], ['S', 220, 152], ['W', 166, 106]].map(([l, x, y]) => '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-family="Inter, sans-serif" font-size="17" font-weight="800" fill="#9a88aa">' + l + '</text>').join('') +
+  '<g id="needle"><path d="M220 44 L232 100 L220 156 L208 100 Z" fill="#e6d9f0"/><path d="M220 44 L232 100 L208 100 Z" fill="#c2407a"/></g>' +
+  '<circle cx="220" cy="100" r="8" fill="#7b3fa0"/></svg>';
+const THUMBS = [THUMB1, THUMB2, THUMB3, COMPASS, THUMB4];
 const tileEls = TILES.map(([n, title, keys], i) => {
   const d = document.createElement('div'); d.className = 'tile';
-  d.style.left = (i % 2 ? 560 : 80) + 'px'; d.style.top = (i < 2 ? 520 : 990) + 'px';
+  // Two by two, the fifth centred under them.
+  d.style.left = (i === 4 ? 320 : i % 2 ? 560 : 80) + 'px'; d.style.top = (470 + Math.floor(i / 2) * 380) + 'px';
   d.innerHTML = '<div class="thumb">' + THUMBS[i] + '</div><div class="body"><div class="n">' + n + '</div><div class="t">' + title +
     '</div><div class="k">' + keys + '</div></div>';
   $('tiles').appendChild(d); return d;
@@ -353,6 +398,15 @@ const tileEls = TILES.map(([n, title, keys], i) => {
 const sparks = Array.from({ length: 26 }, (_, i) => { const s = document.createElement('div'); s.className = 'spark'; $('sparks').appendChild(s);
   return { el: s, x: (i * 397) % 1080, speed: 60 + (i * 53) % 90, phase: (i * 0.37) % 1, size: 4 + (i * 7) % 9 }; });
 
+// A character from the site's strip on an element whose background is the strip.
+function castOn(el, name) { const i = Math.max(0, CAST.names.indexOf(name)); el.style.backgroundPosition = (i * 100 / (CAST.names.length - 1)) + '% 0, 0 0'; }
+castOn($('av1'), 'Mulan'); castOn($('av2'), 'Baymax'); $('as1').textContent = 'Mulan'; $('as2').textContent = 'Baymax';
+// The end card's carousel: the whole cast, three times round, sliding right to left and slowing
+// until the sample card's own character, Mulan, stops in the centre. No names: the faces carry it.
+const REEL = [].concat(CAST.names, CAST.names, CAST.names);
+const REEL_STOP = 2 * CAST.names.length + Math.max(0, CAST.names.indexOf('Mulan')), REEL_FROM = 3;
+const ROLL_END = 2.6, REEL_GAP = 250;
+const reelEls = REEL.map(name => { const d = document.createElement('div'); d.className = 'reel-item'; castOn(d, name); $('reel').appendChild(d); return d; });
 function popAt(el, t, times) {
   el.querySelectorAll('.w').forEach((w, i) => { const k = prog(t, times[i], times[i] + 0.28);
     w.style.opacity = clamp(k * 2.5); w.style.transform = 'translateY(' + (1 - ease(k)) * 40 + 'px) scale(' + (0.55 + 0.45 * back(k)) + ')'; });
@@ -486,11 +540,13 @@ function render(t) {
   if (c.o) {
     // Each file pops into the row as it is named, then all three fly into the mark.
     const M = c.s.marks, at = f => c.s.vo + f * c.voLen, suck = easeIO(prog(t, at(0.86), at(0.86) + 0.6));
-    // Each card as its name is said.
+    // Each card as its name is said, two by two.
     const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
-    [['f1', said('instagram', M[0] + 1.45), 50, -6], ['f2', said('google', M[1]), 390, 3], ['f3', said('facebook', M[2] + 0.2), 730, 6]].forEach(([id, when, x, rot], i) => {
+    const last = M[M.length - 1];
+    [['f1', said('instagram', M[0] + 1.45), 190, 1120, -6], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4],
+     ['f2', said('google', last), 190, 1420, -3], ['f3', said('facebook', last + 0.8), 590, 1420, 6]].forEach(([id, when, x, y, rot]) => {
       const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
-      el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (1230 + (800 - 1230) * suck) + 'px';
+      el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (y + (800 - y) * suck) + 'px';
       el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1));
       el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) + ') rotate(' + rot * (1 - suck) + 'deg)';
     });
@@ -512,9 +568,10 @@ function render(t) {
   }
   c = scene(6, t);
   if (c.o) tileEls.forEach((el, i) => {
-    const at = c.s.marks[i + 1]; const k = back(prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.6 + i * 0.12));
+    // 01 and 02 on "the full explanations", then 03, 04 and 05 each as it is named.
+    const slot = Math.max(1, i), at = c.s.marks[slot]; const k = back(prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.6 + i * 0.12));
     // Lit from its name until the next tile is named.
-    const next = c.s.marks[i + 2] !== undefined ? c.s.marks[i + 2] : at + 1.2;
+    const next = c.s.marks[slot + 1] !== undefined ? c.s.marks[slot + 1] : at + 1.2;
     const lit = prog(t, at - 0.1, at + 0.1) * (1 - prog(t, next - 0.1, next + 0.05));
     el.style.opacity = prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.3 + i * 0.12);
     el.style.transform = 'translateY(' + (1 - Math.min(1, k)) * 120 + 'px) scale(' + (0.85 + 0.15 * k + lit * 0.05) + ')';
@@ -533,7 +590,10 @@ function render(t) {
     const z = 1 + 0.9 * easeIO(prog(L, 0.8, c.len - 0.4));
     $('attach').setAttribute('transform', 'translate(178 122) scale(' + z.toFixed(3) + ') translate(-178 -122) translate(' + (42 * (z - 1) / 0.9).toFixed(1) + ' ' + (-22 * (z - 1) / 0.9).toFixed(1) + ')');
     $('attachBlob').setAttribute('r', (26 + Math.sin(L * 5) * 5).toFixed(1));
-    // 04: ticked one by one, the last as "a plan to grow" is said.
+    // 04: the needle swings and settles.
+    const swing = Math.exp(-L * 1.8) * Math.cos(L * 6.5);
+    $('needle').setAttribute('transform', 'rotate(' + (40 - 150 * swing).toFixed(1) + ' 220 100)');
+    // 05: ticked one by one, the last as "a plan to grow" is said.
     const end = c.s.marks[4] - c.s.start + 0.3;
     [0, 1, 2, 3].forEach(i => {
       const k = ease(prog(L, 0.9 + i * (end - 0.9) / 3, 0.9 + i * (end - 0.9) / 3 + 0.3));
@@ -543,6 +603,30 @@ function render(t) {
     });
   }
   c = scene(7, t);
+  if (c.o) {
+    // Two friends' cards swing in from either side and lean in; the score fills between them;
+    // what clicks and where they differ pop in on "sync".
+    const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
+    [['m1', 60, -1], ['m2', 690, 1]].forEach(([id, x, side]) => {
+      const k = back(prog(c.local, 0.1, 0.7)), el = $(id);
+      el.style.left = x + 'px'; el.style.top = '700px';
+      el.style.opacity = prog(c.local, 0.1, 0.3);
+      el.style.transform = 'translateX(' + side * (1 - Math.min(1, k)) * 500 + 'px) rotate(' + (side * -6 * Math.min(1, k) + Math.sin(c.local * 2 + side) * 1.5) + 'deg) scale(' + (1 + pulse * 0.02) + ')';
+    });
+    // No score: Sync has none. The ring closes between the two cards and a tick draws inside it.
+    const fill = easeIO(prog(c.local, 0.7, 1.7));
+    $('ringArc').setAttribute('stroke-dasharray', (2 * Math.PI * 80 * fill).toFixed(1) + ' 999');
+    $('ringTick').setAttribute('stroke-dashoffset', (120 * (1 - ease(prog(c.local, 1.6, 2.1)))).toFixed(1));
+    $('ring').style.color = LIGHT ? '#4a2366' : '#fff';
+    $('ringBg').setAttribute('stroke', LIGHT ? '#eadcf5' : 'rgba(255,255,255,.25)');
+    $('ring').style.opacity = prog(c.local, 0.5, 0.8); $('ring').style.transform = 'scale(' + (0.6 + 0.4 * back(prog(c.local, 0.5, 1.0)) + pulse * 0.05) + ')';
+    const syncAt = said('sync', c.s.marks[1] + 0.8);
+    [['sy1', syncAt], ['sy2', syncAt + 0.3]].forEach(([id, when]) => {
+      const k = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY));
+      $(id).style.opacity = clamp(k * 2); $(id).style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * k) + ')';
+    });
+  }
+  c = scene(8, t);
   if (c.o) {
     $('tick').style.strokeDasharray = 80; $('tick').style.strokeDashoffset = 80 * (1 - ease(prog(c.local, 0.3, 0.7)));
     $('shield').style.transform = 'scale(' + (0.7 + 0.3 * back(prog(c.local, 0, 0.45))) + ')';
@@ -556,11 +640,30 @@ function render(t) {
       a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)'; b.style.color = LIGHT ? '#e0457b' : '#ffd36e'; a.style.display = k >= 1 ? 'none' : '';
     });
   }
-  c = scene(8, t);
+  c = scene(9, t);
   if (c.o) {
+    // The carousel slides and slows (ease-out), Mulan stops in the centre with a bump, the others fade,
+    // then the sample card takes her place.
+    const glide = 1 - Math.pow(1 - prog(c.local, 0.1, ROLL_END), 4);
+    const pos = REEL_FROM + (REEL_STOP - REEL_FROM) * glide;
+    const landed = c.local >= ROLL_END, bump = landed ? back(prog(c.local, ROLL_END, ROLL_END + 0.35)) : 0;
+    const out = prog(c.local, ROLL_END + 0.55, ROLL_END + 0.85), others = prog(c.local, ROLL_END + 0.05, ROLL_END + 0.35);
+    const reelIn = prog(c.local, 0.05, 0.3);
+    reelEls.forEach((el, i) => {
+      const d = i - pos, far = Math.abs(d);
+      if (far > 4.6) { el.style.display = 'none'; return; }
+      el.style.display = 'block';
+      const centre = i === REEL_STOP;
+      el.style.left = (540 + d * REEL_GAP - 100).toFixed(1) + 'px';
+      const size = 1.25 - 0.5 * Math.min(1, far / 2.2) + (centre ? 0.2 * bump : 0);
+      el.style.transform = 'scale(' + (size * (1 - 0.3 * out)).toFixed(3) + ')';
+      el.style.opacity = (reelIn * (1 - prog(far, 2.6, 4.4)) * (centre ? 1 - out : 1 - others)).toFixed(3);
+      el.style.zIndex = String(100 - Math.round(far * 10));
+    });
+    const cardIn = ROLL_END + 0.55;
     $('mark2').style.transform = 'scale(' + back(prog(c.local, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + c.local * 50 + 'deg)';
-    $('endCard').style.transform = 'translateY(' + (1 - ease(prog(c.local, 0.15, 0.6))) * 260 + 'px) rotate(' + Math.sin(c.local * 2.2) * 5 + 'deg) scale(' + (1 + pulse * 0.03) + ')';
-    $('endCard').style.opacity = prog(c.local, 0.15, 0.4);
+    $('endCard').style.transform = 'translateY(' + (1 - ease(prog(c.local, cardIn, cardIn + 0.45))) * 260 + 'px) rotate(' + Math.sin(c.local * 2.2) * 5 + 'deg) scale(' + (1 + pulse * 0.03) + ')';
+    $('endCard').style.opacity = prog(c.local, cardIn, cardIn + 0.25);
     const p = prog(t, c.s.marks[1] - 0.22 - READ_AHEAD, c.s.marks[1] - READ_AHEAD);
     $('cta').style.opacity = p; $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * back(p) + pulse * 0.06 * p) + ')';
   }
