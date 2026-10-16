@@ -151,7 +151,7 @@ const variants = [
   ['  nested arrays flattened', flattenNested(S)],
   ['  no enum lists in arrays', noEnumArrays(S)],
   ['  `pattern` renamed', renamePattern(S)],
-  ['  enums as strings, values listed', enumsAsStrings(S, true)],
+  ['  structured full, enums as strings, values listed', enumsAsStrings(S, true)],
   ['combined: card + report + roast in one call', C],
   ['  combined, enums as strings, values listed (option 1)', enumsAsStrings(C, true)],
   ['  combined, enums as strings except the character', enumsAsStringsButCharacter(C)],
