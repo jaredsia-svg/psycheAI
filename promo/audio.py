@@ -1,5 +1,5 @@
 """Timeline from the voiceover, an upbeat original track, and the final mix."""
-import json, os, subprocess, sys, wave
+import json, math, os, subprocess, sys, wave
 import numpy as np
 import imageio_ffmpeg
 
@@ -34,19 +34,27 @@ minimum = {0: 1.5, 2: LEAD + dur[2] + 0.61}
 # The Psyche Card scene lets the card land before the voice names it; the end card starts
 # its roll through the characters before the closing line.
 EXTRA_LEAD = {5: 0.35, 9: 0.5}
+BPM = 118; BEAT = 60 / BPM; BAR = 4 * BEAT
+# Every cut lands on the music's grid, so the transitions fall on the beat and each line starts
+# a pickup (LEAD) after one: on the half beat in the hook, on the beat from the data scene on.
+# (The privacy break once waited for a whole bar after a pause after Sync's line: the music then
+# ran on alone for over a second and dragged.)
+SNAP = {1: BEAT / 2, 2: BEAT / 2, 3: BEAT / 2, 4: BEAT, 5: BEAT, 6: BEAT, 7: BEAT, 8: BEAT, 9: BEAT}
+HOLD = {}
+snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
     lead = 0.35 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
-    length = max(lead + d + GAP, minimum.get(i, 0))
-    # The end card holds a little longer, on the card the roll landed on.
-    if i == len(dur) - 1: length = lead + d + 1.2
-    scenes.append({'start': round(t, 3), 'end': round(t + length, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
+    length = max(lead + d + GAP + HOLD.get(i, 0), minimum.get(i, 0))
+    # The end card holds a little longer, on the card the carousel landed on.
+    # The end card holds a little longer, on the card the carousel landed on.
+    if i == len(dur) - 1: end = t + lead + d + 1.2
+    else: end = snap(t + length, SNAP[i + 1])
+    scenes.append({'start': round(t, 3), 'end': round(end, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
                    'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})
-    t += length
+    t = end
 TOTAL = round(t, 3)
-
-BPM = 118; BEAT = 60 / BPM; BAR = 4 * BEAT
 json.dump({'total': TOTAL, 'bpm': BPM, 'scenes': scenes}, open(BUILD + '/timeline.json', 'w'), indent=1)
 print('total', TOTAL)
 
@@ -120,6 +128,10 @@ def riser(length):
     sweep = lowpass(noise, 4000) * (x / length) ** 2
     tone = np.sin(2 * np.pi * np.cumsum(200 + 900 * (x / length) ** 2) / SR) * (x / length) ** 3 * 0.15
     return (sweep * 0.35 + tone)
+def swell(length):
+    # A soft swoosh into a cut: filtered noise rising, no hit at the end.
+    L = int(length * SR); x = np.arange(L) / SR
+    return lowpass(rng.standard_normal(L).astype(np.float32), 2500) * (x / length) ** 2.5 * 0.22
 def impact():
     L = int(1.2 * SR); x = np.arange(L) / SR
     boom = np.sin(2 * np.pi * np.cumsum(40 + 60 * np.exp(-x * 8)) / SR) * np.exp(-x * 3.5)
@@ -175,8 +187,11 @@ for bar in range(int(TOTAL / BAR) + 2):
     if a0 < DROP or BREAK <= a0 < FINAL:
         at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
 
+# The two big moments, the data going in and the end card, get the riser and the hit; the card and
+# report cuts a soft swoosh into them, which sat better than a hit on every cut. Sync follows the
+# report with nothing at the cut, the beat simply carrying on, and the break is a plain drop-out.
 at(DROP - 2.2, riser(2.2), 1.0); at(DROP, impact(), 1.0)
-at(sc[5]['start'], impact(), 0.6); at(sc[6]['start'], impact(), 0.6); at(sc[7]['start'], impact(), 0.6)
+for k in (5, 6): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
 at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]

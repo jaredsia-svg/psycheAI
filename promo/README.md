@@ -68,22 +68,36 @@ The ten scenes, as of October 2026:
 | 0–2 | The hook: no questionnaire; it is ripped up and *No questions asked.* lands | was "0 questions", now the site's headline |
 | 3 | Digital footprint | |
 | 4 | The data sources fly into the mark | WhatsApp added: four files, two by two |
-| 5 | The Psyche Card, part by part | ends on *Most in sync with* |
+| 5 | The Psyche Card, part by part | ends on "and who you sync with", highlighting *Most in sync with* |
 | 6 | The Psyche Report | was "full report"; all five parts, *How you work* its own (a compass). The voice names 01 and 02 together as "the full explanations" (of what the card just showed) and lights them as one, then 03, 04 and 05 in turn |
-| 7 | Psyche Sync | new: two friends' cards, a ring closing between them on a tick (Sync has no score, so none is shown); the line ends on "sync." so its pitch falls |
+| 7 | Psyche Sync | new: "Then sync with a friend to see what clicks." Two friends' cards, *Psyche Sync* in the gradient over a ring closing on a tick (Sync has no score, so none is shown). The full beat carries on through it |
 | 8 | Privacy | |
-| 9 | Your first Psyche Card is free | first a carousel of every character sliding across, slowing to stop on the sample card's Mulan (no names: the faces carry it) |
+| 9 | Your first Psyche Card is free | first a carousel of characters sliding slowly across (the last fifteen before her), easing to a stop on the sample card's Mulan, her name appearing under her |
 
 `audio.py` counts nine shared lines and a closing one (`SHARED`); `BREAK` and `FINAL` in both it and
 `stage.html` are scene 8 and 9. The roll and the Sync scene's two characters use the site's own
 character strip, `docs/media/cast-sprite.webp` and its `.json` (`tools/cast-sprite.mjs`), which
 `render.mjs` passes in as `CAST`, so a new character joins the roll by itself.
 
+## Keeping the voice on the music
+
+`audio.py` puts every cut on the beat grid (`SNAP`): the half beat in the hook, the beat from the
+data scene on. Each line then
+starts a pickup (`LEAD`, 0.2 s) after its cut. Scenes used to start wherever the last line ended,
+which put the transition hits off the beat. Only the two big moments, the data going in and the end
+card, get the riser and the hit now; the card and report cuts get a soft swoosh into them. The beat
+carries on through Sync with nothing at its cut, and privacy follows on the next beat after Sync's
+line (a pause there, stretched to a whole bar, left the music running on alone and dragging). The
+privacy break is the original drop-out (pads, plucks, bass and bells, no drums), and the ending the
+original riser and hit into the end card, then a fade. (A slower half-time break, a sub-drop into it
+and a big closing chord were tried in October 2026 and dropped: they felt worse.)
+
 ## Words the voice says oddly
 
 Write them the way the voice says them right, and check the result with the recogniser:
 **PsycheAI** is given as sounds (`{B}`); **Whatsapp** is spelled with a small *a*, because
-"WhatsApp" is read as two words, slowly, stressed on "app"; a list of single words is recorded in
+"WhatsApp" is read as two words, slowly, stressed on "app", and said a fifth quicker than the rest of
+its line, in a phrase with "Google" (a phrase may carry its own pace: `('Whatsapp, Google,', 0.8)`); a list of single words is recorded in
 longer phrases, since a word on its own ("Google,") comes out garbled; and a line that should fall at
 its end ends on a full stop ("see how you sync.", where "sync," before "for free" rose).
 

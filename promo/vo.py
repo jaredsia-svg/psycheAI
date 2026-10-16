@@ -40,17 +40,18 @@ LINES = [
     (["And what if your digital footprint,", "could show you patterns you have never noticed before?"], 1.0, True, 0.38),
     # Two halves, each checked on its own: as one take "data you" kept coming back "debtor you", and a
     # single word on its own ("WhatsApp,", "Google,") comes out garbled.
-    # "Whatsapp" as one word: spelled "WhatsApp" the voice says two, slowly, stressed on "app".
-    (['{B} reads the Instagram, Whatsapp,', 'Google, and Facebook data you already have.'], 1.0, True, 0.08),
+    # "Whatsapp" as one word (spelled "WhatsApp" the voice says two, slowly, stressed on "app"), and
+    # said quicker than the rest with "Google" in a phrase of their own.
+    (['{B} reads the Instagram,', ('Whatsapp, Google,', 0.8), 'and Facebook data you already have.'], 1.0, True, [0.05, 0.06]),
     # The card's own line is said slower than the list after it, with a beat before the list starts.
     ([("You will get a Psyche Card.", 1.0), "Which character you're most like,", 'your signature patterns,', 'your motivations,',
-      'your type,', 'your traits,', 'your interests and values,', 'your love languages,', "and who you're most in sync with."],
+      'your type,', 'your traits,', 'your interests and values,', 'your love languages,', "and who you sync with."],
      0.87, True, [0.45] + [0.06] * 7),
     # Parts 1 and 2 together as "the full explanations" (the card already showed what they explain).
     (['Then unlock your Psyche Report,', 'which has the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
     # Psyche Sync, after the report: a beat between the two halves.
-    # Ending on "sync." so its pitch falls; "sync," before "for free" rose.
-    (['Send your link to a friend,', 'and see how you sync.'], 0.92, True, 0.12),
+    # Psyche Sync, said as what it gives: ending on "clicks." so the line falls.
+    (['Then sync with a friend', 'to see what clicks.'], 0.92, True, 0.06),
     (['Your files never leave your device.', 'Only a de-identified summary is analysed by Gemini,', 'and {B} keeps no copy.'], 0.92, None),
 ]
 # The closing line: this, then each version's own words from config.json.

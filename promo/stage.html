@@ -173,7 +173,8 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
   </section>
 
   <section class="scene" id="s7">
-    <div class="big" style="top:250px;font-size:78px;text-align:center" data-words>Send your link to a friend, and see how you <span class="grad">sync</span></div>
+    <div class="big" style="top:250px;font-size:80px;text-align:center" data-words>Then sync with a friend to see <span class="grad">what clicks</span></div>
+    <div class="big" id="syncName" style="top:610px;font-size:52px;text-align:center"><span class="grad">Psyche Sync</span></div>
     <div class="mini" id="m1"><div class="av" id="av1"></div><div class="who">You</div><div class="as" id="as1"></div></div>
     <div class="mini" id="m2"><div class="av" id="av2"></div><div class="who">Your friend</div><div class="as" id="as2"></div></div>
     <svg id="ring" viewBox="0 0 200 200"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset=".5" stop-color="#ff7eb3"/><stop offset="1" stop-color="#c792ff"/></linearGradient></defs><circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="18" id="ringBg"/>
@@ -201,7 +202,7 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
     <svg id="mark2" viewBox="0 0 140 140" style="position:absolute;left:450px;top:240px;width:180px;height:180px"></svg>
     <div class="big" style="top:440px;font-size:54px;text-align:center;letter-spacing:.02em">PsycheAI</div>
     <div class="big" style="top:530px;font-size:92px;text-align:center" data-words>Your first <span class="grad">Psyche Card</span> is free!</div>
-    <div id="reel"></div>
+    <div id="reel"></div><div class="big" id="reelName" style="top:1190px;font-size:60px;text-align:center">Mulan</div>
     <img id="endCard" src="assets/card.png" style="position:absolute;left:390px;top:800px;width:300px;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
     <div class="pill" id="cta" style="top:1370px"></div>
   </section>
@@ -401,10 +402,11 @@ const sparks = Array.from({ length: 26 }, (_, i) => { const s = document.createE
 // A character from the site's strip on an element whose background is the strip.
 function castOn(el, name) { const i = Math.max(0, CAST.names.indexOf(name)); el.style.backgroundPosition = (i * 100 / (CAST.names.length - 1)) + '% 0, 0 0'; }
 castOn($('av1'), 'Mulan'); castOn($('av2'), 'Baymax'); $('as1').textContent = 'Mulan'; $('as2').textContent = 'Baymax';
-// The end card's carousel: the whole cast, three times round, sliding right to left and slowing
-// until the sample card's own character, Mulan, stops in the centre. No names: the faces carry it.
+// The end card's carousel: characters sliding right to left and slowing until the sample card's own,
+// Mulan, stops in the centre, her name appearing under her.
 const REEL = [].concat(CAST.names, CAST.names, CAST.names);
-const REEL_STOP = 2 * CAST.names.length + Math.max(0, CAST.names.indexOf('Mulan')), REEL_FROM = 3;
+// Only the last 15 before her, slowly, rather than the whole cast twice.
+const REEL_STOP = 2 * CAST.names.length + Math.max(0, CAST.names.indexOf('Mulan')), REEL_FROM = REEL_STOP - 15;
 const ROLL_END = 2.6, REEL_GAP = 250;
 const reelEls = REEL.map(name => { const d = document.createElement('div'); d.className = 'reel-item'; castOn(d, name); $('reel').appendChild(d); return d; });
 function popAt(el, t, times) {
@@ -605,7 +607,7 @@ function render(t) {
   c = scene(7, t);
   if (c.o) {
     // Two friends' cards swing in from either side and lean in; the score fills between them;
-    // what clicks and where they differ pop in on "sync".
+    // what clicks and where they differ pop in as it closes.
     const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
     [['m1', 60, -1], ['m2', 690, 1]].forEach(([id, x, side]) => {
       const k = back(prog(c.local, 0.1, 0.7)), el = $(id);
@@ -619,8 +621,10 @@ function render(t) {
     $('ringTick').setAttribute('stroke-dashoffset', (120 * (1 - ease(prog(c.local, 1.6, 2.1)))).toFixed(1));
     $('ring').style.color = LIGHT ? '#4a2366' : '#fff';
     $('ringBg').setAttribute('stroke', LIGHT ? '#eadcf5' : 'rgba(255,255,255,.25)');
+    $('syncName').style.opacity = prog(c.local, 0.5, 0.8); $('syncName').style.transform = 'scale(' + (0.7 + 0.3 * back(prog(c.local, 0.5, 1.0))) + ')';
     $('ring').style.opacity = prog(c.local, 0.5, 0.8); $('ring').style.transform = 'scale(' + (0.6 + 0.4 * back(prog(c.local, 0.5, 1.0)) + pulse * 0.05) + ')';
-    const syncAt = said('sync', c.s.marks[1] + 0.8);
+    // As the ring closes, well before "sync" is said.
+    const syncAt = c.s.start + 1.5;
     [['sy1', syncAt], ['sy2', syncAt + 0.3]].forEach(([id, when]) => {
       const k = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY));
       $(id).style.opacity = clamp(k * 2); $(id).style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * k) + ')';
@@ -644,11 +648,14 @@ function render(t) {
   if (c.o) {
     // The carousel slides and slows (ease-out), Mulan stops in the centre with a bump, the others fade,
     // then the sample card takes her place.
-    const glide = 1 - Math.pow(1 - prog(c.local, 0.1, ROLL_END), 4);
+    const glide = 1 - Math.pow(1 - prog(c.local, 0.1, ROLL_END), 3);
     const pos = REEL_FROM + (REEL_STOP - REEL_FROM) * glide;
     const landed = c.local >= ROLL_END, bump = landed ? back(prog(c.local, ROLL_END, ROLL_END + 0.35)) : 0;
     const out = prog(c.local, ROLL_END + 0.55, ROLL_END + 0.85), others = prog(c.local, ROLL_END + 0.05, ROLL_END + 0.35);
     const reelIn = prog(c.local, 0.05, 0.3);
+    // Her name under her once the carousel stops.
+    $('reelName').style.opacity = (prog(c.local, ROLL_END, ROLL_END + 0.2) * (1 - out)).toFixed(3);
+    $('reelName').style.transform = 'scale(' + (0.7 + 0.3 * bump) + ')';
     reelEls.forEach((el, i) => {
       const d = i - pos, far = Math.abs(d);
       if (far > 4.6) { el.style.display = 'none'; return; }
