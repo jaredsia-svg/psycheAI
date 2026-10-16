@@ -11660,8 +11660,8 @@ try {
       await seed(true);
 
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
-      check('structured: the report runs the overview, then five parts: How you connect and How you work apart',
-        parts.join() === 'overview,who,drives,connect,career,together', parts.join());
+      check('structured: the report runs the overview, then five parts (How you connect and How you work apart), then the appendix',
+        parts.join() === 'overview,who,drives,connect,career,together,appendix', parts.join());
       const shape = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
         const parts = Array.from(body.querySelectorAll('.part-card'));
@@ -11678,12 +11678,11 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview and the five parts are the only disclosures — the roast after them is Appendix 1, not a part — and on a laptop all six start open',
-        shape.toggles === 6 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,career:open,together:open' &&
-        (await sp.locator('#profile-body .part-card[data-part-card="appendix"]').count()) === 0 &&
-        (await sp.locator('#profile-body .part-card .bonus-card').count()) === 0 &&
-        (await sp.locator('#profile-body > .bonus-card.roast-appendix').count()) === 1, JSON.stringify(shape));
+      check('structured: the overview, the five parts and the appendix (06) are the only disclosures, the roast inside the appendix — and on a laptop all seven start open',
+        shape.toggles === 7 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,career:open,together:open,appendix:open' &&
+        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .bonus-card.roast-appendix').count()) === 1 &&
+        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .part-num').textContent()) === '06', JSON.stringify(shape));
       check('structured: on a laptop the left column\'s box starts level with the report\'s header',
         await sp.evaluate(() => Math.abs(document.querySelector('#profile-body .part-nav').getBoundingClientRect().top -
           document.querySelector('#profile-body .report-hero').getBoundingClientRect().top) <= 2),
@@ -11985,8 +11984,12 @@ try {
       check('My Report ends with an appendix of the questions asked, each answer folded under its question',
         await sp.evaluate(() => { const a = document.querySelector('#profile-body .ask-appendix');
           const roast = document.querySelector('#profile-body .roast-appendix');
-          return Boolean(a) && /Appendix 2: your questions to PsycheAI/.test(a.textContent) &&
-            Boolean(roast) && /^Appendix 1: /.test(roast.querySelector('h2').textContent) &&
+          // Both under the header every section has: an icon, an h2 title, a line under it.
+          const head = el => el && el.querySelector(':scope > .card-head .card-icon') && el.querySelector(':scope > .card-head h2');
+          return Boolean(a) && /^Appendix 2: Ask PsycheAI$/.test(a.querySelector('.card-head h2').textContent) &&
+            /^2 questions$/.test(a.querySelector('.card-head .card-sub').textContent) && Boolean(head(a)) &&
+            Boolean(roast) && /^Appendix 1: Let us roast you/.test(roast.querySelector('.card-head h2').textContent) && Boolean(head(roast)) &&
+            Boolean(roast.closest('.part-card[data-part-card="appendix"]')) && Boolean(a.closest('.part-card[data-part-card="appendix"]')) &&
             Boolean(roast.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) &&
             a.querySelectorAll('details.ask-log').length === 2 && !a.querySelector('details.ask-log[open]'); }));
       {
@@ -12003,14 +12006,15 @@ try {
           return out;
         });
         check('the downloaded Psyche Report carries the same appendix of questions and answers, after the roast',
-          pdfText.includes('(Appendix 2: your questions to PsycheAI)') && pdfText.includes('(What gets in my way most?)') &&
-            pdfText.indexOf('(Appendix 2: your questions to PsycheAI)') > pdfText.indexOf('Appendix 1'),
+          pdfText.includes('(Appendix 2: Ask PsycheAI)') && pdfText.includes('(What gets in my way most?)') &&
+            pdfText.indexOf('(Appendix 2: Ask PsycheAI)') > pdfText.indexOf('Appendix 1'),
           (pdfText.match(/\(Appendix[^)]*\)/) || ['no appendix'])[0]);
       }
       check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
         (await sp.locator('.nav-links a.is-current .nav-long').textContent()) === 'My Report');
       {
-        const links = await sp.evaluate(() => ({ parts: document.querySelectorAll('#profile-body .part-card').length,
+        // The appendix (06) holds the questions already asked, so it has no link of its own.
+        const links = await sp.evaluate(() => ({ parts: document.querySelectorAll('#profile-body .part-card:not([data-part-card="appendix"])').length,
           links: document.querySelectorAll('#profile-body .part-card .ask-part-link').length,
           card: Boolean(document.querySelector('#profile-body .ask-card')) }));
         check('Ask PsycheAI: every part of My Report ends with a way to ask about it, and no section of its own at the end',
@@ -12081,7 +12085,7 @@ try {
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
         check('structured, on a phone: a Psyche Report opens with Part 00 open and parts 01 to 05 shut',
-          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,career:shut,together:shut', await states());
+          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,career:shut,together:shut,appendix:shut', await states());
         check('structured, on a phone: no part nav floats over the report; the header leads straight into Part 00',
           await sp.evaluate(() => {
             const nav = document.querySelector('#profile-body .part-nav');
@@ -12091,7 +12095,7 @@ try {
           }));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
-          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,career:shut,together:shut', await states());
+          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,career:shut,together:shut,appendix:shut', await states());
         await sp.click('#profile-body .part-card[data-part-card="drives"] .card-toggle');
         await sp.waitForTimeout(900);
         const opened = await sp.evaluate(() => {
@@ -12100,11 +12104,15 @@ try {
           return { top: Math.round(card.top), navBottom: Math.round(nav.bottom) };
         });
         check('opening another shuts the one before, and brings the opened part\'s top to the top of the screen',
-          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,career:shut,together:shut' &&
+          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,career:shut,together:shut,appendix:shut' &&
             opened.top >= opened.navBottom - 2 && opened.top < opened.navBottom + 60, (await states()) + ' ' + JSON.stringify(opened));
         await sp.click('#profile-body .part-card[data-part-card="together"] .card-toggle');
-        check('and the last part opens and shuts like the others',
-          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,career:shut,together:open', await states());
+        const fifth = await states();
+        await sp.click('#profile-body .part-card[data-part-card="appendix"] .card-toggle');
+        check('and the last part, and the appendix after it, open and shut like the others',
+          fifth === 'overview:shut,who:shut,drives:shut,connect:shut,career:shut,together:open,appendix:shut' &&
+            (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,career:shut,together:shut,appendix:open',
+          fifth + ' / ' + (await states()));
         await sp.setViewportSize(wide);
         await seed(true);
       }
@@ -12262,9 +12270,10 @@ try {
       check('structured: no Connects to rows in the parts, only where each pattern shows up in the overview',
         (await sp.locator('#profile-body .connects').count()) === 0 &&
         !/Connects to/i.test(await sp.locator('#profile-body').textContent()));
-      check('structured: no digital footprint section, no appendix part, no MBTI caveat line',
+      // The appendix part (06) holds the roast and the questions, never Evidence and method.
+      check('structured: no digital footprint section, no Evidence and method in the appendix, no MBTI caveat line',
         !/Your digital footprint|Digital footprint|The unvarnished read/.test(await sp.locator('#profile-body').textContent()) &&
-        (await sp.locator('#profile-body .report-part[data-part="appendix"]').count()) === 0 &&
+        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .method-card').count()) === 0 &&
         !(await sp.locator('#profile-body .mbti-card').textContent()).includes(sampleReport.mbti.caveat));
       check('structured: neither the plan nor the pressure points name a pattern under each item',
         (await sp.locator('#profile-body .origin, #profile-body .pattern-chip').count()) === 0 &&
@@ -12337,9 +12346,9 @@ try {
         return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: Part 5 is the last part — no appendix part; the roast follows it as Appendix 1; Evidence and method is on My Psyche',
-        order[0] >= 0 && order[1] === -1 && order[2] === '' && order[3] === 0 &&
-          (await sp.locator('#profile-body > .bonus-card.roast-appendix').count()) === 1, order.join());
+      check('structured: Part 5 is the last part, then the appendix (06) with the roast in it; Evidence and method is on My Psyche',
+        order[0] >= 0 && order[1] === order[0] + 1 && order[2] === 'roast' && order[3] === 0 &&
+          (await sp.locator('#profile-body > .bonus-card').count()) === 0, order.join());
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       // Without a digest on the device, "Read from" is the model's own summary.
@@ -12449,10 +12458,10 @@ try {
           flags: Array.from(q('.trait-flag')).map(n => n.textContent),
         };
       });
-      check('structured: numbered part headings, and a nav bar that names them as they are headed',
+      check('structured: numbered part headings, and a nav bar that names them as they are headed, the appendix (06) last',
         visuals.structuredClass && visuals.nav.join('|') ===
-          '00Overview|01Who you are|02What drives you|03How you connect|04How you work|05Putting it together' &&
-        visuals.numerals.join() === '00,01,02,03,04,05', JSON.stringify([visuals.nav, visuals.numerals]));
+          '00Overview|01Who you are|02What drives you|03How you connect|04How you work|05Putting it together|06Appendix' &&
+        visuals.numerals.join() === '00,01,02,03,04,05,06', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
       check('structured: sections inside a part carry no one-line result of their own — they are open',

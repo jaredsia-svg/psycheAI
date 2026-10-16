@@ -1246,7 +1246,7 @@
       // Appendix 1 is the roast, Appendix 2 these questions; a report with
       // no roast has one unnumbered appendix.
       appendixPrefix: n => n ? 'Appendix ' + n + ': ' : 'Appendix: ',
-      appendixTitle: n => (n ? 'Appendix ' + n + ': ' : 'Appendix: ') + 'your questions to PsycheAI',
+      appendixTitle: n => (n ? 'Appendix ' + n + ': ' : 'Appendix: ') + 'Ask PsycheAI',
       appendixCount: n => n === 1 ? '1 question' : n + ' questions',
       // Under each answer: what it was written from.
       fromData: 'Drawn from your results and the data they were read from.',

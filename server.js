@@ -849,6 +849,14 @@ async function mergedOrTwoCalls(engine, sent) {
   const checked = prompts.checkMerged(merged.data);
   if (!checked.ok) return fallBack(checked.problems.slice(0, 6).join('; '), merged.usage);
   if (checked.dropped.length) console.warn('[unlock] one call: dropped ' + checked.dropped.slice(0, 6).join('; '));
+  // Thinner than the prompt asks: kept (a fallback would cost two more
+  // calls), but logged and counted, so a merge that keeps coming back thin
+  // shows in the logs and can be switched off.
+  const develop = checked.data.development && Array.isArray(checked.data.development.develop) ? checked.data.development.develop.length : 0;
+  if (develop < 2) {
+    console.warn('[unlock] one call: thin answer (' + develop + ' develop area' + (develop === 1 ? '' : 's') + ')');
+    stats.count('merged_thin');
+  }
   stats.count('merged_unlock');
   const split = prompts.splitMerged(checked.data);
   return Object.assign({}, merged, { data: Object.assign({}, split.full, { freeCard: split.card }) });

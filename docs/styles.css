@@ -4732,9 +4732,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media print { .ask-part, .ask-fab, .ask-dialog { display: none !important; } }
 /* Appendix: the questions asked of PsycheAI, each answer folded under its question. */
 .ask-appendix { margin-top: 1rem; }
-.ask-appendix-head { display: flex; align-items: baseline; gap: .6rem; margin: 0 0 .5rem; }
-.ask-appendix-head h3 { margin: 0; font-size: 1rem; }
-.ask-appendix-head span { font-size: .76rem; color: var(--ink-soft); }
 .ask-log { border-top: 1px solid var(--line); }
 .ask-log summary {
   display: flex; gap: .5rem; align-items: flex-start; padding: .55rem 0; cursor: pointer; list-style: none;

@@ -2985,6 +2985,11 @@ now each carry a lock (`unlockPartsHtml`). A free reader still has no My Report 
   true })`), with the Ask PsycheAI questions as **Appendix 2** (`askAppendixNumber`; unnumbered on a
   report with no roast). The PDF follows the same order: the roast on its own page, then the questions.
   My Psyche, unlocked, keeps the card, Evidence and method, and the link.
+- **The appendix is Part 06.** Both sit in an Appendix part after Part 05, with its own numeral and an
+  entry in the part nav (`06 Appendix`), opening and shutting like the other parts. Each is a section
+  under the same header every section has (icon, title, a line under it): *Appendix 1: Let us roast
+  you* (`roastBlock`, still behind its reveal) and *Appendix 2: Ask PsycheAI*, with the count of
+  questions under it. The header's "N parts" count and the sample report leave the appendix out.
 
 
 ## Counting what works, without counting anyone
@@ -5445,6 +5450,13 @@ lib/gemini.js).
   goes to the two calls as before (`cardThenFull`), so the reader always gets an answer every check
   already trusts; that run costs both. Each is logged and counted (`merged_unlock`,
   `merged_fallback` in the daily stats).
+- **Thin answers are kept, and logged.** The first live merged report (16 October 2026) had one
+  development area where the prompt asks for two, and wrote a partner as "she". The merged prompt now
+  says the card never shortens the report (`develop` has exactly two areas), and every prompt says how
+  to write about people without gender (`NEUTRAL_PEOPLE_RULE`: "a partner", "the right person",
+  "someone", "they"; the reader only as "you"). An answer with fewer than two develop areas is still
+  kept — sending it back would cost two more calls — but logs `[unlock] one call: thin answer` and
+  counts `merged_thin`; if those keep coming, switch `PSYCHEAI_MERGED_UNLOCK` off.
 - **The split** (`splitMerged`) hands back exactly what the two calls return: the card as the free
   schema shapes it (completed by `withCard`) and the report as the Overview-pinned schema shapes it,
   so the browser's `overlayCard` and everything after it cannot tell the difference.

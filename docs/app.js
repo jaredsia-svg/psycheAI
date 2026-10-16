@@ -2284,13 +2284,16 @@
     // The structured layout's appendix: the roast already waits behind its
     // own reveal, so it is not a disclosure as well.
     const flat = Boolean(options && options.flat);
-    return '<div class="card section-card bonus-card">' +
+    // My Report's Appendix 1 names itself, under the same header every section has.
+    const title = (options && options.title) || TEXT.bonus;
+    return '<div class="card section-card bonus-card' + (options && options.appendix ? ' roast-appendix' : '') + '"' +
+      (options && options.appendix ? ' data-appendix="roast"' : '') + '>' +
       // Same splice paidCard uses for its "Premium" badge: sectionHead
       // concatenates whatever it is handed into the <h2>, so a title with
       // markup in it is the one thing it is handed that is not plain text.
       // A different class, because this badge is saying the opposite thing —
       // see .bonus-badge in styles.css.
-      sectionHead('🕳️', esc(TEXT.bonus) +
+      sectionHead('🕳️', esc(title) +
         ' <span class="mode-badge bonus-badge">' + esc(TEXT.bonusBadge) + '</span>',
       esc(TEXT.bonusSub), !flat) +
       '<div class="bonus-cover">' +
@@ -2307,16 +2310,13 @@
    * roastBlock: the writing is not in the page until "Reveal my roast", and
    * revealRoast()/hideRoast() work it exactly the same way.
    */
-  function secretRoastHtml(bonus, options) {
+  function secretRoastHtml(bonus) {
     if (!bonus || !bonus.harsh) return '';
     const R = TEXT.secretRoast;
-    // On My Report it is the first appendix, after the five parts.
-    const appendix = Boolean(options && options.appendix);
-    return '<section class="card section-card bonus-card secret-roast screen-only' + (appendix ? ' roast-appendix' : '') +
-      '" aria-labelledby="secret-roast-title"' + (appendix ? ' data-appendix="roast"' : '') + '>' +
+    return '<section class="card section-card bonus-card secret-roast screen-only" aria-labelledby="secret-roast-title">' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
-      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc((appendix ? Copy.STRUCTURED.ask.appendixPrefix(1) : '') + TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
+      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
       '<div class="bonus-cover secret-roast-cover">' +
       '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
       '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
@@ -6410,6 +6410,12 @@
   // No appendix any more: Evidence and method is on My Psyche (the sample
   // keeps it at the end of Part 05), and so is the roast.
   const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'career', 'together'];
+  // The appendix after them, 06, on the reader's own My Report: the roast and
+  // the questions asked of PsycheAI. Not one of the report's parts (the
+  // header's count and the sample leave it out), but in the nav beside them.
+  const partNumeral = key => String(key === 'appendix' ? PART_ORDER.length : Math.max(0, PART_ORDER.indexOf(key))).padStart(2, '0');
+  const hasAppendix = (report, ownPage) => Boolean(ownPage && report &&
+    ((report.bonus && report.bonus.harsh) || askReady()));
   // Below this width a full report opens with its parts shut (renderProfile).
   const PHONE_REPORT = '(max-width: 759px)';
 
@@ -6424,7 +6430,7 @@
     // question started for them (openAsk).
     const ask = askable ? '<p class="ask-part"><button type="button" class="ask-part-link" data-ask="' + esc(part.title) + '">' +
       '<span class="ask-mark" aria-hidden="true"></span>' + esc(Copy.STRUCTURED.ask.partLink) + ' <span aria-hidden="true">→</span></button></p>' : '';
-    const numeral = String(Math.max(0, PART_ORDER.indexOf(key))).padStart(2, '0');
+    const numeral = partNumeral(key);
     return '<section class="card section-card part-card" data-part-card="' + esc(key) + '" data-start-open>' +
       '<div class="card-head card-head-toggle part-card-head"><div class="report-part" data-part="' + esc(key) + '">' +
       '<span class="part-num" aria-hidden="true">' + numeral + '</span>' +
@@ -6484,9 +6490,9 @@
     return 0;
   }
 
-  function partNavHtml(ownPage) {
+  function partNavHtml(ownPage, appendix) {
     const S = Copy.STRUCTURED;
-    const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
+    const items = PART_ORDER.concat(appendix ? ['appendix'] : []).map(key => [key, partNumeral(key), S.parts[key].title]);
     // On a phone it is one thin row under the site's header: the name of the
     // part being read, then the numerals 00 … 05.
     return '<nav class="part-nav' + (ownPage ? ' is-report' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
@@ -7194,7 +7200,7 @@
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
     // My Report opens with its own header, as My Syncs does; the part nav
     // under it (or down the left) carries no title of its own.
-    let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(ownPage);
+    let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(ownPage, hasAppendix(report, ownPage));
     const askable = ownPage && askReady();
 
     // Overview, part 00: the summary and the signature patterns, open from
@@ -7277,15 +7283,18 @@
         pressurePointsHtml(report.pressurePoints) + '</div>';
     }
     // Evidence and method lives on My Psyche, beside the card it rates; the
-    // sample, which has no My Psyche, keeps it at the end of Part 05. There
-    // is no appendix part on the page: the roast is on My Psyche too.
+    // sample, which has no My Psyche, keeps it at the end of Part 05.
     if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part, askable);
-    // After the five parts, the appendix: the roast first (free since the
-    // card, read on My Psyche until the report was unlocked), then the
-    // questions asked of PsycheAI (refreshAskAppendix keeps it current).
-    if (ownPage) html += secretRoastHtml(report.bonus, { appendix: true });
-    if (askable) html += '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>';
+    // Part 06, the appendix, on the reader's own My Report: the roast first
+    // (free since the card, read on My Psyche until the report was unlocked),
+    // then the questions asked of PsycheAI (refreshAskAppendix keeps it
+    // current). Each under the same section header as every other section.
+    if (hasAppendix(report, ownPage)) {
+      const roast = report.bonus && report.bonus.harsh
+        ? roastBlock(report.bonus, { flat: true, appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
+      html += partCardHtml('appendix', roast + (askable ? '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>' : ''), false);
+    }
     return html;
   }
 
@@ -10545,7 +10554,7 @@
     if (!items.length) return '';
     const A = Copy.STRUCTURED.ask;
     return '<section class="card section-card ask-appendix screen-only">' +
-      '<div class="ask-appendix-head"><h3>' + esc(A.appendixTitle(askAppendixNumber())) + '</h3><span>' + esc(A.appendixCount(items.length)) + '</span></div>' +
+      sectionHead('💬', esc(A.appendixTitle(askAppendixNumber())), esc(A.appendixCount(items.length)), false, '') +
       items.map(item => '<details class="ask-log"><summary>' + esc(item.q) + '</summary><div class="ask-log-body">' +
         paragraphs(item.a) +
         (item.steps && item.steps.length ? '<ul>' + item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +

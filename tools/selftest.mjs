@@ -6033,6 +6033,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))) &&
       /where they and the rules above differ about one of those fields, these win/.test(prompts.MERGED_SYSTEM) &&
       /# The roast/.test(prompts.MERGED_SYSTEM) && /# Overview/.test(prompts.MERGED_SYSTEM));
+  check('every prompt says how to write about a partner without gender, and the one call keeps two develop areas',
+    [prompts.STRUCTURED_FULL_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM, prompts.CLASSIC_FREE_SYSTEM, prompts.CLASSIC_FULL_SYSTEM]
+      .every(t => /never he or she, him or her, himself or herself, guy, girl, man or woman/.test(t) && /address the reader only as "you"/.test(t)) &&
+      /`development\.develop` has exactly two areas/.test(prompts.MERGED_SYSTEM));
   const answer = { mbti: { type: 'infj', letters: [{ axis: 'E/I', choice: 'I', strength: 'Moderate' }] },
     bigFive: { openness: { score: 70, band: 'High' } },
     patterns: [{ id: 'P1', name: 'One', showsUpIn: ['work', 'Work', 'nowhere'] }, { id: 'p2', name: 'Two', showsUpIn: [] }],
