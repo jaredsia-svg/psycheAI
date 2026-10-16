@@ -157,6 +157,8 @@ const variants = [
   ['  combined, enums as strings except the character', enumsAsStringsButCharacter(C)],
   ['  combined, enums dropped, no values (the floor)', enumsAsStrings(C, false)],
   ['  combined, option 1 and nested arrays flattened', flattenNested(enumsAsStrings(C, true))],
+  // What PSYCHEAI_MERGED_UNLOCK sends, exactly (lib/prompts.js, MERGED_SCHEMA).
+  ['combined: MERGED_SCHEMA, what the one-call unlock sends', prompts.MERGED_SCHEMA],
 ];
 // `node tools/probe-schema.mjs combined` runs only the rows whose label has that word.
 // `--dry` prints each row's size and weight without calling Gemini or needing a key.

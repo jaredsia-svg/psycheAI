@@ -990,6 +990,22 @@
   const DEEP_FREE_COST_CAP = 0.084;
   const DEEP_COST_CAP = 0.172;
 
+  // The unlock that adds data in one call (lib/prompts.js, MERGED_SYSTEM),
+  // when PSYCHEAI_MERGED_UNLOCK is on: the full report's prompt with the
+  // card's rules added, its schema with the card and the roast, the premium
+  // read once, and a little more output room than the report alone for the
+  // card's lines and the roast:
+  //
+  //   both         30,000 out  × $3.75/M = $0.1125
+  //                 42,500 prompt + 51,143 digest × $0.75/M = $0.0702
+  //                 at most $0.1827                    → MERGED_COST_CAP $0.183
+  //
+  // against $0.256 for the two calls it replaces. If its answer fails its
+  // checks the unlock falls back to those two calls, and that run costs both.
+  const MERGED_FIXED_INPUT_TOKENS = 42500;
+  const MERGED_MAX_OUTPUT_TOKENS = 30000;
+  const MERGED_COST_CAP = 0.183;
+
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
   function trim(text, max) {
@@ -3160,6 +3176,7 @@
 
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
+    MERGED_FIXED_INPUT_TOKENS, MERGED_MAX_OUTPUT_TOKENS, MERGED_COST_CAP,
     EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize,
     POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes, SHORT_MESSAGE_FLOORS,
     SOLO_POOL_CAPS, SOLO_FIXED_CHARS, SOLO_DIGEST_CHARS, SOLO_FREE_COST_CAP, SOLO_COST_CAP, carriesSecondSource, poolCapsFor,

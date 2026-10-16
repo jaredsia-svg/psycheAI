@@ -1634,6 +1634,7 @@ the first.
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to the service-account key file (on Render, a secret file: `/etc/secrets/gcp-key.json`). Or `GOOGLE_APPLICATION_CREDENTIALS_JSON` with the file's contents. |
 | `GOOGLE_CLOUD_PROJECT` / `GOOGLE_CLOUD_LOCATION` | The Google Cloud project (default: the key file's `project_id`) and region (default `global`). |
 | `GEMINI_VERTEX_MODEL` | Only if Vertex names the model differently from `GEMINI_MODEL`. |
+| `PSYCHEAI_MERGED_UNLOCK` | `true` writes the unlock that adds data in one call instead of two (card, then report). Off by default; read on every request, so it switches with no deploy. See [One call for the unlock that adds data](#one-call-for-the-unlock-that-adds-data-october-2026). |
 | `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set. |
 | `XAI_API_KEY` | Uses Grok for the free report, if neither of the above is set. Fully supported, just not the default. |
 | `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` for the free report when you have more than one key. |
@@ -5418,6 +5419,48 @@ JSON Schema as `responseJsonSchema`) is not a row because it is what lib/gemini.
 Production goes to Vertex AI first, and a schema Vertex refuses is not retried with the key
 (`isBackendFailure`), so `--vertex` sends the rows there with the server's own service-account
 variables; the two can differ, and Vertex's answer is the one that decides.
+
+### One call for the unlock that adds data (October 2026)
+
+The probe answered it: Gemini refuses the merged schema only because of its enums. With every enum a
+plain string, even card + report + roast in one schema is accepted, and the character catalogue can
+stay a real enum. So, behind `PSYCHEAI_MERGED_UNLOCK` (off by default), the unlock that adds data —
+the only path with two calls — runs one (`mergedOrTwoCalls` in server.js, `analyseMerged` in
+lib/gemini.js).
+
+- **The prompt** (`MERGED_SYSTEM`) is the full report's, then the free card's own prompt word for word
+  from its Big Five section on: the character catalogue and its side rule, the lists, confidence, the
+  patterns, the Overview, the card's wording rules and the roast. Where the two differ about a card
+  field, the card's rules win. It is told to settle the conclusions first and write the report to
+  explain them, as if the card had come first.
+- **The schema** (`MERGED_SCHEMA`) is `MERGED_STRICT_SCHEMA` — the structured full schema with the
+  free card's `card`, `topMotivators` and the roast last — with every enum but the character's sent
+  as a string whose description lists its values.
+- **The checks** (`checkMerged`) hold the answer to the strict schema: a value matching its allowed
+  spelling ignoring case, spaces and hyphens is put right; one in a list that matches nothing is
+  dropped (a pattern's `showsUpIn`, say); one on its own that matches nothing, or a missing roast,
+  summary, card or patterns, fails the answer. The report's motivator scores are nudged so the card's
+  three are its three highest, as the anchored call is told to do.
+- **The fallback.** A refused schema, a cut-off or unreadable answer, or one that fails its checks
+  goes to the two calls as before (`cardThenFull`), so the reader always gets an answer every check
+  already trusts; that run costs both. Each is logged and counted (`merged_unlock`,
+  `merged_fallback` in the daily stats).
+- **The split** (`splitMerged`) hands back exactly what the two calls return: the card as the free
+  schema shapes it (completed by `withCard`) and the report as the Overview-pinned schema shapes it,
+  so the browser's `overlayCard` and everything after it cannot tell the difference.
+- **Cost:** about 41,500 tokens of prompt and schema against 43,100 for the two calls, and the
+  premium digest read once. At worst $0.183 (`MERGED_COST_CAP`, 30,000 output tokens) against
+  $0.256; typically about 5–6 cents less, and a minute or so sooner.
+
+**Before switching it on**, `npm run compare:unlock -- <digest> --runs 3` (tools/compare-unlock.mjs)
+runs both ways on the same digest and prints, side by side: how often each is sent back, how often each
+agrees with itself and the two with each other (type, character, Big Five bands), words per report
+section, the Overview's and roast's length, whether the report's top motivators match the card's, any
+word the card's rules forbid, cost and time. It writes every answer and a side-by-side page of the card's
+lines, the Overview, the roast and the plan to `compare-unlock-out/` (ignored by git: a real person's
+reading). Switch it on when the one call is never sent back, agrees with the two calls about as often as
+they agree with themselves, writes sections about as long, and reads as well on the page. The probe has
+a row for exactly what it sends: `npm run probe:schema -- --vertex MERGED`.
 
 ### The report opens as an index, not a scroll
 

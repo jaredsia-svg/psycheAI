@@ -49,7 +49,7 @@ export function digestFromHtml(html) {
   return JSON.parse(text);
 }
 
-async function digestFrom(path) {
+export async function digestFrom(path) {
   loadBrowserModules();
   const Digest = globalThis.PsycheDigest;
   const ext = extname(path).toLowerCase();

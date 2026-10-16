@@ -612,7 +612,7 @@ async function handleAnalyse(request, response) {
     key = anchor ? Object.assign({}, sent, { anchor }) : sent;
     call = anchor || prompts.REPORT_LAYOUT === 'classic'
       ? engine => engine.analyseFull(sent, anchor)
-      : engine => cardThenFull(engine, sent);
+      : engine => mergedOrTwoCalls(engine, sent);
   } else {
     kind = 'card';
     key = sent;
@@ -817,6 +817,43 @@ async function judgeFor(body, result, request) {
  * Two calls, billed as one result: this path is rare, and the alternative
  * is a report that cannot be written at all.
  */
+// The unlock that adds data in one call instead of two (lib/prompts.js,
+// MERGED_SYSTEM), when PSYCHEAI_MERGED_UNLOCK is on and the engine has one.
+// Read on every request, so it is switched with no deploy.
+const MERGED_UNLOCK = () => /^(1|true|yes|on)$/i.test(String(process.env.PSYCHEAI_MERGED_UNLOCK || '').trim());
+
+/**
+ * The card and the report from one call, split back into what cardThenFull
+ * returns. Falls back to cardThenFull — the two calls, which every check
+ * already trusts — when the schema is refused, the answer is cut off or
+ * unreadable, or it fails checkMerged; the fallback's usage includes the
+ * merged call's, so the ledger sees both.
+ */
+async function mergedOrTwoCalls(engine, sent) {
+  if (!MERGED_UNLOCK() || typeof engine.analyseMerged !== 'function') return cardThenFull(engine, sent);
+  const fallBack = async (why, usage) => {
+    console.warn('[unlock] one call fell back to two: ' + why);
+    stats.count('merged_fallback');
+    const two = await cardThenFull(engine, sent);
+    return usage ? Object.assign({}, two, { usage: sumUsage(usage, two.usage) }) : two;
+  };
+  let merged;
+  try {
+    merged = await engine.analyseMerged(sent);
+  } catch (error) {
+    const recoverable = error && (error.schemaRefused || /MAX_TOKENS/.test(String(error.finishReason || '')) ||
+      /JSON|parse/i.test(String(error.message || '')));
+    if (!recoverable) throw error;
+    return fallBack(error.schemaRefused ? 'schema refused' : (error.finishReason || 'unreadable answer'), error.usage);
+  }
+  const checked = prompts.checkMerged(merged.data);
+  if (!checked.ok) return fallBack(checked.problems.slice(0, 6).join('; '), merged.usage);
+  if (checked.dropped.length) console.warn('[unlock] one call: dropped ' + checked.dropped.slice(0, 6).join('; '));
+  stats.count('merged_unlock');
+  const split = prompts.splitMerged(checked.data);
+  return Object.assign({}, merged, { data: Object.assign({}, split.full, { freeCard: split.card }) });
+}
+
 async function cardThenFull(engine, sent) {
   const card = await engine.analyseCard(sent);
   const anchor = prompts.anchorFrom(card.data);

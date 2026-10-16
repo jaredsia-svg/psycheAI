@@ -6013,6 +6013,64 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Object.keys(prompts.FULL_SCHEMA.properties).every(key => key in merged), Object.keys(merged).join(','));
 }
 
+// ---------- the unlock that adds data, in one call ----------
+{
+  const strict = prompts.MERGED_STRICT_SCHEMA;
+  const sent = prompts.MERGED_SCHEMA;
+  const enums = node => { let n = 0; const walk = x => { if (!x || typeof x !== 'object') return;
+    if (Array.isArray(x.enum)) n++; for (const v of Object.values(x)) walk(v); }; walk(node); return n; };
+  check('one call: the schema sent keeps only the character\'s enum; the rest are strings listing their values',
+    enums(sent) === 1 && Array.isArray(sent.properties.essence.properties.character.enum) &&
+      enums(strict) > 20 &&
+      /One of: "very low", "low", "moderate", "high", "very high"\.$/.test(sent.properties.bigFive.properties.openness.properties.band.description),
+    String(enums(sent)));
+  check('and it asks for the report, the card, its three motivators and the roast, the roast last',
+    Object.keys(strict.properties).slice(-2).join() === 'card,bonus' && 'topMotivators' in strict.properties &&
+      Object.keys(strict.properties.card.properties).join() ===
+        Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.card.properties).join());
+  check('its prompt is the full report\'s with the card\'s own rules kept word for word, those winning on the card',
+    prompts.MERGED_SYSTEM.startsWith(prompts.STRUCTURED_FULL_SYSTEM) &&
+      prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))) &&
+      /where they and the rules above differ about one of those fields, these win/.test(prompts.MERGED_SYSTEM) &&
+      /# The roast/.test(prompts.MERGED_SYSTEM) && /# Overview/.test(prompts.MERGED_SYSTEM));
+  const answer = { mbti: { type: 'infj', letters: [{ axis: 'E/I', choice: 'I', strength: 'Moderate' }] },
+    bigFive: { openness: { score: 70, band: 'High' } },
+    patterns: [{ id: 'P1', name: 'One', showsUpIn: ['work', 'Work', 'nowhere'] }, { id: 'p2', name: 'Two', showsUpIn: [] }],
+    summary: 'S.', bonus: { harsh: 'H.' }, card: {}, topMotivators: ['benevolence', 'Self-Direction', 'security'],
+    motivators: { scores: [{ value: 'benevolence', score: 60 }, { value: 'self-direction', score: 50 },
+      { value: 'security', score: 40 }, { value: 'power', score: 80 }] } };
+  const checkedAnswer = prompts.checkMerged(answer);
+  check('one call: values are put back to their allowed spelling, ignoring case, spaces and hyphens',
+    checkedAnswer.ok && checkedAnswer.data.mbti.type === 'INFJ' && checkedAnswer.data.mbti.letters[0].strength === 'moderate' &&
+      checkedAnswer.data.patterns[0].id === 'p1' && checkedAnswer.data.topMotivators[1] === 'self-direction',
+    JSON.stringify(checkedAnswer.problems));
+  check('and a list loses only the value that matches nothing, once each',
+    checkedAnswer.data.patterns[0].showsUpIn.join() === 'work' && checkedAnswer.dropped.length === 1, JSON.stringify(checkedAnswer.dropped));
+  const ranked = checkedAnswer.data.motivators.scores.slice().sort((a, b) => b.score - a.score).slice(0, 3).map(r => r.value);
+  check('and the card\'s three motivators become the report\'s three highest, in order',
+    ranked.join() === 'benevolence,self-direction,security', JSON.stringify(checkedAnswer.data.motivators.scores));
+  const broken = prompts.checkMerged(Object.assign({}, answer, { mbti: { type: 'XXXX', letters: [] } }));
+  check('a field on its own that matches nothing fails the answer, which then goes to two calls',
+    !broken.ok && broken.problems.some(p => /^mbti\.type=/.test(p)), JSON.stringify(broken.problems));
+  check('and so does an answer missing what a card is never without',
+    !prompts.checkMerged(Object.assign({}, answer, { bonus: { harsh: '' } })).ok &&
+      !prompts.checkMerged(Object.assign({}, answer, { patterns: [] })).ok && !prompts.checkMerged(null).ok);
+  const parts = prompts.splitMerged(checkedAnswer.data);
+  check('the split hands back the card as the free call shapes it and the report without the Overview',
+    parts.card.card && parts.card.card.mbti === 'INFJ' && parts.card.summary === 'S.' && !('motivators' in parts.card) &&
+      !('summary' in parts.full) && !('patterns' in parts.full) && !('bonus' in parts.full) && !('card' in parts.full) &&
+      !('type' in (parts.full.mbti || {})), JSON.stringify(Object.keys(parts.full)));
+  const fixedMerged = Math.round((prompts.MERGED_SYSTEM.length + JSON.stringify(prompts.MERGED_SCHEMA).length) / 3.5);
+  check('one call: its prompt reserve covers the prompt actually sent, without over-reserving',
+    Digest.MERGED_FIXED_INPUT_TOKENS >= fixedMerged && Digest.MERGED_FIXED_INPUT_TOKENS <= fixedMerged * 1.15,
+    Digest.MERGED_FIXED_INPUT_TOKENS + ' vs ' + fixedMerged);
+  check('and its cap pays for the whole premium read, below the two calls it replaces',
+    Digest.charBudget(Digest.MERGED_COST_CAP, Digest.MERGED_FIXED_INPUT_TOKENS, Digest.MERGED_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS &&
+      Digest.MERGED_COST_CAP < Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP &&
+      gemini.MERGED_MAX_OUTPUT_TOKENS === Digest.MERGED_MAX_OUTPUT_TOKENS,
+    String(Digest.charBudget(Digest.MERGED_COST_CAP, Digest.MERGED_FIXED_INPUT_TOKENS, Digest.MERGED_MAX_OUTPUT_TOKENS)));
+}
+
 // ---------- the routes: the card is free, the full report is not ----------
 //
 // Against a real server in a real subprocess, because what matters is what a
@@ -6137,6 +6195,75 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       // The Overview is the card's, so the report written to it leaves both out.
       !('summary' in fresh) && !('patterns' in fresh),
       JSON.stringify(routes.fullFresh && routes.fullFresh.status) + ' ' + Object.keys(fresh).join(','));
+
+    // The same unlock in one call (PSYCHEAI_MERGED_UNLOCK): the same answer
+    // shape as the two calls, and back to the two calls when the merged
+    // answer fails its checks (PSYCHEAI_MOCK_MERGED=bad).
+    const oneCall = (port, env) => {
+      const script = `
+        const { spawn } = require('node:child_process');
+        const { tmpdir } = require('node:os');
+        const { join } = require('node:path');
+        const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+          env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '${promo}', ...${JSON.stringify(env)},
+            PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-selftest-budget-${port}-${process.pid}.jsonl'),
+            PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-selftest-usage-${port}-${process.pid}.jsonl') },
+          stdio: 'ignore',
+        });
+        const base = 'http://localhost:${port}';
+        (async () => {
+          for (let i = 0; i < 100; i++) {
+            try { await fetch(base + '/api/status'); break; } catch (error) { await new Promise(r => setTimeout(r, 100)); }
+          }
+          const digest = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+          const ticket = (await (await fetch(base + '/api/nonce')).json()).nonce;
+          const response = await fetch(base + '/api/analyse', { method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': ticket },
+            body: JSON.stringify({ digest, product: 'unlock', promoCode: '${promo}' }) });
+          const json = await response.json().catch(() => null);
+          server.kill();
+          process.stdout.write(JSON.stringify({ status: response.status, json }));
+        })().catch(error => { server.kill(); process.stdout.write(JSON.stringify({ crashed: error.message })); });
+      `;
+      try {
+        return JSON.parse(execFileSync(process.execPath, ['-e', script],
+          { encoding: 'utf8', timeout: 30000, input: JSON.stringify(heavyWithDms) }));
+      } catch (error) {
+        return { crashed: error.message };
+      }
+    };
+    const shape = (o, pre) => Object.entries(o || {}).flatMap(([k, v]) =>
+      v && typeof v === 'object' && !Array.isArray(v) ? shape(v, (pre || '') + k + '.') : [(pre || '') + k]).sort().join();
+    const one = oneCall(port + 1, { PSYCHEAI_MERGED_UNLOCK: '1' });
+    const oneData = data(one);
+    // Exactly the two calls' shape, except fields the mock writes that the real
+    // schemas never ask for (the old `activity` section, the card's attachment):
+    // the split follows the real schemas.
+    const inSchema = (schema, path) => {
+      let node = schema;
+      for (const part of path.split('.')) {
+        if (node && node.$ref) node = (schema.$defs || {})[node.$ref.split('/').pop()];
+        if (!node || !node.properties || !(part in node.properties)) return false;
+        node = node.properties[part];
+      }
+      return true;
+    };
+    const missing = (a, b) => b.split(',').filter(k => k && !a.split(',').includes(k));
+    const fullOne = shape(Object.assign({}, oneData, { freeCard: null }));
+    const fullTwo = shape(Object.assign({}, fresh, { freeCard: null }));
+    const cardGap = missing(shape(oneData.freeCard), shape(fresh.freeCard));
+    const fullGap = missing(fullOne, fullTwo);
+    check('structured, one call: the unlock that adds data comes back shaped as the two calls return it, field for field the real schemas ask for',
+      one.status === 200 && missing(shape(fresh.freeCard), shape(oneData.freeCard)).length === 0 && missing(fullTwo, fullOne).length === 0 &&
+        cardGap.every(k => !inSchema(prompts.STRUCTURED_FREE_SCHEMA, k)) &&
+        fullGap.every(k => !inSchema(prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA, k)),
+      JSON.stringify(one.status) + ' ' + (one.crashed || '') + ' ' + JSON.stringify({ cardGap, fullGap }));
+    check('and its values are put back to their allowed spelling (an upper-cased letter strength)',
+      oneData.freeCard && oneData.freeCard.mbti.letters.every(l => ['slight', 'moderate', 'clear'].includes(l.strength)));
+    const bad = oneCall(port + 2, { PSYCHEAI_MERGED_UNLOCK: '1', PSYCHEAI_MOCK_MERGED: 'bad' });
+    check('structured, one call: an answer that fails its checks falls back to the two calls, and the reader never sees it',
+      bad.status === 200 && data(bad).freeCard && data(bad).freeCard.mbti.type !== 'XXXX' &&
+        shape(data(bad).freeCard) === shape(fresh.freeCard), JSON.stringify(bad.status) + ' ' + (bad.crashed || ''));
   }
   check('a padded free request is answered as the same card, not billed for the padding',
     Boolean(routes.padded) && routes.padded.status === 200 &&
@@ -6201,6 +6328,37 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     text.includes('**When the evidence shows someone struggling, the roast goes gentle.**') &&
       text.includes('do not roast the struggle and do not roast hard at all') && text.includes('Never name or hint at a condition.')) &&
     /unless the evidence clearly shows them struggling/.test(JSON.stringify(prompts.FREE_SCHEMA)));
+
+// ---------- tools/compare-unlock.mjs: two calls against one ----------
+{
+  const cu = await import('./compare-unlock.mjs');
+  const card = { mbti: { type: 'INFJ', letters: [] }, essence: { character: 'Mulan' }, bigFive: {},
+    summary: 'One two three.', cardHighlights: 'You date often.', topMotivators: ['benevolence', 'security', 'power'],
+    patterns: [{ id: 'p1', name: 'The guarded one', evidence: ['a', 'b'], showsUpIn: ['work'] }], card: {}, bonus: { harsh: 'x y', advice: 'z' } };
+  const report = { motivators: { scores: [{ value: 'benevolence', score: 90 }, { value: 'security', score: 80 }, { value: 'power', score: 70 }] },
+    development: { develop: [{ area: 'A' }] } };
+  const p = cu.profileOf(card, report);
+  check('compare:unlock flags a word the card\'s rules forbid, and reads the Overview, the roast and the plan',
+    p.card.romance === 'date' && p.card.unflattering === 'guarded' && p.overview.summaryWords === 3 && p.overview.evidence === 2 &&
+      p.roastWords === 3 && p.motivatorsAgree && p.developItems === 1, JSON.stringify(p));
+  const way = cu.summariseWay([{ profile: p, cost: 0.1, seconds: 10 }, { fallback: 'x', cost: 0.05, seconds: 5 }]);
+  check('and sums a way up, counting the answers sent back to two calls as not kept',
+    way.runs === 2 && way.failed === 1 && way.fallbacks === 1 && Math.abs(way.cost - 0.075) < 1e-9 && way.cardFlags.length === 1,
+    JSON.stringify(way));
+  const preview = join(tmpdir(), 'psycheai-compare-unlock-' + process.pid + '.json');
+  writeFileSync(preview, JSON.stringify(heavyWithDms));
+  let printed = '';
+  try {
+    printed = execFileSync(process.execPath, [join(root, 'tools', 'compare-unlock.mjs'), preview, '--runs', '2', '--mock',
+      '--out', join(tmpdir(), 'psycheai-compare-unlock-out-' + process.pid)],
+      { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PSYCHEAI_REPORT_LAYOUT: 'structured' }) });
+  } catch (error) {
+    printed = String(error.stdout || '') + String(error.message || '');
+  }
+  check('compare:unlock runs both ways on the mock and prints the table and the side-by-side page',
+    /answers sent back to two calls\s+—\s+0 of 2/.test(printed) && /One call against two/.test(printed) &&
+      existsSync(join(tmpdir(), 'psycheai-compare-unlock-out-' + process.pid, 'side-by-side.md')), printed.slice(-400));
+}
 
 // ---------- tools/compare.mjs: the arithmetic it reports ----------
 //
