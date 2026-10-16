@@ -1170,7 +1170,7 @@
       // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
       askTitle: 'Ask PsycheAI',
       askBlurb: 'Your personal coach that already knows you from your results. Ask it anything about yourself.',
-      askPrice: price => '1 question free with your card, 2 more with your report, then ' + price + ' for 5',
+      askPrice: price => '1 question free with your card, 1 more with your report, then ' + price + ' for 5',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',
@@ -1303,7 +1303,7 @@
           about: 'Your behaviour – what you post, how you talk, what you return to – is matched to the well-known character who moves through the world most like you. A quick way to hold your whole profile in mind, and to explain yourself to others.',
           yours: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') + '. The two lines under the name say why.' },
         { key: 'confidence', icon: '🎯', title: 'The number in the ring', when: f => f.score,
-          about: 'How much evidence stands behind the card: how much data there was, how much was read, and how consistently it agreed. High is a confident reading, low a first draft – adding Google or Facebook usually raises it.',
+          about: 'How much evidence stands behind the card: which sources you added, how much of it is in your own words, and how consistently it agreed. High is a confident reading, low a first draft – adding Google, Facebook or a WhatsApp chat usually raises it.',
           yours: f => f.score + ' out of 100' + (f.level ? ' – ' + f.level + '.' : '.') },
         { key: 'patterns', icon: '🧵', title: 'Your patterns', when: f => f.pattern,
           about: 'The two or three behaviours that repeat across years of what you post and say. Your strengths and blind spots both come from them – naming them helps you catch them in the moment.',

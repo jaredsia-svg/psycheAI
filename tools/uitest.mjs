@@ -3603,7 +3603,7 @@ try {
   check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
-        /1 question free with your card, 2 more with your report, then US\$5 for 5/.test(a.textContent); }));
+        /1 question free with your card, 1 more with your report, then US\$5 for 5/.test(a.textContent); }));
 
   // ---- the premium tier block ----
   //

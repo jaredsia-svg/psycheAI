@@ -3705,15 +3705,18 @@ check('the sample arrives in chronological order',
     !/counts and histograms\s+are always complete/i.test(sys));
   check('it separates complete from truncated from sampled',
     /\*\*Complete\*\*/.test(sys) && /\*\*Truncated\*\*/.test(sys) && /\*\*Sampled\*\*/.test(sys));
-  check('it names the failure by its actual shape, not in the abstract',
-    /a total it had never read|never been shown/i.test(sys) &&
-    /A large archive you saw a sliver of is not strong evidence/i.test(sys));
+  // Since October 2026 the score starts from the sources loaded and is never
+  // lowered for the sample, which is PsycheAI's and the same for everyone;
+  // the sample still limits what may be claimed.
+  check('the score starts from the sources loaded, is never lowered for the sample, and tops out at 92',
+    /Start from the sources loaded/.test(sys) && /never\s+lower a score because only a fraction/i.test(sys) &&
+    /Never above 92/.test(sys) && /do not claim to have read their relationships/.test(sys));
   check('and forbids citing a total as coverage',
     /Never cite a total as though it were coverage/i.test(sys));
   // Confidence gets its own section rather than a paragraph inside the
   // extraversion correction, which is where this guidance used to live.
   check('confidence has a section of its own',
-    /## Confidence — score what you were shown/.test(sys));
+    /## Confidence — how well what they gave supports the reading/.test(sys));
   // The sampler and this paragraph have to move together, or the digest
   // quietly starts licensing inferences its own shape rules out. Both cautions
   // are pinned, not just the description: the cap makes the proportions
@@ -5564,7 +5567,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('the premium read\'s two calls each fit their own cost cap at its 179,000-character line',
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS &&
-        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.084,
+        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.085,
       Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
     check('and together cost no more than twenty-six cents',
@@ -5783,9 +5786,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     !/neutral or positive|neutrally or positively/.test(free + JSON.stringify(prompts.FREE_SCHEMA)));
   // Its own prompt, and a short one — the premium report keeps the long one.
   // The shared limits every prompt carries (ROAST_LIMIT, the data and
-  // conduct rules) are not the card's own rules.
+  // conduct rules, the confidence and neutral-people rules) are not the
+  // card's own rules.
   const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '')
-    .replace(prompts.CONDUCT_RULE, '').replace(prompts.DATA_WORDS, '');
+    .replace(prompts.CONDUCT_RULE, '').replace(prompts.DATA_WORDS, '')
+    .replace(prompts.CONFIDENCE_SCORING, '').split(prompts.NEUTRAL_PEOPLE_RULE).join('');
   // A quarter now the full report's prompt has lost the roast to this one.
   check('the card prompt is its own and short: its rules under a quarter of the full report\'s',
     freeRules.length < prompts.PROFILE_SYSTEM.length / 4 && freeRules.length > 4000,
@@ -5802,7 +5807,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     ['the author is not the subject', /author is not (?:automatically )?the subject/i],
     ['N/S: concrete detail is the platform', /camera[\s\S]{0,60}concrete/i],
     ['T/F: the error runs towards F', /runs towards F|runs towards \*\*F\*\*/],
-    ['confidence is scored on what was shown', /score what you were shown/i],
+    ['confidence is scored one way, from the sources loaded', /Start from the sources loaded/],
     ['physical touch is nearly invisible', /[Pp]hysical touch is (?:close to|nearly) invisible/],
     ['no diagnosis, ever', /condition|diagnos/],
   ];
@@ -6030,7 +6035,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.card.properties).join());
   check('its prompt is the full report\'s with the card\'s own rules kept word for word, those winning on the card',
     prompts.MERGED_SYSTEM.startsWith(prompts.STRUCTURED_FULL_SYSTEM) &&
-      prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))) &&
+      prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))
+        .replace('# Confidence\n\n' + prompts.CONFIDENCE_SCORING + '\n\n', '')) &&
+      (prompts.MERGED_SYSTEM.match(/Start from the sources loaded/g) || []).length === 1 &&
       /where they and the rules above differ about one of those fields, these win/.test(prompts.MERGED_SYSTEM) &&
       /# The roast/.test(prompts.MERGED_SYSTEM) && /# Overview/.test(prompts.MERGED_SYSTEM));
   check('one call: the schema itself holds develop to exactly two areas, and the ordinary paid schema does not',
@@ -8322,7 +8329,13 @@ check('the schema requires evidence on where they align and differ',
     await referral.afterFreeCard({ account: sha('psycheai:asker'), myRef: referral.codeOf(askSecret) });
     await new Promise(resolve => setTimeout(resolve, 10));
     let now = await askCredits.balance(askSecret);
-    check('Ask PsycheAI: a new reader has no questions', now && now.total === 0 && now.paid === 0 && now.perPack === 5, JSON.stringify(now));
+    // A link with a card has its one free question, given the first time its
+    // balance is read — a card made before free questions existed included.
+    check('Ask PsycheAI: a reader with a card has their one free question', now && now.total === 1 && now.paid === 1 && now.perPack === 5, JSON.stringify(now));
+    check('and only once, however often the balance is read', (await askCredits.balance(askSecret)).total === 1);
+    await askCredits.spend(askSecret);
+    now = await askCredits.balance(askSecret);
+    check('once it is spent there are none', now.total === 0 && now.paid === 0, JSON.stringify(now));
     check('and none can be spent', (await askCredits.spend(askSecret)) === null);
     check('a payment adds five, once', (await askCredits.addPack(askSecret, 'pi_ask_1')) === true &&
       (await askCredits.addPack(askSecret, 'pi_ask_1')) === false && (await askCredits.balance(askSecret)).total === 5);
@@ -8341,17 +8354,20 @@ check('the schema requires evidence on where they align and differ',
     now = await askCredits.balance(askSecret);
     check('then the link\'s credit, and then none', now.total === 0 && (await askCredits.spend(askSecret)) === null, JSON.stringify(now));
     check('a code alone cannot see or spend questions', (await askCredits.balance(referral.codeOf(askSecret))) === null);
-    // Free questions: one with the first card, two with the report, once each per code.
+    // Free questions: one with the card (given above), one with the report, once each per code.
     const giftCode = referral.codeOf(askSecret);
-    check('a first card gives one free question, once',
-      (await askCredits.gift(giftCode, 'card')) === true && (await askCredits.gift(giftCode, 'card')) === false &&
-        (await askCredits.balance(askSecret)).total === 1);
-    check('a Psyche Report gives two more, once',
+    check('the card\'s question is not given twice',
+      (await askCredits.gift(giftCode, 'card')) === false && (await askCredits.balance(askSecret)).total === 0);
+    check('a Psyche Report gives one more, once',
       (await askCredits.gift(giftCode, 'report')) === true && (await askCredits.gift(giftCode, 'report')) === false &&
-        (await askCredits.balance(askSecret)).total === 3);
+        (await askCredits.balance(askSecret)).total === 1);
     check('and nothing for a bad code or an unknown kind',
       (await askCredits.gift('not a code', 'card')) === false && (await askCredits.gift(giftCode, 'bonus')) === false &&
-        askCredits.GIFTS.card === 1 && askCredits.GIFTS.report === 2);
+        askCredits.GIFTS.card === 1 && askCredits.GIFTS.report === 1);
+    // A link with no card yet has nothing until it makes one.
+    const noCard = sha('a reader with no card yet');
+    check('a link with no card has no free question',
+      (await askCredits.balance(noCard)).total === 0);
   }
   {
     const Prices = (await import('../docs/prices.js'), globalThis.PsychePrices);

@@ -766,15 +766,15 @@ async function handleAnalyse(request, response) {
       // the free one from a friend's card is no longer theirs to use
       // (lib/referral.js, grantRefusal).
       if (full) referral.afterFullReport(account);
-      // Two free Ask PsycheAI questions with a first Psyche Report, once per link.
+      // One free Ask PsycheAI question with a Psyche Report, and one with a
+      // card, free or re-run: once each per link (lib/askcredits.js).
       if (full) askCredits.gift(body.myRef, 'report').catch(() => {});
+      if (!full) askCredits.gift(body.myRef, 'card').catch(() => {});
       // The free card's account, and the friend who invited them.
       if (made === 'card') {
         referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
           guessed: Boolean(body.guess) })
           .then(outcome => {
-            // One free Ask PsycheAI question with this account's first card.
-            if (outcome && outcome.first) askCredits.gift(body.myRef, 'card').catch(() => {});
             if (outcome && outcome.credited) {
               stats.count('referral_friend');
               if (via) stats.count('via:' + via + ':referral_friend');

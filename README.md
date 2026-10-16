@@ -2975,8 +2975,11 @@ now each carry a lock (`unlockPartsHtml`). A free reader still has no My Report 
   stays under half the full profile schema's size (a selftest check), but only a live run proves
   Gemini accepts it.
 - **Ask PsycheAI from the card.** `askReady` no longer needs a report. Free questions go into the same
-  count a bought pack does (`lib/askcredits.js`, `gift`): one when an account's first free card is
-  written, two more with its Psyche Report, each once per referral code. The prompt is told a reader
+  count a bought pack does (`lib/askcredits.js`, `gift`): one with the card, one more with the Psyche
+  Report, each once per referral code. The card's is given when any card is written for the link (free
+  or a re-run) and, for a link that already had a card, the first time its balance is read — at first
+  it came only with an account's first free card, so a reader who had made one before never got it.
+  The report's was two at first, then one. The prompt is told a reader
   may have only the card and its Overview, and never to point them at a section they lack. The answer's
   source line says "your results" rather than "your report".
 - **The first report** still unlocks when one person opens the reader's link: easy on purpose for now.
@@ -5424,6 +5427,29 @@ JSON Schema as `responseJsonSchema`) is not a row because it is what lib/gemini.
 Production goes to Vertex AI first, and a schema Vertex refuses is not retried with the key
 (`isBackendFailure`), so `--vertex` sends the rows there with the server's own service-account
 variables; the two can differ, and Vertex's answer is the one that decides.
+
+### One confidence rule, scored from the sources (October 2026)
+
+The card and the report scored confidence under two rules: a short one on the card and a strict one
+in the report ("score what you were shown, not what exists", written after a report claimed 88 from 3%
+of the messages). Two calls hid it, because the report keeps the card's score; the one-call unlock read
+both and came out lower (78 and 68 against 88 and 84 for the same reader). And the strict rule scored
+the sample, which is PsycheAI's choice and the same for everyone: Instagram, Google and three WhatsApp
+chats came out under 70, and a reader who has given everything should not see that.
+
+Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merged prompt says it once):
+
+- **Start from the sources loaded:** Instagram alone 68–82; with one more source 76–88; with two or more
+  of Google, Facebook and WhatsApp 82–92. Never above 92.
+- **Within the range**, higher when the sources agree and the reader writes in their own words across
+  years; lower when it is mostly likes and follows, the span is short, or the sources disagree. Below
+  the range only for a genuinely thin export.
+- **Never lowered for the sample.** The sample still limits what may be *claimed* (their voice, not
+  every relationship), and `basedOn` still says what was read of what exists, never a total as coverage.
+- `level`: high from 75, moderate 60–74, low 40–59, very low under 40.
+
+The free prompt grew to 10,959 tokens (`FREE_FIXED_INPUT_TOKENS` 11,000); `DEEP_FREE_COST_CAP` $0.084 →
+$0.085. The ring's explanation on the card no longer says the score depends on how much was read.
 
 ### One call for the unlock that adds data (October 2026)
 

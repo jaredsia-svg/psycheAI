@@ -3453,15 +3453,21 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-card .part-num { font-size: clamp(1.7rem, 5vw, 2.1rem); }
 .part-card .part-title .card-toggle { font-size: inherit; }
 .part-card:not(.is-collapsed) > .part-card-head { padding-bottom: .9rem; border-bottom: 1px solid var(--line); }
-.part-body > .card {
+/* Appendix 2 sits one level down, in the slot refreshAskAppendix fills; it is laid out the same. */
+.part-body > .card,
+.part-body > .ask-appendix-slot > .card {
   background: none; box-shadow: none; border: 0; border-radius: 0; margin: 0;
   padding: 1.5rem 0 .4rem; border-top: 1px solid var(--line);
 }
-.part-body > .card::before { display: none; }
+.part-body > .card::before,
+.part-body > .ask-appendix-slot > .card::before { display: none; }
 .part-body > .card:first-child { border-top: 0; }
-.part-body > .card > .card-head { margin-bottom: .8rem; align-items: center; }
-.part-body > .card > .card-head .card-icon { width: 1.9rem; height: 1.9rem; font-size: .95rem; }
-.part-body > .card > .card-head h2 { font-size: 1.2rem; }
+.part-body > .card > .card-head,
+.part-body > .ask-appendix-slot > .card > .card-head { margin-bottom: .8rem; align-items: center; }
+.part-body > .card > .card-head .card-icon,
+.part-body > .ask-appendix-slot > .card > .card-head .card-icon { width: 1.9rem; height: 1.9rem; font-size: .95rem; }
+.part-body > .card > .card-head h2,
+.part-body > .ask-appendix-slot > .card > .card-head h2 { font-size: 1.2rem; }
 
 /* MBTI and the Big Five: the scale on the left, the reading on the right. */
 .reading-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem 1.4rem; align-items: start; }
@@ -4222,9 +4228,22 @@ details.more[open] > summary::after { content: ' ▴'; }
   }
 }
 /* Part 05: a heading over two boxes of their own, not a disclosure. */
-/* The appendix is a part like the others; its two boxes sit inside it. */
-.part-card[data-part-card="appendix"] .part-body > .section-card { margin-bottom: 1rem; }
-.part-card[data-part-card="appendix"] .part-body > .section-card:last-child { margin-bottom: 0; }
+/* The appendix is a part like the others, its two sections laid out as
+   every section in a part is: no fill, a rule between them. The roast keeps
+   only its striped cover, in the page's own light colours, not the grey room
+   it is on its own (.layout-structured .bonus-card above). */
+.layout-structured .part-body > .bonus-card.roast-appendix:not(.is-revealed) {
+  background: none; border-color: transparent; border-top-color: var(--line);
+}
+.layout-structured .part-body > .bonus-card.roast-appendix:first-child:not(.is-revealed) { border-top-color: transparent; }
+.layout-structured .part-body > .bonus-card.roast-appendix:not(.is-revealed) .bonus-cover {
+  background: repeating-linear-gradient(
+    135deg, var(--bg) 0 10px, color-mix(in srgb, var(--ink-soft) 7%, var(--bg)) 10px 20px);
+  border-color: var(--line);
+}
+.layout-structured .part-body > .bonus-card.roast-appendix:not(.is-revealed) .bonus-reveal {
+  color: var(--accent); border-color: var(--accent); background: var(--bg);
+}
 /* Who wrote the report and when: a quiet pill per line, closing the page. */
 .provenance { display: flex; justify-content: center; margin: 1.4rem 0 .4rem; }
 .provenance-box {

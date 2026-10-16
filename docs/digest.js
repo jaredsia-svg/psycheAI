@@ -909,8 +909,8 @@
   // (every pool at its ceiling):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                 10,600 prompt + 36,000 digest × $0.75/M = $0.0350
-  //                 at most $0.0725                    → FREE_COST_CAP $0.073
+  //                 11,000 prompt + 36,000 digest × $0.75/M = $0.0353
+  //                 at most $0.0728                    → FREE_COST_CAP $0.073
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 36,000 digest × $0.75/M = $0.0556
@@ -943,8 +943,8 @@
   // Instagram alone, at its 82,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                 10,600 prompt + 23,429 digest × $0.75/M = $0.0255
-  //                 at most $0.0630                    → SOLO_FREE_COST_CAP $0.064
+  //                 11,000 prompt + 23,429 digest × $0.75/M = $0.0258
+  //                 at most $0.0633                    → SOLO_FREE_COST_CAP $0.064
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 23,429 digest × $0.75/M = $0.0461
@@ -967,8 +967,9 @@
   // 9,998 once it said how to name a gap between posts and private
   // activity (9,998 measured: the most the 7.2-cent cap leaves room for).
   // 10,600 once it wrote the Overview: the executive summary and the
-  // patterns' evidence (10,528 measured).
-  const FREE_FIXED_INPUT_TOKENS = 10600;
+  // patterns' evidence (10,528 measured). 11,000 once the card and the
+  // report shared one confidence rule (CONFIDENCE_SCORING, 10,959 measured).
+  const FREE_FIXED_INPUT_TOKENS = 11000;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -977,17 +978,17 @@
   // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                 10,600 prompt + 51,143 digest × $0.75/M = $0.0463
-  //                 at most $0.0838                    → DEEP_FREE_COST_CAP $0.084
+  //                 11,000 prompt + 51,143 digest × $0.75/M = $0.0466
+  //                 at most $0.0841                    → DEEP_FREE_COST_CAP $0.085
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669
   //                 at most $0.1719                    → DEEP_COST_CAP $0.172
   //
-  // $0.256 for the whole unlock at most, against a US$5 payment; $0.172 when
+  // $0.257 for the whole unlock at most, against a US$5 payment; $0.172 when
   // nothing is added and the card stands. Held by the same selftest check as
   // the standard caps.
-  const DEEP_FREE_COST_CAP = 0.084;
+  const DEEP_FREE_COST_CAP = 0.085;
   const DEEP_COST_CAP = 0.172;
 
   // The unlock that adds data in one call (lib/prompts.js, MERGED_SYSTEM),
@@ -1000,7 +1001,7 @@
   //                 42,500 prompt + 51,143 digest × $0.75/M = $0.0702
   //                 at most $0.1827                    → MERGED_COST_CAP $0.183
   //
-  // against $0.256 for the two calls it replaces. If its answer fails its
+  // against $0.257 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
   const MERGED_FIXED_INPUT_TOKENS = 42500;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;

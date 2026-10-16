@@ -2293,8 +2293,9 @@
       // markup in it is the one thing it is handed that is not plain text.
       // A different class, because this badge is saying the opposite thing —
       // see .bonus-badge in styles.css.
+      // No "Bonus" badge in My Report's appendix: no other section there has one.
       sectionHead('🕳️', esc(title) +
-        ' <span class="mode-badge bonus-badge">' + esc(TEXT.bonusBadge) + '</span>',
+        (options && options.appendix ? '' : ' <span class="mode-badge bonus-badge">' + esc(TEXT.bonusBadge) + '</span>'),
       esc(TEXT.bonusSub), !flat) +
       '<div class="bonus-cover">' +
       '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
@@ -10163,7 +10164,7 @@
   const askThread = () => (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string');
   // A function rather than a const: show() asks it, and can run first.
   // Since October 2026 a Psyche Card is enough: its first question is free
-  // (lib/askcredits.js, gift), and the report brings two more.
+  // (lib/askcredits.js, gift), and the report brings one more.
   function askReady() {
     return Boolean(state.profile) && (hasExplanations(state.profile) || reportLayout() === 'structured');
   }
