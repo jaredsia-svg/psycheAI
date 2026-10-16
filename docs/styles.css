@@ -96,7 +96,8 @@ body {
  * catches the common case — a swipe that runs past the end of the dialog's own
  * scroll — and the bulletproof fix (position: fixed on the body) loses the
  * reader's scroll position on open, which is worse than the problem. */
-body:has(dialog[open]) { overflow: hidden; }
+/* Ask PsycheAI's panel is not a popout over the page but beside it: the page keeps scrolling. */
+body:has(dialog[open]:not(.ask-dialog)) { overflow: hidden; }
 @media (min-width: 560px) {
   html { scrollbar-gutter: stable; }
 }
@@ -4600,12 +4601,15 @@ details.more[open] > summary::after { content: ' ▴'; }
   color: var(--warn); background: var(--warn-soft); border: 1.5px solid color-mix(in srgb, var(--warn) 45%, transparent);
 }
 .ask-credits[hidden] { display: none; }
+/* Minimise: a filled round button, so it reads as a button rather than a dash. */
 .ask-close {
-  flex: none; appearance: none; border: 0; background: none; cursor: pointer; color: var(--ink-soft);
-  font-size: 1rem; line-height: 1; padding: .35rem .45rem; border-radius: 8px;
+  flex: none; appearance: none; border: 0; cursor: pointer; display: grid; place-items: center;
+  width: 2.1rem; height: 2.1rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+  font-size: 1.15rem; font-weight: 900; line-height: 1;
 }
-.ask-close:hover, .ask-close:focus-visible { background: var(--accent-soft); color: var(--accent); }
-.ask-thread { flex: 1 1 auto; min-height: 8rem; overflow-y: auto; padding: 1rem 1.1rem; display: grid; gap: 1rem; align-content: start; }
+.ask-close:hover, .ask-close:focus-visible { background: var(--accent); color: #fff; }
+/* min-height 0: the conversation gives way first, so the box and "Get 5 questions" are never pushed out. */
+.ask-thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1rem 1.1rem; display: grid; gap: 1rem; align-content: start; }
 .ask-intro { margin: auto 0; text-align: center; font-size: .9rem; line-height: 1.5; color: var(--ink-soft); }
 /* Ideas: folded away under a small button by the counter; open, a short
    scrolling list of questions above the box. */
@@ -4700,8 +4704,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   /* A bottom sheet: the full width, most of the height, a handle to pull it down. */
   /* Set clearly apart from the page under it: an accent edge along the top
      and sides, and a shadow cast upward over the page. */
+  /* Everything under the site's header, so the logo and menu stay in view above it. */
   .ask-dialog {
-    inset: auto 0 0 0; width: 100%; height: 85vh; height: 85dvh; border-radius: 18px 18px 0 0;
+    inset: var(--header-h, 3.6rem) 0 0 0; width: 100%; height: auto; border-radius: 18px 18px 0 0;
     border: 2px solid var(--accent); border-bottom: 0; box-shadow: 0 -12px 40px rgba(30, 10, 50, .35);
   }
   .ask-handle {
@@ -4716,3 +4721,29 @@ details.more[open] > summary::after { content: ' ▴'; }
   .ask-a { max-width: 100%; }
 }
 @media print { .ask-part, .ask-fab, .ask-dialog { display: none !important; } }
+/* Appendix: the questions asked of PsycheAI, each answer folded under its question. */
+.ask-appendix { margin-top: 1rem; }
+.ask-appendix-head { display: flex; align-items: baseline; gap: .6rem; margin: 0 0 .5rem; }
+.ask-appendix-head h3 { margin: 0; font-size: 1rem; }
+.ask-appendix-head span { font-size: .76rem; color: var(--ink-soft); }
+.ask-log { border-top: 1px solid var(--line); }
+.ask-log summary {
+  display: flex; gap: .5rem; align-items: flex-start; padding: .55rem 0; cursor: pointer; list-style: none;
+  font-size: .88rem; font-weight: 650; line-height: 1.35;
+}
+.ask-log summary::-webkit-details-marker { display: none; }
+.ask-log summary::before {
+  content: ''; flex: none; width: .45rem; height: .45rem; margin: .32rem .15rem 0 .1rem;
+  border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(-45deg); transition: transform .15s ease;
+}
+.ask-log[open] summary::before { transform: rotate(45deg); }
+.ask-log-body { padding: 0 0 .7rem 1.2rem; font-size: .84rem; line-height: 1.5; color: var(--ink-soft); }
+.ask-log-body p { margin: 0 0 .45rem; }
+.ask-log-body ul { margin: .2rem 0 0; padding-left: 1.1rem; }
+/* After Save a backup: what the file is for. */
+.backup-dialog ul { margin: .4rem 0 .9rem; padding-left: 1.2rem; }
+.backup-dialog li { margin: 0 0 .4rem; line-height: 1.45; }
+.backup-dialog .btn { width: 100%; }
+/* Psyche Sync's price on the front page's steps. */
+.step-free { display: inline-block; margin-left: .35rem; padding: .08rem .5rem; border-radius: 999px; vertical-align: .1em;
+  font-size: .7rem; font-weight: 800; letter-spacing: .02em; color: #fff; background: var(--good); }

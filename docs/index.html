@@ -179,8 +179,8 @@
            role="heading" aria-level="1" (class .h1): one <h1> in the document for
            search engines, and still a level-1 heading per view for screen readers. -->
       <h1>A full personality study.<br><span class="accent">No questions asked.</span></h1>
-      <p class="lede">Discover your MBTI, love languages, mental wellbeing, and career strengths directly
-        from your Instagram and digital footprint &mdash; zero quizzes required.</p>
+      <p class="lede">Your personal AI coach that already knows you, built from your Instagram data and
+        digital footprint.</p>
       <!-- One button for each kind of visitor: one who still has to ask
            Instagram for their data (it takes hours to arrive, so that is the
            first useful thing to do), and one who has the file already, who
@@ -229,11 +229,14 @@
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
       <p>Download your data from Instagram (WhatsApp and Google data are optional). See <a href="#cast" class="step-below">below</a> for instructions.</p></div>
     <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
-      <p>Your data is analysed by Gemini or Claude, which creates a report for you. No data is stored by PsycheAI.</p></div>
+      <p>Your data is analysed by Gemini, which creates a report for you. No data is stored by PsycheAI.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
-    <div class="step-card"><span class="step-num">4</span><h3>Psyche Sync</h3>
-      <p>Send connections your link and see what clicks between you, and how to relate better to each other. Free.</p></div>
+    <div class="step-card"><span class="step-num">4</span><h3>Psyche Sync <span class="step-free">Free</span></h3>
+      <p>Send connections your link and see what clicks between you, and how to relate better to each other.</p></div>
+    <div class="step-card"><span class="step-num">5</span><h3>Ask PsycheAI</h3>
+      <p>Your personal coach, who already knows you from your report. Ask it anything about yourself:
+        <span data-price="ask">US$5</span> for a pack of 5 questions.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -596,7 +599,7 @@
     <button class="btn" id="test-compat-open" type="button" data-tip="Psyche Sync"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span class="cta-label">Psyche Sync</span></button>
     <!-- The card, the report and every sync in one .json file, to restore in
          another browser ("Restore from a backup" in the Add your data popout). -->
-    <button class="btn btn-outline" id="save-backup" type="button" data-tip="Save a backup"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/></svg><span class="cta-label">Save a backup</span></button>
+    <button class="btn btn-outline" id="save-backup" type="button" data-tip="Save a backup" title="Saves a file you can use to bring back your Psyche in another browser or on another device"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/></svg><span class="cta-label">Save a backup</span></button>
     <button class="btn btn-outline danger" id="delete-profile" data-tip="Delete everything"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg><span class="cta-label">Delete everything</span></button>
   </div>
 
@@ -607,6 +610,12 @@
 
   <!-- "Delete everything" asks first, in a sheet of its own rather than the
      browser's confirm(), which some in-app browsers never show. -->
+<!-- After Save a backup: what the file is for, in plain words (copy.js, backupSaved). -->
+<dialog id="backup-dialog" class="mode-dialog backup-dialog" aria-labelledby="backup-dialog-title">
+  <h2 id="backup-dialog-title"></h2>
+  <ul id="backup-dialog-points"></ul>
+  <button class="btn" id="backup-dialog-ok" type="button"></button>
+</dialog>
 <dialog id="delete-dialog" class="mode-dialog delete-dialog" aria-labelledby="delete-dialog-title">
   <div class="delete-dialog-icon" aria-hidden="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>
@@ -617,7 +626,7 @@
   <div class="delete-dialog-actions">
     <button class="btn btn-outline" id="delete-cancel" type="button">Cancel</button>
     <!-- The way to keep a copy, between keeping everything and losing it. -->
-    <button class="btn btn-outline" id="delete-backup" type="button">Save a backup</button>
+    <button class="btn btn-outline" id="delete-backup" type="button" title="Saves a file you can use to bring back your Psyche in another browser or on another device">Save a backup</button>
     <button class="btn delete-confirm" id="delete-confirm" type="button">Delete everything</button>
   </div>
 </dialog>

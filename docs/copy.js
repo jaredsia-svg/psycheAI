@@ -1237,6 +1237,9 @@
       emptyHint: 'Ask PsycheAI anything about yourself.',
       ideasClose: 'Hide ideas',
       minimise: 'Minimise',
+      // The report's appendix: every question and its answer, folded.
+      appendixTitle: 'Appendix: your questions to PsycheAI',
+      appendixCount: n => n === 1 ? '1 question' : n + ' questions',
       // Under each answer: what it was written from.
       fromData: 'Drawn from your report and the data it was written from.',
       fromReport: 'Drawn from your report alone: the data it was written from is not in this browser.',
@@ -1373,6 +1376,16 @@
     sourcesHint: 'Adding Google or Facebook raises confidence.',
     // Evidence and method's sources: one row per source, what was read from
     // it beneath, and the row itself opens the data popout.
+    // The popout after Save a backup: what the file is for.
+    backupSaved: {
+      title: 'Your backup is saved',
+      points: [
+        'It is one file on this device, with your Psyche Card, Psyche Report, Psyche Syncs and the questions you asked PsycheAI.',
+        'If this browser ever loses them (cleared browsing data, a new phone, a different browser), open PsycheAI there, tap Load your data, then Restore from a backup, and choose this file.',
+        'Keep it private: it holds your report. PsycheAI never receives it.',
+      ],
+      ok: 'Got it',
+    },
     sourcesReadTitle: 'Your data',
     sourceChange: 'Change',
     sourceAdd: 'Add',

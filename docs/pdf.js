@@ -3112,6 +3112,15 @@
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
+    // The questions asked of PsycheAI, each with its answer and steps: as on the page, at the end.
+    const asked = (stamp.asked || []).filter(item => item && item.q && item.a);
+    if (asked.length) {
+      standalone(S.ask.appendixTitle, S.ask.appendixCount(asked.length));
+      asked.forEach(item => {
+        out.point(item.q, item.a, { detailSize: 9.2, detailLeading: 13 });
+        (item.steps || []).forEach(step => out.bullet(step));
+      });
+    }
     if (source.bonus) {
       out.page();
       out.eyebrow(numeral('appendix') + '  ' + S.parts.appendix.title, ACCENT_2);

@@ -2479,13 +2479,12 @@ try {
   // line because a lede that lists everything reads as a specification rather
   // than a claim. "and other insights" is doing that work now, so the check
   // asserts the four that are named rather than every framework that exists.
-  check('the hero lede names what actually comes back',
+  // Since October 2026 the lede pitches the coach: the headline above already says no questions.
+  check('the hero lede is the personal AI coach that already knows you, built from your own data',
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
-      if (!lede) return false;
-      const said = lede.textContent;
-      return /MBTI/.test(said) && /mental wellbeing/.test(said) &&
-        /love languages/i.test(said) && /career strengths/i.test(said);
+      return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
+        'Your personal AI coach that already knows you, built from your Instagram data and digital footprint.';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
@@ -2494,8 +2493,8 @@ try {
   // competitor can make: nothing was asked, the report comes off behaviour
   // that already happened. Pinned because it is the sentence most likely to be
   // softened by accident in a later rewrite.
-  check('and says the report needs no quiz, which is the actual differentiator',
-    /zero quizzes required/i.test(await page.locator('#view-welcome .hero .lede').innerText()),
+  check('and the headline above it still says no questions are asked, the actual differentiator',
+    /No questions asked\./.test(await page.locator('#view-welcome .hero h1').innerText()),
     (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim());
   // The privacy badge moved out of the hero and down to the upload card, then
   // further down to sit under the thing that asks for the file — once the two
@@ -2796,9 +2795,12 @@ try {
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('.row-head')).color +
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
-  check('the four steps say what you get, not how it works',
+  check('the five steps say what you get, not how it works, Psyche Sync marked free and Ask PsycheAI priced',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
-    'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync',
+    'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync Free | Ask PsycheAI' &&
+    /analysed by Gemini, which creates a report for you/.test(await page.locator('.step-card').nth(1).innerText()) &&
+    !/Claude/.test(await page.locator('.step-card').nth(1).innerText()) &&
+    /personal coach.*US\$5 for a pack of 5 questions/s.test(await page.locator('.step-card').nth(4).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // Step one points the reader downwards for the how-to. A directional
   // reference is a claim about the page, so it is checked as one: the card it
@@ -3890,8 +3892,9 @@ try {
     /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
-  check('step four is Psyche Sync, between friends, started by sending your link, and free',
-    /^send connections your link and see what clicks between you/i.test(stepFour) && /Free\.$/.test(stepFour) &&
+  check('step four is Psyche Sync, between friends, started by sending your link, and free (a green pill)',
+    /^send connections your link and see what clicks between you/i.test(stepFour) &&
+      (await page.locator('.step-card').nth(3).locator('h3 .step-free').innerText()) === 'Free' &&
       !/partner|colleague|romantic/i.test(stepFour), stepFour);
 
   // Until a profile exists both of these lead straight back to the upload
@@ -11251,6 +11254,13 @@ try {
     backupText.slice(0, 200));
   check('and nothing mid-purchase or mid-run goes into it',
     Boolean(backup) && !('unlock' in backup.data) && !('pending' in backup.data) && !('job' in backup.data));
+  await page.waitForSelector('#backup-dialog[open]', { timeout: 5000 });
+  check('then a popout says what the file is for: bringing your Psyche back in another browser or device',
+    await page.evaluate(() => { const t = document.querySelector('#backup-dialog').innerText;
+      return /Your backup is saved/.test(t) && /Restore from a backup/.test(t) && /Keep it private/.test(t); }) &&
+      /another browser or on another device/.test(await page.getAttribute('#save-backup', 'title')));
+  await page.click('#backup-dialog-ok');
+  await page.waitForTimeout(150);
 
   // ---- deleting everything puts the links away again ----
   // The unlock receipt is proof of purchase, so it has to go with everything
@@ -11284,6 +11294,9 @@ try {
     check('which saves the backup and leaves the sheet open to decide',
       Boolean(saved) && /^Psyche Backup - .+\.json$/.test(saved.suggestedFilename()) &&
         await page.evaluate(() => document.querySelector('#delete-dialog').open), saved && saved.suggestedFilename());
+    await page.waitForSelector('#backup-dialog[open]', { timeout: 5000 });
+    await page.click('#backup-dialog-ok');
+    await page.waitForTimeout(150);
   }
   await page.click('#delete-cancel');
   await page.waitForTimeout(200);
@@ -11793,7 +11806,15 @@ try {
         check('with no questions left, Ideas still opens its ten questions',
           await sp.evaluate(() => !document.querySelector('#ask-ideas').hidden &&
             [...document.querySelectorAll('#ask-ideas-list .ask-chip')].filter(b => b.getBoundingClientRect().height > 0).length === 10));
-        await sp.click('#ask-ideas-toggle');
+        // A question of the reader's own folds them away again.
+        await sp.type('#ask-input', 'W');
+        check('typing a question of your own folds the ideas away',
+          await sp.evaluate(() => document.querySelector('#ask-ideas').hidden));
+        await sp.fill('#ask-input', '');
+        check('with no questions left, "Get 5 questions" stays in view, and the page behind can still be scrolled',
+          await sp.evaluate(() => { const b = document.querySelector('#ask-buy-go').getBoundingClientRect(),
+            d = document.querySelector('#ask-dialog').getBoundingClientRect();
+            return b.height > 0 && b.bottom <= d.bottom && getComputedStyle(document.body).overflow !== 'hidden'; }));
         await sp.click('#ask-buy-go');
         await sp.waitForSelector('#premium-dialog[open] #premium-mock-pay:not([hidden])', { timeout: 15000 });
         const sheet = await sp.evaluate(() => ({ title: document.querySelector('#premium-dialog-title').textContent,
@@ -11937,14 +11958,45 @@ try {
         await sp.waitForSelector('#ask-dialog[open] #ask-thread .ask-item', { timeout: 10000 });
         check('after a reload Ask PsycheAI opens on the conversation so far, not the introduction',
           await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 && !document.querySelector('#ask-thread .ask-intro')));
+        check('the minimise button is a filled round button, not a bare dash',
+          await sp.evaluate(() => { const c = getComputedStyle(document.querySelector('#ask-close'));
+            return c.backgroundColor !== 'rgba(0, 0, 0, 0)' && c.borderRadius !== '0px'; }));
         await sp.goBack();
         await sp.waitForTimeout(400);
         check('on My Psyche, Back with the panel up minimises it rather than leaving the site',
           await sp.evaluate(() => location.port !== '' && !document.querySelector('#ask-dialog').open &&
             !document.querySelector('#view-profile').hidden && Boolean(document.querySelector('#profile-body .method-card'))));
       }
+      // Once the report is unlocked the button is on every page, the FAQ included.
+      await sp.click('[data-nav="about"]');
+      await sp.waitForSelector('#view-about:not([hidden])', { timeout: 10000 });
+      check('Ask PsycheAI\'s button is on every page once the report is unlocked, the FAQ included',
+        await sp.evaluate(() => !document.querySelector('#ask-fab').hidden));
+      await sp.click('[data-nav="profile"]');
+      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
+      check('My Report ends with an appendix of the questions asked, each answer folded under its question',
+        await sp.evaluate(() => { const a = document.querySelector('#profile-body .ask-appendix');
+          return Boolean(a) && /Appendix: your questions to PsycheAI/.test(a.textContent) &&
+            a.querySelectorAll('details.ask-log').length === 2 && !a.querySelector('details.ask-log[open]'); }));
+      {
+        // And the downloaded report carries the same appendix, answers in full.
+        await sp.evaluate(() => window.PsycheLoadPdf());
+        const pdfText = await sp.evaluate(async () => {
+          const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+          const asked = JSON.parse(localStorage.getItem('psycheai_ask') || '[]');
+          const blob = window.PsychePDF.build(saved.report, saved.card, { date: 'today', model: 'mock', layout: 'structured',
+            unlocked: { wellness: true, attachment: true, idealPartner: true, careerAssessment: true },
+            asked: asked.map(i => ({ q: i.q, a: i.a, steps: i.steps || [] })) });
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          let out = ''; for (let i = 0; i < bytes.length; i += 8192) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+          return out;
+        });
+        check('the downloaded Psyche Report carries the same appendix of questions and answers',
+          pdfText.includes('(Appendix: your questions to PsycheAI)') && pdfText.includes('(What gets in my way most?)'),
+          (pdfText.match(/\(Appendix[^)]*\)/) || ['no appendix'])[0]);
+      }
       check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
         (await sp.locator('.nav-links a.is-current .nav-long').textContent()) === 'My Report');
       {

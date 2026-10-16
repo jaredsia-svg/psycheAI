@@ -2896,6 +2896,36 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
 - **Storage:** every question and answer is kept in this browser (`psycheai_ask`, the latest 50), in
   the backup file (`BACKUP_KEYS`), and goes with Delete everything.
 
+**Everywhere, and out of the way** (October 2026):
+- **On every page** once the report is unlocked (the front page, My Syncs, the FAQ too), not only
+  My Psyche and My Report; the panel stays open across them.
+- **The page behind keeps scrolling.** The rule that freezes the page under a popout
+  (`body:has(dialog[open])`) now leaves Ask PsycheAI's panel out: it sits beside the page, not over it.
+- **On a phone the sheet fills the screen below the site's header** (`--header-h`), so the logo and
+  menu stay in view, and **a swipe down from anywhere on it minimises it**: from the conversation only
+  once it is scrolled to its top (otherwise the swipe scrolls it), never from the box being typed in.
+- **Minimise is a filled round button**; the bare "–" read as a dash.
+- **Typing a question of your own folds the ideas away**; an idea tapped fills the box without doing so.
+- **"Get 5 questions" stays in view** with none left: the conversation gives way first
+  (`min-height: 0`), where the ideas list used to push it out of the panel on a phone.
+- **An appendix of every question asked** at the foot of My Report (`askAppendixHtml`, refreshed after
+  each answer): the question as a line, its answer and steps folded under it. The PDF prints the same
+  appendix after Evidence and method, answers in full (`asked` in `buildReportPdf`).
+
+**The hero's lede** now pitches the coach: *Your personal AI coach that already knows you, built
+from your Instagram data and digital footprint.* It used to list MBTI, love languages, wellbeing and
+career strengths "with zero quizzes required"; the headline above it, *No questions asked.*, already
+says the second half.
+
+**On the front page** the how-it-works row has a fifth step, *Ask PsycheAI*: a personal coach who
+already knows you from your report, at its price for five questions (`data-price="ask"`). Psyche
+Sync's "Free" is a green pill beside its name, and step 2 names Gemini alone.
+
+**After Save a backup** a popout says what the file is for, in plain words: it holds the card, the
+report, the Syncs and the questions; if this browser loses them, open PsycheAI elsewhere, tap *Load
+your data*, then *Restore from a backup*; keep it private (`backupSaved` in copy.js). Both Save a
+backup buttons carry a tooltip saying the same in one line.
+
 **Privacy wording changed with it.** The FAQ and privacy page used to say the finished report never
 leaves the device. They now say it stays on the device unless the reader uses Ask PsycheAI, when the
 report, its digest and the question go to Google Gemini for that one answer and PsycheAI keeps

@@ -2989,11 +2989,8 @@
       drop += 1;
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
-    // Ask PsycheAI goes with My Psyche and My Report, panel and button alike.
-    if (view !== 'profile' && $('#ask-dialog').open) {
-      $('#ask-dialog').close();
-      if (askHistoryEntry) { askHistoryEntry = false; drop += 1; }
-    }
+    // Ask PsycheAI goes with the reader on every page once the report is unlocked,
+    // panel and button alike.
     refreshAskFab();
     // The front page, kept out of sight by early.js until this choice was made.
     document.documentElement.classList.remove('view-pending');
@@ -7260,6 +7257,8 @@
     // is no appendix part on the page: the roast is on My Psyche too.
     if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part, askable);
+    // After the five parts, the questions asked of PsycheAI (refreshAskAppendix keeps it current).
+    if (askable) html += '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>';
     return html;
   }
 
@@ -8202,6 +8201,8 @@
       // The page shows a matches section when this device has any, so the
       // report does too.
       history: store.read(KEYS.history, []),
+      // The questions asked of PsycheAI, for the PDF's appendix.
+      asked: askThread().map(item => ({ q: item.q, a: item.a, steps: item.steps || [] })),
       // The roast prints only for the reader who bought it. Unpaid, the key is
       // absent and the section does not exist in the file at all.
       unlocked: unlockedSections(profile),
@@ -9985,8 +9986,16 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(href), 10000);
+    // Then what the file is for, in plain words.
+    const B = Copy.STRUCTURED.backupSaved, dialog = $('#backup-dialog');
+    $('#backup-dialog-title').textContent = B.title;
+    setHtml($('#backup-dialog-points'), B.points.map(point => '<li>' + esc(point) + '</li>').join(''));
+    $('#backup-dialog-ok').textContent = B.ok;
+    if (!dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
   }
   $('#save-backup').addEventListener('click', saveBackup);
+  $('#backup-dialog-ok').addEventListener('click', () => $('#backup-dialog').close());
+  $('#backup-dialog').addEventListener('click', event => { if (event.target === $('#backup-dialog')) $('#backup-dialog').close(); });
 
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
@@ -10300,6 +10309,7 @@
       askCount();
       renderAskThread();
       renderAskCredits();
+      refreshAskAppendix();
       // Answered while minimised: the button says so until it is opened.
       if (!$('#ask-dialog').open) { $('#ask-fab').classList.add('is-ready'); refreshAskFab(); }
     } catch (error) {
@@ -10323,6 +10333,8 @@
 
   $('#ask-send').addEventListener('click', sendAsk);
   $('#ask-input').addEventListener('input', askCount);
+  // A question of the reader's own folds the ideas away (an idea fills the box without this event).
+  $('#ask-input').addEventListener('input', () => { if (!$('#ask-ideas').hidden) showAskIdeas(false); });
   $('#ask-input').addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); sendAsk(); }
   });
@@ -10369,6 +10381,31 @@
     sheet.addEventListener('pointercancel', end);
     // A drag that ends in a tap on the handle is not also a tap.
     $('#ask-handle').addEventListener('click', event => { if (moved > 8) event.stopImmediatePropagation(); }, true);
+    // On a phone, a swipe down from anywhere on the sheet: from the conversation only once it is
+    // scrolled to its top (otherwise the swipe is scrolling it), and never from the box being typed in.
+    let touchY = null, touchMoved = 0;
+    sheet.addEventListener('touchstart', event => {
+      const thread = $('#ask-thread');
+      const fromThread = event.target.closest('#ask-thread, .ask-ideas-list');
+      if (event.touches.length !== 1 || event.target.closest('textarea') ||
+          (fromThread && (fromThread.scrollTop > 0))) { touchY = null; return; }
+      touchY = event.touches[0].clientY; touchMoved = 0;
+      if (thread) sheet.style.transition = 'none';
+    }, { passive: true });
+    sheet.addEventListener('touchmove', event => {
+      if (touchY === null) return;
+      touchMoved = Math.max(0, event.touches[0].clientY - touchY);
+      if (touchMoved > 6) {
+        if (event.cancelable) event.preventDefault();
+        sheet.style.transform = 'translateY(' + touchMoved + 'px)';
+      }
+    }, { passive: false });
+    sheet.addEventListener('touchend', () => {
+      if (touchY === null) return;
+      const away = touchMoved > 90;
+      touchY = null; sheet.style.transform = ''; sheet.style.transition = '';
+      if (away) minimiseAsk();
+    });
   }
   // Escape anywhere on the page, since focus need not be inside the panel
   // (it leaves it while an answer is coming) — but not when a popout of its
@@ -10447,13 +10484,32 @@
     showAskIdeas(false);
     $('#ask-input').focus();
   });
-  /** The floating button: on My Psyche and My Report, with the report, while the panel is down. */
+  /**
+   * The report's appendix: every question asked of PsycheAI, newest last, each answer folded under its
+   * question. At the foot of My Report, and in the PDF (buildReportPdf, asked).
+   */
+  function askAppendixHtml() {
+    const items = askThread();
+    if (!items.length) return '';
+    const A = Copy.STRUCTURED.ask;
+    return '<section class="card section-card ask-appendix screen-only">' +
+      '<div class="ask-appendix-head"><h3>' + esc(A.appendixTitle) + '</h3><span>' + esc(A.appendixCount(items.length)) + '</span></div>' +
+      items.map(item => '<details class="ask-log"><summary>' + esc(item.q) + '</summary><div class="ask-log-body">' +
+        paragraphs(item.a) +
+        (item.steps && item.steps.length ? '<ul>' + item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +
+      '</div></details>').join('') +
+    '</section>';
+  }
+  function refreshAskAppendix() {
+    document.querySelectorAll('.ask-appendix-slot').forEach(slot => setHtml(slot, askAppendixHtml()));
+  }
+  /** The floating button: on every page once the report is unlocked, while the panel is down. */
   function refreshAskFab() {
     const fab = document.getElementById('ask-fab');
     const panel = document.getElementById('ask-dialog');
     const profile = document.getElementById('view-profile');
     if (!fab || !panel || !profile) return;
-    fab.hidden = !(askReady() && !profile.hidden && !panel.open);
+    fab.hidden = !(askReady() && !panel.open);
     const text = document.getElementById('ask-fab-text');
     const A = Copy.STRUCTURED.ask;
     const ready = fab.classList.contains('is-ready');
