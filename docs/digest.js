@@ -909,8 +909,8 @@
   // (every pool at its ceiling):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,900 prompt + 36,000 digest × $0.75/M = $0.0344
-  //                 at most $0.0719                    → FREE_COST_CAP $0.072
+  //                 10,600 prompt + 36,000 digest × $0.75/M = $0.0350
+  //                 at most $0.0725                    → FREE_COST_CAP $0.073
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 36,000 digest × $0.75/M = $0.0556
@@ -936,17 +936,20 @@
   // $0.062 once the free call wrote the roast for My Psyche: about 2,200
   // tokens more prompt and 2,000 more output room. $0.061 with Instagram's
   // line at 75,000; $0.072 with the three pools at 126,000.
-  const FREE_COST_CAP = 0.072;
+  // $0.073 once the card's call wrote the Overview as well (October 2026):
+  // the executive summary and each pattern's evidence, about 600 more
+  // prompt tokens and about 550 more output inside the same 10,000.
+  const FREE_COST_CAP = 0.073;
   // Instagram alone, at its 82,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,900 prompt + 23,429 digest × $0.75/M = $0.0250
-  //                 at most $0.0625                    → SOLO_FREE_COST_CAP $0.063
+  //                 10,600 prompt + 23,429 digest × $0.75/M = $0.0255
+  //                 at most $0.0630                    → SOLO_FREE_COST_CAP $0.064
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 23,429 digest × $0.75/M = $0.0461
   //                 at most $0.1511                    → SOLO_COST_CAP $0.152
-  const SOLO_FREE_COST_CAP = 0.063;
+  const SOLO_FREE_COST_CAP = 0.064;
   const SOLO_COST_CAP = 0.152;
   const FREE_MAX_OUTPUT_TOKENS = 10000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
@@ -963,7 +966,9 @@
   // (9,688 measured); 9,900 with the conduct rule (CONDUCT_RULE, 9,898);
   // 9,998 once it said how to name a gap between posts and private
   // activity (9,998 measured: the most the 7.2-cent cap leaves room for).
-  const FREE_FIXED_INPUT_TOKENS = 9998;
+  // 10,600 once it wrote the Overview: the executive summary and the
+  // patterns' evidence (10,528 measured).
+  const FREE_FIXED_INPUT_TOKENS = 10600;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -972,8 +977,8 @@
   // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                  9,900 prompt + 51,143 digest × $0.75/M = $0.0458
-  //                 at most $0.0833                    → DEEP_FREE_COST_CAP $0.084
+  //                 10,600 prompt + 51,143 digest × $0.75/M = $0.0463
+  //                 at most $0.0838                    → DEEP_FREE_COST_CAP $0.084
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669

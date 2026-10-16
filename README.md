@@ -10,8 +10,9 @@ model (**Google Gemini**, directly or through Vertex AI, **Anthropic Claude** or
 keeps no copy of it.
 
 - **Psyche Card (free).** A 1080×1920 story card: the character you are most like, your MBTI and
-  Big Five, signature patterns, motivators, values, interests and love languages, plus a secret
-  roast on My Psyche. The card's wording is always neutral or positive and never romantic.
+  Big Five, signature patterns, motivators, values, interests and love languages. Under it on My
+  Psyche, free: the report's **Overview** (executive summary and signature patterns with their
+  evidence), then a secret roast. The card's wording is always neutral or positive and never romantic.
 - **Psyche Report (US$5, local prices in `docs/prices.js`).** The full report, which explains
   every part of the card with evidence from your data. It is anchored to the card, so it never
   contradicts it, and it downloads as a PDF typeset in the browser. Your **first** one is free
@@ -2944,6 +2945,46 @@ first, is sent to Gemini or Claude to write the card; PsycheAI keeps no copy of 
 sign-up, cookies, trackers or third-party analytics. Then the link to the privacy page. It was one
 paragraph of the same claims, which read as small print; the wording of each claim is unchanged, so
 each stays literally true.
+
+## The Overview goes free, and Ask PsycheAI starts with the card (October 2026)
+
+The free card's call now also writes the report's **Overview**: the executive summary
+(`STRUCTURED_SUMMARY`, about 120 words, moved up beside the free schema) and the signature patterns
+whole, with their two to four pieces of counted evidence and `showsUpIn`. My Psyche shows it open
+under the card (`freeOverviewHtml`), then the secret roast, then the locked offer, whose five parts
+now each carry a lock (`unlockPartsHtml`). A free reader still has no My Report page.
+
+- **Why:** the card says *what* someone is; the Overview is the first taste of *why*, which is what
+  the US$5 report sells. Giving it away costs about half a cent a card and shows the report's quality
+  before the paywall instead of describing it.
+- **The paid run is anchored to it.** `anchorFrom` carries the summary (`ANCHOR_SUMMARY_MAX`, 1,400)
+  when the card's patterns have their evidence, and `fullSchemaFor` then sends
+  `STRUCTURED_OVERVIEW_PINNED_SCHEMA`: the pinned schema without `summary` or `patterns`, so the
+  paid report neither rewrites nor contradicts what the reader already read, and its output is about
+  600 tokens shorter. `overlayCard` puts both back from the card. A card made before this has neither
+  and its report writes them as before.
+- **`hasExplanations`** used to treat any `summary` as a whole report (from the days the free run was
+  the full report). A free card has one now, so the old test also needs a section only a full report
+  has (`career`, or `relationship.strengths`).
+- **Cost:** the free prompt measured 10,528 tokens (`FREE_FIXED_INPUT_TOKENS` 10,600). Output stays at
+  10,000: the Overview is about 550 tokens of it, out of the room left for thinking. `FREE_COST_CAP`
+  $0.072 → $0.073, `SOLO_FREE_COST_CAP` $0.063 → $0.064; `DEEP_FREE_COST_CAP` stays $0.084 ($0.0838).
+  If `npm run usage` shows card calls stopping on MAX_TOKENS, this is the first place to look.
+- **Gemini:** the free schema gains one string list and one enum list (the 11 `SECTION_KEYS`). It
+  stays under half the full profile schema's size (a selftest check), but only a live run proves
+  Gemini accepts it.
+- **Ask PsycheAI from the card.** `askReady` no longer needs a report. Free questions go into the same
+  count a bought pack does (`lib/askcredits.js`, `gift`): one when an account's first free card is
+  written, two more with its Psyche Report, each once per referral code. The prompt is told a reader
+  may have only the card and its Overview, and never to point them at a section they lack. The answer's
+  source line says "your results" rather than "your report".
+- **The first report** still unlocks when one person opens the reader's link: easy on purpose for now.
+- **Once unlocked, both move to My Report.** The Overview is its Part 00, as before, and the roast
+  leaves My Psyche to become **Appendix 1** after the five parts (`secretRoastHtml(bonus, { appendix:
+  true })`), with the Ask PsycheAI questions as **Appendix 2** (`askAppendixNumber`; unnumbered on a
+  report with no roast). The PDF follows the same order: the roast on its own page, then the questions.
+  My Psyche, unlocked, keeps the card, Evidence and method, and the link.
+
 
 ## Counting what works, without counting anyone
 

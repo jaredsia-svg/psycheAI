@@ -1267,7 +1267,11 @@
   function hasExplanations(profile) {
     if (!profile || !profile.report) return false;
     if (profile.explained) return true;
-    return typeof profile.report.summary === 'string' && profile.report.summary.trim().length > 0;
+    // Since October 2026 the free card writes the Overview's summary too, so
+    // a summary alone no longer marks a whole report: one of those old full
+    // free runs carries its sections as well.
+    const r = profile.report;
+    return typeof r.summary === 'string' && r.summary.trim().length > 0 && Boolean(r.career || r.relationship && r.relationship.strengths);
   }
 
   /**
@@ -1288,6 +1292,8 @@
       icon: (card.essence || {}).icon || (out.essence || {}).icon,
     });
     if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
+    // The Overview the reader read free under their card: kept whole.
+    if (typeof card.summary === 'string' && card.summary.trim()) out.summary = card.summary;
     if ((card.topMotivators || []).length) out.topMotivators = card.topMotivators;
     // The roast is the free call's, read on My Psyche before paying: the one
     // the reader has already seen stays.
@@ -1329,7 +1335,11 @@
     if ((card.patterns || []).length) {
       out.patterns = card.patterns.map(pinned => {
         const written = (full.patterns || []).find(row => row && row.id === pinned.id) || {};
-        return Object.assign({ line: pinned.line }, written, { id: pinned.id, name: pinned.name });
+        // A card with its Overview carries the evidence and where each shows
+        // up as well, and those stand too.
+        const own = (pinned.evidence || []).length
+          ? { line: pinned.line, evidence: pinned.evidence, showsUpIn: pinned.showsUpIn || written.showsUpIn || [] } : {};
+        return Object.assign({ line: pinned.line }, written, own, { id: pinned.id, name: pinned.name });
       });
     }
     if (card.interests) out.interests = pinList(card.interests, full.interests, 'name');
@@ -1802,12 +1812,15 @@
   // chips: the front page's shape, at a size a phone can take in about one
   // screen. Each section's long description was dropped here in October
   // 2026; "See sample report" in the head shows what each one holds.
+  const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
   function unlockPartsHtml() {
     const S = Copy.STRUCTURED;
     return '<ol class="unlock-parts">' + explainedParts().map(part =>
       '<li class="unlock-part">' +
         '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
-        '<h4>' + esc(S.parts[part.key].title) + '</h4></div>' +
+        '<h4>' + esc(S.parts[part.key].title) + '</h4>' +
+        // Locked: the Overview above is the free part of the report.
+        '<span class="unlock-part-lock" aria-hidden="true">' + LOCK_ICON + '</span></div>' +
         '<ul class="unlock-chips">' + part.rows.map(row =>
           '<li class="premium-tier-item"><strong>' + esc(row.title()) + '</strong></li>').join('') + '</ul>' +
       '</li>').join('') + '</ol>';
@@ -2216,7 +2229,9 @@
    */
   function hubSectionsHtml(report) {
     // The way into My Report is a button under the card's tools (cardGuideHtml).
-    return secretRoastHtml(report.bonus) + methodCardHtml(report, false) + referralCardHtml(true);
+    // The roast moved to My Report once it is unlocked (Appendix 1), beside
+    // the Overview it used to sit under.
+    return methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -2292,13 +2307,16 @@
    * roastBlock: the writing is not in the page until "Reveal my roast", and
    * revealRoast()/hideRoast() work it exactly the same way.
    */
-  function secretRoastHtml(bonus) {
+  function secretRoastHtml(bonus, options) {
     if (!bonus || !bonus.harsh) return '';
     const R = TEXT.secretRoast;
-    return '<section class="card section-card bonus-card secret-roast screen-only" aria-labelledby="secret-roast-title">' +
+    // On My Report it is the first appendix, after the five parts.
+    const appendix = Boolean(options && options.appendix);
+    return '<section class="card section-card bonus-card secret-roast screen-only' + (appendix ? ' roast-appendix' : '') +
+      '" aria-labelledby="secret-roast-title"' + (appendix ? ' data-appendix="roast"' : '') + '>' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
-      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
+      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc((appendix ? Copy.STRUCTURED.ask.appendixPrefix(1) : '') + TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
       '<div class="bonus-cover secret-roast-cover">' +
       '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
       '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
@@ -7263,7 +7281,10 @@
     // is no appendix part on the page: the roast is on My Psyche too.
     if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part, askable);
-    // After the five parts, the questions asked of PsycheAI (refreshAskAppendix keeps it current).
+    // After the five parts, the appendix: the roast first (free since the
+    // card, read on My Psyche until the report was unlocked), then the
+    // questions asked of PsycheAI (refreshAskAppendix keeps it current).
+    if (ownPage) html += secretRoastHtml(report.bonus, { appendix: true });
     if (askable) html += '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>';
     return html;
   }
@@ -7309,6 +7330,27 @@
     return out;
   }
 
+  /**
+   * The free Overview on My Psyche (October 2026): the executive summary and
+   * the signature patterns, which the free card's call now writes, open
+   * under the card and above the roast. The card is right above it, so no
+   * character block; the five parts after it are the locked offer below.
+   * Nothing for a card made before, which has neither.
+   */
+  function freeOverviewHtml(report) {
+    if (reportLayout() !== 'structured') return '';
+    const summary = String((report && report.summary) || '').trim();
+    if (!summary) return '';
+    const S = Copy.STRUCTURED;
+    const patterns = signaturePatterns(report);
+    let part = '<div class="card section-card summary-card">' +
+      sectionHead('👤', esc(S.titles.summary), esc(S.definitions.summary), false, '') +
+      paragraphs(summary) + '</div>';
+    if (patterns.length) part += patternsCardHtml(patterns);
+    return partCardHtml('overview', part, askReady()).replace('class="card section-card part-card"',
+      'class="card section-card part-card free-overview"');
+  }
+
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
     // The free report is the card above this and nothing else. What sits
@@ -7321,7 +7363,7 @@
       // unlock asks for it before the run.
       // Their link right under their card, while the card is all they have.
       // Their link last, after Evidence and method.
-      return secretRoastHtml(report.bonus) + fullReportLockedHtml() +
+      return freeOverviewHtml(report) + secretRoastHtml(report.bonus) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false)) +
@@ -10111,7 +10153,11 @@
   let askBusy = false;
   const askThread = () => (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string');
   // A function rather than a const: show() asks it, and can run first.
-  function askReady() { return Boolean(state.profile) && hasExplanations(state.profile); }
+  // Since October 2026 a Psyche Card is enough: its first question is free
+  // (lib/askcredits.js, gift), and the report brings two more.
+  function askReady() {
+    return Boolean(state.profile) && (hasExplanations(state.profile) || reportLayout() === 'structured');
+  }
 
   /** The report and card as the model sees them: the reader's own name back to PsycheUser. */
   function askReport() {
@@ -10499,12 +10545,17 @@
     if (!items.length) return '';
     const A = Copy.STRUCTURED.ask;
     return '<section class="card section-card ask-appendix screen-only">' +
-      '<div class="ask-appendix-head"><h3>' + esc(A.appendixTitle) + '</h3><span>' + esc(A.appendixCount(items.length)) + '</span></div>' +
+      '<div class="ask-appendix-head"><h3>' + esc(A.appendixTitle(askAppendixNumber())) + '</h3><span>' + esc(A.appendixCount(items.length)) + '</span></div>' +
       items.map(item => '<details class="ask-log"><summary>' + esc(item.q) + '</summary><div class="ask-log-body">' +
         paragraphs(item.a) +
         (item.steps && item.steps.length ? '<ul>' + item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +
       '</div></details>').join('') +
     '</section>';
+  }
+  /** Appendix 2 after the roast on My Report; unnumbered on a report without one. */
+  function askAppendixNumber() {
+    const report = state.profile && state.profile.report;
+    return report && report.bonus && report.bonus.harsh ? 2 : 0;
   }
   function refreshAskAppendix() {
     document.querySelectorAll('.ask-appendix-slot').forEach(slot => setHtml(slot, askAppendixHtml()));

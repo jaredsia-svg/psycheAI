@@ -1169,8 +1169,8 @@
       compatFree: 'Free',
       // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
       askTitle: 'Ask PsycheAI',
-      askBlurb: 'Your personal coach that already knows you from your report. Ask it anything about yourself.',
-      askPrice: price => price + ' for a pack of 5 questions',
+      askBlurb: 'Your personal coach that already knows you from your results. Ask it anything about yourself.',
+      askPrice: price => '1 question free with your card, 2 more with your report, then ' + price + ' for 5',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',
@@ -1203,7 +1203,7 @@
     ask: {
       title: 'Ask PsycheAI',
       sub: 'Your personal coach.',
-      placeholder: 'Ask about your Psyche Report…',
+      placeholder: 'Ask anything about yourself…',
       send: 'Ask',
       thinking: 'PsycheAI is thinking…',
       steps: 'Your next steps',
@@ -1243,11 +1243,14 @@
       ideasClose: 'Hide ideas',
       minimise: 'Minimise',
       // The report's appendix: every question and its answer, folded.
-      appendixTitle: 'Appendix: your questions to PsycheAI',
+      // Appendix 1 is the roast, Appendix 2 these questions; a report with
+      // no roast has one unnumbered appendix.
+      appendixPrefix: n => n ? 'Appendix ' + n + ': ' : 'Appendix: ',
+      appendixTitle: n => (n ? 'Appendix ' + n + ': ' : 'Appendix: ') + 'your questions to PsycheAI',
       appendixCount: n => n === 1 ? '1 question' : n + ' questions',
       // Under each answer: what it was written from.
-      fromData: 'Drawn from your report and the data it was written from.',
-      fromReport: 'Drawn from your report alone: the data it was written from is not in this browser.',
+      fromData: 'Drawn from your results and the data they were read from.',
+      fromReport: 'Drawn from your results alone: the data they were read from is not in this browser.',
       fab: 'Ask',
       fabLabel: 'Ask PsycheAI',
       fabReady: 'Answer ready',

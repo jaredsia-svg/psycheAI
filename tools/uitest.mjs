@@ -3603,7 +3603,7 @@ try {
   check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
-        /US\$5 for a pack of 5 questions/.test(a.textContent); }));
+        /1 question free with your card, 2 more with your report, then US\$5 for 5/.test(a.textContent); }));
 
   // ---- the premium tier block ----
   //
@@ -10728,8 +10728,8 @@ try {
       const sent = text.indexOf('The only thing sent to make your card and report is a short digest');
       return never > -1 && sent > never && /can review it before anything goes/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
-  check('the media and the zip never leave, and the report only for Ask PsycheAI, which is named',
-    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask PsycheAI: then your report, the digest it was written from and\s+your question go to Google Gemini/i.test(about),
+  check('the media and the zip never leave, and the card or report only for Ask PsycheAI, which is named',
+    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask PsycheAI: then your card or report, the digest it was written\s+from and your question go to Google Gemini/i.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
@@ -11678,11 +11678,12 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview and the five parts are the only disclosures — no appendix — and on a laptop all six start open',
+      check('structured: the overview and the five parts are the only disclosures — the roast after them is Appendix 1, not a part — and on a laptop all six start open',
         shape.toggles === 6 && shape.inner === 0 &&
         shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,career:open,together:open' &&
         (await sp.locator('#profile-body .part-card[data-part-card="appendix"]').count()) === 0 &&
-        (await sp.locator('#profile-body .bonus-card').count()) === 0, JSON.stringify(shape));
+        (await sp.locator('#profile-body .part-card .bonus-card').count()) === 0 &&
+        (await sp.locator('#profile-body > .bonus-card.roast-appendix').count()) === 1, JSON.stringify(shape));
       check('structured: on a laptop the left column\'s box starts level with the report\'s header',
         await sp.evaluate(() => Math.abs(document.querySelector('#profile-body .part-nav').getBoundingClientRect().top -
           document.querySelector('#profile-body .report-hero').getBoundingClientRect().top) <= 2),
@@ -11765,8 +11766,9 @@ try {
             r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
-      check('structured: Back lands on My Psyche: card, the secret roast, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
-        hubShape.order === 'roast,method,link' && hubShape.card && hubShape.parts === 0 &&
+      // The roast moved to My Report as Appendix 1 once the report is unlocked.
+      check('structured: Back lands on My Psyche: card, Evidence and method, then Your link — no roast, no "Your Psyche Report" box, no parts',
+        hubShape.order === 'method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
 
       // ---- Ask PsycheAI ----
@@ -11878,9 +11880,9 @@ try {
           /Mock answer to "Who am I when I.m not being useful/.test(answered.a) && /With examples from your data/.test(answered.a) &&
             answered.steps === 2 && answered.follow === 2 &&
             answered.credits === '4 questions left' && answered.input === '', JSON.stringify(answered));
-        check('under the answer, a line says it was drawn from the report and the data it was written from',
+        check('under the answer, a line says it was drawn from their results and the data they were read from',
           await sp.evaluate(() => (document.querySelector('#ask-thread .ask-item .ask-source') || {}).textContent ===
-            'Drawn from your report and the data it was written from.'));
+            'Drawn from your results and the data they were read from.'));
         check('and the question and answer are kept in this browser',
           answered.stored.length === 1 && answered.stored[0].q === filled.value && /Mock answer/.test(answered.stored[0].a));
         // Minimised, not closed: the floating button brings it back; an
@@ -11982,7 +11984,10 @@ try {
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('My Report ends with an appendix of the questions asked, each answer folded under its question',
         await sp.evaluate(() => { const a = document.querySelector('#profile-body .ask-appendix');
-          return Boolean(a) && /Appendix: your questions to PsycheAI/.test(a.textContent) &&
+          const roast = document.querySelector('#profile-body .roast-appendix');
+          return Boolean(a) && /Appendix 2: your questions to PsycheAI/.test(a.textContent) &&
+            Boolean(roast) && /^Appendix 1: /.test(roast.querySelector('h2').textContent) &&
+            Boolean(roast.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) &&
             a.querySelectorAll('details.ask-log').length === 2 && !a.querySelector('details.ask-log[open]'); }));
       {
         // And the downloaded report carries the same appendix, answers in full.
@@ -11997,8 +12002,9 @@ try {
           let out = ''; for (let i = 0; i < bytes.length; i += 8192) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
           return out;
         });
-        check('the downloaded Psyche Report carries the same appendix of questions and answers',
-          pdfText.includes('(Appendix: your questions to PsycheAI)') && pdfText.includes('(What gets in my way most?)'),
+        check('the downloaded Psyche Report carries the same appendix of questions and answers, after the roast',
+          pdfText.includes('(Appendix 2: your questions to PsycheAI)') && pdfText.includes('(What gets in my way most?)') &&
+            pdfText.indexOf('(Appendix 2: your questions to PsycheAI)') > pdfText.indexOf('Appendix 1'),
           (pdfText.match(/\(Appendix[^)]*\)/) || ['no appendix'])[0]);
       }
       check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
@@ -12331,9 +12337,9 @@ try {
         return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: Part 5 is the last part — no appendix, no roast; Evidence and method is on My Psyche',
+      check('structured: Part 5 is the last part — no appendix part; the roast follows it as Appendix 1; Evidence and method is on My Psyche',
         order[0] >= 0 && order[1] === -1 && order[2] === '' && order[3] === 0 &&
-          (await sp.locator('#profile-body .bonus-card').count()) === 0, order.join());
+          (await sp.locator('#profile-body > .bonus-card.roast-appendix').count()) === 1, order.join());
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       // Without a digest on the device, "Read from" is the model's own summary.
@@ -12579,10 +12585,10 @@ try {
         check('structured: on a ' + label + ' screen a nav jump shows the part\'s whole heading',
           landed.every(entry => entry.endsWith(':true')), landed.join(' '));
       }
-      // The roast is not in My Report any more: it is on My Psyche, under the
-      // card (see "the roast is on the free page, once, as the secret bonus").
-      check('structured: My Report carries no roast at all',
-        (await sp.locator('#profile-body .bonus-card, #profile-body .bonus-reveal').count()) === 0);
+      // Unlocked, the roast is My Report's Appendix 1, once, still behind its reveal.
+      check('structured: My Report carries the roast once, as Appendix 1, behind its reveal',
+        (await sp.locator('#profile-body .bonus-card').count()) === 1 &&
+          (await sp.locator('#profile-body .roast-appendix .bonus-reveal').count()) === 1);
       // On a phone My Report has no part nav at all: nothing floats over it.
       {
         await sp.setViewportSize({ width: 390, height: 844 });
@@ -12846,6 +12852,43 @@ try {
         /Your signature patterns/.test(offer) && /What motivates you/.test(offer) && /Development plan/.test(offer));
       check('structured: and still draws nothing it has not been paid for',
         (await sp.locator('#profile-body .pattern, #profile-body .motive-row, #profile-body .dev-item').count()) === 0);
+      // A card made since the free call writes the Overview (October 2026): the
+      // summary and the patterns open under the card, the roast under them,
+      // then the offer with its five parts locked. No My Report, and Ask
+      // PsycheAI is already there.
+      {
+        await sp.evaluate(report => {
+          const keep = ['confidence', 'essence', 'bigFive', 'mbti', 'interests', 'values', 'beliefs', 'patterns',
+            'topMotivators', 'summary', 'cardHighlights', 'card', 'bonus'];
+          const free = Object.fromEntries(keep.filter(k => k in report).map(k => [k, report[k]]));
+          free.relationship = { loveLanguages: report.relationship.loveLanguages };
+          localStorage.clear();
+          localStorage.setItem('psycheai_profile', JSON.stringify({ report: free, card: report.card, payload: 'x',
+            model: 'mock', createdAt: new Date().toISOString() }));
+        }, sampleReport);
+        await sp.reload({ waitUntil: 'load' });
+        await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+        const overview = await sp.evaluate(() => {
+          const body = document.querySelector('#profile-body');
+          const kids = [...body.children].map(n => n.matches('.free-overview') ? 'overview' : n.matches('.secret-roast') ? 'roast'
+            : n.matches('.full-report-locked') ? 'offer' : '').filter(Boolean);
+          const o = body.querySelector('.free-overview');
+          return { kids: kids.join(','), title: o && o.querySelector('.part-title').textContent.trim(),
+            summary: o ? o.querySelectorAll('.summary-card p').length : 0, essence: o ? o.querySelectorAll('.essence').length : -1,
+            patterns: o ? o.querySelectorAll('.pattern').length : 0, evidence: o ? o.querySelectorAll('.pattern .ev, .pattern .trait-evidence').length : 0,
+            locks: body.querySelectorAll('.full-report-locked .unlock-part-lock svg').length,
+            report: !document.querySelector('#nav-full') || document.querySelector('#nav-full').hidden,
+            fab: !document.querySelector('#ask-fab').hidden };
+        });
+        check('structured: a free card shows its Overview first, then the roast, then the offer',
+          overview.kids === 'overview,roast,offer' && overview.title === 'Overview', JSON.stringify(overview));
+        check('and the Overview is the summary and the patterns with their evidence, no character block (the card is above)',
+          overview.summary >= 1 && overview.essence === 0 && overview.patterns >= 2 && overview.evidence >= 2, JSON.stringify(overview));
+        check('and the offer\'s five parts each carry a lock, and there is no My Report yet',
+          overview.locks === 5 && overview.report, JSON.stringify(overview));
+        check('and Ask PsycheAI is offered with the card alone', overview.fab, JSON.stringify(overview));
+        await seed(false);
+      }
       // A free report: no nav, the card on the left half of the column and a
       // short Evidence and method on the right, and no trust card or re-run —
       // more data comes with the full report, whose unlock asks for it first.

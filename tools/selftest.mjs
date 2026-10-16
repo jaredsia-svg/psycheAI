@@ -5119,8 +5119,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 126000 && DIG === 126000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card and its roast cost at most 7.2 cents',
-    Digest.FREE_COST_CAP === 0.072 && freeWorst <= 0.072 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card, its Overview and its roast cost at most 7.3 cents',
+    Digest.FREE_COST_CAP === 0.073 && freeWorst <= 0.073 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most 16.1 cents',
     Digest.COST_CAP === 0.161 && fullWorst <= 0.161 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
@@ -5159,7 +5159,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const soloFree = ((82000 / CHARS_PER_TOKEN) + Digest.FREE_FIXED_INPUT_TOKENS) * IN_RATE + Digest.FREE_MAX_OUTPUT_TOKENS * OUT_RATE;
     const soloFull = ((82000 / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS) * IN_RATE + Digest.MAX_OUTPUT_TOKENS * OUT_RATE;
     check('and its card costs at most 6.3 cents, a full report from it at most 15.2',
-      Digest.SOLO_FREE_COST_CAP === 0.063 && soloFree <= 0.063 && Digest.SOLO_COST_CAP === 0.152 && soloFull <= 0.152 &&
+      Digest.SOLO_FREE_COST_CAP === 0.064 && soloFree <= 0.064 && Digest.SOLO_COST_CAP === 0.152 && soloFull <= 0.152 &&
         Digest.charBudget(Digest.SOLO_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= 82000 &&
         Digest.charBudget(Digest.SOLO_COST_CAP) >= 82000,
       '$' + soloFree.toFixed(4) + ' / $' + soloFull.toFixed(4));
@@ -5829,8 +5829,16 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Object.keys(props).filter(key => !['essence', 'cardHighlights', 'values', 'beliefs'].includes(key)).every(key => sprops[key] === props[key]) &&
     prompts.STRUCTURED_FREE_SCHEMA.required.length === Object.keys(sprops).length,
     Object.keys(sprops).join(','));
-  check('the card\'s patterns are names and a line — the evidence is the paid report\'s job',
-    Object.keys(sprops.patterns.items.properties).join() === 'id,name,line');
+  // Whole since October 2026: the free Overview under the card shows each
+  // pattern's evidence and where it shows up, and the paid report keeps them.
+  check('the card\'s patterns come whole, for the free Overview: name, line, evidence and where each shows up',
+    Object.keys(sprops.patterns.items.properties).join() === 'id,name,line,evidence,showsUpIn' &&
+      sprops.patterns.items.properties.showsUpIn.items.enum.join() === prompts.SECTION_KEYS.join());
+  check('and the card call writes the executive summary, after the lists it sums up and before the card',
+    sprops.summary === prompts.STRUCTURED_FULL_SCHEMA.properties.summary &&
+      Object.keys(sprops).indexOf('summary') > Object.keys(sprops).indexOf('beliefs') &&
+      Object.keys(sprops).indexOf('summary') < Object.keys(sprops).indexOf('cardHighlights') &&
+      /# Overview\n/.test(prompts.STRUCTURED_FREE_SYSTEM), Object.keys(sprops).join());
   check('the structured card prompt asks for the patterns',
     /# Signature patterns/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/# Signature patterns/.test(prompts.CLASSIC_FREE_SYSTEM));
   check('and is otherwise the classic card prompt, so the rules that decide a letter or a score are the same',
@@ -6083,7 +6091,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     JSON.stringify(routes.status));
   check('a free request gets the card: conclusions, the roast, and no other writing',
     Boolean(routes.free) && routes.free.status === 200 && Boolean(data(routes.free).mbti) &&
-    data(routes.free).summary === undefined && Boolean(data(routes.free).bonus && data(routes.free).bonus.harsh) &&
+    (prompts.REPORT_LAYOUT === 'classic' ? data(routes.free).summary === undefined
+      : typeof data(routes.free).summary === 'string' && data(routes.free).summary.length > 0) &&
+    Boolean(data(routes.free).bonus && data(routes.free).bonus.harsh) &&
     !(data(routes.free).mbti.letters || []).some(letter => letter.why),
     JSON.stringify(routes.free && Object.keys(data(routes.free))));
   // The mock reports how many captions it was shown, which is what makes this
@@ -6123,7 +6133,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const fresh = data(routes.fullFresh) || {};
     check('structured: an unlock with no card decides the card first and sends it back beside the report',
       routes.fullFresh.status === 200 && Boolean(fresh.freeCard && fresh.freeCard.card && fresh.freeCard.mbti.type) &&
-      !('card' in fresh) && !('type' in fresh.mbti) && typeof fresh.summary === 'string',
+      !('card' in fresh) && !('type' in fresh.mbti) && typeof fresh.freeCard.summary === 'string' &&
+      // The Overview is the card's, so the report written to it leaves both out.
+      !('summary' in fresh) && !('patterns' in fresh),
       JSON.stringify(routes.fullFresh && routes.fullFresh.status) + ' ' + Object.keys(fresh).join(','));
   }
   check('a padded free request is answered as the same card, not billed for the padding',
@@ -6585,6 +6597,27 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const pinnedText = prompts.profileBlocks({}, pinned).map(b => b.text).join('\n');
   check('and the paid call is told to keep their ids, names and order',
     /keep their ids, names and order exactly/.test(pinnedText) && !/enneagram/i.test(pinnedText));
+  // A card with its Overview (October 2026): the summary rides in the anchor,
+  // and the paid call is sent a schema without the summary or the patterns.
+  check('a card without the Overview anchors no summary, and its report writes summary and patterns as before',
+    !('summary' in pinned) && prompts.fullSchemaFor(pinned) === prompts.FULL_PINNED_SCHEMA);
+  const overviewCard = Object.assign({}, freeCard, { summary: 'You are <steady>.\n\nSecond paragraph.',
+    patterns: [{ id: 'p1', name: 'One', line: 'L.', evidence: ['12 of 20'], showsUpIn: ['work'] },
+      { id: 'p2', name: 'Two', line: 'L2.', evidence: ['3 a week'], showsUpIn: ['values'] }] });
+  const overviewAnchor = prompts.anchorFrom(overviewCard);
+  const overviewText = prompts.profileBlocks({}, overviewAnchor).map(b => b.text).join('\n');
+  check('a card with its Overview anchors its summary, cleaned, and the paid call is told both are settled',
+    overviewAnchor.summary === 'You are  steady .  Second paragraph.' &&
+      /Both are settled and your schema has no field for either/.test(overviewText) &&
+      !/keep their ids, names and order exactly/.test(overviewText), JSON.stringify(overviewAnchor.summary));
+  check('and its schema leaves out the summary and the patterns, and nothing else',
+    prompts.REPORT_LAYOUT === 'classic' ||
+      (prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
+        Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
+          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).join() === 'summary,patterns' &&
+        !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary')));
+  check('a pattern without its evidence keeps the old anchor, summary or not',
+    !('summary' in prompts.anchorFrom(Object.assign({}, freeCard, { summary: 'Text.' }))));
   const classicAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
     bigFive: { openness: { score: 60 } } });
   const classicText = prompts.profileBlocks({}, classicAnchor).map(b => b.text).join('\n');
@@ -8142,6 +8175,17 @@ check('the schema requires evidence on where they align and differ',
     now = await askCredits.balance(askSecret);
     check('then the link\'s credit, and then none', now.total === 0 && (await askCredits.spend(askSecret)) === null, JSON.stringify(now));
     check('a code alone cannot see or spend questions', (await askCredits.balance(referral.codeOf(askSecret))) === null);
+    // Free questions: one with the first card, two with the report, once each per code.
+    const giftCode = referral.codeOf(askSecret);
+    check('a first card gives one free question, once',
+      (await askCredits.gift(giftCode, 'card')) === true && (await askCredits.gift(giftCode, 'card')) === false &&
+        (await askCredits.balance(askSecret)).total === 1);
+    check('a Psyche Report gives two more, once',
+      (await askCredits.gift(giftCode, 'report')) === true && (await askCredits.gift(giftCode, 'report')) === false &&
+        (await askCredits.balance(askSecret)).total === 3);
+    check('and nothing for a bad code or an unknown kind',
+      (await askCredits.gift('not a code', 'card')) === false && (await askCredits.gift(giftCode, 'bonus')) === false &&
+        askCredits.GIFTS.card === 1 && askCredits.GIFTS.report === 2);
   }
   {
     const Prices = (await import('../docs/prices.js'), globalThis.PsychePrices);

@@ -3112,19 +3112,21 @@
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
-    // The questions asked of PsycheAI, each with its answer and steps: as on the page, at the end.
+    // As on My Report: Appendix 1 the roast, on a page of its own, then
+    // Appendix 2 the questions asked of PsycheAI, each with its answer and steps.
+    const roasted = Boolean(source.bonus && source.bonus.harsh);
+    if (source.bonus) {
+      out.page();
+      out.eyebrow(numeral('appendix') + '  ' + S.ask.appendixPrefix(roasted ? 1 : 0).replace(/: $/, ''), ACCENT_2);
+      renderRoast(out, source.bonus, { structured: true });
+    }
     const asked = (stamp.asked || []).filter(item => item && item.q && item.a);
     if (asked.length) {
-      standalone(S.ask.appendixTitle, S.ask.appendixCount(asked.length));
+      standalone(S.ask.appendixTitle(roasted ? 2 : 0), S.ask.appendixCount(asked.length));
       asked.forEach(item => {
         out.point(item.q, item.a, { detailSize: 9.2, detailLeading: 13 });
         (item.steps || []).forEach(step => out.bullet(step));
       });
-    }
-    if (source.bonus) {
-      out.page();
-      out.eyebrow(numeral('appendix') + '  ' + S.parts.appendix.title, ACCENT_2);
-      renderRoast(out, source.bonus, { structured: true });
     }
 
     storyContents(doc, out, cardBottom);
