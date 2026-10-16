@@ -5457,6 +5457,11 @@ lib/gemini.js).
   "someone", "they"; the reader only as "you"). An answer with fewer than two develop areas is still
   kept — sending it back would cost two more calls — but logs `[unlock] one call: thin answer` and
   counts `merged_thin`; if those keep coming, switch `PSYCHEAI_MERGED_UNLOCK` off.
+- **Two develop areas, held by the schema.** The merged schema sets `minItems`/`maxItems` 2 on
+  `development.develop`, so Gemini cannot return one. The probe never tested those keywords; if Gemini
+  refuses them, the merged call falls back to the two calls and logs `schema refused`, which is why
+  they are on the merged schema only — the ordinary paid call has no way back from a refusal.
+  `npm run probe:schema -- MERGED` checks it.
 - **The split** (`splitMerged`) hands back exactly what the two calls return: the card as the free
   schema shapes it (completed by `withCard`) and the report as the Overview-pinned schema shapes it,
   so the browser's `overlayCard` and everything after it cannot tell the difference.
