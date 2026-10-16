@@ -2979,13 +2979,20 @@
     // My Report is an excursion from My Psyche, so Back returns to the card.
     const secondary = SECONDARY_VIEWS.includes(view) || (view === 'welcome' && Boolean(state.profile)) ||
       (view === 'profile' && reportPageOn());
+    // Entries to give back are counted rather than popped one at a time: the
+    // Ask PsycheAI panel may hold one of its own, and two history.back()
+    // calls in a row, or one followed by the pushState below, race each other.
+    let drop = 0;
     if (navHistoryEntry && HOME_VIEWS.includes(view) && !secondary && !closingNavFromHistory) {
       navHistoryEntry = false;
-      history.back();
+      drop += 1;
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
     // Ask PsycheAI goes with My Psyche and My Report, panel and button alike.
-    if (view !== 'profile' && $('#ask-dialog').open) $('#ask-dialog').close();
+    if (view !== 'profile' && $('#ask-dialog').open) {
+      $('#ask-dialog').close();
+      if (askHistoryEntry) { askHistoryEntry = false; drop += 1; }
+    }
     refreshAskFab();
     // The front page, kept out of sight by early.js until this choice was made.
     document.documentElement.classList.remove('view-pending');
@@ -3021,10 +3028,13 @@
     // navHistoryEntry already being false, which is also what stops this from
     // re-firing on every one of the several show() calls a single scan →
     // working → report sequence makes.
+    // An entry about to be given back is kept for this one instead.
     if (secondary && !navHistoryEntry) {
-      history.pushState({ psycheaiNav: true }, '');
+      if (drop > 0) drop -= 1;
+      else history.pushState({ psycheaiNav: true }, '');
       navHistoryEntry = true;
     }
+    if (drop > 0) { ownPops += 1; history.go(-drop); }
   }
 
   // ---- a sync's result, as a popout over My Syncs ----
@@ -3277,6 +3287,15 @@
     // to close, reaches this branch on its own next time. See
     // navHistoryEntry's own declaration for why leaving a secondary view any
     // other way must also consume this entry.
+    // Ask PsycheAI's panel: Back minimises it, as it would close any sheet
+    // over the page on a phone, rather than leaving the page under it.
+    if ($('#ask-dialog').open) {
+      askHistoryEntry = false;
+      $('#ask-dialog').close();
+      dockAsk(false);
+      refreshAskFab();
+      return;
+    }
     if (navHistoryEntry) {
       closingNavFromHistory = true;
       navHistoryEntry = false;
@@ -3299,6 +3318,9 @@
   // here only because show() and the popstate listener above both need them,
   // and neither is defined yet at this point in the file.
   let navHistoryEntry = false;
+  // The entry Ask PsycheAI's panel pushes while it is open, for Back to
+  // minimise it (openAsk, minimiseAsk).
+  let askHistoryEntry = false;
   let closingNavFromHistory = false;
 
   function go(target) {
@@ -3975,8 +3997,18 @@
     if (unlock) openPremiumDialog(unlock, 'unlock');
     // A source row under Evidence and method: the same popout, by the flow
     // this report is on — the unlock on a free one, the re-run on a paid one.
-    const source = event.target.closest('.source-read');
-    if (source && source.dataset.flow === 'unlock') openPremiumDialog(source, 'unlock');
+    // The name folds out what was read; Change or Add opens the popout.
+    const fold = event.target.closest('.source-read-toggle:not(.is-static)');
+    if (fold) {
+      const more = document.getElementById(fold.getAttribute('aria-controls'));
+      const open = fold.getAttribute('aria-expanded') !== 'true';
+      fold.setAttribute('aria-expanded', String(open));
+      if (more) more.hidden = !open;
+      return;
+    }
+    const action = event.target.closest('.source-read-action');
+    const source = action && action.closest('.source-read');
+    if (source && source.dataset.flow === 'unlock') openPremiumDialog(action, 'unlock');
     else if (source) startRerun();
   });
 
@@ -7079,20 +7111,36 @@
     ];
     const note = !paid ? S.sourcesFreeNote
       : TEXT.analysisPriceNoteUnlocked;
+    // WhatsApp's ticks: one for each of the three chats recommended.
+    const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
     return '<div class="sources-read">' +
       '<p class="sources-read-title">' + esc(S.sourcesReadTitle) + '</p>' +
       (!digest ? '<p class="sources-read-lost">' + esc(TEXT.sourcesInstagramLost) + '</p>' : '') +
       '<ul class="sources-read-list">' + rows.map(row => {
-        const lines = by[row.key];
-        const what = !row.loaded ? S.sourceNotAdded : lines.length ? lines.join(' · ') : S.sourceLoaded;
-        return '<li><button type="button" class="source-read' + (row.loaded ? ' is-loaded' : ' is-missing') + '"' +
+        const lines = row.loaded ? (by[row.key].length ? by[row.key] : [S.sourceLoaded]) : [];
+        const more = 'source-more-' + row.key;
+        const ticks = !row.loaded ? ''
+          : row.key === 'whatsapp'
+            ? '<span class="source-read-ticks" role="img" aria-label="' + esc(S.sourceChats(Math.min(chats, 3))) + '">' +
+                [0, 1, 2].map(i => '<span class="source-tick' + (i < chats ? ' is-on' : '') + '"></span>').join('') + '</span>'
+            : '<span class="source-read-ticks" role="img" aria-label="' + esc(S.sourceAdded) + '"><span class="source-tick is-on"></span></span>';
+        // The name (and its chevron) folds out what was read; Change or Add
+        // opens the data popout.
+        const name = row.loaded
+          ? '<button type="button" class="source-read-toggle" aria-expanded="false" aria-controls="' + more + '">' +
+              '<span class="source-read-name">' + esc(row.label) + '</span><span class="source-read-chevron" aria-hidden="true"></span></button>'
+          : '<span class="source-read-toggle is-static"><span class="source-read-name">' + esc(row.label) + '</span></span>';
+        return '<li><div class="source-read' + (row.loaded ? ' is-loaded' : ' is-missing') + '"' +
             ' data-source="' + row.key + '" data-flow="' + (paid ? 'rerun' : 'unlock') + '">' +
           '<span class="source-read-icon" aria-hidden="true">' + Copy.iconHtml(row.icon) + '</span>' +
-          '<span class="source-read-body"><span class="source-read-name">' + esc(row.label) + '</span>' +
-            '<span class="source-read-what">' + esc(what) + '</span>' +
-            (row.hint ? '<span class="source-read-hint">' + esc(row.hint) + '</span>' : '') + '</span>' +
-          '<span class="source-read-action">' + esc(row.loaded ? S.sourceChange : '+ ' + S.sourceAdd) + '</span>' +
-        '</button></li>';
+          name + ticks +
+          '<button type="button" class="source-read-action">' + esc(row.loaded ? S.sourceChange : '+ ' + S.sourceAdd) + '</button>' +
+          (row.loaded ? '<div class="source-read-more" id="' + more + '" hidden>' +
+            '<ul class="source-read-what">' + lines.map(line => '<li>' + esc(line) + '</li>').join('') + '</ul>' +
+            (row.hint ? '<p class="source-read-hint">' + esc(row.hint) + '</p>' : '') + '</div>'
+            // Not added yet, WhatsApp's recommendation is the one line shown.
+            : row.hint ? '<p class="source-read-more source-read-hint">' + esc(row.hint) + '</p>' : '') +
+        '</div></li>';
       }).join('') + '</ul>' +
       '<p class="sources-read-note">' + esc(note) + '</p></div>';
   }
@@ -9536,8 +9584,7 @@
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
     renderPremiumPrice(kind, CURRENCY, null);
-    // Questions are not discounted by a promo code: no code field on that sheet.
-    dialog.querySelector('.premium-promo').hidden = kind === 'ask';
+    dialog.querySelector('.premium-promo').hidden = false;
     showReferralOffer(kind, rerunAll);
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -9734,7 +9781,7 @@
     const code = input.value.trim();
     if (!code || promoChecking) return 'none';
     const dialog = $('#premium-dialog');
-    const product = premiumKind === 'analysis' ? 'analysis' : 'unlock';
+    const product = premiumKind === 'analysis' ? 'analysis' : premiumKind === 'ask' ? 'ask' : 'unlock';
     // Whether the sheet the code was typed into is still the one open: a
     // reader who cancels while the code is checked is not then charged or
     // started on a report, and a code for one product never runs another.
@@ -10156,12 +10203,27 @@
     }
   }
 
+  // A promo code worth 100% gives five questions, once per reader per code.
+  async function creditAskPromo(promoCode) {
+    const mine = await ensureReferral();
+    if (!mine) return false;
+    try {
+      const answer = await LLM.postWithTicket('api/ask/buy', { secret: mine.secret, promoCode });
+      if (answer && typeof answer.total === 'number') askCreditsNow = answer;
+      renderAskCredits();
+      return true;
+    } catch (error) {
+      sayAsk((error && error.message) || TEXT.premiumFailed, 'bad');
+      return false;
+    }
+  }
+
   /**
    * Opens Ask PsycheAI, with a question started for the reader when one is
    * given. A panel, not a modal: the report stays readable and scrollable
    * beside it, and closing it only minimises it to the floating button.
    */
-  async function openAsk(prefill) {
+  async function openAsk(prefill, options) {
     if (!askReady()) return;
     const A = Copy.STRUCTURED.ask;
     const dialog = $('#ask-dialog');
@@ -10170,7 +10232,10 @@
     $('#ask-ideas-title').textContent = A.ideasTitle;
     $('#ask-close').setAttribute('aria-label', A.minimise);
     $('#ask-handle').setAttribute('aria-label', A.minimise);
-    showAskIdeas(false);
+    $('#ask-ideas-close').setAttribute('aria-label', A.ideasClose);
+    // From the floating button the ideas open at once, over the lower half of
+    // the conversation; ✕ folds them back under the Ideas button.
+    showAskIdeas(Boolean(options && options.ideas));
     $('#ask-privacy').textContent = A.privacy;
     $('#ask-send').textContent = A.send;
     $('#ask-input').placeholder = A.placeholder;
@@ -10182,15 +10247,17 @@
     askCount();
     if (!dialog.open) {
       if (typeof dialog.show === 'function') dialog.show(); else dialog.setAttribute('open', '');
+      if (!askHistoryEntry) { history.pushState({ psycheaiAsk: true }, ''); askHistoryEntry = true; }
     }
     $('#ask-fab').classList.remove('is-ready');
     dockAsk(true);
     refreshAskFab();
-    // The box takes focus where there is a keyboard to spare, or a question
-    // already started; a phone's keyboard is not pulled up unasked.
+    // The box takes focus only where there is a keyboard to spare: a phone's
+    // keyboard is not pulled up unasked, even with a question started for
+    // the reader from a part of My Report.
     const input = $('#ask-input');
     const fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
-    if (fine || typeof prefill === 'string') {
+    if (fine && !(options && options.ideas)) {
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
@@ -10243,10 +10310,11 @@
 
   async function buyAsk() {
     const A = Copy.STRUCTURED.ask;
-    $('#ask-dialog').close();
+    minimiseAsk();
     const auth = await askPaymentFor('ask', null);
     await openAsk();
     if (auth && auth.paymentIntentId && await creditAskPayment(auth.paymentIntentId)) sayAsk(A.bought, 'good');
+    else if (auth && auth.promoCode && await creditAskPromo(auth.promoCode)) sayAsk(A.bought, 'good');
   }
 
   $('#ask-send').addEventListener('click', sendAsk);
@@ -10259,7 +10327,14 @@
   // and Escape. The conversation, a half-typed question and an answer still
   // coming all stay.
   // The close event comes a moment later, so the button is put back at once.
-  const minimiseAsk = () => { $('#ask-dialog').close(); dockAsk(false); refreshAskFab(); };
+  // Its history entry is given back here, not on the close event: that comes
+  // a moment later, and Back's own close must not give back a second one.
+  function minimiseAsk() {
+    $('#ask-dialog').close();
+    if (askHistoryEntry) { askHistoryEntry = false; popOwnEntry(); }
+    dockAsk(false);
+    refreshAskFab();
+  }
   $('#ask-close').addEventListener('click', minimiseAsk);
   $('#ask-handle').addEventListener('click', minimiseAsk);
   // The sheet follows the finger down from the handle or the title bar
@@ -10300,13 +10375,48 @@
     minimiseAsk();
   });
   $('#ask-dialog').addEventListener('close', () => { dockAsk(false); refreshAskFab(); });
-  // The page makes room for the docked panel on a wide screen (styles.css,
-  // body.ask-docked); the card and the report's side column are fitted again.
   function dockAsk(on) {
     document.body.classList.toggle('ask-docked', on);
-    requestAnimationFrame(() => { try { layoutPsycheCard(); } catch (error) { /* nothing drawn yet */ } });
+    placeAsk();
   }
-  $('#ask-fab').addEventListener('click', () => openAsk());
+  /**
+   * On a laptop the page never moves for Ask PsycheAI: the button sits at the
+   * bottom right of the report's own column, and the panel opens just right
+   * of that column when there is room for it (320px or more), otherwise over
+   * the page at the right as before. On a phone both keep their CSS places.
+   */
+  function placeAsk() {
+    const gap = 12;
+    const fab = document.getElementById('ask-fab');
+    const panel = document.getElementById('ask-dialog');
+    const column = document.querySelector('main.container');
+    if (!fab || !panel || !column) return;
+    const phone = window.matchMedia('(max-width: 760px)').matches;
+    const box = column.getBoundingClientRect();
+    if (phone || !box.width) {
+      fab.style.left = ''; fab.style.right = ''; fab.style.transform = '';
+      panel.style.left = ''; panel.style.right = ''; panel.style.width = '';
+      return;
+    }
+    // Placed from the left, as the column is measured: the gutter kept for
+    // the scrollbar (html, scrollbar-gutter) makes `right` land short of it.
+    const width = document.documentElement.clientWidth;
+    const pad = parseFloat(getComputedStyle(column).paddingRight) || 0;
+    fab.style.left = Math.round(Math.min(box.right - pad, width - 16)) + 'px';
+    fab.style.right = 'auto';
+    fab.style.transform = 'translateX(-100%)';
+    const room = width - box.right - gap - 16;
+    if (room >= 320) {
+      panel.style.left = Math.round(box.right + gap) + 'px';
+      panel.style.right = 'auto';
+      panel.style.width = Math.min(400, Math.floor(room)) + 'px';
+    } else {
+      panel.style.left = ''; panel.style.right = ''; panel.style.width = '';
+    }
+  }
+  window.addEventListener('resize', placeAsk);
+  // An answer waiting is shown as it is; otherwise the ideas open with it.
+  $('#ask-fab').addEventListener('click', () => openAsk(undefined, { ideas: !$('#ask-fab').classList.contains('is-ready') }));
   // Ideas: the ready-made questions, out of the way until asked for. One
   // fills the box and the list folds away again.
   function showAskIdeas(open) {
@@ -10320,6 +10430,7 @@
     $('#ask-ideas-toggle').classList.toggle('is-open', open);
   }
   $('#ask-ideas-toggle').addEventListener('click', () => showAskIdeas($('#ask-ideas').hidden));
+  $('#ask-ideas-close').addEventListener('click', () => showAskIdeas(false));
   $('#ask-dialog').addEventListener('click', event => {
     const chip = event.target.closest('.ask-chip');
     if (!chip) return;
@@ -10336,7 +10447,14 @@
     if (!fab || !panel || !profile) return;
     fab.hidden = !(askReady() && !profile.hidden && !panel.open);
     const text = document.getElementById('ask-fab-text');
-    if (text) text.textContent = fab.classList.contains('is-ready') ? Copy.STRUCTURED.ask.fabReady : Copy.STRUCTURED.ask.fab;
+    const A = Copy.STRUCTURED.ask;
+    const ready = fab.classList.contains('is-ready');
+    // "Ask PsycheAI" on a laptop, "Ask" on a phone (styles.css picks one).
+    if (text) setHtml(text, ready ? esc(A.fabReady)
+      : '<span class="ask-fab-long">' + esc(A.fabLabel) + '</span><span class="ask-fab-short">' + esc(A.fab) + '</span>');
+    placeAsk();
+    // Its full name for a screen reader.
+    fab.setAttribute('aria-label', ready ? A.fabLabel + ': ' + A.fabReady : A.fabLabel);
   }
   // Every way in: the card on My Psyche and at the end of My Report, and the
   // link at the foot of each part of My Report, which starts the question.

@@ -1234,9 +1234,11 @@
       ],
       ideas: 'Ideas',
       ideasTitle: 'Questions to start from – tap one, then make it yours',
-      emptyHint: 'Ask PsycheAI anything about yourself. Need a starting point? Tap Ideas.',
+      emptyHint: 'Ask PsycheAI anything about yourself.',
+      ideasClose: 'Hide ideas',
       minimise: 'Minimise',
-      fab: 'Ask PsycheAI',
+      fab: 'Ask',
+      fabLabel: 'Ask PsycheAI',
       fabReady: 'Answer ready',
     },
     // The page's actions: in full on My Psyche, one word each under My
@@ -1371,7 +1373,9 @@
     sourcesReadTitle: 'Your data',
     sourceChange: 'Change',
     sourceAdd: 'Add',
-    sourceNotAdded: 'Not added – adding it raises confidence',
+    // Read out for the green ticks on the right of an added source.
+    sourceAdded: 'Added',
+    sourceChats: n => n + ' of 3 recommended chats added',
     // Under the WhatsApp row of Your data.
     sourceWhatsAppHint: 'Up to 3 chats with close connections are recommended.',
     sourceLoaded: 'Loaded',

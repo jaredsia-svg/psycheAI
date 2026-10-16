@@ -638,7 +638,10 @@
   <div class="ask-thread" id="ask-thread" aria-live="polite"></div>
   <div class="ask-foot">
     <div class="ask-ideas" id="ask-ideas" hidden>
-      <p class="ask-ideas-title" id="ask-ideas-title"></p>
+      <div class="ask-ideas-head">
+        <p class="ask-ideas-title" id="ask-ideas-title"></p>
+        <button class="ask-ideas-close" id="ask-ideas-close" type="button" aria-label="Hide ideas"><span aria-hidden="true">✕</span></button>
+      </div>
       <div class="ask-ideas-list" id="ask-ideas-list"></div>
     </div>
     <p class="ask-status" id="ask-status" role="status" hidden></p>
@@ -659,8 +662,8 @@
 </dialog>
 <!-- Ask PsycheAI, minimised: on My Psyche and My Report once the reader has
      the report. Says when an answer has come in while it was down. -->
-<button class="ask-fab" id="ask-fab" type="button" hidden>
-  <span class="ask-mark" aria-hidden="true"></span><span class="ask-fab-text" id="ask-fab-text">Ask PsycheAI</span>
+<button class="ask-fab" id="ask-fab" type="button" aria-label="Ask PsycheAI" hidden>
+  <span class="ask-mark" aria-hidden="true"></span><span class="ask-fab-text" id="ask-fab-text"><span class="ask-fab-long">Ask PsycheAI</span><span class="ask-fab-short">Ask</span></span>
 </button>
 
 <!-- ══════════════ scan ══════════════ -->

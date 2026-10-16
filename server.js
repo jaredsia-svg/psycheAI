@@ -877,10 +877,11 @@ async function handleCreatePaymentIntent(request, response) {
       sendJson(response, 402, { error: checked.reason });
       return;
     }
-    // The full report, and a card run again past the free one: the two
-    // things sold. A discount re-prices either the same way.
-    if (product !== 'unlock' && product !== 'analysis') {
-      sendJson(response, 402, { error: 'Promo codes are for the full report and for running your card again.' });
+    // The full report, a card run again past the free one, and Ask
+    // PsycheAI's five questions: the things sold. A discount re-prices each
+    // the same way.
+    if (product !== 'unlock' && product !== 'analysis' && product !== 'ask') {
+      sendJson(response, 402, { error: 'Promo codes are for the full report, running your card again and Ask PsycheAI questions.' });
       return;
     }
     if (checked.percent >= 100) {
@@ -1123,16 +1124,45 @@ async function handleAskCredits(request, response) {
 
 // Five questions for a payment of the `ask` product, credited once per
 // PaymentIntent: a retry of the same payment answers with the balance.
+// Five questions, for a payment or for a promo code worth 100%. A code's use
+// is counted against the reader's link (`ask:<code>`), so one reader gets one
+// pack from a code and a capped code is spent once per reader. A discount code
+// arrives as a payment, re-priced when it was made; its use is spent here.
 async function handleAskBuy(request, response) {
   const body = await readJsonBody(request);
   const paymentIntentId = body && typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
-  if (!paymentIntentId || !(await askCredits.balance(body.secret))) {
-    sendJson(response, 400, { error: 'Expected a payment and a referral code.' });
+  const promoCode = body && typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  const now = (paymentIntentId || promoCode) ? await askCredits.balance(body.secret) : null;
+  if (!now) {
+    sendJson(response, 400, { error: 'Expected a payment or a promo code, and a referral code.' });
     return;
   }
-  await payments.verifyPaid(paymentIntentId, 'ask');
+  const key = 'ask:' + now.code;
+  if (promoCode) {
+    const problem = promoRefusal(promoCode, key);
+    if (problem) {
+      sendJson(response, 402, { error: problem });
+      return;
+    }
+    const hold = promo.reserve(promoCode, key);
+    if (!hold) {
+      sendJson(response, 402, { error: 'That code has been used up.' });
+      return;
+    }
+    try {
+      const added = await askCredits.addPack(body.secret, 'promo:' + promo.check(promoCode, key).code + ':' + now.code);
+      if (added) { stats.count('ask_bought'); promoRedeemed(promoCode, key); }
+      if (added === false) {
+        sendJson(response, 402, { error: 'That code has already given you five questions.' });
+        return;
+      }
+    } finally { hold(); }
+    sendJson(response, 200, Object.assign({ added: true }, await askCredits.balance(body.secret)));
+    return;
+  }
+  const intent = await payments.verifyPaid(paymentIntentId, 'ask');
   const added = await askCredits.addPack(body.secret, paymentIntentId);
-  if (added) stats.count('ask_bought');
+  if (added) { stats.count('ask_bought'); discountRedeemed(intent, key); }
   sendJson(response, 200, Object.assign({ added: Boolean(added) }, await askCredits.balance(body.secret)));
 }
 

@@ -3922,33 +3922,58 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .sources-read-lost { margin: 0 0 .6rem; font-size: .86rem; color: var(--ink-soft); }
 .card .sources-read-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-.card .sources-read-list li { margin: 0; padding: 0; }
-.sources-read-list li + li { border-top: 1px solid var(--line); }
-/* Icon on the left; name and Change/Add on one line; what was read beneath,
-   across the full width, so a phone does not squeeze it into a column. */
+.card .sources-read-list > li { margin: 0; padding: 0; }
+.sources-read-list > li + li { border-top: 1px solid var(--line); }
+/* Icon, the name with a chevron that folds out what was read, green ticks
+   for what is added (three for WhatsApp, one per recommended chat), and
+   Change or Add on the right. */
 .source-read {
-  display: grid; grid-template-columns: 2.1rem 1fr auto; grid-template-areas: "icon name action" "icon what what" "icon hint hint";
-  column-gap: .8rem; row-gap: .1rem; align-items: center; width: 100%; margin: 0;
-  padding: .75rem .9rem; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
-  transition: background .15s ease;
+  display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) auto auto; grid-template-areas: "icon name ticks action" ". more more more";
+  column-gap: .7rem; align-items: center; padding: .7rem .9rem;
 }
-.source-read-body { display: contents; }
-.source-read:hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
-.source-read:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .source-read-icon {
-  grid-area: icon; align-self: start; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px;
+  grid-area: icon; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px;
   background: var(--accent-soft); font-size: 1rem; line-height: 1;
 }
 .source-read.is-missing .source-read-icon { filter: grayscale(1); opacity: .6; }
-.source-read-name { grid-area: name; min-width: 0; font-weight: 650; font-size: .95rem; }
-.source-read-what { grid-area: what; min-width: 0; font-size: .72rem; line-height: 1.4; color: var(--ink-soft); }
-/* The WhatsApp row's recommendation, a line of its own in the accent. */
-.source-read-hint { grid-area: hint; min-width: 0; font-size: .72rem; line-height: 1.4; color: var(--accent); font-weight: 600; }
-.source-read-action { grid-area: action; justify-self: end; font-size: .8rem; font-weight: 650; color: var(--accent); white-space: nowrap; }
+.source-read-toggle {
+  grid-area: name; justify-self: start; display: inline-flex; align-items: center; gap: .35rem; min-width: 0;
+  appearance: none; border: 0; background: none; padding: .2rem 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.source-read-toggle.is-static { cursor: default; }
+.source-read-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.source-read-name { font-weight: 650; font-size: .95rem; }
+.source-read.is-missing .source-read-name { color: var(--ink-soft); }
+.source-read-chevron {
+  width: .5rem; height: .5rem; margin-top: -.2rem; border-right: 2px solid var(--ink-soft); border-bottom: 2px solid var(--ink-soft);
+  transform: rotate(45deg); transition: transform .15s ease;
+}
+.source-read-toggle:hover .source-read-chevron { border-color: var(--accent); }
+.source-read-toggle[aria-expanded="true"] .source-read-chevron { transform: rotate(-135deg); margin-top: .2rem; }
+.source-read-ticks { grid-area: ticks; display: inline-flex; gap: .2rem; }
+.source-tick {
+  position: relative; width: 1.05rem; height: 1.05rem; border-radius: 999px; background: var(--line);
+}
+.source-tick.is-on { background: var(--good); }
+.source-tick::after {
+  content: ''; position: absolute; left: .37rem; top: .2rem; width: .22rem; height: .45rem;
+  border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(45deg);
+}
+.source-read-action {
+  grid-area: action; justify-self: end; appearance: none; border: 0; background: none; cursor: pointer; font: inherit;
+  font-size: .8rem; font-weight: 650; color: var(--accent); white-space: nowrap; padding: .25rem .1rem;
+}
 .source-read.is-loaded .source-read-action::after { content: ' ›'; }
 .source-read.is-missing .source-read-action {
-  padding: .25rem .65rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding: .25rem .7rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft);
 }
+.source-read-action:hover, .source-read-action:focus-visible { text-decoration: underline; }
+.source-read-more { grid-area: more; padding-top: .35rem; }
+.source-read-more[hidden] { display: none; }
+.card .source-read-what { margin: 0; padding-left: 1rem; font-size: .72rem; line-height: 1.45; color: var(--ink-soft); }
+.card .source-read-what li { margin: 0 0 .1rem; }
+/* The WhatsApp row's recommendation, a line of its own in the accent. */
+.source-read-hint { margin: .3rem 0 0; font-size: .72rem; line-height: 1.4; color: var(--accent); font-weight: 600; }
 .sources-read-note { margin: .6rem 0 0; font-size: .72rem; line-height: 1.45; color: var(--ink-soft); }
 /* Beside a free card: its three actions along the top, and below them a
    stage that stays empty until the reader points at a part of the card —
@@ -4572,8 +4597,15 @@ details.more[open] > summary::after { content: ' ▴'; }
    scrolling list of questions above the box. */
 .ask-ideas[hidden] { display: none; }
 .ask-ideas { border: 1px solid var(--line); border-radius: 12px; padding: .55rem .6rem; background: var(--bg-alt); }
-.ask-ideas-title { margin: 0 0 .45rem; font-size: .74rem; font-weight: 700; color: var(--ink-soft); }
-.ask-ideas-list { display: grid; gap: .35rem; max-height: min(15rem, 35vh); overflow-y: auto; }
+.ask-ideas-head { display: flex; align-items: flex-start; gap: .5rem; margin: 0 0 .45rem; }
+.ask-ideas-title { flex: 1; margin: 0; font-size: .74rem; font-weight: 700; color: var(--ink-soft); }
+.ask-ideas-close {
+  flex: none; appearance: none; border: 0; background: none; cursor: pointer; color: var(--ink-soft);
+  font-size: .85rem; line-height: 1; padding: .15rem .3rem; margin: -.15rem -.2rem 0 0; border-radius: 6px;
+}
+.ask-ideas-close:hover, .ask-ideas-close:focus-visible { background: var(--accent-soft); color: var(--accent); }
+/* About the lower half of the conversation, whatever the panel's height. */
+.ask-ideas-list { display: grid; gap: .35rem; max-height: calc(40vh - 4rem); max-height: calc(40dvh - 4rem); overflow-y: auto; }
 .ask-ideas-list .ask-chip { border-radius: 10px; }
 .ask-ideas-toggle {
   appearance: none; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 600; margin-right: auto;
@@ -4588,6 +4620,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: linear-gradient(100deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 28px rgba(60, 20, 90, .35);
 }
 .ask-fab[hidden] { display: none; }
+/* Its full name on a laptop, "Ask" on a phone. */
+.ask-fab-short { display: none; }
+@media (max-width: 760px) { .ask-fab-long { display: none; } .ask-fab-short { display: inline; } }
 .ask-fab .ask-mark { width: 2rem; height: 2rem; border-radius: 999px; background: rgba(255, 255, 255, .22); }
 .ask-fab:hover, .ask-fab:focus-visible { filter: brightness(1.06); }
 .ask-fab.is-ready { animation: ask-ready 1.6s ease-in-out infinite; }
@@ -4624,12 +4659,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .ask-status.is-good { color: var(--good); }
 .ask-status[hidden], .ask-compose[hidden], .ask-buy[hidden], #ask-send[hidden] { display: none; }
 .ask-compose textarea {
-  width: 100%; box-sizing: border-box; resize: none; font: inherit; font-size: .95rem; line-height: 1.4;
+  display: block; width: 100%; box-sizing: border-box; resize: none; font: inherit; font-size: .95rem; line-height: 1.4;
   padding: .6rem .75rem; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink);
 }
 .ask-compose textarea:focus { outline: none; border-color: var(--accent); }
-.ask-compose-row { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .4rem; }
-.ask-count { font-size: .74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ask-compose-row { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .2rem; }
+.ask-count { align-self: flex-start; font-size: .74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .ask-count.is-near { color: var(--warn); font-weight: 700; }
 .ask-buy { text-align: center; }
 .ask-buy .btn { width: 100%; }
@@ -4666,17 +4701,3 @@ details.more[open] > summary::after { content: ' ▴'; }
   .ask-a { max-width: 100%; }
 }
 @media print { .ask-part, .ask-fab, .ask-dialog { display: none !important; } }
-/* Ask PsycheAI docked on a wide screen: the page makes room for it rather than
-   sitting under it — the column moves left and narrows, and on My Report the
-   part nav and its actions go to the left edge. Narrower than this, the panel
-   floats over the page and is minimised to read what is under it. */
-@media (min-width: 1200px) {
-  body.ask-docked main.container {
-    margin-left: auto; margin-right: 432px; max-width: min(var(--page-w), calc(100vw - 432px - 1rem));
-  }
-  body.ask-docked:has(#view-profile:not([hidden]) #profile-body .part-nav) main.container {
-    margin-left: 248px; margin-right: 432px; max-width: min(var(--page-w), calc(100vw - 248px - 432px));
-  }
-  body.ask-docked #profile-body .part-nav,
-  body.ask-docked #view-profile.profile-paid .cta-row { left: 1rem; }
-}

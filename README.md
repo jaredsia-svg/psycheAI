@@ -2801,12 +2801,21 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
     60px and it minimises, otherwise it springs back. The handle and head carry `touch-action: none`:
     without it a phone's browser took the drag as a scroll and cancelled the pointer, so the swipe
     did nothing.
-  - **On a laptop:** docked at the right under the site's header. From 1200px the page makes room
-    for it (`body.ask-docked`): the column moves left and narrows, and on My Report the part nav and
-    its actions go to the left edge, so nothing sits under the panel. Between 761 and 1199px it
-    floats over the page.
+  - **On a laptop:** the page never moves for it (`placeAsk`). The panel opens 12px right of the
+    report's column when there is at least 320px beside it (up to 400px wide); with less room it
+    floats over the page at the right. It used to shift the column and the part nav left to make
+    room (`body.ask-docked`), which moved the report away from where the reader was looking. Both
+    the button and the panel are placed from the left edge, as the column is measured: the gutter
+    kept for the scrollbar (`scrollbar-gutter: stable`) put a `right` offset about 15px short.
   - **Minimising:** the – button, the handle, or Escape anywhere on the page (unless another popout
-    is open on top). It leaves a floating **Ask PsycheAI** button (`#ask-fab`) at the bottom right of
+    is open on top). The floating button reads **Ask PsycheAI** on a laptop, sitting at the
+    bottom right of the report's own column rather than the window's corner, and just **Ask** on a
+    phone (`.ask-fab-long` / `.ask-fab-short`; its `aria-label` is always *Ask PsycheAI*). The phone's Back minimises it too: opening it pushes a history entry
+    (`askHistoryEntry`), the popstate listener minimises the panel before anything else, and the – button
+    gives the entry back (`minimiseAsk`). Before this, Back on My Psyche left the site with the panel
+    up. `show()` counts the entries it has to give back (the page's and the panel's) and gives them back
+    in one `history.go(-n)`, reusing one for a page it is about to push, since two `history.back()` calls
+    in a row, or one followed by `pushState`, race each other. It leaves a floating **Ask PsycheAI** button (`#ask-fab`) at the bottom right of
     My Psyche and My Report, shown only once the reader has the report. An answer that lands while
     minimised turns it into **Answer ready**, with a soft pulse, until it is opened.
   - **Nothing is lost:** the conversation, a half-typed question and an answer still coming all stay.
@@ -2814,7 +2823,10 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
     most useful beside the report rather than instead of it.
 - **Ideas, out of the way.** The ready-made questions are no longer on the screen. They sit behind a
   small **💡 Ideas** button by the character count, which opens a short scrolling list above the box.
-  Tapping one fills the box and folds the list away. With no questions left the box and Ideas
+  Tapping one fills the box and folds the list away. Opened from the floating button, the panel
+  shows the ideas straight away, over about the lower half of the conversation (the list is held to
+  `40dvh − 4rem`), and a ✕ on them folds them back under the Ideas button. When the button says
+  *Answer ready* they stay folded, so the answer is what is seen. With no questions left the box and Ideas
   stay, and only the Ask button gives way to *Get 5 questions*. At first the whole box was hidden
   then, which hid the Ideas button with it, so a reader without questions never saw the ideas. They are ten deeper questions the report does
   not already answer, ordered from the most universal to the most specific, career last:
@@ -2833,10 +2845,22 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
   Two of the twelve proposed were left out. *My life has no meaning and no purpose* overlapped with
   question 3 and reads as distress put in the reader's mouth. *My happiest and saddest moment* is
   something the data cannot reliably show and could surface a loss. The empty panel says one line:
-  *Ask PsycheAI anything about yourself. Need a starting point? Tap Ideas.*
+  *Ask PsycheAI anything about yourself.* (It added *Need a starting point? Tap Ideas.* until the
+  ideas opened by themselves.)
+- **The keyboard:** the box takes focus only with a fine pointer (a laptop). On a phone the keyboard
+  is never pulled up unasked, including from *Ask PsycheAI about this →*, which starts the question
+  but leaves the reader to tap the box. The character count sits close under the box (the textarea
+  is a block, the row 0.2rem below it, and the count at the top of the row rather than centred on
+  the taller Ask button).
 - **The popout** (`#ask-dialog`, `openAsk`): the conversation so far, a counter of questions left,
   and a box with a character count. When none are left, *Get 5 questions* opens the ordinary
-  payment sheet for the `ask` product, with no promo code and no share box. It was trimmed to that
+  payment sheet for the `ask` product, with no share box. **Promo codes work on it** (October 2026):
+  a discount re-prices the five questions like any other product (`/api/create-payment-intent`
+  with `product: 'ask'`; `verifyPaid` holds the payment to the discounted price written on the
+  intent, and `/api/ask/buy` spends the code's use). A code worth 100% skips paying:
+  `/api/ask/buy` takes `{ secret, promoCode }` and adds five questions. Its use is counted against
+  the reader's link (`ask:<link code>`), and the pack's id is `promo:<CODE>:<link code>`, so one reader
+  gets one pack from a given code. It was trimmed to that
   in October 2026: the subtitle is *Your personal coach.*, the empty state is the six questions under
   *Try one of these*, and the line under the box reads *Your question goes to Gemini for this one
   answer; PsycheAI keeps no copy. Answers are saved only in this browser.* Referral credits are named
@@ -6256,6 +6280,15 @@ no longer promises a secret bonus section in the paid report.
 data uses), and the WhatsApp row carries a line of its own: "Up to 3 chats with close connections are
 recommended." (`sourceWhatsAppHint`; three is the digest's own limit, `supplements.whatsapp.chats.slice(0,
 3)`).
+
+**Folded, with ticks** (October 2026). The rows had grown into paragraphs of counts, so what was read
+is now folded away: the source's name, with a chevron beside it, opens and closes its full list, one
+item per line (`.source-read-toggle`, `.source-read-more`). On the right an added source shows a green
+tick, and WhatsApp three, one per recommended chat, green for each chat loaded (two chats: two of
+three green). Then *Change ›*, the only part of the row that opens the data popout now that the name
+folds. A source not added has no ticks and a filled *+ Add* pill instead; its "Not added – adding it
+raises confidence" line was dropped as the pill says it. WhatsApp's recommendation sits in its folded
+list once chats are loaded, and stays as the one visible line while none are.
 
 **The footer** shows the independence note and the release number (`v3.0.0`, `package.json`'s version,
 there so a problem report can name the build) only on the front page and the FAQ: `show()` sets

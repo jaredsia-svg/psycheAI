@@ -11695,7 +11695,7 @@ try {
       const hubFoot = await sp.evaluate(() => {
         const del = document.querySelector('#delete-profile').getBoundingClientRect();
         const note = document.querySelector('#analysed-by').getBoundingClientRect();
-        const small = getComputedStyle(document.querySelector('#profile-body .source-read-what')).fontSize;
+        const small = getComputedStyle(document.querySelector('#profile-body .sources-read-note')).fontSize;
         return { download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display === 'none',
           beside: note.left >= del.right - 1 && Math.abs((note.top + note.bottom) / 2 - (del.top + del.bottom) / 2) < 30, small };
       });
@@ -11723,15 +11723,18 @@ try {
       // ---- Ask PsycheAI ----
       {
         const askWay = await sp.evaluate(() => ({ card: document.querySelectorAll('.ask-card').length,
-          fab: !document.querySelector('#ask-fab').hidden && document.querySelector('#ask-fab-text').textContent }));
-        check('Ask PsycheAI: no section of its own on My Psyche, just the floating Ask PsycheAI button',
-          askWay.card === 0 && askWay.fab === 'Ask PsycheAI', JSON.stringify(askWay));
+          fab: !document.querySelector('#ask-fab').hidden && document.querySelector('#ask-fab-text').innerText }));
+        check('Ask PsycheAI: no section of its own on My Psyche, just a floating "Ask PsycheAI" button on a laptop',
+          askWay.card === 0 && askWay.fab === 'Ask PsycheAI' &&
+            await sp.evaluate(() => document.querySelector('#ask-fab').getAttribute('aria-label') === 'Ask PsycheAI'), JSON.stringify(askWay));
         await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 10000 });
         await sp.waitForSelector('#ask-credits:not([hidden])', { timeout: 10000 });
         const empty = await sp.evaluate(() => ({
           intro: Boolean(document.querySelector('#ask-thread .ask-intro')),
-          suggestions: document.querySelectorAll('#ask-thread .ask-chip').length === 0 && document.querySelector('#ask-ideas').hidden ? 10 : -1,
+          suggestions: !document.querySelector('#ask-ideas').hidden ?
+            [...document.querySelectorAll('#ask-ideas-list .ask-chip')].filter(b => b.getBoundingClientRect().height > 0).length : -1,
+          introLine: (document.querySelector('#ask-thread .ask-intro') || {}).textContent,
           modal: document.querySelector('#ask-dialog').matches(':modal'),
           fabHidden: document.querySelector('#ask-fab').hidden,
           credits: document.querySelector('#ask-credits').textContent,
@@ -11743,10 +11746,15 @@ try {
             /Each answer is written from your own report/.test(document.querySelector('#ask-dialog').textContent) ||
             /Credits from Your Referral count too/.test(document.querySelector('#ask-dialog').textContent),
           referral: document.querySelector('#ask-referral').hidden }));
-        check('Ask PsycheAI opens as a panel beside the page (not a modal), one line and no list in the way, and, with none left, the way to get five',
-          empty.intro && empty.suggestions === 10 && !empty.modal && empty.fabHidden && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
+        check('Ask PsycheAI opens from the button as a panel beside the page (not a modal), its ideas open at once under one line, and, with none left, the way to get five',
+          empty.intro && empty.introLine === 'Ask PsycheAI anything about yourself.' && empty.suggestions > 0 && !empty.modal && empty.fabHidden && empty.credits === 'No questions left' && empty.buy === 'Get 5 questions – US$5' &&
             empty.compose && empty.privacy === 'Your question goes to Gemini for this one answer; PsycheAI keeps no copy. Answers are saved only in this browser.' &&
             empty.sub === 'Your personal coach.' && !empty.introText && empty.referral, JSON.stringify(empty));
+        // ✕ folds the ideas back under the Ideas button, which opens them again.
+        await sp.click('#ask-ideas-close');
+        check('✕ on the ideas folds them away, back under the Ideas button',
+          await sp.evaluate(() => document.querySelector('#ask-ideas').hidden &&
+            document.querySelector('#ask-ideas-toggle').getAttribute('aria-expanded') === 'false'));
         // Ideas are there before any question is bought, to look through
         // and start a question with.
         await sp.click('#ask-ideas-toggle');
@@ -11759,8 +11767,15 @@ try {
         const sheet = await sp.evaluate(() => ({ title: document.querySelector('#premium-dialog-title').textContent,
           price: document.querySelector('#premium-price').textContent, promo: document.querySelector('#premium-dialog .premium-promo').hidden,
           share: document.querySelector('#premium-share').hidden }));
-        check('Ask PsycheAI: the payment sheet sells five questions at the report\'s price, with no promo code or share box',
-          sheet.title === 'Get 5 questions for Ask PsycheAI' && /US\$5/.test(sheet.price) && sheet.promo && sheet.share, JSON.stringify(sheet));
+        check('Ask PsycheAI: the payment sheet sells five questions at the report\'s price, with a promo code and no share box',
+          sheet.title === 'Get 5 questions for Ask PsycheAI' && /US\$5/.test(sheet.price) && !sheet.promo && sheet.share, JSON.stringify(sheet));
+        // A discount code re-prices the five questions; paying that is enough.
+        await sp.fill('#premium-promo-input', 'UIHALF');
+        await sp.click('#premium-promo-apply');
+        await sp.waitForFunction(() => /UIHALF applied: 50% off/.test(document.querySelector('#premium-dialog').textContent), null, { timeout: 15000 });
+        check('a promo code takes its share off the five questions',
+          /US\$2\.50/.test(await sp.evaluate(() => document.querySelector('#premium-dialog').textContent)));
+        await sp.waitForSelector('#premium-dialog[open] #premium-mock-pay:not([hidden])', { timeout: 15000 });
         await sp.click('#premium-mock-pay');
         await sp.waitForFunction(() => document.querySelector('#ask-dialog').open &&
           document.querySelector('#ask-credits').textContent === '5 questions left', null, { timeout: 15000 });
@@ -11813,7 +11828,7 @@ try {
         await sp.click('#ask-close');
         check('minimising leaves the floating Ask PsycheAI button on the page',
           await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden &&
-            document.querySelector('#ask-fab-text').textContent === 'Ask PsycheAI'));
+            document.querySelector('#ask-fab-text').innerText === 'Ask PsycheAI'));
         await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
         await sp.fill('#ask-input', 'What gets in my way most?');
@@ -11829,18 +11844,55 @@ try {
             document.querySelector('#ask-fab-text').textContent === 'Answer ready'));
         await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
-        check('and opening it shows the answer and puts the button back as it was',
-          await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 &&
+        check('and opening it shows the answer, with the ideas left folded, and puts the button back as it was',
+          await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 && document.querySelector('#ask-ideas').hidden &&
             !document.querySelector('#ask-fab').classList.contains('is-ready')));
+        // A code worth 100% gives five questions, once per reader.
+        // Straight to the server, as the promo checks above are, so the second
+        // one's deliberate 402 is not logged as a page error.
+        const freePack = await (async () => {
+          const secret = await sp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')).secret);
+          const base = 'http://localhost:' + PORT;
+          const buy = async () => {
+            const nonce = (await (await fetch(base + '/api/nonce')).json()).nonce;
+            const response = await fetch(base + '/api/ask/buy', { method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
+              body: JSON.stringify({ secret, promoCode: UITEST_PROMO }) });
+            return { status: response.status, body: await response.json().catch(() => ({})) };
+          };
+          const first = await buy();
+          const again = await buy();
+          return { first: first.body.total, again: again.status + ' ' + (again.body.error || '') };
+        })();
+        check('a 100% promo code gives five questions, and only once per reader',
+          freePack.first === 8 && /already given you five questions/.test(freePack.again), JSON.stringify(freePack));
         {
           const vp = sp.viewportSize();
-          await sp.setViewportSize({ width: 1440, height: 900 });
+          await sp.setViewportSize({ width: 1920, height: 1000 });
           await sp.waitForTimeout(300);
-          const room = await sp.evaluate(() => ({ page: Math.round(document.querySelector('main.container').getBoundingClientRect().right),
-            panel: Math.round(document.querySelector('#ask-dialog').getBoundingClientRect().left) }));
+          const edge = () => Math.round(document.querySelector('main.container').getBoundingClientRect().right);
+          const open = await sp.evaluate(edge => ({ page: eval(edge)(), panel: Math.round(document.querySelector('#ask-dialog').getBoundingClientRect().left),
+            panelRight: Math.round(document.querySelector('#ask-dialog').getBoundingClientRect().right) }), edge.toString());
+          if (process.env.UITEST_SHOTS) await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-laptop.png' });
+          await sp.click('#ask-close');
+          await sp.waitForTimeout(200);
+          const shut = await sp.evaluate(() => {
+            const page = document.querySelector('main.container');
+            const fab = document.querySelector('#ask-fab').getBoundingClientRect();
+            return { page: Math.round(page.getBoundingClientRect().right),
+              inner: Math.round(page.getBoundingClientRect().right - parseFloat(getComputedStyle(page).paddingRight)), fab: Math.round(fab.right),
+              style: document.querySelector('#ask-fab').style.right, cw: document.documentElement.clientWidth, iw: innerWidth };
+          });
+          if (process.env.UITEST_SHOTS) await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-laptop-fab.png' });
+          check('on a wide screen the panel opens just right of the report, which does not move for it',
+            open.panel >= open.page && open.panel - open.page <= 20 && open.panelRight <= 1920 && open.page === shut.page,
+            JSON.stringify({ open, shut }));
+          check('and, minimised, the button sits at the bottom right of the report\'s own column',
+            Math.abs(shut.fab - shut.inner) <= 2, JSON.stringify(shut));
+          await sp.click('#ask-fab');
+          await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
           await sp.setViewportSize(vp);
-          check('on a wide screen the page makes room for the docked panel: nothing sits under it',
-            room.page <= room.panel, JSON.stringify(room));
+          await sp.waitForTimeout(300);
         }
         await sp.click('#ask-close');
         await sp.reload({ waitUntil: 'load' });
@@ -11849,7 +11901,11 @@ try {
         await sp.waitForSelector('#ask-dialog[open] #ask-thread .ask-item', { timeout: 10000 });
         check('after a reload Ask PsycheAI opens on the conversation so far, not the introduction',
           await sp.evaluate(() => document.querySelectorAll('#ask-thread .ask-item').length === 2 && !document.querySelector('#ask-thread .ask-intro')));
-        await sp.click('#ask-close');
+        await sp.goBack();
+        await sp.waitForTimeout(400);
+        check('on My Psyche, Back with the panel up minimises it rather than leaving the site',
+          await sp.evaluate(() => location.port !== '' && !document.querySelector('#ask-dialog').open &&
+            !document.querySelector('#view-profile').hidden && Boolean(document.querySelector('#profile-body .method-card'))));
       }
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
@@ -11892,8 +11948,18 @@ try {
         check('a short pull on the sheet\'s handle springs back',
           await sp.evaluate(() => document.querySelector('#ask-dialog').open && !document.querySelector('#ask-dialog').style.transform));
         await drag(160);
-        check('pulling the sheet down by its handle minimises it to the button',
-          await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden));
+        check('pulling the sheet down by its handle minimises it to the button, which on a phone just says "Ask"',
+          await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden &&
+            document.querySelector('#ask-fab-text').innerText === 'Ask'));
+        // The phone's Back minimises the panel and stays on My Report; the
+        // next Back still goes to My Psyche (below).
+        await sp.click('#ask-fab');
+        await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
+        await sp.goBack();
+        await sp.waitForTimeout(400);
+        check('Back with the panel up minimises it and stays on My Report',
+          await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden &&
+            document.querySelectorAll('#profile-body .part-card').length > 0));
         await sp.setViewportSize(wide);
         await sp.waitForTimeout(300);
       }
@@ -12198,7 +12264,10 @@ try {
         const card = document.querySelector('#profile-body .method-card');
         return {
           text: card.textContent,
-          full: Array.from(card.querySelectorAll('.source-read-what')).flatMap(n => n.textContent.split(' · ')),
+          full: Array.from(card.querySelectorAll('.source-read-what li')).map(n => n.textContent),
+          folded: Array.from(card.querySelectorAll('.source-read-more[id]')).every(n => n.hidden),
+          ticks: Array.from(card.querySelectorAll('.source-read')).map(n => n.querySelectorAll('.source-tick.is-on').length + '/' +
+            n.querySelectorAll('.source-tick').length + (n.querySelector('.source-read-action').textContent === '+ Add' ? '+' : '')).join(),
           google: (card.querySelector('.source-read[data-source="google"] .source-read-what') || {}).textContent || '',
           order: Array.from(card.querySelectorAll('.source-read')).map(n => n.getAttribute('data-source')).join(),
           hint: (card.querySelector('.source-read[data-source="whatsapp"] .source-read-hint') || {}).textContent || '',
@@ -12209,6 +12278,12 @@ try {
       check('structured: Your data runs Instagram, WhatsApp, Google, Facebook, and recommends up to 3 close chats',
         evidence.order === 'instagram,whatsapp,google,facebook' &&
           evidence.hint === 'Up to 3 chats with close connections are recommended.', JSON.stringify({ order: evidence.order, hint: evidence.hint }));
+      check('structured: what was read is folded away; added sources carry green ticks (Google one, WhatsApp none of three here), the rest "+ Add"',
+        evidence.folded && evidence.ticks === '1/1,0/0+,1/1,0/0+', evidence.ticks);
+      await sp.click('#profile-body .source-read[data-source="instagram"] .source-read-toggle');
+      check('the source\'s name folds out its full list',
+        await sp.evaluate(() => !document.querySelector('#profile-body .source-read[data-source="instagram"] .source-read-more').hidden &&
+          document.querySelector('#profile-body .source-read[data-source="instagram"] .source-read-toggle').getAttribute('aria-expanded') === 'true'));
       check('structured: with the digest, each source row lists what was read and counted from it',
         // Totals rounded to read at a glance; what was read stays exact.
         evidence.full.includes('180 of your 9.7k messages read, from 38 conversations') &&
@@ -12834,7 +12909,7 @@ try {
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
       await sp.locator('.source-read[data-source="facebook"]').scrollIntoViewIfNeeded();
-      await sp.click('.source-read[data-source="facebook"]');
+      await sp.click('.source-read[data-source="facebook"] .source-read-action');
       await sp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('structured: a free report\'s source row opens the same data sources popout the unlock does',
         (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the Psyche Report');
