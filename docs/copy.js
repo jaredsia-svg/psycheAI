@@ -1237,6 +1237,9 @@
       emptyHint: 'Ask PsycheAI anything about yourself.',
       ideasClose: 'Hide ideas',
       minimise: 'Minimise',
+      // Under each answer: what it was written from.
+      fromData: 'Drawn from your report and the data it was written from.',
+      fromReport: 'Drawn from your report alone: the data it was written from is not in this browser.',
       fab: 'Ask',
       fabLabel: 'Ask PsycheAI',
       fabReady: 'Answer ready',

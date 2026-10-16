@@ -1311,7 +1311,9 @@ that could no longer find the element they depend on.
 
 The free page's **Unlock the full premium report** block carries **See sample report** at the far
 end of its head, opening the same sample report the front page does — what the unlock buys, to look
-at before paying for it. On a phone it drops under the title, right-aligned.
+at before paying for it. On a phone (760px and under) it takes a line of its own under the title, centred (October 2026;
+it was right-aligned there, which left it looking stranded at the edge). A zero-height `::after`
+flex item on the head forces the line break.
 
 ### Three scenes redrawn: Baymax, Pikachu, Kuromi
 
@@ -2753,6 +2755,17 @@ when there is no digest or it is over. The reader's own name goes back to "Psych
 report is sent (`askReport`) and comes back into the answer on the device (`askOwnName`). The last
 three questions and answers go along for follow-ups.
 
+**Answers draw on the data, and say so** (October 2026). Early answers opened with "Looking across
+your report…", which read as if only the report had been read, because the prompt said "Answer from
+the report" and gave "your report reads you as…" as its example. `ASK_SYSTEM` now has the model answer
+as someone who knows the reader from both the report and their own data. When the evidence holds a
+pattern that fits the question, it grounds the answer in at least one concrete one. It talks about
+the reader, not a document: never "your report says" or "looking across your report". The server
+returns `fromData` (whether a digest went with the question), and each answer carries a quiet line
+under it: *Drawn from your report and the data it was written from.*, or, with no digest in the
+browser, *Drawn from your report alone: the data it was written from is not in this browser.*
+Answers kept from before this have no line.
+
 | Context | Input tokens | Per question | Per 5-question pack |
 |---|---|---|---|
 | Report only (the first version) | ~12,000 | ~1.7¢ | ~8¢ |
@@ -2809,7 +2822,8 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
     kept for the scrollbar (`scrollbar-gutter: stable`) put a `right` offset about 15px short.
   - **Minimising:** the – button, the handle, or Escape anywhere on the page (unless another popout
     is open on top). The floating button reads **Ask PsycheAI** on a laptop, sitting at the
-    bottom right of the report's own column rather than the window's corner, and just **Ask** on a
+    bottom just right of the report's column, outside it, rather than in the window's corner (inside
+    the column's bottom right only when there is no room beside it), and just **Ask** on a
     phone (`.ask-fab-long` / `.ask-fab-short`; its `aria-label` is always *Ask PsycheAI*). The phone's Back minimises it too: opening it pushes a history entry
     (`askHistoryEntry`), the popstate listener minimises the panel before anything else, and the – button
     gives the entry back (`minimiseAsk`). Before this, Back on My Psyche left the site with the panel
@@ -2876,7 +2890,16 @@ none of them. The
 privacy page also lists the question counts, and the terms describe the questions.
 
 **On the front page** the Psyche Report's price has a gift tag under it, *Share with a friend and
-get it free!* (`.premium-free-badge`). It replaced the longer line under the blurb.
+get it free!* (`.premium-free-badge`). It replaced the longer line under the blurb. Since October
+2026 the tag sits left of the price on one line, on a laptop and a phone alike; under 400px the tag's
+text is a size down, and under 360px it drops its gift icon so the line still fits at 320px.
+
+**The privacy note on the upload card** is a lead line, *We take the privacy of your data seriously.*,
+then four points: the Instagram file never leaves the device; only a de-identified summary, checked
+first, is sent to Gemini or Claude to write the card; PsycheAI keeps no copy of it or the report; no
+sign-up, cookies, trackers or third-party analytics. Then the link to the privacy page. It was one
+paragraph of the same claims, which read as small print; the wording of each claim is unchanged, so
+each stays literally true.
 
 ## Counting what works, without counting anyone
 
@@ -6287,8 +6310,8 @@ item per line (`.source-read-toggle`, `.source-read-more`). On the right an adde
 tick, and WhatsApp three, one per recommended chat, green for each chat loaded (two chats: two of
 three green). Then *Change ›*, the only part of the row that opens the data popout now that the name
 folds. A source not added has no ticks and a filled *+ Add* pill instead; its "Not added – adding it
-raises confidence" line was dropped as the pill says it. WhatsApp's recommendation sits in its folded
-list once chats are loaded, and stays as the one visible line while none are.
+raises confidence" line was dropped as the pill says it. WhatsApp's recommendation is always in view, a
+line under the row, loaded or not: it is advice for adding chats, so it is no use folded away.
 
 **The footer** shows the independence note and the release number (`v3.0.0`, `package.json`'s version,
 there so a problem report can name the build) only on the front page and the FAQ: `show()` sets

@@ -377,6 +377,11 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    the dropzone rather than floating in the space before the card's own edge
    below it. */
 .upload-card .eyebrow { margin-top: .2rem; }
+/* The privacy promise as a lead line and four short points. */
+.privacy-points-head { margin: 0 0 .3rem; font-weight: 700; }
+.privacy-points ul { margin: 0 0 .35rem; padding-left: 1.1rem; }
+.privacy-points li { margin: 0 0 .15rem; }
+.privacy-points strong { font-weight: 700; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 
 /* ---------- cards ---------- */
@@ -433,6 +438,12 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 /* "See sample report" on the unlock block's head, at its far end. */
 .tier-sample, .paid-consolidated .premium-tier-head .tier-sample { flex: none; width: auto; margin: 0 0 0 auto; padding: .38rem .9rem; font-size: .86rem; min-height: 0; }
 @media (max-width: 480px) { .paid-consolidated .premium-tier-head .tier-sample { padding: .3rem .7rem; font-size: .8rem; } }
+/* On a phone it takes a line of its own under the title, centred: the
+   ::after is a zero-height break that pushes it there. */
+@media (max-width: 760px) {
+  .full-report-locked .premium-tier-head::after { content: ''; order: 2; flex-basis: 100%; height: 0; }
+  .full-report-locked .premium-tier-head .tier-sample { order: 3; margin: 0 auto; }
+}
 .premium-tier-price {
   flex: none; font-size: 1.05rem; font-weight: 700; color: var(--accent);
   white-space: nowrap;
@@ -470,14 +481,17 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    each a white panel led by its numeral and title, its sections as small
    chips under the title. Compact, so the whole offer and the share box under
    it fit in about one phone screen. */
-.premium-tier-pricebox { display: grid; justify-items: end; gap: .3rem; }
-/* The free way in, as a small gift tag under the price. */
+.premium-tier-pricebox { display: inline-flex; align-items: center; justify-content: flex-end; gap: .5rem; margin-left: auto; }
+/* The free way in, as a small gift tag left of the price, on one line at
+   every width. */
 .premium-free-badge {
   display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border-radius: 999px;
   font-size: .74rem; font-weight: 700; color: #fff; white-space: nowrap;
   background: linear-gradient(100deg, var(--accent), var(--accent-2));
 }
 .premium-free-badge svg { width: 13px; height: 13px; flex: none; }
+@media (max-width: 400px) { .premium-free-badge { font-size: .68rem; padding: .2rem .5rem; } }
+@media (max-width: 360px) { .premium-free-badge svg { display: none; } .premium-free-badge { font-size: .64rem; padding: .2rem .45rem; } .premium-tier-pricebox { gap: .35rem; } }
 .unlock-parts { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .45rem; }
 .unlock-part { padding: .6rem clamp(.7rem, 2.5vw, .9rem); border-radius: 14px; background: var(--bg-alt); }
 .unlock-part-head { display: flex; align-items: center; gap: .65rem; }
@@ -3928,7 +3942,7 @@ details.more[open] > summary::after { content: ' ▴'; }
    for what is added (three for WhatsApp, one per recommended chat), and
    Change or Add on the right. */
 .source-read {
-  display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) auto auto; grid-template-areas: "icon name ticks action" ". more more more";
+  display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) auto auto; grid-template-areas: "icon name ticks action" ". hint hint hint" ". more more more";
   column-gap: .7rem; align-items: center; padding: .7rem .9rem;
 }
 .source-read-icon {
@@ -3973,7 +3987,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .card .source-read-what { margin: 0; padding-left: 1rem; font-size: .72rem; line-height: 1.45; color: var(--ink-soft); }
 .card .source-read-what li { margin: 0 0 .1rem; }
 /* The WhatsApp row's recommendation, a line of its own in the accent. */
-.source-read-hint { margin: .3rem 0 0; font-size: .72rem; line-height: 1.4; color: var(--accent); font-weight: 600; }
+.source-read-hint { grid-area: hint; margin: .1rem 0 0; font-size: .72rem; line-height: 1.4; color: var(--accent); font-weight: 600; }
 .sources-read-note { margin: .6rem 0 0; font-size: .72rem; line-height: 1.45; color: var(--ink-soft); }
 /* Beside a free card: its three actions along the top, and below them a
    stage that stays empty until the reader points at a part of the card —
@@ -4651,6 +4665,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .ask-follow { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: .7rem; }
 .ask-follow > span { font-size: .74rem; color: var(--ink-soft); margin-right: .1rem; }
 .ask-typing { color: var(--ink-soft); font-style: italic; }
+.ask-source { margin: .6rem 0 0 !important; padding-top: .45rem; border-top: 1px solid var(--line); font-size: .72rem; color: var(--ink-soft); }
 .ask-item.is-pending .ask-typing::after { content: ''; animation: ask-dots 1.2s steps(4) infinite; }
 @keyframes ask-dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
 .ask-foot { padding: .7rem 1.1rem .9rem; border-top: 1px solid var(--line); display: grid; gap: .5rem; }

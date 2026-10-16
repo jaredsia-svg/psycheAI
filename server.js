@@ -1221,7 +1221,9 @@ async function handleAsk(request, response) {
     sendJson(response, 502, { error: 'PsycheAI could not answer that just now. Your question was not used – try again.' });
     return;
   }
-  sendJson(response, 200, Object.assign(answer, { credits: await askCredits.balance(body.secret) }));
+  // Whether the answer had the reader's data beside the report, for the line
+  // under it on the page.
+  sendJson(response, 200, Object.assign(answer, { fromData: Boolean(digest), credits: await askCredits.balance(body.secret) }));
 }
 
 // The short personal link (lib/links.js): saving the reader's locked card under

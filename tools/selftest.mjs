@@ -8158,7 +8158,8 @@ check('the schema requires evidence on where they align and differ',
       /<\/report>\n\n<evidence>\n[\s\S]*a caption[\s\S]*<\/evidence>\n\n<question>/.test(withEvidence[0].text) &&
         !/<evidence>/.test(blocks[0].text) && /The report's conclusions stand/.test(P.ASK_SYSTEM));
     check('and is told to answer from the report, coach, never diagnose, and keep the conduct rule',
-      /Answer from the report/.test(P.ASK_SYSTEM) && /Never invent evidence/.test(P.ASK_SYSTEM) &&
+      /Answer as someone who knows the reader from both/.test(P.ASK_SYSTEM) && /never open with or lean on "your report says"/.test(P.ASK_SYSTEM) &&
+        /Never invent evidence/.test(P.ASK_SYSTEM) &&
         /Not therapy and not a diagnosis/.test(P.ASK_SYSTEM) && P.ASK_SYSTEM.includes(P.CONDUCT_RULE_REPORT) &&
         JSON.stringify(Object.keys(P.ASK_SCHEMA.properties)) === JSON.stringify(['answer', 'nextSteps', 'followUps']));
   }

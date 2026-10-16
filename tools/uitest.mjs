@@ -3564,8 +3564,25 @@ try {
       oldLine: tier ? tier.querySelectorAll('.insight-premium-how').length : -1,
     };
   });
-  check('the front page\'s Psyche Report shows its price with a gift tag under it: share with a friend and get it free',
+  check('the front page\'s Psyche Report shows a gift tag, share with a friend and get it free, then its price',
     premiumTier.how === 'Share with a friend and get it free!' && premiumTier.oldLine === 0, JSON.stringify(premiumTier.how));
+  {
+    const lines = {};
+    const vp = page.viewportSize();
+    for (const width of [1280, 390, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      lines[width] = await page.evaluate(() => {
+        const tag = document.querySelector('#view-welcome .insight-premium .premium-free-badge').getBoundingClientRect();
+        const price = document.querySelector('#view-welcome .insight-premium .premium-tier-price').getBoundingClientRect();
+        const tier = document.querySelector('#view-welcome .insight-premium').getBoundingClientRect();
+        return tag.right <= price.left && Math.abs((tag.top + tag.bottom) / 2 - (price.top + price.bottom) / 2) < 4 &&
+          price.right <= tier.right + 1 && tag.left >= tier.left - 1;
+      });
+    }
+    await page.setViewportSize(vp);
+    check('the gift tag sits left of the price on one line, on a laptop and a phone',
+      Object.values(lines).every(Boolean), JSON.stringify(lines));
+  }
   check('the premium tier is the Psyche Report, by its five numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04,05' &&
       premiumTier.parts.join('|') === 'Who you are|What drives you|How you connect|How you work|Putting it together',
@@ -4790,6 +4807,21 @@ try {
       return button.textContent.trim() === 'See sample report' && h.right - b.right < 4 &&
         b.width < h.width / 2 && b.top < title.bottom && b.bottom > title.top;
     }));
+  {
+    const vp = page.viewportSize();
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.waitForTimeout(200);
+    const centred = await page.evaluate(() => {
+      const head = document.querySelector('#profile-body .full-report-locked .premium-tier-head').getBoundingClientRect();
+      const b = document.querySelector('#profile-body .full-report-locked .tier-sample').getBoundingClientRect();
+      const title = document.querySelector('#profile-body .full-report-locked .premium-tier-head h3').getBoundingClientRect();
+      return { off: Math.round((b.left + b.right) / 2 - (head.left + head.right) / 2), below: b.top >= title.bottom - 1 };
+    });
+    await page.setViewportSize(vp);
+    await page.waitForTimeout(200);
+    check('on a phone, "See sample report" sits centred on its own line under the title',
+      Math.abs(centred.off) <= 2 && centred.below, JSON.stringify(centred));
+  }
   await page.click('#profile-body .full-report-locked .tier-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 15000 });
   check('and it opens the sample report', await page.locator('#sample-dialog').isVisible());
@@ -11821,6 +11853,9 @@ try {
           /Mock answer to "Who am I when I.m not being useful/.test(answered.a) && /With examples from your data/.test(answered.a) &&
             answered.steps === 2 && answered.follow === 2 &&
             answered.credits === '4 questions left' && answered.input === '', JSON.stringify(answered));
+        check('under the answer, a line says it was drawn from the report and the data it was written from',
+          await sp.evaluate(() => (document.querySelector('#ask-thread .ask-item .ask-source') || {}).textContent ===
+            'Drawn from your report and the data it was written from.'));
         check('and the question and answer are kept in this browser',
           answered.stored.length === 1 && answered.stored[0].q === filled.value && /Mock answer/.test(answered.stored[0].a));
         // Minimised, not closed: the floating button brings it back; an
@@ -11881,14 +11916,15 @@ try {
             const fab = document.querySelector('#ask-fab').getBoundingClientRect();
             return { page: Math.round(page.getBoundingClientRect().right),
               inner: Math.round(page.getBoundingClientRect().right - parseFloat(getComputedStyle(page).paddingRight)), fab: Math.round(fab.right),
+              fabLeft: Math.round(fab.left),
               style: document.querySelector('#ask-fab').style.right, cw: document.documentElement.clientWidth, iw: innerWidth };
           });
           if (process.env.UITEST_SHOTS) await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-laptop-fab.png' });
           check('on a wide screen the panel opens just right of the report, which does not move for it',
             open.panel >= open.page && open.panel - open.page <= 20 && open.panelRight <= 1920 && open.page === shut.page,
             JSON.stringify({ open, shut }));
-          check('and, minimised, the button sits at the bottom right of the report\'s own column',
-            Math.abs(shut.fab - shut.inner) <= 2, JSON.stringify(shut));
+          check('and, minimised, the button sits just right of the report, outside it',
+            shut.fabLeft >= shut.page && shut.fabLeft - shut.page <= 20, JSON.stringify(shut));
           await sp.click('#ask-fab');
           await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
           await sp.setViewportSize(vp);
@@ -12270,7 +12306,8 @@ try {
             n.querySelectorAll('.source-tick').length + (n.querySelector('.source-read-action').textContent === '+ Add' ? '+' : '')).join(),
           google: (card.querySelector('.source-read[data-source="google"] .source-read-what') || {}).textContent || '',
           order: Array.from(card.querySelectorAll('.source-read')).map(n => n.getAttribute('data-source')).join(),
-          hint: (card.querySelector('.source-read[data-source="whatsapp"] .source-read-hint') || {}).textContent || '',
+          hint: (() => { const h = card.querySelector('.source-read[data-source="whatsapp"] .source-read-hint');
+            return h && h.getBoundingClientRect().height > 0 ? h.textContent : ''; })(),
           bars: card.querySelectorAll('.coverage-row, .bar').length,
           summaryChips: card.querySelectorAll('.trait-evidence .ev').length,
         };

@@ -2413,9 +2413,10 @@
       '<div class="premium-tier-head">' +
         '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
         '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
-        // The price, and under it the other way in: share the link.
-        '<span class="premium-tier-pricebox"><span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span>' +
-        '<span class="premium-free-badge">' + Copy.lineIcon('🎁') + '<span>' + esc(I.premiumFree) + '</span></span></span>' +
+        // The other way in, share the link, then the price, on one line.
+        '<span class="premium-tier-pricebox">' +
+        '<span class="premium-free-badge">' + Copy.lineIcon('🎁') + '<span>' + esc(I.premiumFree) + '</span></span>' +
+        '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span></span>' +
       '</div>' +
       '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +
       '<ol class="insight-parts">' + parts.map((key, i) =>
@@ -7135,11 +7136,10 @@
           '<span class="source-read-icon" aria-hidden="true">' + Copy.iconHtml(row.icon) + '</span>' +
           name + ticks +
           '<button type="button" class="source-read-action">' + esc(row.loaded ? S.sourceChange : '+ ' + S.sourceAdd) + '</button>' +
+          // WhatsApp's recommendation stays in view, folded or not.
+          (row.hint ? '<p class="source-read-hint">' + esc(row.hint) + '</p>' : '') +
           (row.loaded ? '<div class="source-read-more" id="' + more + '" hidden>' +
-            '<ul class="source-read-what">' + lines.map(line => '<li>' + esc(line) + '</li>').join('') + '</ul>' +
-            (row.hint ? '<p class="source-read-hint">' + esc(row.hint) + '</p>' : '') + '</div>'
-            // Not added yet, WhatsApp's recommendation is the one line shown.
-            : row.hint ? '<p class="source-read-more source-read-hint">' + esc(row.hint) + '</p>' : '') +
+            '<ul class="source-read-what">' + lines.map(line => '<li>' + esc(line) + '</li>').join('') + '</ul></div>' : '') +
         '</div></li>';
       }).join('') + '</ul>' +
       '<p class="sources-read-note">' + esc(note) + '</p></div>';
@@ -10136,8 +10136,12 @@
           item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +
         (item.follow && item.follow.length ? '<div class="ask-follow"><span>' + esc(A.follow) + '</span>' +
           item.follow.map(q => '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' : '');
+    // What the answer was written from, so the reader can see their data
+    // was read too (answers kept from before this was recorded say nothing).
+    const source = pending || typeof item.fromData !== 'boolean' ? ''
+      : '<p class="ask-source">' + esc(item.fromData ? A.fromData : A.fromReport) + '</p>';
     return '<div class="ask-item' + (pending ? ' is-pending' : '') + '"><p class="ask-q">' + esc(item.q) + '</p>' +
-      '<div class="ask-a">' + answer + '</div></div>';
+      '<div class="ask-a">' + answer + source + '</div></div>';
   }
   function renderAskThread(pendingQuestion) {
     const A = Copy.STRUCTURED.ask;
@@ -10289,7 +10293,7 @@
       const answer = await LLM.postWithTicket('api/ask', Object.assign({ secret: mine.secret, question, report: askReport(), history },
         digest ? { digest } : {}));
       const item = { q: question, a: askOwnName(answer.answer), steps: (answer.nextSteps || []).map(askOwnName),
-        follow: answer.followUps || [], at: Date.now() };
+        follow: answer.followUps || [], fromData: answer.fromData === true, at: Date.now() };
       store.write(KEYS.ask, askThread().concat([item]).slice(-ASK_KEEP));
       if (answer.credits) askCreditsNow = answer.credits;
       $('#ask-input').value = '';
@@ -10402,9 +10406,13 @@
     // the scrollbar (html, scrollbar-gutter) makes `right` land short of it.
     const width = document.documentElement.clientWidth;
     const pad = parseFloat(getComputedStyle(column).paddingRight) || 0;
-    fab.style.left = Math.round(Math.min(box.right - pad, width - 16)) + 'px';
+    // Just right of the report when the button fits there; otherwise at the
+    // bottom right inside the report's column.
+    const fabWidth = fab.offsetWidth || 180;
+    const outside = width - box.right - gap - 16 >= fabWidth;
+    fab.style.left = Math.round(outside ? box.right + gap : Math.min(box.right - pad, width - 16)) + 'px';
     fab.style.right = 'auto';
-    fab.style.transform = 'translateX(-100%)';
+    fab.style.transform = outside ? '' : 'translateX(-100%)';
     const room = width - box.right - gap - 16;
     if (room >= 320) {
       panel.style.left = Math.round(box.right + gap) + 'px';
