@@ -1165,7 +1165,12 @@
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],
-      compatTitle: 'Psyche Sync, free',
+      compatTitle: 'Psyche Sync',
+      compatFree: 'Free',
+      // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
+      askTitle: 'Ask PsycheAI',
+      askBlurb: 'Your personal coach that already knows you from your report. Ask it anything about yourself.',
+      askPrice: price => price + ' for a pack of 5 questions',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',

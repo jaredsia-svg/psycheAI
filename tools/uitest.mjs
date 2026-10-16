@@ -2795,12 +2795,11 @@ try {
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('.row-head')).color +
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
-  check('the five steps say what you get, not how it works, Psyche Sync marked free and Ask PsycheAI priced',
+  check('the four steps say what you get, not how it works, and step 2 names Gemini alone',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
-    'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync Free | Ask PsycheAI' &&
+    'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync' &&
     /analysed by Gemini, which creates a report for you/.test(await page.locator('.step-card').nth(1).innerText()) &&
-    !/Claude/.test(await page.locator('.step-card').nth(1).innerText()) &&
-    /personal coach.*US\$5 for a pack of 5 questions/s.test(await page.locator('.step-card').nth(4).innerText()),
+    !/Claude/.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // Step one points the reader downwards for the how-to. A directional
   // reference is a claim about the page, so it is checked as one: the card it
@@ -3597,8 +3596,14 @@ try {
   check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
     premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
     premiumTier.careerChips.join('|'));
-  check('and Psyche Sync is offered as free',
-    /Psyche Sync, free/.test(await page.locator('#view-welcome .insight-compat').textContent()));
+  check('and Psyche Sync is offered as free, in a green pill',
+    await page.evaluate(() => { const c = document.querySelector('#view-welcome .insight-compat'), pill = c && c.querySelector('h3 .insight-free-pill');
+      return Boolean(pill) && pill.textContent === 'Free' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
+        getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)'; }));
+  check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
+    await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
+      return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
+        /US\$5 for a pack of 5 questions/.test(a.textContent); }));
 
   // ---- the premium tier block ----
   //
@@ -3892,9 +3897,8 @@ try {
     /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
-  check('step four is Psyche Sync, between friends, started by sending your link, and free (a green pill)',
-    /^send connections your link and see what clicks between you/i.test(stepFour) &&
-      (await page.locator('.step-card').nth(3).locator('h3 .step-free').innerText()) === 'Free' &&
+  check('step four is Psyche Sync, between friends, started by sending your link, and free',
+    /^send connections your link and see what clicks between you/i.test(stepFour) && /Free\.$/.test(stepFour) &&
       !/partner|colleague|romantic/i.test(stepFour), stepFour);
 
   // Until a profile exists both of these lead straight back to the upload

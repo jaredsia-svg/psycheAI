@@ -2434,7 +2434,13 @@
     '</div>' +
     '<div class="insight-compat">' +
       '<span class="insight-compat-icon" aria-hidden="true">' + Copy.lineIcon('🤝') + '</span>' +
-      '<div><h3>' + esc(I.compatTitle) + '</h3><p>' + esc(I.compatBlurb) + '</p></div>' +
+      '<div><h3>' + esc(I.compatTitle) + ' <span class="insight-free-pill">' + esc(I.compatFree) + '</span></h3><p>' + esc(I.compatBlurb) + '</p></div>' +
+    '</div>' +
+    // Ask PsycheAI, the coach, under it, with its price for five questions.
+    '<div class="insight-compat insight-ask">' +
+      '<span class="insight-compat-icon" aria-hidden="true"><span class="ask-mark"></span></span>' +
+      '<div><h3>' + esc(I.askTitle) + ' <span class="insight-price">' + esc(I.askPrice(Prices.label(CURRENCY, 'ask'))) + '</span></h3>' +
+        '<p>' + esc(I.askBlurb) + '</p></div>' +
     '</div>';
   }
 

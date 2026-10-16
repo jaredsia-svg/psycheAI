@@ -2917,9 +2917,10 @@ from your Instagram data and digital footprint.* It used to list MBTI, love lang
 career strengths "with zero quizzes required"; the headline above it, *No questions asked.*, already
 says the second half.
 
-**On the front page** the how-it-works row has a fifth step, *Ask PsycheAI*: a personal coach who
-already knows you from your report, at its price for five questions (`data-price="ask"`). Psyche
-Sync's "Free" is a green pill beside its name, and step 2 names Gemini alone.
+**On the front page**, under the Psyche Report's tier, Psyche Sync's "Free" is a green pill beside its
+name (`.insight-free-pill`), and under it a line of its own offers *Ask PsycheAI*: a personal coach that
+already knows you from your report, with its price for five questions (`.insight-ask`, the price from
+`docs/prices.js` in the reader's currency). The how-it-works steps stay four; step 2 names Gemini alone.
 
 **After Save a backup** a popout says what the file is for, in plain words: it holds the card, the
 report, the Syncs and the questions; if this browser loses them, open PsycheAI elsewhere, tap *Load
