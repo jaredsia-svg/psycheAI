@@ -6918,23 +6918,25 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       order.indexOf('cardHighlights') > order.indexOf('patterns') &&
       /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
     check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
-      /one list of at most three in all/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /one list of exactly three in all/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /under 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
     check('values and beliefs are one list on the page, so both structured prompts forbid a belief restating a value',
       /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
-      /one list of at most three/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /one list of exactly three/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /none may restate a top motivator or a signature pattern/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /none may restate a top motivator or a pattern/.test(prompts.STRUCTURED_FULL_SYSTEM));
-    check('values and beliefs are capped at three between them in both structured schemas, chosen after the motivators and patterns',
-      /never more than three entries in all/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
-      /At most one, and only if values has fewer than three/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
-      /restate a top motivator or a signature pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
+    // Exactly three since October 2026 ("at most three" let a report show two).
+    check('values and beliefs are exactly three between them in both structured schemas, chosen after the motivators and patterns',
+      /Three entries in all with the belief/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
+      /One when values has two, to make up the third/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
+      /religious, political, ethical or philosophical/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
+      /None may repeat another, a top motivator or a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
       order.indexOf('values') > order.indexOf('topMotivators') && order.indexOf('values') > order.indexOf('patterns') &&
-      /never more than three/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.values.description) &&
-      /At most one/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.beliefs.description) &&
+      /exactly three entries in all/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.values.description) &&
+      /Exactly one when values has two/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.beliefs.description) &&
       prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties.values.description === prompts.STRUCTURED_FULL_SCHEMA.properties.values.description);
     check('the free card names its three motivators, and the paid report is held to them',
       JSON.stringify(prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators.items.enum) === JSON.stringify(prompts.MOTIVATORS) &&
@@ -8244,7 +8246,11 @@ check('the schema requires evidence on where they align and differ',
     const late = await referral.claimFirst(fresh);
     const refusal = await referral.grantRefusal(late, { b: 1 }, { account: buyer });
     check('an account that has already had a Psyche Report cannot use the free first one',
-      /^[0-9a-f]{48}$/.test(late || '') && /first Psyche Report only/.test(refusal || ''), String(refusal));
+      /^[0-9a-f]{48}$/.test(late || '') && refusal === referral.FIRST_USED, String(refusal));
+    // Known before any grant is asked for, so the page can stop offering it.
+    check('and whether an account has had its first report is known up front, false when unknown',
+      (await referral.firstUsedBy(buyer)) === true && (await referral.firstUsedBy(sha('psycheai:never-bought'))) === false &&
+        (await referral.firstUsedBy('')) === false);
   }
   referral.spendGrant(grant, digestA);
   await new Promise(resolve => setTimeout(resolve, 10));

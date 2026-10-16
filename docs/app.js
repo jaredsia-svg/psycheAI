@@ -180,6 +180,9 @@
     giftBannerClosed: 'psycheai_gift_banner_closed',
     inviteBannerClosed: 'psycheai_invite_banner_closed',
     gifts: 'psycheai_gifts_made',
+    // Set once the server says this account has had its first report, so the
+    // free first-report unlock is never offered again on this device.
+    firstUsed: 'psycheai_first_used',
     // Ask PsycheAI: every question and answer, kept in this browser only (the
     // server keeps none), newest last; and a payment for questions that was
     // made but not yet credited, to credit on the next open (openAsk).
@@ -1889,10 +1892,16 @@
     if (!mine) return null;
     referralAskedAt = Date.now();
     try {
+      const account = await accountKey().catch(() => null);
       const response = await fetch('api/referral', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: mine.secret }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ secret: mine.secret }, account ? { account } : {})),
       });
       referralStatus = response.ok ? await response.json() : referralStatus;
+      // This account has had a full report: no free first one to offer.
+      if (referralStatus && referralStatus.first && referralStatus.first.used && !store.read(KEYS.firstUsed, false)) {
+        markFirstUsed();
+      }
     } catch (error) { /* keep what we had */ }
     return referralStatus;
   }
@@ -2055,9 +2064,24 @@
   // reader has no Psyche Report, since the server refuses it after.
   function firstFreeOffered() {
     return Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length &&
-      !hasUnfetchedUnlock();
+      !hasUnfetchedUnlock() && !store.read(KEYS.firstUsed, false);
   }
-  const firstFreeReady = status => Boolean(status && status.first && status.first.unlocked);
+  const firstFreeReady = status => Boolean(status && status.first && status.first.unlocked && !status.first.used);
+
+  /**
+   * This account has had its first report, so the free one is not for it (the
+   * server said so: firstUsed). Remembered, the share-first offer taken off
+   * the page and the payment sheet, and the sheet left on paying.
+   */
+  function markFirstUsed(message) {
+    store.write(KEYS.firstUsed, true);
+    const dialog = $('#premium-dialog');
+    if ($('#premium-share')) $('#premium-share').hidden = true;
+    if ($('#premium-pay-head')) $('#premium-pay-head').hidden = true;
+    if (dialog) dialog.classList.remove('share-first', 'is-free-run');
+    if (message) premiumStatus(message, 'bad');
+    if (state.profile && profilePage !== 'report') renderProfile();
+  }
 
   /** The unlock panel's share-first block, before the server has said anything. */
   function unlockShareHtml() {
@@ -2171,7 +2195,7 @@
     if (rerun || !firstFreeOffered()) return;
     const U = TEXT.unlockShare;
     const show = status => {
-      if (premiumKind !== 'unlock') return;
+      if (premiumKind !== 'unlock' || !firstFreeOffered()) return;
       const ready = firstFreeReady(status);
       $('#premium-share-title').textContent = ready ? U.sheetTitle : U.title;
       $('#premium-share-sub').textContent = ready ? U.subReady : U.sub;
@@ -2202,7 +2226,9 @@
       if (!mine) return;
       button.disabled = true;
       try {
-        const answer = await LLM.postWithTicket('api/referral/claim', { secret: mine.secret, first: true });
+        const account = await accountKey().catch(() => null);
+        const answer = await LLM.postWithTicket('api/referral/claim',
+          Object.assign({ secret: mine.secret, first: true }, account ? { account } : {}));
         referralStatus = answer && answer.status ? answer.status : referralStatus;
         if (!answer || !answer.grant) throw new Error(TEXT.referral.firstFailed);
         $('#premium-share').hidden = true;
@@ -2210,7 +2236,8 @@
         $('#premium-dialog').classList.remove('share-first');
         onPaymentAuthorised({ referralGrant: answer.grant }, $('#premium-dialog'));
       } catch (error) {
-        premiumStatus((error && error.message) || TEXT.referral.firstFailed, 'bad');
+        if (error && error.firstUsed) markFirstUsed(TEXT.referral.firstUsedPay);
+        else premiumStatus((error && error.message) || TEXT.referral.firstFailed, 'bad');
       } finally {
         button.disabled = false;
       }
@@ -9300,7 +9327,9 @@
     // A free report (from the reader's link, or a gift): nothing is being
     // paid, so the price and every way to pay go while it is written
     // (.is-free-run). openPremiumDialog clears it.
-    $('#premium-dialog').classList.toggle('is-free-run', Boolean(auth.referralGrant));
+    // A 100% promo code too: once it is accepted there is nothing to pay, so
+    // only the progress shows.
+    $('#premium-dialog').classList.toggle('is-free-run', Boolean(auth.referralGrant || auth.promoCode));
     $('#premium-retry').hidden = true;
     $('#premium-promo-input').disabled = true;
     $('#premium-promo-apply').disabled = true;
@@ -9424,6 +9453,10 @@
       openPaidSections();
       dialog.close();
     } catch (error) {
+      // The ways to pay come back: a refused code or free report is exactly
+      // when the reader needs them.
+      dialog.classList.remove('is-free-run');
+      if (error && error.firstUsed) markFirstUsed();
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
       $('#premium-promo-input').disabled = false;
       $('#premium-promo-apply').disabled = false;

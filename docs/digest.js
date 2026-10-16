@@ -969,7 +969,9 @@
   // 10,600 once it wrote the Overview: the executive summary and the
   // patterns' evidence (10,528 measured). 11,000 once the card and the
   // report shared one confidence rule (CONFIDENCE_SCORING, 10,959 measured).
-  const FREE_FIXED_INPUT_TOKENS = 11000;
+  // 11,100 once Values & Beliefs became exactly three (11,003 measured); the
+  // three free caps still pay for their digests at it.
+  const FREE_FIXED_INPUT_TOKENS = 11100;
 
   // ---------- what the premium read can cost, at most ----------
   //

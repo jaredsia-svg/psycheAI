@@ -5451,6 +5451,15 @@ Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merge
 The free prompt grew to 10,959 tokens (`FREE_FIXED_INPUT_TOKENS` 11,000); `DEEP_FREE_COST_CAP` $0.084 →
 $0.085. The ring's explanation on the card no longer says the score depends on how much was read.
 
+### Values & Beliefs: exactly three (October 2026)
+
+"At most three" let a report show two (the 17 October merged report did). The list is now exactly three:
+two values and a belief — religious, political, ethical or philosophical, wherever the reader's own data
+supports one (a search never does) — or a third value where no belief is supported. None may repeat
+another, a top motivator or a pattern; fewer only for a genuinely thin export. Religion is allowed, as
+it always was, under the same rule as any belief; it is on the card, so it appears only where the
+reader's own words or record show it.
+
 ### One call for the unlock that adds data (October 2026)
 
 The probe answered it: Gemini refuses the merged schema only because of its enums. With every enum a

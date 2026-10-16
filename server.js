@@ -545,7 +545,7 @@ async function handleAnalyse(request, response) {
     const grantProblem = !full ? 'A free report from your link unlocks the Psyche Report only.'
       : await referral.grantRefusal(referralGrant, body.digest, { account: body.account, myRef: body.myRef });
     if (grantProblem) {
-      sendJson(response, 402, { error: grantProblem });
+      sendJson(response, 402, Object.assign({ error: grantProblem }, grantProblem === referral.FIRST_USED ? { firstUsed: true } : {}));
       return;
     }
   }
@@ -1137,6 +1137,9 @@ async function handleReferral(request, response) {
     sendJson(response, 400, { error: 'That referral code is not valid.' });
     return;
   }
+  // Whether this reader's account has had a full report already, so the page
+  // never offers a free first report the run would refuse.
+  if (body && body.account) status.first.used = await referral.firstUsedBy(body.account);
   sendJson(response, 200, status);
 }
 // `first: true` asks for the free first report a friend's card unlocked;
@@ -1144,6 +1147,11 @@ async function handleReferral(request, response) {
 async function handleReferralClaim(request, response) {
   const body = await readJsonBody(request);
   const first = Boolean(body && body.first === true);
+  // Refused before a grant is made: this account has had its first report.
+  if (first && await referral.firstUsedBy(body && body.account)) {
+    sendJson(response, 402, { error: referral.FIRST_USED, firstUsed: true });
+    return;
+  }
   const grant = first ? await referral.claimFirst(body && body.secret) : await referral.claim(body && body.secret);
   if (!grant) {
     sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection opens your link.'

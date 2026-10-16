@@ -790,6 +790,8 @@
       useGift: 'Use your gifted free Psyche Report',
       claimFailed: 'You have no credits to spend yet.',
       firstFailed: 'Your free Psyche Report unlocks once 1 connection opens your link.',
+      // When this account has had a Psyche Report already (lib/referral.js, FIRST_USED).
+      firstUsedPay: 'Your free Psyche Report from your link was for your first one. You can unlock this one below.',
       giftShareText: 'A free Psyche Report, from me 🎁 Make your free Psyche Card, then unlock the Psyche Report with this link:',
       giftCopied: 'Gift link copied. It unlocks one Psyche Report, once, within 60 days.',
       giftsHead: 'Gift links you have made (each works once, for 60 days)',
