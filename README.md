@@ -5406,6 +5406,19 @@ than the premium one (about 1.5 cents less), or Gemini context caching of the di
 two calls. Caching cannot share a cached entry between two different system prompts, and the
 storage arithmetic under "Context caching" applies.
 
+**Probing a merge.** `tools/probe-schema.mjs` has rows for it: `combined` (the structured full
+schema with the free card's `card` and the roast added, everything both calls write in one answer),
+the same with every enum made a plain string and its values listed in the description (option 1,
+which would need the server to check each value), the same keeping only the character catalogue's
+enum, the same with the values dropped (the floor), and option 1 with nested arrays flattened.
+`structured full, enums as strings` asks whether enums alone are what Gemini refuses today.
+`node tools/probe-schema.mjs --dry` prints every row's size and enum count without a key;
+`GEMINI_API_KEY=... npm run probe:schema -- combined` runs only those rows. Option 2 (sending real
+JSON Schema as `responseJsonSchema`) is not a row because it is what lib/gemini.js already sends.
+Production goes to Vertex AI first, and a schema Vertex refuses is not retried with the key
+(`isBackendFailure`), so `--vertex` sends the rows there with the server's own service-account
+variables; the two can differ, and Vertex's answer is the one that decides.
+
 ### The report opens as an index, not a scroll
 
 Every section arrives shut. What a reader meets on the psyche page is a list of headings — Who you
