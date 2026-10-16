@@ -4769,3 +4769,117 @@ details.more[open] > summary::after { content: ' ▴'; }
 .backup-dialog ul { margin: .4rem 0 .9rem; padding-left: 1.2rem; }
 .backup-dialog li { margin: 0 0 .4rem; line-height: 1.45; }
 .backup-dialog .btn { width: 100%; }
+
+/* ---------- My Psyche's hub (app.js, hubHtml) ----------
+   Four tiles, each its own colour (the report purple, Ask pink, syncs blue,
+   the link amber), mixed into the page's own background so the dark theme
+   gets them too; then one lavender box for the reader's data and what to
+   keep, with white chips and buttons on it. The locked report glows. */
+.hub-card { --hub-r: #7b3fa0; --hub-a: #d1477a; --hub-s: #3f6fd1; --hub-l: #c97a12; }
+.hub-card { padding: clamp(1rem, 3vw, 1.4rem) clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 1.5rem); }
+.hub-svg { width: 20px; height: 20px; flex: none; }
+.hub-head { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
+.hub-head h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.01em; }
+.hub-head p { margin: .1rem 0 0; color: var(--ink-soft); font-size: .9rem; }
+.hub-sq { width: 38px; height: 38px; flex: none; border-radius: 11px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); }
+.hub-sq-brand { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+
+.hub-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.hub-tile { --c: var(--hub-r); position: relative; display: flex; flex-direction: column; min-height: 12.5rem; padding: 1rem;
+  border-radius: 16px; border: 1px solid color-mix(in srgb, var(--c) 22%, var(--bg-alt));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, var(--bg-alt)), color-mix(in srgb, var(--c) 4%, var(--bg-alt)));
+  transition: transform .15s ease, box-shadow .15s ease; }
+.hub-tile:hover { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--c) 18%, transparent); }
+.hub-ask { --c: var(--hub-a); } .hub-syncs { --c: var(--hub-s); } .hub-link { --c: var(--hub-l); }
+.hub-tile .hub-sq { background: var(--c); color: #fff; margin-bottom: .75rem; }
+.hub-name { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.hub-num { margin: .2rem 0 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.05;
+  color: color-mix(in srgb, var(--c) 88%, var(--ink)); }
+.hub-num.is-word { font-size: 1.6rem; padding: .15rem 0; }
+.hub-what { margin: .15rem 0 0; font-size: .82rem; color: var(--ink-soft); }
+.hub-dots { display: flex; gap: 5px; margin-top: .5rem; }
+.hub-dots i { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--c) 18%, var(--bg-alt)); }
+.hub-dots i.on { background: var(--c); }
+.hub-acts { margin-top: auto; padding-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
+.hub-go { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: .88rem;
+  padding: .45rem .8rem; border-radius: 999px; background: var(--bg-alt); color: color-mix(in srgb, var(--c) 85%, var(--ink));
+  box-shadow: 0 2px 8px rgba(36, 26, 46, .07); }
+.hub-go .hub-svg { width: 15px; height: 15px; }
+.hub-more { border: 0; background: none; padding: 0; font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer;
+  color: color-mix(in srgb, var(--c) 80%, var(--ink)); text-decoration: underline; text-underline-offset: 3px; }
+.hub-badge { position: absolute; top: 1rem; right: .85rem; font-size: .7rem; font-weight: 800; color: #fff; background: var(--c);
+  padding: .2rem .55rem; border-radius: 999px; }
+.hub-badge[hidden] { display: none; }
+
+/* The locked report: a gradient ring that breathes, a soft glow, a filled button. */
+.hub-tile.is-cta { border: 2px solid transparent;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--hub-r) 13%, var(--bg-alt)), color-mix(in srgb, var(--hub-r) 4%, var(--bg-alt))) padding-box,
+    linear-gradient(135deg, var(--accent), var(--accent-2), #f0a35a) border-box;
+  animation: hub-glow 2.4s ease-in-out infinite; }
+@keyframes hub-glow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(209, 71, 122, .08), 0 10px 26px rgba(123, 63, 160, .22); }
+  50% { box-shadow: 0 0 0 9px rgba(209, 71, 122, .14), 0 14px 38px rgba(123, 63, 160, .38); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-tile.is-cta { animation: none; box-shadow: 0 0 0 6px rgba(209, 71, 122, .1), 0 12px 32px rgba(123, 63, 160, .3); }
+  .hub-tile, .hub-tile:hover { transition: none; transform: none; }
+}
+.hub-tile.is-cta .hub-sq { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.hub-tile.is-cta .hub-num { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hub-tile.is-cta .hub-go { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 6px 14px rgba(209, 71, 122, .35); }
+.hub-tile.is-cta .hub-badge { background: linear-gradient(90deg, var(--accent-2), #f0a35a); }
+
+.hub-rows { margin-top: .85rem; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--bg-alt));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 8%, var(--bg-alt)), color-mix(in srgb, var(--accent) 3%, var(--bg-alt))); }
+.hub-row { display: flex; align-items: center; gap: .9rem; padding: .85rem 1rem; }
+.hub-row + .hub-row { border-top: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+.hub-rl { flex: none; width: 6.4rem; display: flex; align-items: center; gap: .55rem; font-weight: 700; font-size: .9rem; }
+.hub-rl .hub-sq { width: 32px; height: 32px; border-radius: 9px; background: var(--bg-alt); }
+.hub-rl .hub-svg { width: 17px; height: 17px; }
+.hub-ring { --p: 0; width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--accent), var(--accent-2) calc(var(--p) * 1%), color-mix(in srgb, var(--accent) 14%, var(--bg-alt)) 0); }
+.hub-ring b { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-alt); display: grid; place-items: center; font-size: .9rem; }
+.hub-conf { flex: none; display: flex; flex-direction: column; line-height: 1.3; }
+.hub-conf b { font-size: .9rem; }
+.hub-textlink { border: 0; background: none; padding: 0; font: inherit; font-size: .78rem; font-weight: 600; color: var(--accent); cursor: pointer; text-align: left; }
+.hub-chips { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; }
+.hub-chip { display: inline-flex; align-items: center; gap: .3rem; font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer;
+  padding: .32rem .7rem; border-radius: 999px; background: var(--bg-alt); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--bg-alt)); }
+.hub-chip .hub-svg { width: 14px; height: 14px; color: var(--good); stroke-width: 2.4; }
+.hub-chip.is-add { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--accent) 40%, var(--bg-alt)); }
+.hub-chip.is-add .hub-svg { color: var(--accent); }
+.hub-acts-row { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.hub-btn { display: inline-flex; align-items: center; gap: .45rem; font: inherit; font-weight: 700; font-size: .84rem; cursor: pointer;
+  padding: .5rem .8rem; border-radius: 11px; background: var(--bg-alt); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--bg-alt)); box-shadow: 0 1px 3px rgba(123, 63, 160, .08); }
+.hub-btn .hub-svg { width: 16px; height: 16px; }
+.hub-btn.is-locked { color: var(--ink-soft); }
+.hub-saved { font-size: .7rem; font-weight: 800; padding: .1rem .45rem; border-radius: 999px; color: var(--good); background: var(--good-soft); }
+.hub-saved.is-never { color: var(--warn); background: var(--warn-soft); }
+.hub-del { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; border: 0; background: none; font: inherit;
+  font-size: .84rem; font-weight: 600; color: var(--danger); cursor: pointer; }
+.hub-del .hub-svg { width: 15px; height: 15px; }
+
+.hub-dialog { width: min(40rem, calc(100vw - 2rem)); }
+.hub-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; }
+.hub-dialog-head h2 { margin: 0; font-size: 1.2rem; }
+.hub-dialog-close { width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 0; cursor: pointer; font-size: 1.3rem; line-height: 1;
+  background: var(--accent-soft); color: var(--accent); }
+.hub-dialog-body > .card { margin: 0; box-shadow: none; border: 0; padding: 0; background: none; }
+.hub-dialog-body > .card::before { display: none; }
+/* The popout's own title says what it is; the card inside does not say it again. */
+.hub-dialog-body .method-card > .card-head, .hub-dialog-body .referral-title { display: none; }
+.hub-dialog-body .referral-title-row { justify-content: flex-start; }
+
+@media (max-width: 759px) {
+  .hub-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  .hub-tile { min-height: 11rem; padding: .85rem; }
+  .hub-num { font-size: 1.9rem; } .hub-num.is-word { font-size: 1.35rem; }
+  .hub-go { font-size: .82rem; padding: .4rem .65rem; }
+  .hub-row { flex-wrap: wrap; }
+  .hub-rl { width: 100%; }
+  .hub-chips { flex-basis: 100%; justify-content: flex-start; }
+  .hub-del { margin-left: 0; }
+}

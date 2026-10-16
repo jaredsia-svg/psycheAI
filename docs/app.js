@@ -183,6 +183,8 @@
     // Set once the server says this account has had its first report, so the
     // free first-report unlock is never offered again on this device.
     firstUsed: 'psycheai_first_used',
+    // When a backup was last saved, for the hub.
+    lastBackup: 'psycheai_last_backup',
     // Ask PsycheAI: every question and answer, kept in this browser only (the
     // server keeps none), newest last; and a payment for questions that was
     // made but not yet credited, to credit on the next open (openAsk).
@@ -2256,9 +2258,286 @@
    */
   function hubSectionsHtml(report) {
     // The way into My Report is a button under the card's tools (cardGuideHtml).
-    // The roast moved to My Report once it is unlocked (Appendix 1), beside
-    // the Overview it used to sit under.
-    return methodCardHtml(report, false) + referralCardHtml(true);
+    // The roast moved to My Report once it is unlocked (Appendix 1). Evidence
+    // and method and the referral card open from the hub now.
+    return hubHtml(report, true);
+  }
+
+  // ---------- My Psyche's hub ----------
+  //
+  // Four tiles — the report, Ask PsycheAI, the reader's syncs and their link —
+  // then their data and what to keep. Under the card once the report is
+  // unlocked; at the foot of the page before, after the Overview, the roast
+  // and the offer. The numbers that come from the server (questions left, the
+  // link's counts) are filled in by refreshHub when they arrive.
+  const HUB_ICONS = {
+    report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/><path d="M12 8.6l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
+    sync: '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/>',
+    spark: '<path d="M12 3l1.8 4.6L18.5 9.4l-4.7 1.8L12 16l-1.8-4.8L5.5 9.4l4.7-1.8z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
+    grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    tick: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+  };
+  const hubIcon = key => '<svg class="hub-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + HUB_ICONS[key] + '</svg>';
+  const hubDots = (n, on) => n > 0 && n <= 6 ? '<span class="hub-dots" aria-hidden="true">' +
+    Array.from({ length: n }, (_, i) => '<i' + (i < on ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
+
+  /** A past moment as "today", "yesterday", "3 days ago" or a date. */
+  function agoText(at) {
+    const then = Number(new Date(at));
+    if (!Number.isFinite(then)) return '';
+    const days = Math.floor((Date.now() - then) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return days + ' days ago';
+    return new Date(then).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+
+  function hubTile(key, opts) {
+    return '<div class="hub-tile hub-' + key + (opts.cta ? ' is-cta' : '') + '" data-hub="' + key + '">' +
+      (opts.badge ? '<span class="hub-badge" data-hub-badge>' + esc(opts.badge) + '</span>' : '<span class="hub-badge" data-hub-badge hidden></span>') +
+      '<span class="hub-sq">' + hubIcon(opts.icon) + '</span>' +
+      '<p class="hub-name">' + esc(opts.name) + '</p>' +
+      '<p class="hub-num' + (opts.word ? ' is-word' : '') + '" data-hub-num>' + esc(opts.num) + '</p>' +
+      '<p class="hub-what" data-hub-what>' + esc(opts.what) + '</p>' +
+      '<span data-hub-dots>' + (opts.dots || '') + '</span>' +
+      '<div class="hub-acts">' +
+        '<button type="button" class="hub-go" data-hub-go="' + esc(opts.go) + '">' + esc(opts.goLabel) + hubIcon('arrow') + '</button>' +
+        (opts.more ? '<button type="button" class="hub-more" data-hub-go="' + esc(opts.more.go) + '">' + esc(opts.more.label) + '</button>' : '') +
+      '</div></div>';
+  }
+
+  function hubHtml(report, explained) {
+    const H = Copy.STRUCTURED.hub;
+    const history = store.read(KEYS.history, []);
+    const syncs = Array.isArray(history) ? history.filter(entry => entry && (entry.report || entry.withName)) : [];
+    const fresh = syncs.filter(entry => entry.fresh).length;
+    const latest = syncs.reduce((at, entry) => Math.max(at, Number(new Date(entry.when)) || 0), 0);
+    const freeFirst = !explained && firstFreeOffered();
+    const tiles = [
+      explained
+        ? hubTile('report', { icon: 'report', name: H.report, num: H.unlocked, word: true, what: H.parts(PART_ORDER.length),
+            go: 'report', goLabel: H.openReport })
+        : hubTile('report', { icon: 'lock', name: H.report, num: H.locked, word: true, cta: true,
+            badge: freeFirst ? H.unlockFree : '',
+            what: freeFirst ? H.freeWhen : H.priceFor(TEXT.premiumPriceLabel), go: 'unlock', goLabel: H.unlock }),
+      hubTile('ask', { icon: 'ask', name: H.ask, num: '–', what: H.questionsLeft(0), go: 'ask', goLabel: H.askGo }),
+      hubTile('syncs', { icon: 'sync', name: H.syncs, num: String(syncs.length),
+        badge: fresh ? H.newCount(fresh) : '',
+        what: syncs.length ? (latest ? H.syncsLatest(agoText(latest)) : '') : H.syncsNone,
+        go: syncs.length ? 'syncs' : 'invite', goLabel: syncs.length ? H.seeSyncs : H.invite }),
+      hubTile('link', { icon: 'link', name: H.link, num: '0', what: freeFirst ? H.toFirst : H.opened,
+        go: 'share', goLabel: H.share, more: { go: 'link', label: H.linkMore } }),
+    ];
+    const digest = state.digest;
+    const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
+    const sources = [
+      ['instagram', TEXT.sourceInstagram, Boolean(digest)],
+      ['whatsapp', TEXT.sourceWhatsApp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
+      ['google', TEXT.sourceGoogle, Boolean(digest && digest.google)],
+      ['facebook', TEXT.sourceFacebook, Boolean(digest && digest.facebook)],
+    ];
+    const conf = report.confidence || {};
+    const score = Math.max(0, Math.min(100, Math.round(Number(conf.score) || 0)));
+    const saved = store.read(KEYS.lastBackup, null);
+    const flow = explained ? 'rerun' : 'unlock';
+    return '<section class="card section-card hub-card screen-only" aria-labelledby="hub-title">' +
+      '<div class="hub-head"><span class="hub-sq hub-sq-brand">' + hubIcon('grid') + '</span><div>' +
+        '<h2 id="hub-title">' + esc(H.title) + '</h2>' +
+        '<p>' + esc(freeFirst ? H.subFree : H.subPaid) + '</p></div></div>' +
+      '<div class="hub-tiles">' + tiles.join('') + '</div>' +
+      '<div class="hub-rows">' +
+        '<div class="hub-row hub-data">' +
+          '<span class="hub-rl"><span class="hub-sq">' + hubIcon('target') + '</span>' + esc(H.data) + '</span>' +
+          '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
+          '<span class="hub-conf"><b>' + esc(H.confidence(conf.level)) + '</b>' +
+            '<button type="button" class="hub-textlink" data-hub-go="method">' + esc(H.howRead) + ' ›</button></span>' +
+          '<span class="hub-chips">' + sources.map(([key, label, loaded]) =>
+            '<button type="button" class="hub-chip' + (loaded ? '' : ' is-add') + '" data-hub-source="' + key + '" data-flow="' + flow + '"' +
+            ' aria-label="' + esc(loaded ? H.sourceLoaded(label) : H.sourceAdd(label)) + '">' +
+            (loaded ? esc(label) + hubIcon('tick') : hubIcon('plus') + esc(label)) + '</button>').join('') + '</span>' +
+        '</div>' +
+        '<div class="hub-row hub-keep">' +
+          '<span class="hub-rl"><span class="hub-sq">' + hubIcon('save') + '</span>' + esc(H.keep) + '</span>' +
+          '<span class="hub-acts-row">' +
+            '<button type="button" class="hub-btn" data-hub-go="backup">' + hubIcon('save') + esc(H.backup) +
+              '<span class="hub-saved' + (saved ? '' : ' is-never') + '">' + esc(saved ? H.savedAgo(agoText(saved)) : H.neverSaved) + '</span></button>' +
+            (explained
+              ? '<button type="button" class="hub-btn" data-hub-go="ai" title="' + esc(H.aiTip) + '">' + hubIcon('spark') + esc(H.aiProfile) + '</button>'
+              : '<button type="button" class="hub-btn is-locked" data-hub-go="unlock" title="' + esc(H.aiTip) + '">' + hubIcon('lock') + esc(H.aiLocked) + '</button>') +
+            '<button type="button" class="hub-del" data-hub-go="delete">' + hubIcon('trash') + esc(H.deleteAll) + '</button>' +
+          '</span>' +
+        '</div>' +
+      '</div>' +
+    '</section>';
+  }
+
+  /** The hub's numbers from the server: questions left and the link's counts. */
+  function refreshHub() {
+    const hub = document.querySelector('#profile-body .hub-card');
+    if (!hub) return;
+    const H = Copy.STRUCTURED.hub;
+    // Set through the DOM: the site's policy refuses inline style attributes.
+    const ring = hub.querySelector('.hub-ring[data-p]');
+    if (ring) ring.style.setProperty('--p', ring.dataset.p);
+    const set = (key, num, what, dots) => {
+      const tile = hub.querySelector('.hub-tile[data-hub="' + key + '"]');
+      if (!tile) return;
+      if (num !== null) tile.querySelector('[data-hub-num]').textContent = num;
+      if (what !== null) tile.querySelector('[data-hub-what]').textContent = what;
+      if (dots !== null) tile.querySelector('[data-hub-dots]').innerHTML = dots;
+    };
+    if (askCreditsNow && typeof askCreditsNow.total === 'number') {
+      const n = askCreditsNow.total;
+      const explained = hasExplanations(state.profile);
+      set('ask', String(n), explained || n !== 1 ? H.questionsLeft(n) : H.freeQuestion(n), hubDots(Math.max(n, explained ? 5 : 1), n));
+      const tile = hub.querySelector('.hub-tile[data-hub="ask"] .hub-go');
+      if (tile && n < 1) { tile.dataset.hubGo = 'ask'; tile.firstChild.textContent = H.getMore; }
+    }
+    const status = referralStatus;
+    if (status) {
+      const explained = hasExplanations(state.profile);
+      const freeFirst = !explained && firstFreeOffered();
+      const what = freeFirst ? H.toFirst
+        : status.available > 0 ? H.credits(status.available)
+          : H.toCredit(Number(status.toward) || 0, Number(status.perCredit) || 3);
+      set('link', String(Number(status.opens) || 0), what,
+        freeFirst ? '' : hubDots(Number(status.perCredit) || 3, Number(status.toward) || 0));
+    }
+  }
+
+  // The two popouts the hub opens: Evidence and method, and the link's credits
+  // and gifts (the referral card, whole, so its own handlers keep working).
+  function openHubDialog(id, title, html) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+    dialog.querySelector('.hub-dialog-title').textContent = title;
+    setHtml(dialog.querySelector('.hub-dialog-body'), html);
+    if (!dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
+  }
+  for (const id of ['hub-link-dialog', 'hub-method-dialog']) {
+    const dialog = document.getElementById(id);
+    if (!dialog) continue;
+    dialog.querySelector('.hub-dialog-close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+  }
+
+  document.addEventListener('click', event => {
+    const chip = event.target.closest('.hub-chip');
+    if (chip) {
+      if (chip.dataset.flow === 'unlock') openPremiumDialog(chip, 'unlock');
+      else startRerun();
+      return;
+    }
+    const button = event.target.closest('[data-hub-go]');
+    if (!button || !button.closest('.hub-card')) return;
+    const H = Copy.STRUCTURED.hub;
+    const report = state.profile && state.profile.report;
+    switch (button.dataset.hubGo) {
+      case 'report': go('full'); break;
+      case 'unlock': openPremiumDialog(button, 'unlock'); break;
+      case 'ask': openAsk(); break;
+      case 'syncs': go('scan'); break;
+      case 'invite': case 'share': shareMyLink(button); break;
+      case 'link':
+        openHubDialog('hub-link-dialog', H.linkDialogTitle, referralCardHtml(hasExplanations(state.profile)));
+        refreshReferral().catch(() => {});
+        break;
+      case 'method':
+        if (report) openHubDialog('hub-method-dialog', H.methodDialogTitle,
+          hasExplanations(state.profile) ? methodCardHtml(report, false) : freeMethodCardHtml(report));
+        break;
+      case 'backup': saveBackup(); break;
+      case 'ai': downloadAiProfile(); break;
+      case 'delete': $('#delete-profile').click(); break;
+    }
+  });
+
+  /**
+   * "Your AI profile": a short Markdown file about the reader, made on this
+   * device from their Psyche Report, to paste into ChatGPT, Claude or Gemini
+   * so it knows who it is talking to. Who they are, what drives them, their
+   * patterns and interests, how they connect, how they work and what they are
+   * working on. Never the roast, the attachment style, the partner section,
+   * a raw score list or anything from the data itself.
+   */
+  function aiProfileMarkdown(profile) {
+    const r = profile.report || {};
+    const premium = Object.assign({}, profile.premiumAnalysis || {});
+    const first = String((profile.card && profile.card.name) || '').trim().split(/\s+/)[0] || 'me';
+    const names = list => (list || []).map(item => item && (item.name || item.value || item.belief || item.title || item.language)).filter(Boolean);
+    const lines = [];
+    const section = (title, body) => { if (body && body.length) lines.push('## ' + title, '', ...[].concat(body), ''); };
+    lines.push('# About ' + first, '',
+      'This is a profile of me, written from my own Instagram and other data by PsycheAI (psycheai.io). ' +
+      'Use it to tailor your answers to me: how you explain things, what you suggest, and how direct you are. ' +
+      'Some lines are written to me as "you". It is a reading of my behaviour, not a diagnosis.', '');
+    section('Who I am', [String(r.summary || '').trim()].filter(Boolean));
+    const trait = key => {
+      const row = (r.bigFive || {})[key];
+      return row && row.band ? TRAIT_LABELS[key] + ': ' + row.band : '';
+    };
+    section('Personality', [
+      r.mbti && r.mbti.type ? '- MBTI: ' + r.mbti.type + (r.mbti.nickname ? ' (' + r.mbti.nickname + ')' : '') : '',
+      '- Big Five: ' + ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism'].map(trait).filter(Boolean).join('; '),
+    ].filter(Boolean));
+    const motives = (r.topMotivators || []).map(key => (Copy.STRUCTURED.motivators[key] || {}).label).filter(Boolean);
+    section('What drives me', [
+      motives.length ? '- Strongest motivators: ' + motives.join(', ') : '',
+      names(r.values).length ? '- Values: ' + names(r.values).join(', ') : '',
+      names(r.beliefs).length ? '- Beliefs: ' + names(r.beliefs).join(', ') : '',
+    ].filter(Boolean));
+    section('My patterns', (r.patterns || []).filter(p => p && p.name).map(p => '- **' + p.name + '**: ' + (p.line || '')));
+    section('My interests', names(r.interests).length ? ['- ' + names(r.interests).join(', ')] : []);
+    const love = (r.relationship && r.relationship.loveLanguages) || {};
+    const strengths = names(r.relationship && r.relationship.strengths);
+    const hard = names(r.relationship && r.relationship.weaknesses);
+    const conflict = String((r.card && r.card.conflictStyle) || '').replace(/\s*\(tentative\)\s*$/i, '');
+    section('How I connect with people', [
+      names(love.receiving).length ? '- I feel cared for through: ' + names(love.receiving).join(', ') : '',
+      names(love.giving).length ? '- I show care through: ' + names(love.giving).join(', ').replace(/^Receiving gifts\b/, 'Giving gifts') : '',
+      conflict ? '- How I handle disagreement: ' + conflict : '',
+      strengths.length ? '- What I bring: ' + strengths.join(', ') : '',
+      hard.length ? '- Where it gets hard: ' + hard.join(', ') : '',
+    ].filter(Boolean));
+    const coach = premium.careerAssessment || {};
+    const workStrengths = names(r.career && r.career.strengths);
+    section('How I work', [
+      coach.edge && coach.edge.headline ? '- My edge: ' + coach.edge.headline : '',
+      workStrengths.length ? '- Strengths: ' + workStrengths.join(', ') : '',
+      coach.holdingBack && coach.holdingBack.headline ? '- What holds me back: ' + coach.holdingBack.headline : '',
+      coach.fit && (coach.fit.suits || []).length ? '- Suits me: ' + coach.fit.suits.map(s => String(s).split(':')[0]).join('; ') : '',
+      coach.fit && (coach.fit.draining || []).length
+        ? '- Drains me: ' + coach.fit.draining.map(s => String(s).split(':')[0]).join('; ') : '',
+    ].filter(Boolean));
+    const dev = r.development || {};
+    section('What I am working on', [
+      ...(dev.buildOn || []).filter(item => item && item.title).map(item => '- Building on: ' + item.title),
+      ...(dev.develop || []).filter(item => item && (item.area || item.title)).map(item => '- Developing: ' + (item.area || item.title)),
+    ]);
+    lines.push('---', 'Made with PsycheAI on ' + new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) + '.');
+    return lines.join('\n').replace(/PsycheUser/g, first).replace(/\n{3,}/g, '\n\n');
+  }
+  function downloadAiProfile() {
+    if (!state.profile || !hasExplanations(state.profile)) return;
+    const blob = new Blob([aiProfileMarkdown(state.profile)], { type: 'text/markdown' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const first = String((state.profile.card && state.profile.card.name) || '').trim().split(/\s+/)[0] || 'my';
+    link.download = 'PsycheAI - AI profile - ' + first.replace(/[^\p{L}\p{N} _-]/gu, '') + '.md';
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
   }
 
   function fullReportLockedHtml() {
@@ -7403,8 +7682,7 @@
       return freeOverviewHtml(report) + secretRoastHtml(report.bonus) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
-        (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false)) +
-        referralCardHtml(false);
+        (reportLayout() === 'structured' ? hubHtml(report, false) : confidenceCardHtml(report, false) + referralCardHtml(false));
     }
     if (reportLayout() === 'structured') return structuredSectionsHtml(report, options);
     // Every section of the report body is a disclosure; sectionHead's other
@@ -8036,6 +8314,11 @@
     $('#report-back').hidden = !reportPage;
     // Delete everything is on My Psyche only, at its foot: never beside the report.
     $('#delete-profile').hidden = reportPage;
+    // On My Psyche the hub carries Save a backup and Delete everything
+    // (hubHtml); the row below keeps them only where there is no hub.
+    const hubHere = structured && !reportPage;
+    if (hubHere) { $('#delete-profile').hidden = true; $('#save-backup').hidden = true; }
+    else $('#save-backup').hidden = false;
     // Under My Report's part nav the row is narrow: one word each, with the
     // full name still read out.
     const words = Copy.STRUCTURED.actions;
@@ -8063,6 +8346,11 @@
     if (explained && !hub) showKeepNote();
     syncNav();
     refreshReferral().catch(() => {});
+    if (document.querySelector('#profile-body .hub-card')) {
+      refreshHub();
+      fetchReferralStatus().then(refreshHub).catch(() => {});
+      refreshAskCredits().then(refreshHub).catch(() => {});
+    }
     // The card's QR code waits for the short link, then fits the card again.
     publishShortLink().then(link => {
       if (!link || !state.profile) return;
@@ -10077,6 +10365,10 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(href), 10000);
+    // When, for the hub's "saved 3 days ago".
+    store.write(KEYS.lastBackup, new Date().toISOString());
+    const savedLine = document.querySelector('#profile-body .hub-saved');
+    if (savedLine) { savedLine.textContent = Copy.STRUCTURED.hub.savedAgo('today'); savedLine.classList.remove('is-never'); }
     // Then what the file is for, in plain words.
     const B = Copy.STRUCTURED.backupSaved, dialog = $('#backup-dialog');
     $('#backup-dialog-title').textContent = B.title;
@@ -10280,6 +10572,7 @@
     const fromLink = askCreditsNow && !out ? Number(askCreditsNow.referral) || 0 : 0;
     $('#ask-referral').hidden = !fromLink;
     $('#ask-referral').textContent = fromLink ? A.fromReferral(fromLink) : '';
+    refreshHub();
   }
   async function refreshAskCredits() {
     const mine = await ensureReferral();

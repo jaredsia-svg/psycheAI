@@ -31,6 +31,26 @@ const check = (label, ok, detail) => {
 // the target first; this is a fact about the page, not about the test. Only
 // for things on the page — a button inside an open modal needs no scrolling,
 // and scrolling the page under one just moves the coordinates off it.
+// My Psyche's Evidence and method opens from the hub (October 2026).
+async function openMethod(page) {
+  await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
+  const open = await page.evaluate(() => document.querySelector('#hub-method-dialog').open);
+  if (!open) await page.click('.hub-card [data-hub-go="method"]');
+  await page.waitForSelector('#hub-method-dialog[open] .method-card', { timeout: 10000 });
+}
+// The link's counts, credits and gifts open from the hub's Your link tile.
+async function openLink(page) {
+  await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
+  if (!(await page.evaluate(() => document.querySelector('#hub-link-dialog').open))) await page.click('.hub-card [data-hub-go="link"]');
+  await page.waitForSelector('#hub-link-dialog[open] .referral-card', { timeout: 10000 });
+}
+async function closeLink(page) {
+  if (await page.evaluate(() => document.querySelector('#hub-link-dialog').open)) await page.click('#hub-link-dialog .hub-dialog-close');
+}
+async function closeMethod(page) {
+  if (await page.evaluate(() => document.querySelector('#hub-method-dialog').open)) await page.click('#hub-method-dialog .hub-dialog-close');
+}
+
 async function clickClear(page, selector) {
   await page.locator(selector).scrollIntoViewIfNeeded();
   await page.evaluate(sel => {
@@ -11729,30 +11749,32 @@ try {
       check('structured: My Report is Parts 00-05 only — no link card, no card, a Back button',
         (await sp.locator('#profile-body .referral-card').count()) === 0 && await sp.locator('#profile-top').isHidden() &&
           await sp.locator('#report-back').isVisible());
-      // My Psyche, unlocked: the card, the link right under it, what it
-      // carries, the way into My Report, and Evidence and method.
+      // My Psyche, unlocked: the card, then the hub (October 2026), which
+      // opens Evidence and method and the link's credits in popouts.
       await sp.click('#report-back');
-      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
+      await sp.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
-          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.open-report-card') ? 'open' :
+          n.matches('.hub-card') ? 'hub' : n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' :
             n.matches('.method-card') ? 'method' : n.matches('.sync-invite-slot') ? 'sync' : n.className).join(','),
         card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
         current: (document.querySelector('.nav-links a.is-current .nav-long') || {}).textContent,
       }));
-      const hubFoot = await sp.evaluate(() => {
-        const del = document.querySelector('#delete-profile').getBoundingClientRect();
-        const note = document.querySelector('#analysed-by').getBoundingClientRect();
-        const small = getComputedStyle(document.querySelector('#profile-body .sources-read-note')).fontSize;
-        return { download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display === 'none',
-          beside: note.left >= del.right - 1 && Math.abs((note.top + note.bottom) / 2 - (del.top + del.bottom) / 2) < 30, small };
-      });
-      check('structured: My Psyche has no Download Psyche Report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
-        hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
-      check('structured: paid, the note under Evidence and method says what adding data and re-running costs',
-        await sp.evaluate(() => (document.querySelector('#profile-body .sources-read-note') || {}).textContent ===
+      const hubFoot = await sp.evaluate(() => ({
+        download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display === 'none',
+        footBackup: document.querySelector('#save-backup').hidden, footDelete: document.querySelector('#delete-profile').hidden,
+        hubBackup: Boolean(document.querySelector('.hub-card [data-hub-go="backup"]')),
+        hubDelete: Boolean(document.querySelector('.hub-card [data-hub-go="delete"]')),
+      }));
+      check('structured: My Psyche has no Download Psyche Report, and Save a backup and Delete everything are in the hub, not under it',
+        hubFoot.download && hubFoot.footBackup && hubFoot.footDelete && hubFoot.hubBackup && hubFoot.hubDelete, JSON.stringify(hubFoot));
+      await sp.click('.hub-card [data-hub-go="method"]');
+      await sp.waitForSelector('#hub-method-dialog[open] .method-card', { timeout: 10000 });
+      check('structured: paid, How it was read opens Evidence and method, whose note says what adding data and re-running costs',
+        await sp.evaluate(() => (document.querySelector('#hub-method-dialog .sources-read-note') || {}).textContent ===
           'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.'));
+      await sp.click('#hub-method-dialog .hub-dialog-close');
       check('structured: paid, the way into My Report is "See Psyche Report" with an arrow to the right, one button across the card\'s three tools',
         await sp.evaluate(() => {
           const b = document.querySelector('#profile-side .cx-tools #open-report');
@@ -11766,9 +11788,40 @@ try {
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
       // The roast moved to My Report as Appendix 1 once the report is unlocked.
-      check('structured: Back lands on My Psyche: card, Evidence and method, then Your link — no roast, no "Your Psyche Report" box, no parts',
-        hubShape.order === 'method,link' && hubShape.card && hubShape.parts === 0 &&
+      check('structured: Back lands on My Psyche: the card, then the hub — no roast, no referral card, no parts',
+        hubShape.order === 'hub' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
+      // The hub (October 2026): four tiles, the data row and Keep.
+      const hubTiles = await sp.evaluate(() => {
+        const hub = document.querySelector('#profile-body .hub-card');
+        return { names: [...hub.querySelectorAll('.hub-tile .hub-name')].map(n => n.textContent).join('|'),
+          report: hub.querySelector('.hub-tile[data-hub="report"] [data-hub-num]').textContent,
+          cta: hub.querySelectorAll('.hub-tile.is-cta').length,
+          colours: new Set([...hub.querySelectorAll('.hub-tile .hub-sq')].map(n => getComputedStyle(n).backgroundColor)).size,
+          chips: hub.querySelectorAll('.hub-chip').length, ring: getComputedStyle(hub.querySelector('.hub-ring')).getPropertyValue('--p').trim(),
+          keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
+      });
+      check('the hub has four tiles in four colours — Psyche Report (unlocked, not glowing), Ask PsycheAI, Your Syncs, Your link — then the data row and Keep',
+        hubTiles.names === 'Psyche Report|Ask PsycheAI|Your Syncs|Your link' && hubTiles.report === 'Unlocked' && hubTiles.cta === 0 &&
+          hubTiles.colours === 4 && hubTiles.chips === 4 && hubTiles.ring === String(sampleReport.confidence.score) &&
+          hubTiles.keep === 'backup,ai,delete', JSON.stringify(hubTiles));
+      await sp.click('.hub-card [data-hub-go="link"]');
+      await sp.waitForSelector('#hub-link-dialog[open] .referral-card', { timeout: 10000 });
+      check('Credits and gifts opens the link\'s counts, credits and gifts in a popout',
+        await sp.evaluate(() => document.querySelectorAll('#hub-link-dialog .referral-card .referral-n').length === 4 &&
+          document.querySelector('#hub-link-dialog .hub-dialog-title').textContent === 'Your link: credits and gifts'));
+      await sp.click('#hub-link-dialog .hub-dialog-close');
+      {
+        const [download] = await Promise.all([sp.waitForEvent('download'), sp.click('.hub-card [data-hub-go="ai"]')]);
+        const path = await download.path();
+        const text = path ? readFileSync(path, 'utf8') : '';
+        check('Download your AI profile saves a Markdown file about the reader: who they are, their patterns, interests and how they connect',
+          /\.md$/.test(download.suggestedFilename()) && /^# About /.test(text) && /## Who I am/.test(text) && /## My patterns/.test(text) &&
+            /## My interests/.test(text) && /## How I connect with people/.test(text) && /## How I work/.test(text) &&
+            /## What I am working on/.test(text) && text.includes(sampleReport.patterns[0].name), text.slice(0, 300));
+        check('and never the roast, the attachment style or the partner section',
+          !text.includes(String(sampleReport.bonus.harsh).slice(0, 40)) && !/attachment|ideal partner|who suits you/i.test(text));
+      }
 
       // ---- Ask PsycheAI ----
       {
@@ -11970,7 +12023,7 @@ try {
         await sp.waitForTimeout(400);
         check('on My Psyche, Back with the panel up minimises it rather than leaving the site',
           await sp.evaluate(() => location.port !== '' && !document.querySelector('#ask-dialog').open &&
-            !document.querySelector('#view-profile').hidden && Boolean(document.querySelector('#profile-body .method-card'))));
+            !document.querySelector('#view-profile').hidden && Boolean(document.querySelector('#profile-body .hub-card'))));
       }
       // Once the report is unlocked the button is on every page, the FAQ included.
       await sp.click('[data-nav="about"]');
@@ -11978,7 +12031,7 @@ try {
       check('Ask PsycheAI\'s button is on every page once the report is unlocked, the FAQ included',
         await sp.evaluate(() => !document.querySelector('#ask-fab').hidden));
       await sp.click('[data-nav="profile"]');
-      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
+      await sp.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('My Report ends with an appendix of the questions asked, each answer folded under its question',
@@ -12066,7 +12119,7 @@ try {
         await sp.waitForTimeout(300);
       }
       await sp.goBack();
-      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
+      await sp.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
       check('structured: the phone\'s Back from My Report returns to My Psyche, not off the site',
         await sp.locator('#view-profile').isVisible() && (await sp.locator('#profile-body .part-card').count()) === 0);
       await sp.click('#nav-full');
@@ -12328,11 +12381,12 @@ try {
         }));
       // Evidence and method is on My Psyche, beside the card it rates.
       await sp.click('#nav-profile');
-      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
-      const method = await sp.locator('#profile-body .method-card').textContent();
+      await openMethod(sp);
+      const method = await sp.locator('#hub-method-dialog .method-card').textContent();
       check('structured: the method section is short: the score, what it read, the sources — no build or format rows',
         /Confidence/.test(method) && !/Sources read|Structured report, v1|Written by|Report format|Build/.test(method) &&
-        (await sp.locator('#profile-body .method-card .method-list').count()) === 0, method.slice(0, 300));
+        (await sp.locator('#hub-method-dialog .method-card .method-list').count()) === 0, method.slice(0, 300));
+      await closeMethod(sp);
       await sp.click('#nav-full');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       const order = await sp.evaluate(() => {
@@ -12350,9 +12404,9 @@ try {
         order[0] >= 0 && order[1] === order[0] + 1 && order[2] === 'roast' && order[3] === 0 &&
           (await sp.locator('#profile-body > .bonus-card').count()) === 0, order.join());
       await sp.click('#nav-profile');
-      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
+      await openMethod(sp);
       // Without a digest on the device, "Read from" is the model's own summary.
-      const basedOnChips = await sp.$$eval('#profile-body .method-card .trait-evidence .ev', nodes => nodes.map(n => n.textContent));
+      const basedOnChips = await sp.$$eval('#hub-method-dialog .method-card .trait-evidence .ev', nodes => nodes.map(n => n.textContent));
       check('structured: with no digest on the device, Read from falls back to the model\'s own summary',
         basedOnChips.length === (sampleReport.confidence.basedOn || []).length && basedOnChips.length > 0, basedOnChips.join(' | '));
       // With one, it is everything counted in full and everything read word for word.
@@ -12367,8 +12421,9 @@ try {
       })));
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      await openMethod(sp);
       const evidence = await sp.evaluate(() => {
-        const card = document.querySelector('#profile-body .method-card');
+        const card = document.querySelector('#hub-method-dialog .method-card');
         return {
           text: card.textContent,
           full: Array.from(card.querySelectorAll('.source-read-what li')).map(n => n.textContent),
@@ -12388,10 +12443,10 @@ try {
           evidence.hint === 'Up to 3 chats with close connections are recommended.', JSON.stringify({ order: evidence.order, hint: evidence.hint }));
       check('structured: what was read is folded away; added sources carry green ticks (Google one, WhatsApp none of three here), the rest "+ Add"',
         evidence.folded && evidence.ticks === '1/1,0/0+,1/1,0/0+', evidence.ticks);
-      await sp.click('#profile-body .source-read[data-source="instagram"] .source-read-toggle');
+      await sp.click('#hub-method-dialog .source-read[data-source="instagram"] .source-read-toggle');
       check('the source\'s name folds out its full list',
-        await sp.evaluate(() => !document.querySelector('#profile-body .source-read[data-source="instagram"] .source-read-more').hidden &&
-          document.querySelector('#profile-body .source-read[data-source="instagram"] .source-read-toggle').getAttribute('aria-expanded') === 'true'));
+        await sp.evaluate(() => !document.querySelector('#hub-method-dialog .source-read[data-source="instagram"] .source-read-more').hidden &&
+          document.querySelector('#hub-method-dialog .source-read[data-source="instagram"] .source-read-toggle').getAttribute('aria-expanded') === 'true'));
       check('structured: with the digest, each source row lists what was read and counted from it',
         // Totals rounded to read at a glance; what was read stays exact.
         evidence.full.includes('180 of your 9.7k messages read, from 38 conversations') &&
@@ -12402,8 +12457,10 @@ try {
         JSON.stringify({ bars: evidence.bars, chips: evidence.summaryChips }));
       if (process.env.PSYCHEAI_SHOTS) {
         await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.remove('is-collapsed')));
-        await sp.locator('#profile-body .method-card').screenshot({ path: process.env.PSYCHEAI_SHOTS + '/method-card.png' });
+        await sp.locator('#hub-method-dialog .method-card').screenshot({ path: process.env.PSYCHEAI_SHOTS + '/method-card.png' });
       }
+      await closeMethod(sp);
+
       // The free view has Evidence and method under the unlock offer, and is
       // where most readers meet this — so it reads the digest the same way.
       await sp.evaluate(() => {
@@ -12413,13 +12470,16 @@ try {
       });
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      // On the free page too, Evidence and method opens from the hub.
+      await openMethod(sp);
       const freeTrust = await sp.evaluate(() => {
-        const card = document.querySelector('#profile-body .confidence-card');
+        const card = document.querySelector('#hub-method-dialog .confidence-card');
         return card ? { text: card.textContent, bars: card.querySelectorAll('.coverage-row').length } : null;
       });
       check('structured: the free view\'s trust card shows the same counted-in-full evidence',
         Boolean(freeTrust) && /180 of your 9\.7k messages read/.test(freeTrust.text) &&
         freeTrust.bars === 0, freeTrust && freeTrust.text.slice(0, 200));
+      await closeMethod(sp);
       await seed(true);
       await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
       if (process.env.PSYCHEAI_SHOTS) {
@@ -12896,6 +12956,15 @@ try {
         check('and the offer\'s five parts each carry a lock, and there is no My Report yet',
           overview.locks === 5 && overview.report, JSON.stringify(overview));
         check('and Ask PsycheAI is offered with the card alone', overview.fab, JSON.stringify(overview));
+        const locked = await sp.evaluate(() => {
+          const tile = document.querySelector('#profile-body .hub-card .hub-tile[data-hub="report"]');
+          return tile && { cta: tile.classList.contains('is-cta'), num: tile.querySelector('[data-hub-num]').textContent,
+            badge: (tile.querySelector('[data-hub-badge]:not([hidden])') || {}).textContent || '',
+            glow: getComputedStyle(tile).animationName, last: tile.closest('.hub-card') === document.querySelector('#profile-body').lastElementChild };
+        });
+        check('before the unlock the hub closes the page, and its Psyche Report tile is locked, glowing, with an Unlock free badge',
+          Boolean(locked) && locked.cta && locked.num === 'Locked' && locked.badge === 'Unlock free' && locked.glow === 'hub-glow' && locked.last,
+          JSON.stringify(locked));
         await seed(false);
       }
       // A free report: no nav, the card on the left half of the column and a
@@ -12909,7 +12978,7 @@ try {
         const s = side.getBoundingClientRect();
         const column = document.querySelector('#profile-top').getBoundingClientRect();
         const offer = document.querySelector('#profile-body .full-report-locked');
-        const method = document.querySelector('#profile-body .free-method-card');
+        const hub = document.querySelector('#profile-body .hub-card');
         const frame = document.querySelector('#psyche-card').getBoundingClientRect();
         return { nav: document.querySelectorAll('.part-nav').length, sideShown: !side.hidden,
           cardLeft: Math.abs(card.left - column.left) < 2, sideRight: s.left >= card.right - 1 && Math.abs(s.top - card.top) < 2,
@@ -12927,12 +12996,12 @@ try {
               Math.abs(span - row.width) <= 2 && row.width >= side.clientWidth - 40 &&
               /Hover over any part of your card/.test(side.innerText) && side.querySelector('.cx-home-intro').textContent.length > 40;
           })(),
-          method: Boolean(method && offer && (offer.compareDocumentPosition(method) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
-            /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
+          // The hub closes the free page, after the offer (October 2026).
+          method: Boolean(hub && offer && (offer.compareDocumentPosition(hub) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
+            hub === document.querySelector('#profile-body').lastElementChild,
           trust: document.querySelectorAll('#rerun-with-data').length +
             (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
-          sources: Boolean(method && method.querySelectorAll('.sources-read .source-read[data-flow="unlock"]').length === 4 &&
-            !method.querySelector('.trust-sources, #free-add-data')),
+          sources: Boolean(hub && hub.querySelectorAll('.hub-chip[data-flow="unlock"]').length === 4),
           // What is on screen, not the attribute: the row's own display once overrode it.
           download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display !== 'none',
           sideText: side.innerText.replace(/\s+/g, ' ').trim() };
@@ -12940,30 +13009,23 @@ try {
       check('structured: a free report has no nav, its card filling three fifths and an empty panel for what it means, the same height',
         freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.threeFifths &&
           freeShape.sameHeight && freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
-      check('structured: Evidence and method sits under the unlock offer with a row per source, no button, no US$2 re-run and no download',
+      check('structured: the hub closes the free page, under the unlock offer, with a chip per source that leads to the unlock; no US$2 re-run and no download',
         freeShape.method && freeShape.sources && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
-      // The page's foot on a free report: Delete everything and who wrote the
-      // card, side by side on one line and the same height.
-      const freeFoot = await sp.evaluate(() => {
-        const del = document.querySelector('#delete-profile').getBoundingClientRect();
-        const stamp = document.querySelector('#analysed-by .provenance-box').getBoundingClientRect();
-        return { del: [Math.round(del.left), Math.round(del.top), Math.round(del.height)],
-          stamp: [Math.round(stamp.left), Math.round(stamp.top), Math.round(stamp.height)],
-          // The bin alone on a laptop too: no words beside it, its name still read out.
-          iconOnly: del.width < 60 && document.querySelector('#delete-profile .cta-label').getBoundingClientRect().width <= 1 &&
-            document.querySelector('#delete-profile').textContent.trim() === 'Delete everything' };
-      });
-      check('structured: a free report ends with Delete everything and the "generated by" line on one line, the same height',
-        freeFoot.stamp[0] > freeFoot.del[0] && Math.abs(freeFoot.del[1] - freeFoot.stamp[1]) <= 1 &&
-          Math.abs(freeFoot.del[2] - freeFoot.stamp[2]) <= 1, JSON.stringify(freeFoot));
-      check('structured: on a laptop the delete button at the foot of My Psyche is its bin alone, no words', freeFoot.iconOnly, JSON.stringify(freeFoot));
-      const hubBackup = await sp.evaluate(() => {
-        const label = document.querySelector('#save-backup .cta-label');
-        return { words: label.getBoundingClientRect().width > 40 && label.textContent === 'Save a backup',
-          tip: getComputedStyle(document.querySelector('#delete-profile'), '::after').content };
-      });
-      check('structured: My Psyche\'s backup button says Save a backup in full, and the bin\'s tooltip says Delete everything',
-        hubBackup.words && hubBackup.tip === '"Delete everything"', JSON.stringify(hubBackup));
+      await openMethod(sp);
+      check('structured: and its How it was read opens Evidence and method with a row per source, no button',
+        await sp.evaluate(() => { const m = document.querySelector('#hub-method-dialog .free-method-card');
+          return Boolean(m) && /Confidence/.test(m.textContent) &&
+            m.querySelectorAll('.sources-read .source-read[data-flow="unlock"]').length === 4 && !m.querySelector('.trust-sources, #free-add-data'); }));
+      await closeMethod(sp);
+      // The page's foot on a free report: Save a backup and Delete everything
+      // are the hub's now, so the foot is just who wrote the card.
+      const freeFoot = await sp.evaluate(() => ({
+        footDelete: document.querySelector('#delete-profile').hidden, footBackup: document.querySelector('#save-backup').hidden,
+        hubKeep: [...document.querySelectorAll('.hub-card .hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join(),
+        stamp: Boolean(document.querySelector('#analysed-by .provenance-box')),
+      }));
+      check('structured: on a free report, Save a backup, the AI profile (locked) and Delete everything are in the hub, not the foot',
+        freeFoot.footDelete && freeFoot.footBackup && freeFoot.hubKeep === 'backup,unlock,delete' && freeFoot.stamp, JSON.stringify(freeFoot));
       // The unlock offer, by the report's five parts, and the panel saying
       // where the reasoning behind the card is.
       const offerParts = await sp.evaluate(() => {
@@ -13027,12 +13089,12 @@ try {
         check('structured: on a phone the unlock offer takes under one and a half screens, its sections as chips, and says it is for personal growth',
           offer.height < offer.screen * 1.5 && offer.chips === 11 && offer.paragraphs === 0 && offer.growth, JSON.stringify(offer));
       }
-      check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
+      check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete is in the hub',
         await sp.evaluate(() => {
           const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
           return tools.length === 3 && tools[2].dataset.act === 'copy' && !document.querySelector('#profile-side .cx-compat') &&
             getComputedStyle(document.querySelector('#test-compat-open')).display === 'none' &&
-            getComputedStyle(document.querySelector('#delete-profile')).display !== 'none';
+            Boolean(document.querySelector('#profile-body .hub-card [data-hub-go="delete"]'));
         }));
       await sp.evaluate(() => {
         window.__copied = null;
@@ -13053,10 +13115,10 @@ try {
         mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [] })));
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
-      await sp.locator('.source-read[data-source="facebook"]').scrollIntoViewIfNeeded();
-      await sp.click('.source-read[data-source="facebook"] .source-read-action');
+      await sp.locator('.hub-card .hub-chip[data-hub-source="facebook"]').scrollIntoViewIfNeeded();
+      await sp.click('.hub-card .hub-chip[data-hub-source="facebook"]');
       await sp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
-      check('structured: a free report\'s source row opens the same data sources popout the unlock does',
+      check('structured: a free report\'s source chip in the hub opens the same data sources popout the unlock does',
         (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the Psyche Report');
       // With no premium digest kept and no export in memory, the unlock goes
       // ahead on the standard digest widened to the premium line — it never
@@ -13535,28 +13597,26 @@ try {
         String(exportText.length));
 
       // The invite-friends card, on the free report.
-      await rp.waitForSelector('#profile-body .referral-card', { timeout: 10000 });
+      await openLink(rp);
       const card = await rp.evaluate(() => {
-        const c = document.querySelector('#profile-body .referral-card');
+        const c = document.querySelector('#hub-link-dialog .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows "Your Referral": what credits it earns, four boxes (opens, cards, syncs, credits), only a Copy link button and nothing to spend yet',
-        /Your Referral/.test(card.text) && card.stats === 4 && !card.ready &&
-          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
+      check('the hub\'s Your link popout shows the referral card: what credits it earns, four boxes (opens, cards, syncs, credits), only a Copy link button and nothing to spend yet',
+        /credits and gifts/i.test(await rp.textContent('#hub-link-dialog .hub-dialog-title')) && card.stats === 4 && !card.ready &&
+          await rp.evaluate(() => [...document.querySelectorAll('#hub-link-dialog .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
           /0\s*opened your link/.test(card.text) &&
           /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use a credit to ask PsycheAI a question or to gift a Psyche Report\./.test(card.text) &&
           /Share your card or link above/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*credits/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&
-          await rp.evaluate(() => {
-            const nodes = [...document.querySelectorAll('#profile-body > *')];
-            const at = sel => nodes.findIndex(n => n.matches(sel));
-            return at('.referral-card') > at('.method-card, .free-method-card, .confidence-card') && at('.referral-card') === nodes.length - 1;
-          }) &&
-          await rp.evaluate(() => !document.querySelector('#profile-body .referral-card .referral-share') &&
-            [...document.querySelectorAll('#profile-body .referral-card button')].filter(b => !b.closest('[hidden]'))
+          await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&
+            !document.querySelector('#profile-body .referral-card')) &&
+          await rp.evaluate(() => !document.querySelector('#hub-link-dialog .referral-card .referral-share') &&
+            [...document.querySelectorAll('#hub-link-dialog .referral-card button')].filter(b => !b.closest('[hidden]'))
               .map(b => b.className).join() === 'btn btn-sm btn-outline referral-copy'),
         JSON.stringify(card));
+      await closeLink(rp);
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
       await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
       await rp.click('#profile-side .cx-tool[data-act="copy"]');
@@ -13567,30 +13627,31 @@ try {
         /^I got .+ for my Psyche Card\. Get yours now for free: /.test(copiedMessage) &&
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
+      await openLink(rp);
       // Your Referral's own Copy link, small and right beside its title: the
       // same message and link. The credits box is set apart from the counts.
       const refCopy = await rp.evaluate(() => {
-        const button = document.querySelector('#profile-body .referral-card .referral-copy');
-        const title = document.querySelector('#profile-body .referral-card .referral-title').getBoundingClientRect();
-        const head = document.querySelector('#profile-body .referral-card .referral-head').getBoundingClientRect();
+        const button = document.querySelector('#hub-link-dialog .referral-card .referral-copy');
+        const title = document.querySelector('#hub-link-dialog .referral-card .referral-title').getBoundingClientRect();
+        const head = document.querySelector('#hub-link-dialog .referral-card .referral-head').getBoundingClientRect();
         const b = button.getBoundingClientRect();
-        const style = sel => getComputedStyle(document.querySelector('#profile-body .referral-card ' + sel));
-        return { beside: b.left > title.right && b.left - title.right < 20 && head.right - b.right > 20,
-          level: Math.abs((b.top + b.bottom) / 2 - (title.top + title.bottom) / 2) < 8,
+        const style = sel => getComputedStyle(document.querySelector('#hub-link-dialog .referral-card ' + sel));
+        return { beside: b.width > 0 && head.right - b.right > 20, level: title.width === 0,
           small: b.height < 34, text: button.textContent.trim(),
           credits: style('.referral-stat-credits').backgroundColor !== style('.referral-stat:not(.referral-stat-credits)').backgroundColor &&
             parseFloat(style('.referral-stat-credits').borderTopWidth) >= 1 &&
             parseFloat(style('.referral-stat:not(.referral-stat-credits)').borderTopWidth) === 0 };
       });
-      check('Your Referral has a small Copy link right beside its title, and its credits box is coloured apart, with a border',
+      check('in the popout, Your Referral keeps a small Copy link (the popout carries the title), and its credits box is coloured apart, with a border',
         refCopy.beside && refCopy.level && refCopy.small && refCopy.text === 'Copy link' && refCopy.credits, JSON.stringify(refCopy));
       await rp.evaluate(() => navigator.clipboard.writeText('').catch(() => {}));
-      await rp.click('#profile-body .referral-card .referral-copy');
+      await rp.click('#hub-link-dialog .referral-card .referral-copy');
       await rp.waitForTimeout(300);
       const refCopied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
       check('and it copies the same share message and link as the card\'s Copy link, saying so on the button',
         refCopied === copiedMessage &&
-          (await rp.locator('#profile-body .referral-card .referral-copy').innerText()).trim() === 'Copied ✓', refCopied);
+          (await rp.locator('#hub-link-dialog .referral-card .referral-copy').innerText()).trim() === 'Copied ✓', refCopied);
+      await closeLink(rp);
       // Someone opens the link while the reader waits on My Psyche: the free
       // unlock appears without a reload, as soon as the reader is back on the tab.
       check('before anyone opens the link, the unlock panel asks the reader to share it',
@@ -14019,19 +14080,21 @@ try {
       }, sample);
       await rp.reload({ waitUntil: 'load' });
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+      await openLink(rp);
       await rp.waitForFunction(() => {
-        const c = document.querySelector('#profile-body .referral-card');
+        const c = document.querySelector('#hub-link-dialog .referral-card');
         return c && !c.querySelector('.referral-ready-row').hidden;
       }, null, { timeout: 15000 });
-      const ready = await rp.evaluate(async () => ({ text: document.querySelector('#profile-body .referral-card').innerText,
-        cards: document.querySelector('#profile-body .referral-n[data-stat="friends"]').textContent,
-        shown: document.querySelector('#profile-body .referral-n[data-stat="opens"]').textContent,
+      const ready = await rp.evaluate(async () => ({ text: document.querySelector('#hub-link-dialog .referral-card').innerText,
+        cards: document.querySelector('#hub-link-dialog .referral-n[data-stat="friends"]').textContent,
+        shown: document.querySelector('#hub-link-dialog .referral-n[data-stat="opens"]').textContent,
         opens: (await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json())).opens }));
       check('with three friends in, the card counts them, shows 1 credit, and offers to gift a report with it, not to use it',
         ready.cards === '3' && /1\s*credits/.test(ready.text) && /You have 1 credit/.test(ready.text) &&
           /Gift a Psyche Report \(1 credit\)/.test(ready.text) && !/Use it/.test(ready.text), JSON.stringify(ready));
       check('and the card shows how many opened the link, the server\'s own count', ready.opens >= 1 && ready.shown === String(ready.opens), JSON.stringify(ready));
+      await closeLink(rp);
 
       // A connection's card unlocked the first report: the panel says so and
       // offers it free, with paying still the small link under it.
@@ -14124,22 +14187,24 @@ try {
       // one full report for whoever opens it.
       await rp.reload({ waitUntil: 'load' });
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+      await openLink(rp);
       await rp.waitForFunction(() => {
-        const c = document.querySelector('#profile-body .referral-card');
+        const c = document.querySelector('#hub-link-dialog .referral-card');
         return c && !c.querySelector('.referral-ready-row').hidden;
       }, null, { timeout: 15000 });
       await rp.evaluate(() => { delete navigator.share; });
-      await rp.click('#profile-body .referral-gift');
-      await rp.waitForFunction(() => /Gift link copied/.test(document.querySelector('#profile-body .referral-status').textContent),
+      await rp.click('#hub-link-dialog .referral-gift');
+      await rp.waitForFunction(() => /Gift link copied/.test(document.querySelector('#hub-link-dialog .referral-status').textContent),
         null, { timeout: 15000 });
       const giftLink = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
       const giftState = await rp.evaluate(() => ({
-        list: document.querySelector('#profile-body .referral-gifts').innerText,
-        ready: !document.querySelector('#profile-body .referral-ready-row').hidden,
+        list: document.querySelector('#hub-link-dialog .referral-gifts').innerText,
+        ready: !document.querySelector('#hub-link-dialog .referral-ready-row').hidden,
       }));
       check('"Gift a Psyche Report" makes a gift link, copies it and lists it under the card, and the credit is spent',
         /^http:\/\/localhost:\d+\/\?gift=[0-9a-f]{48}$/.test(giftLink) && /Gift links you have made/.test(giftState.list) &&
           !giftState.ready, JSON.stringify({ giftLink, ...giftState }));
+      await closeLink(rp);
       const giftPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
       try {
         await giftPage.goto(giftLink, { waitUntil: 'load' });

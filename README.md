@@ -5451,6 +5451,36 @@ Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merge
 The free prompt grew to 10,959 tokens (`FREE_FIXED_INPUT_TOKENS` 11,000); `DEEP_FREE_COST_CAP` $0.084 →
 $0.085. The ring's explanation on the card no longer says the score depends on how much was read.
 
+### My Psyche's hub (October 2026)
+
+My Psyche became the control panel for the whole site: a **Your hub** section (`hubHtml` in
+docs/app.js, `.hub-*` in styles.css), under the card once the report is unlocked and at the foot of the
+page before it (after the Overview, the roast and the offer).
+
+- **Four tiles, each its own colour** (mixed into the page background, so the dark theme gets them):
+  *Psyche Report* (purple: Unlocked and Open report, or Locked), *Ask PsycheAI* (pink: questions left as
+  dots, Ask or Get 5 more), *Your Syncs* (blue: how many, a "new" badge, See syncs or Invite) and *Your
+  link* (amber: opens, progress to the next credit or to the free report, Share link, and *Credits and
+  gifts*). Each has one big number or status and one action. The numbers from the server (questions
+  left, the link's counts) fill in when they arrive (`refreshHub`).
+- **The locked report glows**: a gradient ring and a slow pulse (still under reduced motion), an
+  "Unlock free" badge while the free first report is on offer, and the only filled button in the hub.
+- **Your data**: a small confidence ring, *How it was read* (Evidence and method, now in a popout), and
+  the sources as chips (ticked when loaded, dashed "+" to add; a chip opens the unlock or the re-run,
+  as the old rows did).
+- **Keep**: Save a backup (with when it was last saved, `psycheai_last_backup`), *Download your AI
+  profile* (report holders only) and Delete everything. The page-foot buttons for these are hidden on
+  My Psyche, where the hub has them.
+- **The referral card is gone from the page**; its counts, credits and gift links open whole in the
+  *Credits and gifts* popout, so its own handlers still run.
+- **Your AI profile** (`aiProfileMarkdown`): a short Markdown file made on the device, to paste into
+  ChatGPT, Claude or Gemini. Who they are (the summary), MBTI and Big Five in words, motivators, values
+  and beliefs, patterns, interests, how they connect (love languages both ways, conflict style, what they
+  bring and where it gets hard), how they work (edge, strengths, what holds them back, careers that suit
+  and drain) and what they are working on. Never the roast, the attachment style, the partner section
+  or anything from the data itself.
+- The classic layout keeps its old confidence and referral cards: the hub is the structured layout's.
+
 ### Values & Beliefs: exactly three (October 2026)
 
 "At most three" let a report show two (the 17 October merged report did). The list is now exactly three:
