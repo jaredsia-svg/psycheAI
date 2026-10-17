@@ -3757,13 +3757,35 @@
   // sent the reader to their card. Counted, so each of those pops is passed
   // over exactly once.
   let ownPops = 0;
-  function popOwnEntry() {
+  // `keepY`: the page stays where it is through the step back. Left alone,
+  // the browser's scroll restoration put back the position the entry was
+  // pushed at (minimising Ask PsycheAI after scrolling jumped the page).
+  let ownPopKeepY = null;
+  function popOwnEntry(keepY) {
     ownPops += 1;
+    if (typeof keepY === 'number') {
+      ownPopKeepY = keepY;
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    }
     history.back();
   }
 
   window.addEventListener('popstate', () => {
-    if (ownPops > 0) { ownPops -= 1; return; }
+    if (ownPops > 0) {
+      ownPops -= 1;
+      if (ownPopKeepY !== null) {
+        const y = ownPopKeepY;
+        ownPopKeepY = null;
+        window.scrollTo(0, y);
+        // Restoration back on only once the browser has finished the step:
+        // turned on inside this handler, it is applied straight after it.
+        setTimeout(() => {
+          window.scrollTo(0, y);
+          if (!backToHub && 'scrollRestoration' in history) history.scrollRestoration = 'auto';
+        }, 400);
+      }
+      return;
+    }
     // The hero video, expanded over the page on a phone, is the topmost thing
     // there can be: Back closes it first, as it would any phone video player.
     if (collapseHeroVideo && collapseHeroVideo(true)) return;
@@ -10984,6 +11006,10 @@
     askBusy = true;
     $('#ask-send').disabled = true;
     sayAsk('');
+    // The box empties as the question goes: it shows in the thread above
+    // while the answer is written, and comes back only if sending fails.
+    $('#ask-input').value = '';
+    askCount();
     renderAskThread(question);
     try {
       const history = askThread().slice(-3).map(item => ({ q: item.q, a: item.a }));
@@ -10994,8 +11020,6 @@
         follow: answer.followUps || [], fromData: answer.fromData === true, at: Date.now() };
       store.write(KEYS.ask, askThread().concat([item]).slice(-ASK_KEEP));
       if (answer.credits) askCreditsNow = answer.credits;
-      $('#ask-input').value = '';
-      askCount();
       renderAskThread();
       renderAskCredits();
       refreshAskAppendix();
@@ -11003,6 +11027,7 @@
       if (!$('#ask-dialog').open) { $('#ask-fab').classList.add('is-ready'); refreshAskFab(); }
     } catch (error) {
       renderAskThread();
+      if (!$('#ask-input').value) { $('#ask-input').value = question; askCount(); }
       if (error && error.status === 402) { await refreshAskCredits(); sayAsk(A.noCredits, 'bad'); }
       else sayAsk((error && error.message) || A.failed, 'bad');
     } finally {
@@ -11035,8 +11060,13 @@
   // Its history entry is given back here, not on the close event: that comes
   // a moment later, and Back's own close must not give back a second one.
   function minimiseAsk() {
+    // Where the reader is now, kept: closing hands focus back to whatever
+    // opened the panel (scrolling to it), and the step back would restore
+    // the position the panel was opened at.
+    const y = window.scrollY;
     $('#ask-dialog').close();
-    if (askHistoryEntry) { askHistoryEntry = false; popOwnEntry(); }
+    window.scrollTo(0, y);
+    if (askHistoryEntry) { askHistoryEntry = false; popOwnEntry(y); }
     dockAsk(false);
     refreshAskFab();
   }

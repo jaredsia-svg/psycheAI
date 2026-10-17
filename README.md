@@ -4790,6 +4790,18 @@ Both calls use **structured outputs**, so the response is guaranteed to match th
 renders it without defensive parsing. Both stream, because thinking tokens and a long report share
 one output budget.
 
+### Ask PsycheAI's box and minimising; a larger laptop hub
+
+The question box empties as a question is sent. The question shows in the thread while the answer is
+written, and goes back into the box only if sending fails. Minimising keeps the page where the reader
+has scrolled to. `popOwnEntry(y)` turns the browser's scroll restoration off for the step back, which had
+been putting back the position the panel was opened at, and on again 400ms after it. `minimiseAsk` also
+scrolls back after closing, since closing hands focus to whatever opened the panel.
+
+The laptop hub is 1.1× (`zoom` on `.hub-card` from 760px): type, buttons, icons and spacing together, in
+the same width. The phone's is unchanged. On both, Download and Share are their icon alone at a quarter
+of the row (their names stay as `aria-label`), and Read and See list take the rest.
+
 ### The server decides who gets the free card; a bundle's link is registered
 
 Every first upload asks for the free card, whatever the browser made before. Until late October 2026,

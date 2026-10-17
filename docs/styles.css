@@ -5035,10 +5035,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-linkstat { font-size: .8rem; padding: .32rem .65rem; }
   .hub-linknote span { font-size: .72rem; }
   .hub-ring { width: 42px; height: 42px; } .hub-ring b { width: 33px; height: 33px; font-size: .84rem; }
-  /* Download is just its icon on a phone; Read keeps its word beside it. */
-  .hub-go[data-hub-go="card-download"], .hub-go[data-hub-go="pdf"], .hub-go[data-hub-go="share"] { flex: 0 0 44px; }
-  .hub-go[data-hub-go="card-download"] .hub-svg, .hub-go[data-hub-go="pdf"] .hub-svg, .hub-go[data-hub-go="share"] .hub-svg { display: block; width: 18px; height: 18px; }
-  .hub-go[data-hub-go="card-download"] .hub-go-label, .hub-go[data-hub-go="pdf"] .hub-go-label, .hub-go[data-hub-go="share"] .hub-go-label { display: none; }
 }
 
 /* Late October 2026: one soft colour per section so the eye can follow it
@@ -5104,3 +5100,18 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-card { background: linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,
   linear-gradient(135deg, #7b3fa0, #d1477a, #f0a35a) border-box; }
 .hub-tiles { background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt)); }
+
+/* Download and Share are their icon alone, a quarter of the row, on a laptop
+   and a phone alike; Read and See list take the rest with their word. (Their
+   names are still read out: aria-label.) */
+.hub-acts .hub-go[data-hub-go="card-download"], .hub-acts .hub-go[data-hub-go="pdf"], .hub-acts .hub-go[data-hub-go="share"] { flex: 0 0 25%; }
+.hub-acts .hub-go[data-hub-go="card-download"] .hub-svg, .hub-acts .hub-go[data-hub-go="pdf"] .hub-svg,
+.hub-acts .hub-go[data-hub-go="share"] .hub-svg { display: block; width: 17px; height: 17px; }
+.hub-acts .hub-go[data-hub-go="card-download"] .hub-go-label, .hub-acts .hub-go[data-hub-go="pdf"] .hub-go-label,
+.hub-acts .hub-go[data-hub-go="share"] .hub-go-label { display: none; }
+/* A laptop's hub a tenth larger all round: type, buttons, icons and spacing
+   together, in the same width (zoom keeps an auto-width block to its
+   container). A phone's is left as it is. */
+@media (min-width: 760px) {
+  .hub-card { zoom: 1.1; }
+}
