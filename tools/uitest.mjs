@@ -13219,7 +13219,7 @@ try {
       }
       check('structured: pointing at a part of the card explains it on the right, level with the part',
         explained.every(e => e.shown && e.title && e.level && e.lit && e.parts) &&
-          explained[0].title === 'The number in the ring' && explained[1].title === 'MBTI' &&
+          explained[0].title === 'Signal strength' && explained[1].title === 'MBTI' &&
           explained[1].letters === sampleReport.mbti.type, JSON.stringify(explained));
       await sp.mouse.move(5, 5);
       await sp.waitForTimeout(200);
@@ -14204,8 +14204,8 @@ try {
         return fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: mine.secret }) }).then(r => r.json());
       });
-      check('and the free first report is spent, while the credit is untouched',
-        after.first && after.first.claimed && after.available === 1 && after.credits === 1 && after.friends === 3,
+      check('and the free first report is spent, while the three credits are untouched',
+        after.first && after.first.claimed && after.available === 3 && after.credits === 3 && after.friends === 3,
         JSON.stringify(after));
       // Only once: the same grant cannot write a different report (a re-run is paid).
       const rerunRefused = await rp.evaluate(async ([grant, text]) => {
@@ -14238,10 +14238,11 @@ try {
       const giftState = await rp.evaluate(() => ({
         list: document.querySelector('#profile-body .hub-linkrow .referral-gifts').innerText,
         ready: !document.querySelector('#profile-body .hub-linkrow .referral-ready-row').hidden,
+        left: document.querySelector('#profile-body .hub-linkrow .referral-n[data-stat="credits"]').textContent,
       }));
-      check('"Gift a Psyche Report" makes a gift link, copies it and lists it under the card, and the credit is spent',
+      check('"Gift a Psyche Report" makes a gift link, copies it and lists it under Your Link, and one credit is spent',
         /^http:\/\/localhost:\d+\/\?gift=[0-9a-f]{48}$/.test(giftLink) && /Gift links you have made/.test(giftState.list) &&
-          !giftState.ready, JSON.stringify({ giftLink, ...giftState }));
+          giftState.ready && giftState.left === '2', JSON.stringify({ giftLink, ...giftState }));
       await closeLink(rp);
       const giftPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
       try {

@@ -5485,8 +5485,9 @@ the site's panel and to use as few words as possible:
   soft shadow rather than a line, and type as light as the source chips (the heavy capitals read badly
   on a laptop): the name and its one number or state, then its buttons. *Psyche Report* (a plain green
   tick; Read and Download, which is the PDF), *Your Syncs* (how many; Sync), *Ask PsycheAI* (questions as
-  left/of, e.g. 2/5, where "of" is the most held since the count last went up (`psycheai_ask_of`): a pack
-  of five reads 5/5 then 2/5, a lone free question 1/1; Ask, which opens with the ideas showing, and History once there are answers,
+  left/of, e.g. 2/5, where "of" is what is left plus the questions actually asked (Appendix 2's list):
+  never asked, 5/5; a lone free question 1/1. (A remembered high-water mark, `psycheai_ask_of`, read 5/6
+  for a reader who had asked nothing once a link credit went on a gift, so it was dropped); Ask, which opens with the ideas showing, and History once there are answers,
   which opens My Report's Appendix 2), *Your link* (a copy-link icon in the corner, then opened · cards · credits, all one size,
   which open *Credits and gifts*). Only the locked report has colour of its own: a breathing gradient
   ring and one filled *Unlock free* (or *Unlock*) button. The server's numbers fill in as they arrive

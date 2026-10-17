@@ -185,8 +185,8 @@
     firstUsed: 'psycheai_first_used',
     // When a backup was last saved, for the hub.
     lastBackup: 'psycheai_last_backup',
-    // The hub's Ask count, as left/of: the "of" is the most the reader has held
-    // since their questions last went up (a pack, a gift, a credit).
+    // No longer written (the hub's Ask count once kept a high-water mark here);
+    // listed so Delete everything still clears what an earlier visit left.
     askOf: 'psycheai_ask_of',
     // Ask PsycheAI: every question and answer, kept in this browser only (the
     // server keeps none), newest last; and a payment for questions that was
@@ -2401,7 +2401,7 @@
   function hubLinkRowHtml(paid) {
     const H = Copy.STRUCTURED.hub;
     const R = TEXT.referral;
-    const stat = (key, label) => '<li class="hub-chip hub-linkstat"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</li>';
+    const stat = (key, label) => '<li class="hub-linkstat"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</li>';
     return '<div class="hub-row hub-linkrow referral-card" data-paid="' + (paid ? '1' : '0') + '" aria-label="' + esc(H.link) + '">' +
       '<span class="hub-linkhead"><span class="hub-rl">' + esc(H.link) + '</span>' +
         '<button type="button" class="hub-copy hub-linkcopy" data-hub-go="copy" aria-label="' + esc(H.copyLink) + '" title="' + esc(H.copyLink) + '">' +
@@ -2429,13 +2429,13 @@
       node.textContent = num;
       node.title = label;
     };
-    // Questions as left / of: of a bought pack of five, or of however many
-    // there are when gifts and credits make more (a lone free one is 1/1).
+    // Questions as left/of, where "of" is what is left plus what this reader
+    // has actually asked (Appendix 2's list): never asked, 5/5; after two,
+    // 3/5. A remembered high-water mark read 5/6 for a reader who had asked
+    // nothing, once a link credit went on a gift instead of a question.
     if (askCreditsNow && typeof askCreditsNow.total === 'number') {
       const n = Math.max(0, Number(askCreditsNow.total) || 0);
-      const held = store.read(KEYS.askOf, null);
-      const of = held && n <= Number(held.n) ? Math.max(Number(held.of) || 0, n) : n;
-      store.write(KEYS.askOf, { n, of });
+      const of = n + askThread().length;
       const node = hub.querySelector('.hub-tile[data-hub="ask"] [data-hub-num]');
       if (node) {
         node.innerHTML = esc(String(n)) + (of > 0 ? '<small>/' + esc(String(of)) + '</small>' : '');

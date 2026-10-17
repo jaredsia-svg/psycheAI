@@ -4163,6 +4163,14 @@ details.more[open] > summary::after { content: ' ▴'; }
   .cx-arrow { display: none; }
   .cx-close { display: block; }
   #view-profile.profile-structured #psyche-card [data-cx] { cursor: pointer; }
+  /* The card's three tools and the way into My Report, at the hub's button
+     size: icon beside the word, one slim row. */
+  #view-profile.profile-structured .cx-tools { gap: .4rem; }
+  #view-profile.profile-structured .cx-tool { flex-direction: row; justify-content: center; gap: .3rem;
+    padding: .38rem .3rem; border-radius: 10px; font-size: .72rem; font-weight: 600; }
+  #view-profile.profile-structured .cx-tool svg { width: 15px; height: 15px; }
+  #view-profile.profile-structured .cx-tools .cx-open-report { padding: .42rem .8rem; font-size: .72rem; font-weight: 600;
+    min-height: 0; border-radius: 10px; }
 }
 /* The card full screen on a phone: no download or share, a line saying to
    tap instead, and each tapped part explained in a sheet — at the foot of
@@ -4815,7 +4823,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-sq { width: 24px; height: 24px; flex: none; border-radius: 7px; display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent); }
 .hub-sq .hub-svg { width: 14px; height: 14px; }
-.hub-name { flex: 0 1 auto; min-width: 0; margin: 0; font-size: .74rem; font-weight: 600;
+.hub-name { flex: 0 1 auto; min-width: 0; margin: 0; font-size: .84rem; font-weight: 600;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hub-l1 > .hub-badge { margin-left: auto; }
 .hub-l1 > .hub-badge[hidden] + .hub-num, .hub-l1 > .hub-badge[hidden] + .hub-ok { margin-left: auto; }
@@ -4898,14 +4906,18 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-linkhead { display: inline-flex; align-items: center; gap: .5rem; }
 .hub-linkcopy { margin-left: 0; }
 .hub-linkstats { margin: 0 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; padding: 0; list-style: none; }
-.hub-linkstat { cursor: default; color: var(--ink-soft); font-weight: 500; gap: .3rem; }
+/* Plain counts in the chips' shape: not buttons, so nothing happens on a tap. */
+.card .hub-linkstats > li.hub-linkstat { margin: 0; }
+.hub-linkstat { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; padding: .22rem .6rem; border-radius: 999px;
+  font-size: .72rem; font-weight: 500; line-height: 1.2; color: var(--ink-soft); background: var(--bg-alt);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--bg-alt)); }
 .hub-linkstat b { font-weight: 700; color: var(--accent); }
-/* The rule, short, in a small purple pill under the counts. */
+/* The rule, short, in a quiet lavender pill beside the name. */
 .hub-linknote { order: 1; display: flex; margin: 0; }
-.hub-linkstats { order: 2; }
+.hub-linkstats { order: 2; align-self: center; }
 .hub-linkrow .referral-ready-row, .hub-linkrow .referral-status, .hub-linkrow .referral-gifts { order: 3; }
-.hub-linknote span { padding: .18rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3; color: #fff;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--accent-2))); }
+.hub-linknote span { padding: .18rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3;
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink-soft)); background: color-mix(in srgb, var(--accent) 9%, var(--bg-alt)); }
 .hub-linkrow .referral-ready-row:not([hidden]) { flex-basis: 100%; display: flex; align-items: center; gap: .6rem; margin: 0;
   font-size: .76rem; font-weight: 600; color: var(--ink); }
 .hub-linkrow .referral-status:not([hidden]) { flex-basis: 100%; margin: 0; font-size: .74rem; color: var(--good); }
@@ -4984,7 +4996,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-in { padding: .5rem; }
   .hub-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
   .hub-tile { padding: .5rem .5rem; }
-  .hub-name { font-size: .72rem; }
+  .hub-name { font-size: .8rem; }
   .hub-btn.is-locked .hub-svg { display: block; }
   .hub-go { font-size: .72rem; padding: .32rem .3rem; }
   .hub-go .hub-svg { display: none; }
