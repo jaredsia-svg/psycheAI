@@ -1996,7 +1996,11 @@ so it is built in rather than left to a plugin.
   tidies the address back to `/`. The server serves `/name` as `name.html` when that page exists,
   and nothing else; anything else is still a 404. The MBTI guide carries the trademark notice.
 - **`robots.txt` and `sitemap.xml`** list every page and keep `/api/` out.
-- **Two hero buttons, one for each kind of visitor.** **Get my data** (filled) is for someone who still
+- **The hero (October 2026)** is no taller than the video beside it on a laptop. Its line is *Your personal AI
+  coach that already knows you, built from your Instagram data*, and above the buttons one clean line says
+  what the reading covers: MBTI · Attachment Style · Career Strengths · Blind Spots (plain words and dots, no
+  pills or fill; smaller on a phone so it still fits one line down to 320px).
+- **Two hero buttons, one for each kind of visitor.** **Request my IG data** (was Get my data; filled) is for someone who still
   has to ask Instagram, which takes hours, so it comes first. It goes to the steps card, titled
   *Request your Instagram data first* with *It takes 30 seconds. Instagram then emails you the file,
   usually within a few hours.* under it; for a reader with a card it opens the illustrated guide,
@@ -5439,8 +5443,12 @@ chats came out under 70, and a reader who has given everything should not see th
 
 Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merged prompt says it once):
 
-- **Start from the sources loaded:** Instagram alone 68–82; with one more source 76–88; with two or more
-  of Google, Facebook and WhatsApp 82–92. Never above 92.
+- **Start from the sources loaded:** Instagram alone 65–79; with one more source 70–84; with two or more
+  of Google, Facebook and WhatsApp 75–90. Never above 90. (Lowered in late October 2026 from 68–82, 76–88
+  and 82–92: an Instagram-only reader scored 81, and 80 and over should take a second source.)
+- **Always three signature patterns** (late October 2026): a real card came back with two, which the
+  prompt then allowed. The schema's description and the report prompt now ask for exactly three, and the
+  merged call's strict schema holds it with minItems/maxItems 3.
 - **Within the range**, higher when the sources agree and the reader writes in their own words across
   years; lower when it is mostly likes and follows, the span is short, or the sources disagree. Below
   the range only for a genuinely thin export.
@@ -5460,32 +5468,51 @@ the site's panel and to use as few words as possible:
 
 - **A gradient bar with its name**, centred, over a panel with the same light wash as the My Syncs header
   (`.scan-hero`). No icon or subtitle.
+- **Header**: no title bar (the name is kept for screen readers); a gradient ring round the panel and a
+  soft glow mark it as the site's control panel.
+- **Psyche Card is the first tile** (a green tick; Read opens it full size, Download saves the image), then
+  Psyche Report, Your Syncs and Ask PsycheAI. The locked report keeps the plain tile border: its filled
+  Unlock button is enough.
+- **One card, one credit** (late October 2026, `CARDS_PER_CREDIT` in lib/referral.js; three until then):
+  every connection who makes a card from the reader's link earns a credit, for an Ask PsycheAI question
+  or a Psyche Report to gift.
+- **Your Link is a row**, above Signal Strength: its name with a copy-link icon beside it, a small purple
+  pill with the rule ("1 card = 1 credit = 1 question or report to gift"), the three counts as pills
+  (opened · cards · credits; syncs are on their own tile) at the right on a laptop, and,
+  once there is a credit, Gift a Psyche Report and the gift links made. It reuses the referral card's
+  classes, so `refreshReferral` fills it and its handlers run it; there is no popout.
 - **Four small tiles, two lines each**, in the rows' own faint lavender, with white buttons lifted by a
   soft shadow rather than a line, and type as light as the source chips (the heavy capitals read badly
   on a laptop): the name and its one number or state, then its buttons. *Psyche Report* (a plain green
   tick; Read and Download, which is the PDF), *Your Syncs* (how many; Sync), *Ask PsycheAI* (questions as
-  left/of, e.g. 2/5: of a pack of five, of the larger count when gifts and credits make more, and 1/1 for
-  a lone free question; Ask, which opens with the ideas showing, and History once there are answers,
+  left/of, e.g. 2/5, where "of" is the most held since the count last went up (`psycheai_ask_of`): a pack
+  of five reads 5/5 then 2/5, a lone free question 1/1; Ask, which opens with the ideas showing, and History once there are answers,
   which opens My Report's Appendix 2), *Your link* (a copy-link icon in the corner, then opened · cards · credits, all one size,
   which open *Credits and gifts*). Only the locked report has colour of its own: a breathing gradient
   ring and one filled *Unlock free* (or *Unlock*) button. The server's numbers fill in as they arrive
   (`refreshHub`).
 - **Back lands on the hub**: leaving for My Report or My Syncs from a tile, Back (the browser's or the
-  report's own) returns to My Psyche with the hub in view, not the top of the page.
+  report's own) returns to My Psyche with the hub in view, in the same frame, so the card is never seen
+  on the way. The browser's scroll restoration is off from the tap until the reader is back
+  (`leaveHub`): left on, it puts back the top of the page the history entry remembers.
 - **Tooltips, no "i"**: each tile's name is a button whose one or two lines show on hover or
   focus, and on a tap on a phone (a tap elsewhere or Escape hides them). The two rows have none: the ring
   and the buttons say what they are.
-- **Data row**: the confidence ring and "High confidence ›" (opening *Confidence score*), then the four
+- **Data row**: "Signal Strength" and the score's ring, one button (opening *Signal strength*; no level
+  words beside it), then the four
   sources as chips, in one line on a laptop and two by two on a phone.
-- **Words**: the tile names, "High Confidence" and "Keep" in black at the buttons' own size; the source
+- **Words**: the tile names, "Signal Strength" and "Save your profile" in black at the buttons' own size; the source
   chips short (Instagram, WhatsApp, Google, Facebook); *Save Backup*; AI Personal Context, while locked,
   greyed with a dashed outline and its lock, so it plainly cannot be used yet.
-- **Keep row** ("Keep" beside it on a laptop, centred above its three buttons on a phone; the data row's
-  ring is centred on a phone too): Save a backup (with when it was last saved,
+- **Save your profile row** (the label on the left and its buttons at the right, beside the bin, on a
+  laptop; the label centred above its three buttons on a phone; the data row is centred on a phone too): Save a backup (with when it was last saved,
   `psycheai_last_backup`), *AI Personal Context* (report holders only) and a bin for Delete everything.
-  Backup and AI Personal Context open a short popout first (what the file holds, that it is made on the
+  Backup and AI Personal Context open a short popout first (locked, AI Personal Context opens the same
+  explanation with Download greyed out: available once the report is unlocked; the backup's words say
+  plainly that the file brings the profile back if the browser clears its data) (what the file holds, that it is made on the
   device) with Back and Download: nothing downloads on the first click.
-- **Confidence score** (was Evidence and method) opens in a popout cut down for the hub: every source
+- **Signal strength** (was Evidence and method, then Confidence score; its lead line, in the report and the
+  PDF too, reads "Signal strength: 86/100 (high)") opens in a popout cut down for the hub: every source
   open, "Not added" where missing, one *Add / change data* link by YOUR DATA instead of one per row, and
   no WhatsApp advice.
 - **The referral card is gone from the page**; it opens whole in the *Credits and gifts* popout, so its

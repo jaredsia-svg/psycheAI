@@ -768,11 +768,11 @@
     reviewProceed: 'Proceed',
     reviewSend: 'Send this',
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Run it again for US$2.',
-    // Your link's numbers and credits (lib/referral.js): every 3 connections'
-    // cards earn a credit, for gifts now and premium features later.
+    // Your link's numbers and credits (lib/referral.js): every connection's
+    // card earns a credit, for a question or a gift.
     referral: {
       title: 'Your Referral',
-      blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use a credit to ask PsycheAI a question or to gift a Psyche Report.',
+      blurb: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for a question to PsycheAI, or for a Psyche Report to gift.',
       shareHint: 'Share your card or link to start.',
       // The small button at the head's right: the same share message and
       // link as the card's own Copy link.
@@ -822,7 +822,7 @@
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
       'it would stand behind them.',
-    trustScore: 'Confidence: ',
+    trustScore: 'Signal strength: ',
     // The six trajectory labels, keyed by the enum in lib/prompts.js. Written
     // for a reader rather than for a schema: "structural" is accurate and
     // means nothing to anybody, where "throughout" says the same thing in a
@@ -1275,6 +1275,8 @@
     // which now open from it.
     hub: {
       title: 'Psyche Hub',
+      card: 'Psyche Card',
+      ready: 'Ready',
       report: 'Psyche Report',
       unlocked: 'Unlocked',
       read: 'Read',
@@ -1294,13 +1296,13 @@
       link: 'Your Link',
       linkMore: 'Credits and gifts',
       data: 'Your data',
-      confidence: level => (level ? level.charAt(0).toUpperCase() + level.slice(1) : 'Your') + ' Confidence',
       // The source chips' own short names.
       sourceNames: { instagram: 'Instagram', whatsapp: 'WhatsApp', google: 'Google', facebook: 'Facebook' },
-      howRead: 'Confidence score',
+      signal: 'Signal Strength',
+      signalOf: score => 'Signal strength: ' + score + ' out of 100',
       sourceLoaded: name => name + ', loaded',
       sourceAdd: name => 'Add ' + name,
-      keep: 'Keep',
+      keep: 'Save your profile',
       backup: 'Save Backup',
       neverSaved: 'never saved',
       savedAgo: when => 'saved ' + when,
@@ -1309,32 +1311,34 @@
       aiTip: 'A short file about who you are and how to talk to you, to paste into ChatGPT, Claude or Gemini.',
       deleteAll: 'Delete everything',
       linkDialogTitle: 'Your link: credits and gifts',
-      methodDialogTitle: 'Confidence score',
+      methodDialogTitle: 'Signal strength',
       changeData: 'Add / change data',
       notAdded: 'Not added',
       close: 'Close',
       copyLink: 'Copy your link',
       statOpened: 'opened',
       statCards: 'cards',
+      linkNote: '1 card = 1 credit = 1 question or report to gift',
+      linkRule: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for a question to PsycheAI, or for a Psyche Report to gift.',
       statCredits: 'credits',
       // One or two plain lines for each part of the hub, behind its "i".
       tips: {
         report: 'Your full Psyche Report: every result explained, with the evidence behind it. Read it here or download the PDF.',
         reportLocked: 'Your full Psyche Report: every result explained, with the evidence. It unlocks free when 1 person opens your link.',
         reportBuy: 'Your full Psyche Report: every result explained, with the evidence behind it.',
+        card: 'Your Psyche Card: who you are at a glance. Read it full size or download it to share.',
         syncs: 'Compare your card with a friend\'s to see what clicks between you. The number is how many syncs you have.',
         ask: 'Ask PsycheAI anything about your report. 2/5 means 2 questions left of 5; History shows past answers.',
-        link: 'Your personal link. Every 3 people who make a card from it earn you 1 credit. Tap the counts for credits and gifts.',
       },
       // The two popouts that come before a download.
       confirm: {
         backup: {
           title: 'Save Backup',
-          lede: 'Your card and report live only in this browser. A backup keeps them safe if it is cleared, and moves them to another device.',
+          lede: 'Your card and report are saved only in this browser. If it ever clears its data, this file brings your profile back.',
           points: [
-            'One small .json file, made on this device. Nothing is uploaded.',
-            'It holds your card, report, the de-identified summary it was read from, your syncs, your Ask PsycheAI answers and your link.',
-            'To bring it back: Add your data, then Restore from a backup.',
+            'One small file, made on this device. Nothing is uploaded.',
+            'It holds your card, your report and the data summary behind it, your syncs, Ask PsycheAI answers and your link.',
+            'To bring them back: Load my data, then Restore from a backup.',
             'Keep it private: anyone with the file can read your report.',
           ],
           back: 'Back',
@@ -1351,6 +1355,7 @@
           ],
           back: 'Back',
           go: 'Download',
+          locked: 'Available once your Psyche Report is unlocked.',
         },
       },
     },

@@ -269,6 +269,16 @@ html.view-pending #view-welcome { display: none; }
 .profile-hero { margin-bottom: 1.1rem; }
 
 .hero .lede { margin: 0 0 1.1rem; max-width: 46ch; }
+/* What the reading covers: four words on one line, separated by dots, just
+   above the buttons. No borders, no fill. */
+.hero-pills { display: flex; flex-wrap: nowrap; align-items: center; margin: -.3rem 0 1.1rem; padding: 0; list-style: none;
+  font-size: .9rem; font-weight: 600; letter-spacing: .01em; color: var(--accent); white-space: nowrap; }
+.hero-pills li { flex: none; }
+.hero-pills li + li::before { content: "·"; margin: 0 .55rem; color: color-mix(in srgb, var(--accent-2) 70%, transparent); font-weight: 800; }
+@media (max-width: 719px) {
+  .hero-pills { font-size: clamp(.6rem, 3.05vw, .84rem); margin-bottom: .9rem; }
+  .hero-pills li + li::before { margin: 0 .3rem; }
+}
 
 /* The promo video. 9:16, so it is sized by its width and never stretched: on
    a phone it sits centred under the buttons, as wide as fits without taking
@@ -334,6 +344,8 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .hero-video:-webkit-full-screen .hero-video-bar { padding: 2rem max(1rem, calc(50% - 22rem)) .8rem; }
 @media (min-width: 720px) {
   .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 2rem; align-items: center; }
+  /* No taller than the video beside it. */
+  #view-welcome .hero { padding-top: 1.1rem; padding-bottom: 1.1rem; }
   .hero-video { margin: 0; width: 230px; }
   .hero > .invite-banner { grid-column: 1 / -1; }
 }
@@ -4776,17 +4788,21 @@ details.more[open] > summary::after { content: ' ▴'; }
    tiles in one shade, two lines each (name and number, then buttons). Only
    the locked report has colour of its own: a glowing gradient. Then two
    lavender rows: the reader's data and confidence, and what to keep. */
-.hub-card { padding: 0; overflow: visible; border-color: color-mix(in srgb, var(--accent) 22%, var(--bg-alt));
-  /* The same light wash as the My Syncs header (.scan-hero). */
+.hub-card { padding: 0; overflow: visible; position: relative; border: 2px solid transparent;
+  /* The same light wash as the My Syncs header (.scan-hero), inside a gradient ring. */
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(209, 71, 122, .14), transparent 55%),
-    radial-gradient(90% 120% at 0% 100%, rgba(123, 63, 160, .14), transparent 60%),
-    var(--bg-alt);
-  box-shadow: 0 14px 40px rgba(123, 63, 160, .14); }
+    radial-gradient(120% 140% at 100% 0%, rgba(209, 71, 122, .14), transparent 55%) padding-box,
+    radial-gradient(90% 120% at 0% 100%, rgba(123, 63, 160, .14), transparent 60%) padding-box,
+    linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,
+    linear-gradient(135deg, #7b3fa0, #d1477a, #f0a35a) border-box;
+  box-shadow: 0 0 0 6px rgba(123, 63, 160, .06), 0 18px 44px rgba(123, 63, 160, .22); }
 .hub-card::before { display: none; }
-.hub-bar { border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; padding: .55rem 1rem; text-align: center; color: #fff; background: linear-gradient(90deg, #7b3fa0, #d1477a); }
-.hub-bar h2 { margin: 0; font-size: .95rem; font-weight: 700; letter-spacing: .02em; color: #fff; }
-.hub-in { padding: .65rem; }
+/* No title bar: the name is for screen readers; a gradient ring and a soft
+   glow mark the panel instead. */
+.hub-bar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hub-bar h2 { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: .02em; color: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hub-in { padding: .75rem; }
 .hub-svg { width: 16px; height: 16px; flex: none; }
 
 .hub-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
@@ -4806,7 +4822,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-num { font-size: 1rem; font-weight: 700; line-height: 1; color: var(--accent); white-space: nowrap; }
 .hub-num small { font-size: .72rem; font-weight: 600; color: var(--ink-soft); }
 .hub-ok { flex: none; display: grid; place-items: center; color: var(--good); }
-.hub-ok .hub-svg { width: 20px; height: 20px; stroke-width: 2.6; }
+.hub-ok .hub-svg { width: 20px; height: 20px; stroke-width: 3; }
 .hub-badge { font-size: .6rem; font-weight: 800; color: #fff; background: var(--accent); padding: .1rem .4rem; border-radius: 999px; white-space: nowrap; }
 .hub-badge[hidden] { display: none; }
 .hub-acts { display: flex; gap: .35rem; }
@@ -4817,17 +4833,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-card { --hub-lift: 0 1px 2px rgba(36, 26, 46, .08), 0 2px 8px rgba(123, 63, 160, .10); }
 .hub-go .hub-svg { width: 13px; height: 13px; }
 
-/* The locked report: a gradient ring that breathes, a soft glow, a filled button. */
-.hub-tile.is-cta { border: 2px solid transparent;
-  background: linear-gradient(color-mix(in srgb, var(--accent) 6%, var(--bg-alt)), color-mix(in srgb, var(--accent) 6%, var(--bg-alt))) padding-box, linear-gradient(135deg, var(--accent), var(--accent-2), #f0a35a) border-box;
-  animation: hub-glow 2.4s ease-in-out infinite; }
-@keyframes hub-glow {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(209, 71, 122, .08), 0 8px 20px rgba(123, 63, 160, .2); }
-  50% { box-shadow: 0 0 0 7px rgba(209, 71, 122, .14), 0 12px 30px rgba(123, 63, 160, .34); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hub-tile.is-cta { animation: none; box-shadow: 0 0 0 5px rgba(209, 71, 122, .1), 0 10px 26px rgba(123, 63, 160, .28); }
-}
+/* The locked report: the same tile as the rest; its filled button says enough. */
 .hub-go.is-fill { border: 0; color: #fff; background: linear-gradient(90deg, #7b3fa0, #d1477a); box-shadow: 0 5px 12px rgba(209, 71, 122, .3); }
 
 .hub-rows { display: grid; gap: .5rem; margin-top: .5rem; }
@@ -4839,7 +4845,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-ring { --p: 0; width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center;
   background: conic-gradient(var(--accent), var(--accent-2) calc(var(--p) * 1%), color-mix(in srgb, var(--accent) 14%, var(--bg-alt)) 0); }
 .hub-ring b { width: 27px; height: 27px; border-radius: 50%; background: var(--bg-alt); display: grid; place-items: center; font-size: .72rem; }
-.hub-conf-text { font-size: .74rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.hub-conf { gap: .6rem; }
+.hub-conf:hover .hub-rl { color: var(--accent); }
+.hub-conf:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+/* Keep's two buttons sit at the right, beside the bin. */
+.hub-keep .hub-btn:first-of-type { margin-left: auto; }
+.hub-keep .hub-del { margin-left: 0; }
 .hub-chips { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
 .hub-chip { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; font: inherit; font-size: .72rem; font-weight: 600;
   cursor: pointer; white-space: nowrap; padding: .22rem .6rem; border-radius: 999px; background: var(--bg-alt); color: var(--accent);
@@ -4881,6 +4892,30 @@ details.more[open] > summary::after { content: ' ▴'; }
   color: #fff; background: #2b2136; box-shadow: 0 10px 26px rgba(20, 14, 26, .28); }
 .hub-tip:hover + .hub-tip-text, .hub-tip:focus-visible + .hub-tip-text, .hub-tip.is-open + .hub-tip-text { display: block; }
 .hub-rl { flex: none; font-size: .74rem; font-weight: 600; color: var(--ink); }
+/* Your Link as a row: the counts in a line, Copy link and Share at the right,
+   then what a credit is for, and, once there is one, the gift. */
+.hub-linkrow { flex-wrap: wrap; margin: 0; }
+.hub-linkhead { display: inline-flex; align-items: center; gap: .5rem; }
+.hub-linkcopy { margin-left: 0; }
+.hub-linkstats { margin: 0 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; padding: 0; list-style: none; }
+.hub-linkstat { cursor: default; color: var(--ink-soft); font-weight: 500; gap: .3rem; }
+.hub-linkstat b { font-weight: 700; color: var(--accent); }
+/* The rule, short, in a small purple pill under the counts. */
+.hub-linknote { order: 1; display: flex; margin: 0; }
+.hub-linkstats { order: 2; }
+.hub-linkrow .referral-ready-row, .hub-linkrow .referral-status, .hub-linkrow .referral-gifts { order: 3; }
+.hub-linknote span { padding: .18rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3; color: #fff;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--accent-2))); }
+.hub-linkrow .referral-ready-row:not([hidden]) { flex-basis: 100%; display: flex; align-items: center; gap: .6rem; margin: 0;
+  font-size: .76rem; font-weight: 600; color: var(--ink); }
+.hub-linkrow .referral-status:not([hidden]) { flex-basis: 100%; margin: 0; font-size: .74rem; color: var(--good); }
+.hub-linkrow .referral-gifts:empty { display: none; }
+.hub-linkrow .referral-gifts { flex-basis: 100%; font-size: .74rem; }
+.hub-linkrow .referral-gifts-head { margin: 0 0 .25rem; font-weight: 600; color: var(--ink-soft); }
+.hub-linkrow .referral-gift-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .3rem; }
+.hub-linkrow .referral-gift-list li { display: flex; align-items: center; gap: .5rem; }
+.hub-linkrow .referral-gift-list code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub-linkrow .referral-gift-copy { padding: .2rem .6rem; min-height: 0; font-size: .72rem; }
 .hub-textlink { border: 0; background: none; padding: 0; font: inherit; font-size: .72rem; font-weight: 600; color: var(--accent); cursor: pointer; }
 
 /* The Confidence score popout: the method card, compact, every source open. */
@@ -4904,6 +4939,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-confirm-list { margin: 0 0 .9rem; padding: 0; list-style: none; display: grid; gap: .4rem; }
 .hub-confirm-list li { display: flex; gap: .5rem; font-size: .86rem; line-height: 1.4; }
 .hub-confirm-list .hub-svg { width: 15px; height: 15px; margin-top: .15rem; color: var(--good); stroke-width: 2.4; }
+.hub-confirm-locked { display: flex; align-items: center; gap: .45rem; margin: 0 0 .9rem; padding: .5rem .7rem; border-radius: 10px;
+  font-size: .84rem; font-weight: 600; color: var(--ink-soft); background: color-mix(in srgb, var(--ink-soft) 9%, var(--bg-alt)); }
+.hub-confirm-locked .hub-svg { width: 15px; height: 15px; }
+.hub-confirm-btns .btn:disabled { opacity: .45; filter: grayscale(1); cursor: not-allowed; box-shadow: none; }
 .hub-confirm-btns { display: flex; justify-content: flex-end; gap: .5rem; }
 .hub-confirm-btns .btn { display: inline-flex; align-items: center; gap: .4rem; }
 
@@ -4958,6 +4997,10 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-del { margin-left: 0; }
   /* The data row's ring centred; Keep's name centred above its three buttons. */
   .hub-data .hub-conf { flex-basis: 100%; justify-content: center; }
+  .hub-linkhead { flex-basis: 100%; justify-content: center; }
+  .hub-linkstats { flex-basis: 100%; margin: 0; justify-content: center; gap: .2rem .7rem; }
+  .hub-linknote { order: 3; flex-basis: 100%; justify-content: center; }
+  .hub-linkrow .referral-ready-row, .hub-linkrow .referral-status, .hub-linkrow .referral-gifts { order: 4; }
   .hub-keep .hub-rl { flex-basis: 100%; text-align: center; }
   .hub-keep .hub-del { order: 2; }
   .hub-btn .hub-svg { display: none; }

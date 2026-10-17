@@ -3708,9 +3708,10 @@ check('the sample arrives in chronological order',
   // Since October 2026 the score starts from the sources loaded and is never
   // lowered for the sample, which is PsycheAI's and the same for everyone;
   // the sample still limits what may be claimed.
-  check('the score starts from the sources loaded, is never lowered for the sample, and tops out at 92',
+  check('the score starts from the sources loaded (Instagram alone 65–79, one more 70–84, two or more 75–90), is never lowered for the sample, and tops out at 90',
     /Start from the sources loaded/.test(sys) && /never\s+lower a score because only a fraction/i.test(sys) &&
-    /Never above 92/.test(sys) && /do not claim to have read their relationships/.test(sys));
+    /Never above 90/.test(sys) && /Instagram alone, 65–79/.test(sys) && /70–84/.test(sys) && /75–90/.test(sys) &&
+    /do not claim to have read their relationships/.test(sys));
   check('and forbids citing a total as coverage',
     /Never cite a total as though it were coverage/i.test(sys));
   // Confidence gets its own section rather than a paragraph inside the
@@ -8219,11 +8220,11 @@ check('the schema requires evidence on where they align and differ',
         /^[0-9a-f]{48}$/.test(openGrant || ''), JSON.stringify(opened));
   }
   let status = await referral.status(secret);
-  check('one friend: the first report unlocks, but no credit yet (one of three)',
+  // One card, one credit (late October 2026; three until then).
+  check('one friend: the first report unlocks, and their card earns one credit',
     status.friends === 1 && status.first.unlocked && !status.first.claimed && status.first.needed === 1 &&
-      status.credits === 0 && status.available === 0 && status.toward === 1 && status.perCredit === 3 && status.code === code,
+      status.credits === 1 && status.available === 1 && status.toward === 0 && status.perCredit === 1 && status.code === code,
     JSON.stringify(status));
-  check('and no credit can be spent', (await referral.claim(secret)) === null);
   check('the old rewards are gone: no paid-report count or free report for two cards',
     !('paid' in status) && !('earned' in status) && typeof referral.afterPaid === 'undefined');
   const grant = await referral.claimFirst(secret);
@@ -8300,7 +8301,7 @@ check('the schema requires evidence on where they align and differ',
   }
   await referral.afterFreeCard({ account: friend(2), ref: code, client: '10.0.0.' + 2 });
   status = await referral.status(secret);
-  check('three friends\' cards earn one credit', status.friends === 3 && status.credits === 1 && status.available === 1 &&
+  check('three friends\' cards earn three credits', status.friends === 3 && status.credits === 3 && status.available === 3 &&
     status.toward === 0, JSON.stringify(status));
   check('only the secret\'s holder can ask: a code alone is not a secret',
     (await referral.status(code)) === null);
@@ -8324,7 +8325,10 @@ check('the schema requires evidence on where they align and differ',
     /^[0-9a-f]{48}$/.test(gift || '') && (await referral.grantRefusal(gift, { someoneElse: 1 }, { account: sha('psycheai:giftee') })) === null);
   check('but not for the reader who gave it', /for someone else/.test(
     (await referral.grantRefusal(gift, { mine: 1 }, { account: me, myRef: code })) || ''));
-  check('and spending it leaves no credit', (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
+  check('and spending one leaves two', (await referral.status(secret)).available === 2);
+  await referral.claim(secret);
+  await referral.claim(secret);
+  check('and once all are spent, none can be', (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
 
   // Ask PsycheAI's questions: five per payment, once per payment; the link's
   // credits count too; a bought one is spent first, and a failed answer
@@ -8349,8 +8353,8 @@ check('the schema requires evidence on where they align and differ',
     check('a question spends one, and a failed answer gives it back',
       typeof refund === 'function' && (await askCredits.balance(askSecret)).paid === 4 &&
         (refund(), await new Promise(r => setTimeout(r, 10)), (await askCredits.balance(askSecret)).paid === 5));
-    // Three friends' cards: one referral credit, usable as a question once the bought ones are gone.
-    for (let n = 1; n <= 3; n++) await referral.afterFreeCard({ account: sha('psycheai:askfriend' + n), ref: referral.codeOf(askSecret), client: '10.7.0.' + n });
+    // One friend's card: one referral credit, usable as a question once the bought ones are gone.
+    for (let n = 1; n <= 1; n++) await referral.afterFreeCard({ account: sha('psycheai:askfriend' + n), ref: referral.codeOf(askSecret), client: '10.7.0.' + n });
     now = await askCredits.balance(askSecret);
     check('the link\'s credits count as questions too', now.paid === 5 && now.referral === 1 && now.total === 6, JSON.stringify(now));
     for (let i = 0; i < 5; i++) await askCredits.spend(askSecret);

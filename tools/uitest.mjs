@@ -31,7 +31,7 @@ const check = (label, ok, detail) => {
 // the target first; this is a fact about the page, not about the test. Only
 // for things on the page — a button inside an open modal needs no scrolling,
 // and scrolling the page under one just moves the coordinates off it.
-// My Psyche's Confidence score (the method card) opens from the hub (October 2026).
+// My Psyche's Signal strength (the method card) opens from the hub (October 2026).
 async function openMethod(page) {
   await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
   const open = await page.evaluate(() => document.querySelector('#hub-method-dialog').open);
@@ -41,11 +41,10 @@ async function openMethod(page) {
 // The link's counts, credits and gifts open from the hub's Your link tile.
 async function openLink(page) {
   await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
-  if (!(await page.evaluate(() => document.querySelector('#hub-link-dialog').open))) await page.click('.hub-card [data-hub-go="link"]');
-  await page.waitForSelector('#hub-link-dialog[open] .referral-card', { timeout: 10000 });
+  await page.waitForSelector('#profile-body .hub-linkrow', { timeout: 10000 });
 }
 async function closeLink(page) {
-  if (await page.evaluate(() => document.querySelector('#hub-link-dialog').open)) await page.click('#hub-link-dialog .hub-dialog-close');
+  await page.waitForTimeout(0);
 }
 async function closeMethod(page) {
   if (await page.evaluate(() => document.querySelector('#hub-method-dialog').open)) await page.click('#hub-method-dialog .hub-dialog-close');
@@ -2329,10 +2328,16 @@ try {
       // the hero's second button says so, and the steps card is titled for it.
       check('a new reader sees the guide links at the foot of the main page',
         await guidePage.locator('.footer-guides').isVisible());
-      check('the hero\'s buttons are "Get my data" and "Load my data", and there is no separate "New here?" line',
-        (await guidePage.locator('#hero-start').innerText()).trim() === 'Get my data' &&
+      check('the hero\'s buttons are "Request my IG data" and "Load my data", and there is no separate "New here?" line',
+        (await guidePage.locator('#hero-start').innerText()).trim() === 'Request my IG data' &&
           (await guidePage.locator('#hero-load').innerText()).trim() === 'Load my data' &&
           (await guidePage.locator('.hero-request, #hero-request').count()) === 0);
+      check('above the buttons, four pills on one line: MBTI, Attachment Style, Career Strengths, Blind Spots',
+        await guidePage.evaluate(() => { const lis = [...document.querySelectorAll('.hero-pills li')];
+          return lis.map(l => l.textContent).join('|') === 'MBTI|Attachment Style|Career Strengths|Blind Spots' &&
+            new Set(lis.map(l => Math.round(l.getBoundingClientRect().top))).size === 1 &&
+            lis.at(-1).getBoundingClientRect().right <= innerWidth &&
+            (document.querySelector('.hero-pills').compareDocumentPosition(document.querySelector('#hero-start')) & Node.DOCUMENT_POSITION_FOLLOWING) > 0; }));
       check('the steps card is titled "Request your Instagram data first" and says it takes 30 seconds',
         (await guidePage.locator('.help-card h2').innerText()).trim() === 'Request your Instagram data first' &&
           /It takes 30 seconds/.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
@@ -2504,7 +2509,7 @@ try {
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
-        'Your personal AI coach that already knows you, built from your Instagram data and digital footprint.';
+        'Your personal AI coach that already knows you, built from your Instagram data';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
@@ -5997,7 +6002,7 @@ try {
 
   const profileText = await page.locator('#profile-body').innerText();
   for (const [label, needle] of [
-    ['a confidence figure', /Confidence: \d+\/100/],
+    ['a signal strength figure', /Signal strength: \d+\/100/],
     ['the Big Five', /Big Five/],
     ['an MBTI reading', /MBTI: [A-Z]{4}/],
     ['interests', /Interests/],
@@ -11772,11 +11777,12 @@ try {
         hubFoot.download && hubFoot.footBackup && hubFoot.footDelete && hubFoot.hubBackup && hubFoot.hubDelete, JSON.stringify(hubFoot));
       await sp.click('.hub-card [data-hub-go="method"]');
       await sp.waitForSelector('#hub-method-dialog[open] .method-card', { timeout: 10000 });
-      check('structured: paid, the confidence ring opens Confidence score, whose note says what adding data and re-running costs',
+      check('structured: paid, Signal Strength and its score open Signal strength, whose note says what adding data and re-running costs',
         await sp.evaluate(() => (document.querySelector('#hub-method-dialog .sources-read-note') || {}).textContent ===
           'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.' &&
-          document.querySelector('#hub-method-dialog .hub-dialog-title').textContent === 'Confidence score'));
-      check('Confidence score: every source open, no Change or Add on the rows and no WhatsApp advice, one Add / change data link by YOUR DATA',
+          document.querySelector('#hub-method-dialog .hub-dialog-title').textContent === 'Signal strength' &&
+          document.querySelector('.hub-card .hub-conf').textContent === 'Signal Strength' + document.querySelector('.hub-card .hub-ring').textContent));
+      check('Signal strength: every source open, no Change or Add on the rows and no WhatsApp advice, one Add / change data link by YOUR DATA',
         await sp.evaluate(() => {
           const body = document.querySelector('#hub-method-dialog .hub-dialog-body');
           return body.querySelectorAll('.source-read').length === 4 && !body.querySelector('.source-read-action, .source-read-hint') &&
@@ -11809,9 +11815,12 @@ try {
         const goes = key => [...tile(key).querySelectorAll('.hub-acts [data-hub-go]')].map(b => b.textContent).join();
         return { title: hub.querySelector('.hub-bar h2').textContent,
           names: [...hub.querySelectorAll('.hub-tile .hub-name')].map(n => n.textContent).join('|'),
-          tick: Boolean(tile('report').querySelector('.hub-ok')), report: goes('report'), syncs: goes('syncs'), ask: goes('ask'),
-          link: [...tile('link').querySelectorAll('[data-hub-stat]')].map(n => n.dataset.hubStat).join(),
-          copy: Boolean(tile('link').querySelector('.hub-copy')),
+          tick: Boolean(tile('report').querySelector('.hub-ok')) && Boolean(tile('psyche').querySelector('.hub-ok')), report: goes('report'), syncs: goes('syncs'), ask: goes('ask'),
+          card: goes('psyche'),
+          link: [...hub.querySelectorAll('.hub-linkrow .referral-n')].map(n => n.dataset.stat).join(),
+          linkButtons: [...hub.querySelectorAll('.hub-linkrow button')].filter(b => !b.closest('[hidden]'))
+            .map(b => b.getAttribute('aria-label') || b.textContent.trim()).join(),
+          rowOrder: [...hub.querySelectorAll('.hub-rows > .hub-row')].map(r => r.classList[1]).join(),
           cta: hub.querySelectorAll('.hub-tile.is-cta').length,
           shades: new Set([...hub.querySelectorAll('.hub-tile')].map(n => getComputedStyle(n).backgroundColor)).size,
           ok: getComputedStyle(hub.querySelector('.hub-ok')).color === getComputedStyle(document.documentElement).getPropertyValue('--good').trim() ||
@@ -11822,11 +11831,12 @@ try {
           keepLabel: hub.querySelector('.hub-keep .hub-rl').textContent,
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
-      check('Psyche Hub: four lavender tiles — Psyche Report (a green tick, Read and Download), Your Syncs (Sync), Ask PsycheAI (Ask, History), Your link (copy, then opened · cards · credits) — then the data row and Keep',
-        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Report|Your Syncs|Ask PsycheAI|Your Link' && hubTiles.tick &&
-          hubTiles.report === 'Read,Download' && hubTiles.syncs === 'Sync' && hubTiles.ask === 'Ask' && hubTiles.link === 'opens,friends,available' &&
-          hubTiles.copy && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
-          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Keep' &&
+      check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Your Syncs (Sync), Ask PsycheAI (Ask, History) — then Your Link, Signal Strength and Save your profile',
+        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Your Syncs|Ask PsycheAI' && hubTiles.tick &&
+          hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'Sync' && hubTiles.ask === 'Ask' &&
+          hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
+          hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
+          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Save your profile' &&
           hubTiles.keep === 'backup,ai,delete', JSON.stringify(hubTiles));
       check('each tile\'s name is its tooltip (no "i", no icon, none on the rows)',
         hubTiles.tips === 4 && hubTiles.rowTips === 0 && hubTiles.info, JSON.stringify(hubTiles));
@@ -11834,13 +11844,11 @@ try {
       check('a tap on a tile\'s name shows its words; a tap elsewhere hides them',
         await sp.evaluate(() => { const t = document.querySelector('#hub-tip-syncs'); return getComputedStyle(t).display === 'block' &&
           /Compare your card with a friend/.test(t.textContent); }) &&
-          await sp.click('.hub-bar').then(() => sp.evaluate(() => getComputedStyle(document.querySelector('#hub-tip-syncs')).display === 'none')));
-      await sp.click('.hub-card [data-hub-go="link"]');
-      await sp.waitForSelector('#hub-link-dialog[open] .referral-card', { timeout: 10000 });
-      check('the link\'s counts open its credits and gifts in a popout',
-        await sp.evaluate(() => document.querySelectorAll('#hub-link-dialog .referral-card .referral-n').length === 4 &&
-          document.querySelector('#hub-link-dialog .hub-dialog-title').textContent === 'Your link: credits and gifts'));
-      await sp.click('#hub-link-dialog .hub-dialog-close');
+          await sp.click('.hub-keep .hub-rl').then(() => sp.evaluate(() => getComputedStyle(document.querySelector('#hub-tip-syncs')).display === 'none')));
+      check('Your Link is a row of its own: its counts and what a credit is for, with no popout',
+        await sp.evaluate(() => document.querySelectorAll('#profile-body .hub-linkrow .referral-n').length === 3 &&
+          document.querySelector('.hub-linkrow .hub-linknote').textContent === '1 card = 1 credit = 1 question or report to gift' &&
+          !document.querySelector('.hub-card [data-hub-go="link"]')));
       {
         let early = false;
         const listen = () => { early = true; };
@@ -12431,7 +12439,7 @@ try {
       await openMethod(sp);
       const method = await sp.locator('#hub-method-dialog .method-card').textContent();
       check('structured: the method section is short: the score, what it read, the sources — no build or format rows',
-        /Confidence/.test(method) && !/Sources read|Structured report, v1|Written by|Report format|Build/.test(method) &&
+        /Signal strength: \d+\/100/.test(method) && !/Sources read|Structured report, v1|Written by|Report format|Build/.test(method) &&
         (await sp.locator('#hub-method-dialog .method-card .method-list').count()) === 0, method.slice(0, 300));
       await closeMethod(sp);
       await sp.click('#nav-full');
@@ -13004,8 +13012,8 @@ try {
           return tile && { cta: tile.classList.contains('is-cta'), button: go.dataset.hubGo + ':' + go.textContent + ':' + go.classList.contains('is-fill'),
             glow: getComputedStyle(tile).animationName, last: tile.closest('.hub-card') === document.querySelector('#profile-body').lastElementChild };
         });
-        check('before the unlock the hub closes the page, and its Psyche Report tile glows, with one filled Unlock free button',
-          Boolean(locked) && locked.cta && locked.button === 'unlock:Unlock free:true' && locked.glow === 'hub-glow' && locked.last,
+        check('before the unlock the hub closes the page, and its Psyche Report tile has one filled Unlock free button and no glow',
+          Boolean(locked) && locked.cta && locked.button === 'unlock:Unlock free:true' && locked.glow === 'none' && locked.last,
           JSON.stringify(locked));
         await seed(false);
       }
@@ -13056,7 +13064,7 @@ try {
       await openMethod(sp);
       check('structured: and its How it was read opens Evidence and method with a row per source, no button',
         await sp.evaluate(() => { const m = document.querySelector('#hub-method-dialog .free-method-card');
-          return Boolean(m) && /Confidence/.test(m.textContent) &&
+          return Boolean(m) && /Signal strength: \d+\/100/.test(m.textContent) &&
             m.querySelectorAll('.sources-read .source-read[data-flow="unlock"]').length === 4 && !m.querySelector('.trust-sources, #free-add-data'); }));
       await closeMethod(sp);
       // The page's foot on a free report: Save a backup and Delete everything
@@ -13067,7 +13075,15 @@ try {
         stamp: Boolean(document.querySelector('#analysed-by .provenance-box')),
       }));
       check('structured: on a free report, Save a backup, the AI profile (locked) and Delete everything are in the hub, not the foot',
-        freeFoot.footDelete && freeFoot.footBackup && freeFoot.hubKeep === 'backup,unlock,delete' && freeFoot.stamp, JSON.stringify(freeFoot));
+        freeFoot.footDelete && freeFoot.footBackup && freeFoot.hubKeep === 'backup,ai-locked,delete' && freeFoot.stamp, JSON.stringify(freeFoot));
+      await sp.click('.hub-card [data-hub-go="ai-locked"]');
+      await sp.waitForSelector('#hub-confirm-dialog[open]', { timeout: 10000 });
+      check('locked, AI Personal Context opens its own explanation, with Download greyed out and why',
+        await sp.evaluate(() => document.querySelector('#hub-confirm-title').textContent === 'AI Personal Context' &&
+          document.querySelector('#hub-confirm-dialog [data-hub-confirm="ai"]').disabled &&
+          /Available once your Psyche Report is unlocked/.test(document.querySelector('#hub-confirm-dialog .hub-confirm-locked').textContent) &&
+          !document.querySelector('#premium-dialog').open));
+      await sp.click('#hub-confirm-dialog [data-hub-confirm="back"]');
       // The unlock offer, by the report's five parts, and the panel saying
       // where the reasoning behind the card is.
       const offerParts = await sp.evaluate(() => {
@@ -13641,22 +13657,18 @@ try {
       // The invite-friends card, on the free report.
       await openLink(rp);
       const card = await rp.evaluate(() => {
-        const c = document.querySelector('#hub-link-dialog .referral-card');
-        return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
+        const c = document.querySelector('#profile-body .hub-linkrow');
+        return { text: c.innerText, stats: c.querySelectorAll('.referral-n').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the hub\'s Your link popout shows the referral card: what credits it earns, four boxes (opens, cards, syncs, credits), only a Copy link button and nothing to spend yet',
-        /credits and gifts/i.test(await rp.textContent('#hub-link-dialog .hub-dialog-title')) && card.stats === 4 && !card.ready &&
-          await rp.evaluate(() => [...document.querySelectorAll('#hub-link-dialog .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
-          /0\s*opened your link/.test(card.text) &&
-          /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use a credit to ask PsycheAI a question or to gift a Psyche Report\./.test(card.text) &&
-          /Share your card or link to start/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
-          /0\s*made a card/.test(card.text) && /0\s*credits/.test(card.text) && /0\s*synced with you/.test(card.text) &&
-          !/Towards your next/.test(card.text) &&
+      check('the hub\'s Your Link row: a copy icon by its name, three counts (opens, cards, credits), what a credit is for, and nothing to spend yet',
+        card.stats === 3 && !card.ready &&
+          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,credits') &&
+          /0\s*opened/.test(card.text) && /0\s*cards/.test(card.text) && !/syncs/.test(card.text) && /0\s*credits/.test(card.text) &&
+          /1 card = 1 credit = 1 question or report to gift/.test(card.text) &&
           await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&
-            !document.querySelector('#profile-body .referral-card')) &&
-          await rp.evaluate(() => !document.querySelector('#hub-link-dialog .referral-card .referral-share') &&
-            [...document.querySelectorAll('#hub-link-dialog .referral-card button')].filter(b => !b.closest('[hidden]'))
-              .map(b => b.className).join() === 'btn btn-sm btn-outline referral-copy'),
+            !document.querySelector('#profile-body .referral-card:not(.hub-linkrow)')) &&
+          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button')].filter(b => !b.closest('[hidden]'))
+              .map(b => b.getAttribute('aria-label')).join() === 'Copy your link'),
         JSON.stringify(card));
       await closeLink(rp);
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
@@ -13670,29 +13682,13 @@ try {
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
       await openLink(rp);
-      // Your Referral's own Copy link, small and right beside its title: the
-      // same message and link. The credits box is set apart from the counts.
-      const refCopy = await rp.evaluate(() => {
-        const button = document.querySelector('#hub-link-dialog .referral-card .referral-copy');
-        const title = document.querySelector('#hub-link-dialog .referral-card .referral-title').getBoundingClientRect();
-        const head = document.querySelector('#hub-link-dialog .referral-card .referral-head').getBoundingClientRect();
-        const b = button.getBoundingClientRect();
-        const style = sel => getComputedStyle(document.querySelector('#hub-link-dialog .referral-card ' + sel));
-        return { beside: b.width > 0 && head.right - b.right > 20, level: title.width === 0,
-          small: b.height < 34, text: button.textContent.trim(),
-          credits: style('.referral-stat-credits').backgroundColor !== style('.referral-stat:not(.referral-stat-credits)').backgroundColor &&
-            parseFloat(style('.referral-stat-credits').borderTopWidth) >= 1 &&
-            parseFloat(style('.referral-stat:not(.referral-stat-credits)').borderTopWidth) === 0 };
-      });
-      check('in the popout, Your Referral keeps a small Copy link (the popout carries the title), and its credits box is coloured apart, with a border',
-        refCopy.beside && refCopy.level && refCopy.small && refCopy.text === 'Copy link' && refCopy.credits, JSON.stringify(refCopy));
       await rp.evaluate(() => navigator.clipboard.writeText('').catch(() => {}));
-      await rp.click('#hub-link-dialog .referral-card .referral-copy');
+      await rp.click('#profile-body .hub-linkrow .hub-linkcopy');
       await rp.waitForTimeout(300);
       const refCopied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
-      check('and it copies the same share message and link as the card\'s Copy link, saying so on the button',
+      check('Your Link\'s copy icon copies the same share message and link as the card\'s Copy link, and turns to a tick',
         refCopied === copiedMessage &&
-          (await rp.locator('#hub-link-dialog .referral-card .referral-copy').innerText()).trim() === 'Copied ✓', refCopied);
+          await rp.evaluate(() => document.querySelector('#profile-body .hub-linkrow .hub-linkcopy').classList.contains('is-done')), refCopied);
       await closeLink(rp);
       // Someone opens the link while the reader waits on My Psyche: the free
       // unlock appears without a reload, as soon as the reader is back on the tab.
@@ -14124,16 +14120,16 @@ try {
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
       await openLink(rp);
       await rp.waitForFunction(() => {
-        const c = document.querySelector('#hub-link-dialog .referral-card');
+        const c = document.querySelector('#profile-body .hub-linkrow');
         return c && !c.querySelector('.referral-ready-row').hidden;
       }, null, { timeout: 15000 });
-      const ready = await rp.evaluate(async () => ({ text: document.querySelector('#hub-link-dialog .referral-card').innerText,
-        cards: document.querySelector('#hub-link-dialog .referral-n[data-stat="friends"]').textContent,
-        shown: document.querySelector('#hub-link-dialog .referral-n[data-stat="opens"]').textContent,
+      const ready = await rp.evaluate(async () => ({ text: document.querySelector('#profile-body .hub-linkrow').innerText,
+        cards: document.querySelector('#profile-body .hub-linkrow .referral-n[data-stat="friends"]').textContent,
+        shown: document.querySelector('#profile-body .hub-linkrow .referral-n[data-stat="opens"]').textContent,
         opens: (await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json())).opens }));
-      check('with three friends in, the card counts them, shows 1 credit, and offers to gift a report with it, not to use it',
-        ready.cards === '3' && /1\s*credits/.test(ready.text) && /You have 1 credit/.test(ready.text) &&
+      check('with three friends in, Your Link counts them, shows 3 credits (one a card), and offers to gift a report with one, not to use it',
+        ready.cards === '3' && /3\s*credits/.test(ready.text) && /You have 3 credits/.test(ready.text) &&
           /Gift a Psyche Report \(1 credit\)/.test(ready.text) && !/Use it/.test(ready.text), JSON.stringify(ready));
       check('and the card shows how many opened the link, the server\'s own count', ready.opens >= 1 && ready.shown === String(ready.opens), JSON.stringify(ready));
       await closeLink(rp);
@@ -14231,17 +14227,17 @@ try {
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
       await openLink(rp);
       await rp.waitForFunction(() => {
-        const c = document.querySelector('#hub-link-dialog .referral-card');
+        const c = document.querySelector('#profile-body .hub-linkrow');
         return c && !c.querySelector('.referral-ready-row').hidden;
       }, null, { timeout: 15000 });
       await rp.evaluate(() => { delete navigator.share; });
-      await rp.click('#hub-link-dialog .referral-gift');
-      await rp.waitForFunction(() => /Gift link copied/.test(document.querySelector('#hub-link-dialog .referral-status').textContent),
+      await rp.click('#profile-body .hub-linkrow .referral-gift');
+      await rp.waitForFunction(() => /Gift link copied/.test(document.querySelector('#profile-body .hub-linkrow .referral-status').textContent),
         null, { timeout: 15000 });
       const giftLink = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
       const giftState = await rp.evaluate(() => ({
-        list: document.querySelector('#hub-link-dialog .referral-gifts').innerText,
-        ready: !document.querySelector('#hub-link-dialog .referral-ready-row').hidden,
+        list: document.querySelector('#profile-body .hub-linkrow .referral-gifts').innerText,
+        ready: !document.querySelector('#profile-body .hub-linkrow .referral-ready-row').hidden,
       }));
       check('"Gift a Psyche Report" makes a gift link, copies it and lists it under the card, and the credit is spent',
         /^http:\/\/localhost:\d+\/\?gift=[0-9a-f]{48}$/.test(giftLink) && /Gift links you have made/.test(giftState.list) &&

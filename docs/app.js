@@ -185,6 +185,9 @@
     firstUsed: 'psycheai_first_used',
     // When a backup was last saved, for the hub.
     lastBackup: 'psycheai_last_backup',
+    // The hub's Ask count, as left/of: the "of" is the most the reader has held
+    // since their questions last went up (a pack, a gift, a credit).
+    askOf: 'psycheai_ask_of',
     // Ask PsycheAI: every question and answer, kept in this browser only (the
     // server keeps none), newest last; and a payment for questions that was
     // made but not yet credited, to credit on the next open (openAsk).
@@ -1852,7 +1855,7 @@
    */
   /**
    * "Your Referral": how many opened it, made a card and synced, and the
-   * credits that earns: one for every three friends' cards. A credit is
+   * credits that earns: one for every friend's card. A credit is
    * spent on a gift today (Gift a Psyche Report), premium features later.
    * The free first report a single friend's card unlocks is offered on the
    * unlock panel and the payment sheet instead (unlockShareHtml).
@@ -2282,7 +2285,7 @@
     trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
     grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-    tick: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    tick: '<path d="M4.5 12.8l4.6 4.7L19.5 6.5"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     open: '<path d="M4 6.5C6.5 5 9.5 5 12 6.5v13C9.5 18 6.5 18 4 19.5zM20 6.5C17.5 5 14.5 5 12 6.5v13c2.5-1.5 5.5-1.5 8 0z"/>',
     down: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
@@ -2337,6 +2340,9 @@
     const fresh = syncs.filter(entry => entry.fresh).length;
     const asked = (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string').length;
     const tiles = [
+      hubTile('psyche', { icon: 'report', name: H.card, tip: 'card',
+        state: '<span class="hub-ok" role="img" aria-label="' + esc(H.ready) + '">' + hubIcon('tick') + '</span>',
+        buttons: [['card', H.read, 'open'], ['card-download', H.download, 'down']] }),
       explained
         ? hubTile('report', { icon: 'report', name: H.report,
             state: '<span class="hub-ok" role="img" aria-label="' + esc(H.unlocked) + '">' + hubIcon('tick') + '</span>',
@@ -2347,14 +2353,6 @@
         badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync']] }),
       hubTile('ask', { icon: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
         buttons: [['ask', H.askGo, 'ask']].concat(explained && asked ? [['asked', H.askHistory, 'history']] : []) }),
-      // The link: copy it from the corner; its three counts, all one size,
-      // open the credits and gifts.
-      hubTile('link', { icon: 'link', name: H.link,
-        state: '<button type="button" class="hub-copy" data-hub-go="copy" aria-label="' + esc(H.copyLink) + '" title="' + esc(H.copyLink) + '">' +
-          hubIcon('copy') + '</button>',
-        line2: '<button type="button" class="hub-stats" data-hub-go="link" aria-label="' + esc(H.linkMore) + '">' +
-          [['opens', H.statOpened], ['friends', H.statCards], ['available', H.statCredits]].map(([key, label]) =>
-            '<span><b data-hub-stat="' + key + '">0</b> ' + esc(label) + '</span>').join('<i aria-hidden="true">·</i>') + '</button>' }),
     ];
     const digest = state.digest;
     const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
@@ -2373,11 +2371,11 @@
       '<div class="hub-bar"><h2 id="hub-title">' + esc(H.title) + '</h2></div>' +
       '<div class="hub-in">' +
       '<div class="hub-tiles">' + tiles.join('') + '</div>' +
-      '<div class="hub-rows">' +
+      '<div class="hub-rows">' + hubLinkRowHtml(explained) +
         '<div class="hub-row hub-data" aria-label="' + esc(H.data) + '">' +
-          '<button type="button" class="hub-conf" data-hub-go="method" aria-label="' + esc(H.howRead) + '">' +
-            '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
-            '<b class="hub-conf-text">' + esc(H.confidence(conf.level)) + ' ›</b></button>' +
+          '<button type="button" class="hub-conf" data-hub-go="method" aria-label="' + esc(H.signalOf(score)) + '">' +
+            '<span class="hub-rl">' + esc(H.signal) + '</span>' +
+            '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span></button>' +
           '<span class="hub-chips">' + sources.map(([key, label, loaded]) =>
             '<button type="button" class="hub-chip' + (loaded ? '' : ' is-add') + '" data-hub-source="' + key + '" data-flow="' + flow + '"' +
             ' aria-label="' + esc(loaded ? H.sourceLoaded(label) : H.sourceAdd(label)) + '">' +
@@ -2389,11 +2387,32 @@
             '<span class="hub-saved' + (saved ? '' : ' is-never') + '">' + esc(saved ? H.savedAgo(agoText(saved)) : H.neverSaved) + '</span></button>' +
           (explained
             ? '<button type="button" class="hub-btn" data-hub-go="ai" title="' + esc(H.aiTip) + '">' + hubIcon('spark') + '<span>' + esc(H.aiProfile) + '</span></button>'
-            : '<button type="button" class="hub-btn is-locked" data-hub-go="unlock" title="' + esc(H.aiTip) + '">' + hubIcon('lock') + '<span>' + esc(H.aiLocked) + '</span></button>') +
+            : '<button type="button" class="hub-btn is-locked" data-hub-go="ai-locked" title="' + esc(H.aiTip) + '">' + hubIcon('lock') + '<span>' + esc(H.aiLocked) + '</span></button>') +
           '<button type="button" class="hub-del" data-hub-go="delete" aria-label="' + esc(H.deleteAll) + '" title="' + esc(H.deleteAll) + '">' + hubIcon('trash') + '</button>' +
         '</div>' +
       '</div></div>' +
     '</section>';
+  }
+
+  // Your Link, as a row: its counts, what they earn, Copy link and Share, and
+  // once there is a credit, Gift a Psyche Report and the gift links made.
+  // Built with the referral card's own classes, so refreshReferral fills it
+  // and the referral card's handlers run its buttons; no popout.
+  function hubLinkRowHtml(paid) {
+    const H = Copy.STRUCTURED.hub;
+    const R = TEXT.referral;
+    const stat = (key, label) => '<li class="hub-chip hub-linkstat"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</li>';
+    return '<div class="hub-row hub-linkrow referral-card" data-paid="' + (paid ? '1' : '0') + '" aria-label="' + esc(H.link) + '">' +
+      '<span class="hub-linkhead"><span class="hub-rl">' + esc(H.link) + '</span>' +
+        '<button type="button" class="hub-copy hub-linkcopy" data-hub-go="copy" aria-label="' + esc(H.copyLink) + '" title="' + esc(H.copyLink) + '">' +
+          hubIcon('copy') + '</button></span>' +
+      '<ul class="hub-linkstats">' + stat('opens', H.statOpened) + stat('friends', H.statCards) + stat('credits', H.statCredits) + '</ul>' +
+      '<p class="hub-linknote" title="' + esc(H.linkRule) + '"><span>' + esc(H.linkNote) + '</span></p>' +
+      '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
+        '<button type="button" class="hub-btn referral-gift">' + hubIcon('gift') + '<span>' + esc(R.gift) + '</span></button></div>' +
+      '<p class="referral-status" role="status" hidden></p>' +
+      '<div class="referral-gifts"></div>' +
+    '</div>';
   }
 
   /** The numbers the server sends later: questions left, the link's credits. */
@@ -2413,19 +2432,15 @@
     // Questions as left / of: of a bought pack of five, or of however many
     // there are when gifts and credits make more (a lone free one is 1/1).
     if (askCreditsNow && typeof askCreditsNow.total === 'number') {
-      const n = askCreditsNow.total;
-      const asked = (store.read(KEYS.ask, []) || []).length;
-      const pack = Number(askCreditsNow.perPack) || 5;
-      const of = askCreditsNow.paid > 0 || n > 1 || asked > 1 ? Math.max(n, pack) : Math.max(n, 1);
+      const n = Math.max(0, Number(askCreditsNow.total) || 0);
+      const held = store.read(KEYS.askOf, null);
+      const of = held && n <= Number(held.n) ? Math.max(Number(held.of) || 0, n) : n;
+      store.write(KEYS.askOf, { n, of });
       const node = hub.querySelector('.hub-tile[data-hub="ask"] [data-hub-num]');
       if (node) {
-        node.innerHTML = esc(String(n)) + '<small>/' + esc(String(of)) + '</small>';
+        node.innerHTML = esc(String(n)) + (of > 0 ? '<small>/' + esc(String(of)) + '</small>' : '');
         node.title = H.questionsOf(n, of);
       }
-    }
-    const status = referralStatus;
-    if (status) {
-      hub.querySelectorAll('[data-hub-stat]').forEach(node => { node.textContent = String(Number(status[node.dataset.hubStat]) || 0); });
     }
   }
 
@@ -2457,12 +2472,14 @@
     const H = Copy.STRUCTURED.hub;
     const report = state.profile && state.profile.report;
     switch (button.dataset.hubGo) {
-      case 'report': backToHub = true; go('full'); break;
+      case 'report': leaveHub(); go('full'); break;
       case 'pdf': exportPdf(); break;
-      case 'asked': backToHub = true; openAskAppendix(); break;
+      case 'card': openPsycheCard(); break;
+      case 'card-download': downloadCardImage({ currentTarget: button }); break;
+      case 'asked': leaveHub(); openAskAppendix(); break;
       case 'unlock': openPremiumDialog(button, 'unlock'); break;
       case 'ask': openAsk(undefined, { ideas: true }); break;
-      case 'syncs': backToHub = true; go('scan'); break;
+      case 'syncs': leaveHub(); go('scan'); break;
       case 'copy': {
         const text = shareMessage();
         writeClipboard(text).then(() => {
@@ -2482,6 +2499,7 @@
         break;
       case 'backup': openHubConfirm('backup'); break;
       case 'ai': openHubConfirm('ai'); break;
+      case 'ai-locked': openHubConfirm('ai', true); break;
       case 'delete': $('#delete-profile').click(); break;
     }
   });
@@ -2501,7 +2519,7 @@
   });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeHubTips(null); });
 
-  // Confidence score: the method card in a popout, cut down to what the hub
+  // Signal strength: the method card in a popout, cut down to what the hub
   // needs. Every source open, one "Add / change data" link instead of one per
   // row, and no WhatsApp advice: this is a look at what was read, not a form.
   function openMethodDialog(report) {
@@ -2553,14 +2571,18 @@
 
   // Save a backup and AI Personal Context explain themselves first: nothing
   // downloads until the reader says so.
-  function openHubConfirm(kind) {
+  // Locked (AI Personal Context before the report): the same words, with
+  // Download greyed out and why.
+  function openHubConfirm(kind, locked) {
     const C = Copy.STRUCTURED.hub.confirm[kind];
     const tick = hubIcon('tick');
     openHubDialog('hub-confirm-dialog', C.title,
       '<p class="hub-confirm-lede">' + esc(C.lede) + '</p>' +
       '<ul class="hub-confirm-list">' + C.points.map(point => '<li>' + tick + '<span>' + esc(point) + '</span></li>').join('') + '</ul>' +
+      (locked ? '<p class="hub-confirm-locked">' + hubIcon('lock') + '<span>' + esc(C.locked) + '</span></p>' : '') +
       '<div class="hub-confirm-btns"><button type="button" class="btn btn-outline" data-hub-confirm="back">' + esc(C.back) + '</button>' +
-      '<button type="button" class="btn btn-primary" data-hub-confirm="' + kind + '">' + hubIcon('down') + esc(C.go) + '</button></div>');
+      '<button type="button" class="btn btn-primary" data-hub-confirm="' + kind + '"' + (locked ? ' disabled' : '') + '>' +
+        hubIcon('down') + esc(C.go) + '</button></div>');
   }
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-hub-confirm]');
@@ -3798,6 +3820,12 @@
   // lands on the hub, not the top of the page.
   let backToHub = false;
   let backToHubTimer = 0;
+  // The browser's own scroll restoration is off from here until the reader is
+  // back: left on, Back would put back the top-of-page this entry remembers.
+  function leaveHub() {
+    backToHub = true;
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  }
   // The entry Ask PsycheAI's panel pushes while it is open, for Back to
   // minimise it (openAsk, minimiseAsk).
   let askHistoryEntry = false;
@@ -3814,15 +3842,17 @@
       if (!state.profile) return show('welcome');
       profilePage = 'hub';
       renderProfile(); show('profile');
-      // After show() has put the page at its top, and after the history step
-      // a Back button may still fire, which renders this page a second time.
+      // Straight to the hub, in the same frame show() put the page at its top,
+      // so the card never shows on the way. Held a moment longer: the history
+      // step a Back button may still fire renders this page a second time.
       if (backToHub) {
+        const hub = document.querySelector('#profile-body .hub-card');
+        if (hub) hub.scrollIntoView({ behavior: 'instant', block: 'center' });
         clearTimeout(backToHubTimer);
         backToHubTimer = setTimeout(() => {
           backToHub = false;
-          const hub = document.querySelector('#profile-body .hub-card');
-          if (hub && profilePage === 'hub') hub.scrollIntoView({ behavior: 'auto', block: 'center' });
-        }, 150);
+          if ('scrollRestoration' in history) history.scrollRestoration = 'auto';
+        }, 400);
       }
       return;
     }
@@ -3836,7 +3866,10 @@
       if (!state.profile) return showUploadError('Build your own profile first – a report needs two people.');
       renderScan(); show('scan'); return;
     }
-    if (target === 'about') { backToHub = false; renderAbout(); show('about'); return; }
+    if (target === 'about') {
+      if (backToHub && 'scrollRestoration' in history) history.scrollRestoration = 'auto';
+      backToHub = false; renderAbout(); show('about'); return;
+    }
     show(target);
   }
 

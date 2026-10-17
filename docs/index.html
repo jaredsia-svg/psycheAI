@@ -179,15 +179,18 @@
            role="heading" aria-level="1" (class .h1): one <h1> in the document for
            search engines, and still a level-1 heading per view for screen readers. -->
       <h1>A full personality study.<br><span class="accent">No questions asked.</span></h1>
-      <p class="lede">Your personal AI coach that already knows you, built from your Instagram data and
-        digital footprint.</p>
+      <p class="lede">Your personal AI coach that already knows you, built from your Instagram data</p>
+      <!-- What the reading covers, as four pills on one line above the buttons. -->
+      <ul class="hero-pills" aria-label="What you get">
+        <li>MBTI</li><li>Attachment Style</li><li>Career Strengths</li><li>Blind Spots</li>
+      </ul>
       <!-- One button for each kind of visitor: one who still has to ask
            Instagram for their data (it takes hours to arrive, so that is the
            first useful thing to do), and one who has the file already, who
            used to scroll about five screens to find where to load it. The
            sample report is one tap away in the gallery below. -->
       <div class="btn-row hero-actions">
-        <button class="btn" id="hero-start" type="button">Get my data</button>
+        <button class="btn" id="hero-start" type="button">Request my IG data</button>
         <button class="btn btn-outline" id="hero-load" type="button">Load my data</button>
       </div>
     </div>
@@ -260,7 +263,7 @@
   <!-- The cast: all 29 characters a card can name, turning slowly until
        touched, then swiped by hand, with arrows either side. Before
        a first card, tap one to guess which you are: a right guess wins a free
-       Psyche Report. Get my data lands here, with the request steps straight
+       Psyche Report. Request my IG data lands here, with the request steps straight
        below. Filled by app.js (mountCast). -->
   <section class="cast" id="cast" aria-labelledby="cast-title">
     <p class="cast-head" id="cast-title"></p>
@@ -908,8 +911,8 @@
       PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days.</p>
     <p>Your link carries only your card’s short summary, never your data, messages or report, and
       PsycheAI cannot read it. The first person who opens your link unlocks your first Psyche Report
-      free, and every 3 people who make a card from it earn you a credit, to gift a Psyche Report to
-      someone.</p>
+      free, and every connection who makes a card from it earns you a credit: a question for PsycheAI, or
+      a Psyche Report to gift.</p>
 
     <h3>How do I keep my report from getting lost?</h3>
     <p>Your Psyche Card, Psyche Report and Psyche Syncs are saved only in this browser, and PsycheAI
