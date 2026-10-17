@@ -10681,6 +10681,7 @@ try {
       'How long does it take?',
       'What file do I need?',
       'What data leaves this device?',
+      'Is my data used to train AI?',
       'Can the digest be linked back to me?',
       'Can anyone else access my data?',
       'Does PsycheAI count anything?',
@@ -11812,20 +11813,22 @@ try {
           link: [...tile('link').querySelectorAll('[data-hub-stat]')].map(n => n.dataset.hubStat).join(),
           copy: Boolean(tile('link').querySelector('.hub-copy')),
           cta: hub.querySelectorAll('.hub-tile.is-cta').length,
-          shades: new Set([...hub.querySelectorAll('.hub-tile .hub-sq')].map(n => getComputedStyle(n).backgroundColor)).size,
+          shades: new Set([...hub.querySelectorAll('.hub-tile')].map(n => getComputedStyle(n).backgroundColor)).size,
+          ok: getComputedStyle(hub.querySelector('.hub-ok')).color === getComputedStyle(document.documentElement).getPropertyValue('--good').trim() ||
+            getComputedStyle(hub.querySelector('.hub-ok')).color === 'rgb(47, 125, 91)',
           tips: hub.querySelectorAll('.hub-tip').length, rowTips: hub.querySelectorAll('.hub-row .hub-tip').length,
-          info: hub.querySelectorAll('.hub-tip svg').length === 4,
+          info: hub.querySelectorAll('.hub-tip svg, .hub-tile .hub-sq').length === 0,
           chips: hub.querySelectorAll('.hub-chip').length, ring: getComputedStyle(hub.querySelector('.hub-ring')).getPropertyValue('--p').trim(),
           keepLabel: hub.querySelector('.hub-keep .hub-rl').textContent,
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
-      check('Psyche Hub: four tiles in one shade — Psyche Report (a tick, Read and Download), Your Syncs (Sync), Ask PsycheAI (Ask, History), Your link (copy, then opened · cards · credits) — then the data row and Keep',
-        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Report|Your Syncs|Ask PsycheAI|Your link' && hubTiles.tick &&
+      check('Psyche Hub: four lavender tiles — Psyche Report (a green tick, Read and Download), Your Syncs (Sync), Ask PsycheAI (Ask, History), Your link (copy, then opened · cards · credits) — then the data row and Keep',
+        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Report|Your Syncs|Ask PsycheAI|Your Link' && hubTiles.tick &&
           hubTiles.report === 'Read,Download' && hubTiles.syncs === 'Sync' && hubTiles.ask === 'Ask' && hubTiles.link === 'opens,friends,available' &&
-          hubTiles.copy && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.chips === 4 &&
+          hubTiles.copy && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
           hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Keep' &&
           hubTiles.keep === 'backup,ai,delete', JSON.stringify(hubTiles));
-      check('each tile\'s icon and name is its tooltip (no "i", none on the rows)',
+      check('each tile\'s name is its tooltip (no "i", no icon, none on the rows)',
         hubTiles.tips === 4 && hubTiles.rowTips === 0 && hubTiles.info, JSON.stringify(hubTiles));
       await sp.click('.hub-tile[data-hub="syncs"] .hub-tip');
       check('a tap on a tile\'s name shows its words; a tap elsewhere hides them',
@@ -11863,7 +11866,7 @@ try {
         await sp.click('.hub-card [data-hub-go="backup"]');
         await sp.waitForSelector('#hub-confirm-dialog[open]', { timeout: 10000 });
         check('Save a backup explains itself first too; Back closes it',
-          await sp.evaluate(() => document.querySelector('#hub-confirm-title').textContent === 'Save a backup') &&
+          await sp.evaluate(() => document.querySelector('#hub-confirm-title').textContent === 'Save Backup') &&
             await sp.click('#hub-confirm-dialog [data-hub-confirm="back"]').then(() => sp.evaluate(() => !document.querySelector('#hub-confirm-dialog').open)));
       }
 

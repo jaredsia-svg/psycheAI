@@ -825,14 +825,20 @@
     <p>The only thing sent to make your card and report is a short digest of your own activity, usually about 100 KB of text: your
       posts, stories, captions, likes, searches, saves, follows and messages. You see it and can review
       it before anything goes.</p>
-    <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI uses their
-      paid APIs, which do not use your data to train their models; they may keep it for a short time to
-      check for abuse, under their own terms. PsycheAI keeps no copy of the zip, the digest or the report
-      on its servers. Your report stays in your browser
+    <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI keeps no copy
+      of the zip, the digest or the report on its servers. Your report stays in your browser
       until you press Delete everything. Save a backup puts a copy in a file on this device, to restore
       in another browser; PsycheAI never receives it.</p>
     <p>Our hosting and payment providers can see that the site was used or that a payment was made,
       but they never receive your data. There is no account to create.</p>
+
+    <h3>Is my data used to train AI?</h3>
+    <p>No. PsycheAI runs Google Gemini on Vertex AI, Google Cloud’s enterprise AI platform. Under Google
+      Cloud’s terms, Google does not use your digest, your questions or your report to train its AI models,
+      and handles them only to answer your request. Your Instagram zip and other files never reach Google:
+      they stay on your device.</p>
+    <p>What is sent is also encrypted on the way and at rest, and de-identified first: your name, other
+      people’s handles, email addresses, phone numbers and links are taken out on your device.</p>
 
     <h3>Can the digest be linked back to me?</h3>
     <p>The digest is de-identified on your device before it is sent. Your name and

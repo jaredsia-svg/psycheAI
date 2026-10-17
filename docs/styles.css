@@ -4785,37 +4785,41 @@ details.more[open] > summary::after { content: ' ▴'; }
   box-shadow: 0 14px 40px rgba(123, 63, 160, .14); }
 .hub-card::before { display: none; }
 .hub-bar { border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; padding: .55rem 1rem; text-align: center; color: #fff; background: linear-gradient(90deg, #7b3fa0, #d1477a); }
-.hub-bar h2 { margin: 0; font-size: .86rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fff; }
+.hub-bar h2 { margin: 0; font-size: .95rem; font-weight: 700; letter-spacing: .02em; color: #fff; }
 .hub-in { padding: .65rem; }
 .hub-svg { width: 16px; height: 16px; flex: none; }
 
 .hub-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+/* The tiles in the rows' own faint lavender; their buttons white, lifted by a
+   soft shadow rather than a line. Type as light as the source chips. */
 .hub-tile { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: .45rem; padding: .55rem .6rem;
-  border-radius: 12px; background: var(--bg-alt); border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+  border-radius: 12px; background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt));
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--bg-alt)); }
 .hub-l1 { display: flex; align-items: center; gap: .3rem; min-height: 24px; }
 .hub-sq { width: 24px; height: 24px; flex: none; border-radius: 7px; display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent); }
 .hub-sq .hub-svg { width: 14px; height: 14px; }
-.hub-name { flex: 0 1 auto; min-width: 0; margin: 0; font-size: .64rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-name { flex: 0 1 auto; min-width: 0; margin: 0; font-size: .74rem; font-weight: 600;
+  color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hub-l1 > .hub-badge { margin-left: auto; }
 .hub-l1 > .hub-badge[hidden] + .hub-num, .hub-l1 > .hub-badge[hidden] + .hub-ok { margin-left: auto; }
-.hub-num { font-size: 1.05rem; font-weight: 800; line-height: 1; color: var(--accent); }
-.hub-ok { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--accent); }
-.hub-ok .hub-svg { width: 13px; height: 13px; stroke-width: 2.8; }
+.hub-num { font-size: 1rem; font-weight: 700; line-height: 1; color: var(--accent); white-space: nowrap; }
+.hub-num small { font-size: .72rem; font-weight: 600; color: var(--ink-soft); }
+.hub-ok { flex: none; display: grid; place-items: center; color: var(--good); }
+.hub-ok .hub-svg { width: 20px; height: 20px; stroke-width: 2.6; }
 .hub-badge { font-size: .6rem; font-weight: 800; color: #fff; background: var(--accent); padding: .1rem .4rem; border-radius: 999px; white-space: nowrap; }
 .hub-badge[hidden] { display: none; }
 .hub-acts { display: flex; gap: .35rem; }
 .hub-go { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: .3rem; white-space: nowrap;
-  font: inherit; font-size: .74rem; font-weight: 700; padding: .3rem .45rem; border-radius: 8px; cursor: pointer;
-  color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg-alt));
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--bg-alt)); }
-.hub-go:hover { background: color-mix(in srgb, var(--accent) 13%, var(--bg-alt)); }
+  font: inherit; font-size: .74rem; font-weight: 600; padding: .32rem .45rem; border-radius: 10px; cursor: pointer;
+  color: var(--accent); background: var(--bg-alt); border: 0; box-shadow: var(--hub-lift); }
+.hub-go:hover { background: color-mix(in srgb, var(--accent) 5%, var(--bg-alt)); }
+.hub-card { --hub-lift: 0 1px 2px rgba(36, 26, 46, .08), 0 2px 8px rgba(123, 63, 160, .10); }
 .hub-go .hub-svg { width: 13px; height: 13px; }
 
 /* The locked report: a gradient ring that breathes, a soft glow, a filled button. */
 .hub-tile.is-cta { border: 2px solid transparent;
-  background: linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box, linear-gradient(135deg, var(--accent), var(--accent-2), #f0a35a) border-box;
+  background: linear-gradient(color-mix(in srgb, var(--accent) 6%, var(--bg-alt)), color-mix(in srgb, var(--accent) 6%, var(--bg-alt))) padding-box, linear-gradient(135deg, var(--accent), var(--accent-2), #f0a35a) border-box;
   animation: hub-glow 2.4s ease-in-out infinite; }
 @keyframes hub-glow {
   0%, 100% { box-shadow: 0 0 0 3px rgba(209, 71, 122, .08), 0 8px 20px rgba(123, 63, 160, .2); }
@@ -4835,7 +4839,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-ring { --p: 0; width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center;
   background: conic-gradient(var(--accent), var(--accent-2) calc(var(--p) * 1%), color-mix(in srgb, var(--accent) 14%, var(--bg-alt)) 0); }
 .hub-ring b { width: 27px; height: 27px; border-radius: 50%; background: var(--bg-alt); display: grid; place-items: center; font-size: .72rem; }
-.hub-conf-text { font-size: .8rem; color: var(--accent); white-space: nowrap; }
+.hub-conf-text { font-size: .74rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .hub-chips { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
 .hub-chip { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; font: inherit; font-size: .72rem; font-weight: 600;
   cursor: pointer; white-space: nowrap; padding: .22rem .6rem; border-radius: 999px; background: var(--bg-alt); color: var(--accent);
@@ -4843,16 +4847,16 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-chip .hub-svg { width: 12px; height: 12px; color: var(--good); stroke-width: 2.4; }
 .hub-chip.is-add { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--accent) 40%, var(--bg-alt)); }
 .hub-chip.is-add .hub-svg { color: var(--accent); }
-.hub-btn { display: inline-flex; align-items: center; gap: .4rem; font: inherit; font-weight: 700; font-size: .74rem; cursor: pointer;
-  padding: .32rem .65rem; border-radius: 9px; background: var(--bg-alt); color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--bg-alt)); }
+.hub-btn { display: inline-flex; align-items: center; gap: .4rem; font: inherit; font-weight: 600; font-size: .74rem; cursor: pointer;
+  padding: .34rem .7rem; border-radius: 10px; background: var(--bg-alt); color: var(--accent); border: 0; box-shadow: var(--hub-lift); }
 .hub-btn .hub-svg { width: 14px; height: 14px; }
-.hub-btn.is-locked { color: var(--ink-soft); }
+.hub-btn.is-locked { color: color-mix(in srgb, var(--ink-soft) 70%, var(--bg-alt)); background: transparent; box-shadow: none;
+  border: 1px dashed color-mix(in srgb, var(--ink-soft) 35%, var(--bg-alt)); }
 .hub-saved { font-size: .6rem; font-weight: 800; padding: .05rem .4rem; border-radius: 999px; color: var(--good); background: var(--good-soft); }
 .hub-saved.is-never { color: var(--warn); background: var(--warn-soft); }
 .hub-del { margin-left: auto; flex: none; display: grid; place-items: center; width: 1.85rem; height: 1.85rem; padding: 0; cursor: pointer;
-  border-radius: 9px; color: var(--danger); background: var(--bg-alt);
-  border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--bg-alt)); }
+  border-radius: 10px; color: var(--danger); background: var(--bg-alt); border: 0;
+  box-shadow: 0 1px 2px rgba(36, 26, 46, .08), 0 2px 8px rgba(179, 38, 30, .12); }
 .hub-del:hover { background: color-mix(in srgb, var(--danger) 8%, var(--bg-alt)); }
 .hub-del .hub-svg { width: 15px; height: 15px; }
 /* A tile's icon and name are one button: its words show on hover or focus,
@@ -4862,24 +4866,22 @@ details.more[open] > summary::after { content: ' ▴'; }
   font: inherit; color: inherit; cursor: help; text-align: left; }
 .hub-tip:hover .hub-name, .hub-tip.is-open .hub-name { color: var(--accent); }
 .hub-tip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-.hub-tile.is-cta .hub-sq { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
 .hub-copy { margin-left: auto; flex: none; width: 26px; height: 26px; padding: 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer;
-  color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg-alt));
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--bg-alt)); }
+  color: var(--accent); background: var(--bg-alt); border: 0; box-shadow: var(--hub-lift); }
 .hub-copy .hub-svg { width: 14px; height: 14px; }
 .hub-copy.is-done { color: #fff; background: var(--good); border-color: var(--good); }
 .hub-stats { display: flex; align-items: baseline; justify-content: space-around; gap: .3rem; width: 100%; padding: .32rem .3rem; cursor: pointer;
-  font: inherit; font-size: .68rem; overflow: hidden; color: var(--ink-soft); white-space: nowrap; border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg-alt)); border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
-.hub-stats b { font-size: .8rem; color: var(--accent); }
+  font: inherit; font-size: .68rem; overflow: hidden; color: var(--ink-soft); white-space: nowrap; border-radius: 10px;
+  background: var(--bg-alt); border: 0; box-shadow: var(--hub-lift); }
+.hub-stats b { font-size: .8rem; font-weight: 700; color: var(--accent); }
 .hub-stats i { display: none; }
-.hub-stats:hover { background: color-mix(in srgb, var(--accent) 11%, var(--bg-alt)); }
+.hub-stats:hover { background: color-mix(in srgb, var(--accent) 5%, var(--bg-alt)); }
 .hub-tip-text { display: none; position: absolute; z-index: 5; left: .4rem; right: .4rem; top: calc(100% - .2rem);
   padding: .5rem .65rem; border-radius: 10px; font-size: .74rem; font-weight: 500; line-height: 1.4; letter-spacing: 0; text-transform: none;
   color: #fff; background: #2b2136; box-shadow: 0 10px 26px rgba(20, 14, 26, .28); }
 .hub-tip:hover + .hub-tip-text, .hub-tip:focus-visible + .hub-tip-text, .hub-tip.is-open + .hub-tip-text { display: block; }
-.hub-rl { flex: none; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
-.hub-textlink { border: 0; background: none; padding: 0; font: inherit; font-size: .72rem; font-weight: 700; color: var(--accent); cursor: pointer; }
+.hub-rl { flex: none; font-size: .74rem; font-weight: 600; color: var(--ink); }
+.hub-textlink { border: 0; background: none; padding: 0; font: inherit; font-size: .72rem; font-weight: 600; color: var(--accent); cursor: pointer; }
 
 /* The Confidence score popout: the method card, compact, every source open. */
 .hub-dialog-body .method-card { font-size: .84rem; }
@@ -4943,7 +4945,8 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-in { padding: .5rem; }
   .hub-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
   .hub-tile { padding: .5rem .5rem; }
-  .hub-name { font-size: .58rem; letter-spacing: .05em; }
+  .hub-name { font-size: .72rem; }
+  .hub-btn.is-locked .hub-svg { display: block; }
   .hub-go { font-size: .72rem; padding: .32rem .3rem; }
   .hub-go .hub-svg { display: none; }
   .hub-row { flex-wrap: wrap; gap: .45rem; padding: .5rem; }
@@ -4953,7 +4956,10 @@ details.more[open] > summary::after { content: ' ▴'; }
   /* "never saved" rides on the button's corner, so the button stays one line. */
   .hub-saved { position: absolute; top: -.45rem; right: -.3rem; font-size: .52rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
   .hub-del { margin-left: 0; }
-  .hub-keep .hub-rl { display: none; }
+  /* The data row's ring centred; Keep's name centred above its three buttons. */
+  .hub-data .hub-conf { flex-basis: 100%; justify-content: center; }
+  .hub-keep .hub-rl { flex-basis: 100%; text-align: center; }
+  .hub-keep .hub-del { order: 2; }
   .hub-btn .hub-svg { display: none; }
   .hub-stats { font-size: .6rem; gap: .2rem; padding: .34rem .2rem; } .hub-stats b { font-size: .74rem; }
 }

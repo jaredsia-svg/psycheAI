@@ -5460,19 +5460,28 @@ the site's panel and to use as few words as possible:
 
 - **A gradient bar with its name**, centred, over a panel with the same light wash as the My Syncs header
   (`.scan-hero`). No icon or subtitle.
-- **Four small tiles in one shade, two lines each**: the icon, the name and its one number or state, then
-  its buttons. *Psyche Report* (a tick; Read and Download, which is the PDF), *Your Syncs* (how many;
-  Sync), *Ask PsycheAI* (questions left; Ask, and History once there are answers, which opens My Report's
-  Appendix 2), *Your link* (a copy-link icon in the corner, then opened · cards · credits, all one size,
+- **Four small tiles, two lines each**, in the rows' own faint lavender, with white buttons lifted by a
+  soft shadow rather than a line, and type as light as the source chips (the heavy capitals read badly
+  on a laptop): the name and its one number or state, then its buttons. *Psyche Report* (a plain green
+  tick; Read and Download, which is the PDF), *Your Syncs* (how many; Sync), *Ask PsycheAI* (questions as
+  left/of, e.g. 2/5: of a pack of five, of the larger count when gifts and credits make more, and 1/1 for
+  a lone free question; Ask, which opens with the ideas showing, and History once there are answers,
+  which opens My Report's Appendix 2), *Your link* (a copy-link icon in the corner, then opened · cards · credits, all one size,
   which open *Credits and gifts*). Only the locked report has colour of its own: a breathing gradient
   ring and one filled *Unlock free* (or *Unlock*) button. The server's numbers fill in as they arrive
   (`refreshHub`).
-- **Tooltips, no "i"**: each tile's icon and name are one button whose one or two lines show on hover or
+- **Back lands on the hub**: leaving for My Report or My Syncs from a tile, Back (the browser's or the
+  report's own) returns to My Psyche with the hub in view, not the top of the page.
+- **Tooltips, no "i"**: each tile's name is a button whose one or two lines show on hover or
   focus, and on a tap on a phone (a tap elsewhere or Escape hides them). The two rows have none: the ring
   and the buttons say what they are.
 - **Data row**: the confidence ring and "High confidence ›" (opening *Confidence score*), then the four
   sources as chips, in one line on a laptop and two by two on a phone.
-- **Keep row** ("Keep" labelled on a laptop): Save a backup (with when it was last saved,
+- **Words**: the tile names, "High Confidence" and "Keep" in black at the buttons' own size; the source
+  chips short (Instagram, WhatsApp, Google, Facebook); *Save Backup*; AI Personal Context, while locked,
+  greyed with a dashed outline and its lock, so it plainly cannot be used yet.
+- **Keep row** ("Keep" beside it on a laptop, centred above its three buttons on a phone; the data row's
+  ring is centred on a phone too): Save a backup (with when it was last saved,
   `psycheai_last_backup`), *AI Personal Context* (report holders only) and a bin for Delete everything.
   Backup and AI Personal Context open a short popout first (what the file holds, that it is made on the
   device) with Back and Download: nothing downloads on the first click.

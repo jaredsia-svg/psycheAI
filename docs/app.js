@@ -2307,12 +2307,12 @@
     return new Date(then).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   }
 
-  // Each tile explains itself in one or two lines: its icon and name are one
-  // button that shows the words on hover or focus, and on a tap on a phone.
-  const hubTip = (key, icon, name) => {
+  // Each tile explains itself in one or two lines: its name is a button that
+  // shows the words on hover or focus, and on a tap on a phone.
+  const hubTip = (key, name) => {
     const H = Copy.STRUCTURED.hub;
     return '<button type="button" class="hub-tip" aria-expanded="false" aria-describedby="hub-tip-' + key + '">' +
-      '<span class="hub-sq">' + hubIcon(icon) + '</span><span class="hub-name">' + esc(name) + '</span></button>' +
+      '<span class="hub-name">' + esc(name) + '</span></button>' +
       '<span class="hub-tip-text" role="tooltip" id="hub-tip-' + key + '">' + esc(H.tips[key]) + '</span>';
   };
 
@@ -2320,7 +2320,7 @@
   // its buttons. Every tile in one shade; only the locked report glows.
   function hubTile(key, opts) {
     return '<div class="hub-tile hub-' + key + (opts.cta ? ' is-cta' : '') + '" data-hub="' + key + '">' +
-      '<div class="hub-l1">' + hubTip(opts.tip || key, opts.icon, opts.name) +
+      '<div class="hub-l1">' + hubTip(opts.tip || key, opts.name) +
         '<span class="hub-badge" data-hub-badge' + (opts.badge ? '' : ' hidden') + '>' + esc(opts.badge || '') + '</span>' +
         (opts.state || '<b class="hub-num" data-hub-num' + (opts.numLabel ? ' title="' + esc(opts.numLabel) + '"' : '') + '>' + esc(opts.num) + '</b>') +
       '</div>' +
@@ -2358,11 +2358,12 @@
     ];
     const digest = state.digest;
     const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
+    const short = H.sourceNames;
     const sources = [
-      ['instagram', TEXT.sourceInstagram, Boolean(digest)],
-      ['whatsapp', TEXT.sourceWhatsApp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
-      ['google', TEXT.sourceGoogle, Boolean(digest && digest.google)],
-      ['facebook', TEXT.sourceFacebook, Boolean(digest && digest.facebook)],
+      ['instagram', short.instagram, Boolean(digest)],
+      ['whatsapp', short.whatsapp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
+      ['google', short.google, Boolean(digest && digest.google)],
+      ['facebook', short.facebook, Boolean(digest && digest.facebook)],
     ];
     const conf = report.confidence || {};
     const score = Math.max(0, Math.min(100, Math.round(Number(conf.score) || 0)));
@@ -2409,9 +2410,18 @@
       node.textContent = num;
       node.title = label;
     };
+    // Questions as left / of: of a bought pack of five, or of however many
+    // there are when gifts and credits make more (a lone free one is 1/1).
     if (askCreditsNow && typeof askCreditsNow.total === 'number') {
       const n = askCreditsNow.total;
-      set('ask', String(n), hasExplanations(state.profile) || n !== 1 ? H.questionsLeft(n) : H.freeQuestion(n));
+      const asked = (store.read(KEYS.ask, []) || []).length;
+      const pack = Number(askCreditsNow.perPack) || 5;
+      const of = askCreditsNow.paid > 0 || n > 1 || asked > 1 ? Math.max(n, pack) : Math.max(n, 1);
+      const node = hub.querySelector('.hub-tile[data-hub="ask"] [data-hub-num]');
+      if (node) {
+        node.innerHTML = esc(String(n)) + '<small>/' + esc(String(of)) + '</small>';
+        node.title = H.questionsOf(n, of);
+      }
     }
     const status = referralStatus;
     if (status) {
@@ -2447,12 +2457,12 @@
     const H = Copy.STRUCTURED.hub;
     const report = state.profile && state.profile.report;
     switch (button.dataset.hubGo) {
-      case 'report': go('full'); break;
+      case 'report': backToHub = true; go('full'); break;
       case 'pdf': exportPdf(); break;
-      case 'asked': openAskAppendix(); break;
+      case 'asked': backToHub = true; openAskAppendix(); break;
       case 'unlock': openPremiumDialog(button, 'unlock'); break;
-      case 'ask': openAsk(); break;
-      case 'syncs': go('scan'); break;
+      case 'ask': openAsk(undefined, { ideas: true }); break;
+      case 'syncs': backToHub = true; go('scan'); break;
       case 'copy': {
         const text = shareMessage();
         writeClipboard(text).then(() => {
@@ -3784,6 +3794,10 @@
   // here only because show() and the popstate listener above both need them,
   // and neither is defined yet at this point in the file.
   let navHistoryEntry = false;
+  // Left for My Report or My Syncs from the hub: coming back to My Psyche
+  // lands on the hub, not the top of the page.
+  let backToHub = false;
+  let backToHubTimer = 0;
   // The entry Ask PsycheAI's panel pushes while it is open, for Back to
   // minimise it (openAsk, minimiseAsk).
   let askHistoryEntry = false;
@@ -3799,7 +3813,18 @@
     if (target === 'profile') {
       if (!state.profile) return show('welcome');
       profilePage = 'hub';
-      renderProfile(); show('profile'); return;
+      renderProfile(); show('profile');
+      // After show() has put the page at its top, and after the history step
+      // a Back button may still fire, which renders this page a second time.
+      if (backToHub) {
+        clearTimeout(backToHubTimer);
+        backToHubTimer = setTimeout(() => {
+          backToHub = false;
+          const hub = document.querySelector('#profile-body .hub-card');
+          if (hub && profilePage === 'hub') hub.scrollIntoView({ behavior: 'auto', block: 'center' });
+        }, 150);
+      }
+      return;
     }
     // My Report: the full report on its own page, once it is unlocked.
     if (target === 'full') {
@@ -3811,7 +3836,7 @@
       if (!state.profile) return showUploadError('Build your own profile first – a report needs two people.');
       renderScan(); show('scan'); return;
     }
-    if (target === 'about') { renderAbout(); show('about'); return; }
+    if (target === 'about') { backToHub = false; renderAbout(); show('about'); return; }
     show(target);
   }
 
