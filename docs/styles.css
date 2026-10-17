@@ -505,23 +505,25 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .premium-free-badge svg { width: 13px; height: 13px; flex: none; }
 @media (max-width: 400px) { .premium-free-badge { font-size: .68rem; padding: .2rem .5rem; } }
 @media (max-width: 360px) { .premium-free-badge svg { display: none; } .premium-free-badge { font-size: .64rem; padding: .2rem .45rem; } .premium-tier-pricebox { gap: .35rem; } }
-.unlock-parts { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .45rem; }
-.unlock-part { padding: .6rem clamp(.7rem, 2.5vw, .9rem); border-radius: 14px; background: var(--bg-alt); }
-.unlock-part-head { display: flex; align-items: center; gap: .65rem; }
-.unlock-chips { list-style: none; display: flex; flex-wrap: wrap; gap: .3rem; margin: .4rem 0 0 2.65rem; padding: 0; }
-.unlock-chips li {
-  margin: 0; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem; line-height: 1.35;
-  background: var(--accent-soft); color: var(--accent);
+.unlock-parts { list-style: none; margin: .7rem 0 0; padding: 0; display: grid; gap: .4rem; }
+@media (min-width: 640px) {
+  .unlock-parts { grid-template-columns: 1fr 1fr; }
+  .unlock-part:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
-.unlock-chips strong { font-weight: 600; }
-.unlock-part-num {
-  flex: none; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 10px;
-  font-size: .9rem; font-weight: 800; letter-spacing: .02em; color: #fff; font-variant-numeric: tabular-nums;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-}
-.unlock-part-head h4 { margin: 0; font-size: 1rem; line-height: 1.3; }
-.unlock-part-lock { margin-left: auto; display: inline-flex; color: var(--muted); }
-.unlock-part-lock svg { width: 1rem; height: 1rem; }
+.unlock-part { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; align-items: center;
+  padding: .5rem .75rem; border-radius: 12px; background: var(--bg-alt); border: 1px solid var(--line); }
+.unlock-part-head { display: contents; }
+.unlock-part-num { grid-row: 1 / 3; align-self: center; font-size: 1.3rem; font-weight: 800; line-height: 1; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.unlock-part-head h4 { grid-column: 2; margin: 0; font-size: .9rem; line-height: 1.3; }
+.unlock-part-lock { grid-column: 3; grid-row: 1 / 3; display: inline-flex; color: var(--muted); }
+.unlock-part-lock svg { width: .9rem; height: .9rem; }
+.unlock-chips { grid-column: 2; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .35rem; margin: .1rem 0 0; padding: 0;
+  font-size: .74rem; line-height: 1.4; color: var(--ink-soft); }
+.unlock-chips li { margin: 0; padding: 0; }
+.unlock-chips strong { font-weight: 500; }
+.unlock-dot { color: color-mix(in srgb, var(--accent) 45%, var(--bg-alt)); font-weight: 700; }
 .paid-consolidated .btn { margin-top: 1rem; width: 100%; }
 
 /* The sample dialog. The head is pinned and only the report scrolls, so the
@@ -4163,14 +4165,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   .cx-arrow { display: none; }
   .cx-close { display: block; }
   #view-profile.profile-structured #psyche-card [data-cx] { cursor: pointer; }
-  /* The card's three tools and the way into My Report, at the hub's button
-     size: icon beside the word, one slim row. */
-  #view-profile.profile-structured .cx-tools { gap: .4rem; }
-  #view-profile.profile-structured .cx-tool { flex-direction: row; justify-content: center; gap: .3rem;
-    padding: .38rem .3rem; border-radius: 10px; font-size: .72rem; font-weight: 600; }
-  #view-profile.profile-structured .cx-tool svg { width: 15px; height: 15px; }
-  #view-profile.profile-structured .cx-tools .cx-open-report { padding: .42rem .8rem; font-size: .72rem; font-weight: 600;
-    min-height: 0; border-radius: 10px; }
 }
 /* The card full screen on a phone: no download or share, a line saying to
    tap instead, and each tapped part explained in a sheet — at the foot of
@@ -4805,10 +4799,11 @@ details.more[open] > summary::after { content: ' ▴'; }
     linear-gradient(135deg, #7b3fa0, #d1477a, #f0a35a) border-box;
   box-shadow: 0 0 0 6px rgba(123, 63, 160, .06), 0 18px 44px rgba(123, 63, 160, .22); }
 .hub-card::before { display: none; }
-/* No title bar: the name is for screen readers; a gradient ring and a soft
-   glow mark the panel instead. */
-.hub-bar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.hub-bar h2 { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: .02em; color: var(--accent);
+/* The title: centred gradient words with a short gradient rule under them. */
+.hub-bar { text-align: center; padding: .85rem 1rem .1rem; }
+.hub-bar::after { content: ""; display: block; width: 44px; height: 3px; margin: .4rem auto 0; border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.hub-bar h2 { margin: 0; font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; color: var(--accent);
   background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .hub-in { padding: .75rem; }
 .hub-svg { width: 16px; height: 16px; flex: none; }
@@ -4823,7 +4818,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-sq { width: 24px; height: 24px; flex: none; border-radius: 7px; display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent); }
 .hub-sq .hub-svg { width: 14px; height: 14px; }
-.hub-name { flex: 0 1 auto; min-width: 0; margin: 0; font-size: .84rem; font-weight: 600;
+.hub-name { flex: 0 1 auto; min-width: 0; margin: 0; font-size: .84rem; font-weight: 700;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hub-l1 > .hub-badge { margin-left: auto; }
 .hub-l1 > .hub-badge[hidden] + .hub-num, .hub-l1 > .hub-badge[hidden] + .hub-ok { margin-left: auto; }
@@ -4899,7 +4894,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   padding: .5rem .65rem; border-radius: 10px; font-size: .74rem; font-weight: 500; line-height: 1.4; letter-spacing: 0; text-transform: none;
   color: #fff; background: #2b2136; box-shadow: 0 10px 26px rgba(20, 14, 26, .28); }
 .hub-tip:hover + .hub-tip-text, .hub-tip:focus-visible + .hub-tip-text, .hub-tip.is-open + .hub-tip-text { display: block; }
-.hub-rl { flex: none; font-size: .74rem; font-weight: 600; color: var(--ink); }
+.hub-rl { flex: none; font-size: .84rem; font-weight: 700; color: var(--ink); }
 /* Your Link as a row: the counts in a line, Copy link and Share at the right,
    then what a credit is for, and, once there is one, the gift. */
 .hub-linkrow { flex-wrap: wrap; margin: 0; }
@@ -4912,12 +4907,13 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: .72rem; font-weight: 500; line-height: 1.2; color: var(--ink-soft); background: var(--bg-alt);
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--bg-alt)); }
 .hub-linkstat b { font-weight: 700; color: var(--accent); }
-/* The rule, short, in a quiet lavender pill beside the name. */
+/* The rule, short, in a dotted pill beside the name, no fill. */
 .hub-linknote { order: 1; display: flex; margin: 0; }
 .hub-linkstats { order: 2; align-self: center; }
 .hub-linkrow .referral-ready-row, .hub-linkrow .referral-status, .hub-linkrow .referral-gifts { order: 3; }
-.hub-linknote span { padding: .18rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3;
-  color: color-mix(in srgb, var(--accent) 75%, var(--ink-soft)); background: color-mix(in srgb, var(--accent) 9%, var(--bg-alt)); }
+.hub-linknote span { padding: .16rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3;
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink-soft)); background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--bg-alt)); }
 .hub-linkrow .referral-ready-row:not([hidden]) { flex-basis: 100%; display: flex; align-items: center; gap: .6rem; margin: 0;
   font-size: .76rem; font-weight: 600; color: var(--ink); }
 .hub-linkrow .referral-status:not([hidden]) { flex-basis: 100%; margin: 0; font-size: .74rem; color: var(--good); }
@@ -4996,7 +4992,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-in { padding: .5rem; }
   .hub-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
   .hub-tile { padding: .5rem .5rem; }
-  .hub-name { font-size: .8rem; }
+  .hub-name, .hub-rl { font-size: .8rem; }
   .hub-btn.is-locked .hub-svg { display: block; }
   .hub-go { font-size: .72rem; padding: .32rem .3rem; }
   .hub-go .hub-svg { display: none; }
@@ -5017,4 +5013,25 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-keep .hub-del { order: 2; }
   .hub-btn .hub-svg { display: none; }
   .hub-stats { font-size: .6rem; gap: .2rem; padding: .34rem .2rem; } .hub-stats b { font-size: .74rem; }
+}
+
+/* Phones, a size up (late October 2026): easier to read and to tap. Titles
+   about 14px, buttons about 13px and at least 40px tall, chips and counts a
+   step larger. Laptops keep the compact sizes above. */
+@media (max-width: 759px) {
+  .hub-bar h2 { font-size: 1.1rem; }
+  .hub-name, .hub-rl { font-size: .9rem; }
+  .hub-num { font-size: 1.15rem; }
+  .hub-tile { padding: .7rem .6rem; gap: .55rem; }
+  .hub-go { font-size: .82rem; padding: .5rem .25rem; min-height: 40px; }
+  .hub-btn { font-size: .82rem; padding: .5rem .3rem; min-height: 40px; }
+  .hub-del, .hub-copy { width: 40px; height: 40px; }
+  .hub-chip { font-size: .84rem; padding: .45rem .5rem; }
+  .hub-linkstat { font-size: .8rem; padding: .32rem .65rem; }
+  .hub-linknote span { font-size: .72rem; }
+  .hub-ring { width: 42px; height: 42px; } .hub-ring b { width: 33px; height: 33px; font-size: .84rem; }
+  /* Download is just its icon on a phone; Read keeps its word beside it. */
+  .hub-go[data-hub-go="card-download"], .hub-go[data-hub-go="pdf"] { flex: 0 0 44px; }
+  .hub-go[data-hub-go="card-download"] .hub-svg, .hub-go[data-hub-go="pdf"] .hub-svg { display: block; width: 18px; height: 18px; }
+  .hub-go[data-hub-go="card-download"] .hub-go-label, .hub-go[data-hub-go="pdf"] .hub-go-label { display: none; }
 }

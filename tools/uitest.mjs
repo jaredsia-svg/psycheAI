@@ -11832,7 +11832,7 @@ try {
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
       check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Your Syncs (Sync), Ask PsycheAI (Ask, History) — then Your Link, Signal Strength and Save your profile',
-        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Your Syncs|Ask PsycheAI' && hubTiles.tick &&
+        hubTiles.title === 'Your Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Your Syncs|Ask PsycheAI' && hubTiles.tick &&
           hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'Sync' && hubTiles.ask === 'Ask' &&
           hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
           hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
@@ -12967,8 +12967,8 @@ try {
       await sp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
       await seed(false);
       const offer = await sp.locator('#profile-body .full-report-locked').innerText();
-      check('structured: the unlock offer names the patterns, the motivators and the development plan',
-        /Your signature patterns/.test(offer) && /What motivates you/.test(offer) && /Development plan/.test(offer));
+      check('structured: the unlock offer names the motivators and the development plan, not the Overview\'s patterns',
+        !/Your signature patterns/.test(offer) && /What motivates you/.test(offer) && /Development plan/.test(offer));
       check('structured: and still draws nothing it has not been paid for',
         (await sp.locator('#profile-body .pattern, #profile-body .motive-row, #profile-body .dev-item').count()) === 0);
       // A card made since the free call writes the Overview (October 2026): the
@@ -13095,9 +13095,9 @@ try {
           lockedText: document.querySelector('#profile-body .full-report-locked').textContent,
           intro: document.querySelector('#profile-side .cx-home-intro').textContent };
       });
-      check('structured: the free unlock offer runs as five parts, MBTI and the Big Five as one row, and no appendix',
+      check('structured: the free unlock offer runs as five parts, MBTI and the Big Five as one row, no Overview sections (Who you are, patterns), and no appendix',
         offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect|04 How you work|05 Putting it together' &&
-          offerParts.counts.join() === '4,2,2,2,1' && offerParts.typeTraits, JSON.stringify(offerParts));
+          offerParts.counts.join() === '2,2,2,2,1' && offerParts.typeTraits, JSON.stringify(offerParts));
       check('structured: in the unlock offer How you connect is relationships & partner and attachment & conflict; How you work is work and career',
         await sp.evaluate(() => {
           const parts = document.querySelectorAll('#profile-body .full-report-locked .unlock-part');
@@ -13140,12 +13140,12 @@ try {
         const offer = await sp.evaluate(() => {
           const panel = document.querySelector('#profile-body .full-report-locked');
           return { height: Math.round(panel.getBoundingClientRect().height), screen: innerHeight,
-            chips: panel.querySelectorAll('.unlock-chips li').length, paragraphs: panel.querySelectorAll('.unlock-part .premium-tier-text').length,
+            chips: panel.querySelectorAll('.unlock-chips li:not(.unlock-dot)').length, paragraphs: panel.querySelectorAll('.unlock-part .premium-tier-text').length,
             growth: /plan for your personal growth/.test(panel.querySelector('.premium-tier-blurb').textContent) };
         });
         await sp.setViewportSize(vp);
         check('structured: on a phone the unlock offer takes under one and a half screens, its sections as chips, and says it is for personal growth',
-          offer.height < offer.screen * 1.5 && offer.chips === 11 && offer.paragraphs === 0 && offer.growth, JSON.stringify(offer));
+          offer.height < offer.screen * 1.5 && offer.chips === 9 && offer.paragraphs === 0 && offer.growth, JSON.stringify(offer));
       }
       check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete is in the hub',
         await sp.evaluate(() => {

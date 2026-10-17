@@ -1803,8 +1803,9 @@
     return [
       // MBTI and the Big Five as one row: both are the reading of the scores
       // on the card, and four rows read better than five.
-      { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns),
-        { icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
+      // Who you are and the signature patterns are the free Overview's,
+      // already on the page, so the unlock does not list them.
+      { key: 'who', rows: [{ icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
       { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
       // Two rows each: relationships with who suits them and attachment
       // with conflict; then work and the career assessment.
@@ -1816,10 +1817,10 @@
     ].map((part, i) => Object.assign(part, { number: String(i + 1).padStart(2, '0'), rows: part.rows.filter(Boolean) }));
   }
 
-  // The five parts, each its numeral, its title and its sections as small
-  // chips: the front page's shape, at a size a phone can take in about one
-  // screen. Each section's long description was dropped here in October
-  // 2026; "See sample report" in the head shows what each one holds.
+  // The five parts, compact (late October 2026): two columns on a laptop,
+  // each a small gradient numeral, its title, and its sections as one plain
+  // line under it, with a small lock. The front page's shape, smaller; "See
+  // sample report" in the head shows what each one holds.
   const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
   function unlockPartsHtml() {
     const S = Copy.STRUCTURED;
@@ -1830,7 +1831,7 @@
         // Locked: the Overview above is the free part of the report.
         '<span class="unlock-part-lock" aria-hidden="true">' + LOCK_ICON + '</span></div>' +
         '<ul class="unlock-chips">' + part.rows.map(row =>
-          '<li class="premium-tier-item"><strong>' + esc(row.title()) + '</strong></li>').join('') + '</ul>' +
+          '<li class="premium-tier-item"><strong>' + esc(row.title()) + '</strong></li>').join('<li class="unlock-dot" aria-hidden="true">·</li>') + '</ul>' +
       '</li>').join('') + '</ol>';
   }
 
@@ -2328,8 +2329,8 @@
         (opts.state || '<b class="hub-num" data-hub-num' + (opts.numLabel ? ' title="' + esc(opts.numLabel) + '"' : '') + '>' + esc(opts.num) + '</b>') +
       '</div>' +
       (opts.line2 || '<div class="hub-acts">' + opts.buttons.map(([go, label, icon, extra]) =>
-        '<button type="button" class="hub-go' + (extra || '') + '" data-hub-go="' + esc(go) + '">' +
-          (icon ? hubIcon(icon) : '') + esc(label) + '</button>').join('') +
+        '<button type="button" class="hub-go' + (extra || '') + '" data-hub-go="' + esc(go) + '" aria-label="' + esc(label) + '">' +
+          (icon ? hubIcon(icon) : '') + '<span class="hub-go-label">' + esc(label) + '</span></button>').join('') +
       '</div>') + '</div>';
   }
 

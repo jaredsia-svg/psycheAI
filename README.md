@@ -1135,6 +1135,12 @@ each part's sections as chips from the report's own titles (Part 1 leads with **
 comes with it, closed by **See sample report** (`#insight-sample`) at its bottom right. Under both, a line saying compatibility is free. The words around the names live in
 `Copy.STRUCTURED.insights`.
 
+**Compact (late October 2026):** the five parts sit two to a row on a laptop (the fifth across the
+width), each a small gradient numeral, its title and its sections as one plain line with dots, and a small
+lock; one column on a phone. Part 1 no longer lists *Who you are* or *Your signature patterns*: both are the
+free Overview's, already on the page. 814px tall on a laptop became 571px. The history below is how it
+got here.
+
 Under a free card, the unlock offer lists what the full report explains and adds. In the structured
 layout it runs as **four of the report's parts** (`explainedParts()`, `unlockPartsHtml()`): each a white
 panel led by its numeral (01–04) and the part's title from `Copy.STRUCTURED.parts` — no line under the
@@ -5468,8 +5474,12 @@ the site's panel and to use as few words as possible:
 
 - **A gradient bar with its name**, centred, over a panel with the same light wash as the My Syncs header
   (`.scan-hero`). No icon or subtitle.
-- **Header**: no title bar (the name is kept for screen readers); a gradient ring round the panel and a
-  soft glow mark it as the site's control panel.
+- **Header**: *Your Psyche Hub*, centred in gradient type with a short gradient rule under it, inside a
+  gradient ring and a soft glow that mark it as the site's control panel. Tile and row titles are all
+  bold and the same size.
+- **Phones a size up** (late October 2026): titles about 14px, buttons about 13px and at least 40px
+  tall, chips and counts a step larger, so it is easier to tap; Download is just its icon there.
+  Laptops keep the compact sizes.
 - **Psyche Card is the first tile** (a green tick; Read opens it full size, Download saves the image), then
   Psyche Report, Your Syncs and Ask PsycheAI. The locked report keeps the plain tile border: its filled
   Unlock button is enough.

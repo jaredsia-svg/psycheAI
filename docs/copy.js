@@ -1274,7 +1274,7 @@
     // the page before. It replaced the referral card and Evidence and method,
     // which now open from it.
     hub: {
-      title: 'Psyche Hub',
+      title: 'Your Psyche Hub',
       card: 'Psyche Card',
       ready: 'Ready',
       report: 'Psyche Report',
