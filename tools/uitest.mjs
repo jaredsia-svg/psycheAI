@@ -11827,7 +11827,11 @@ try {
           ok: getComputedStyle(hub.querySelector('.hub-ok')).color === getComputedStyle(document.documentElement).getPropertyValue('--good').trim() ||
             getComputedStyle(hub.querySelector('.hub-ok')).color === 'rgb(47, 125, 91)',
           tips: hub.querySelectorAll('.hub-tile .hub-tip').length, rowTips: hub.querySelectorAll('.hub-row .hub-tip').length,
-          info: hub.querySelectorAll('.hub-tip svg, .hub-tile .hub-sq').length === 0,
+          // No "i" and no other icon in a name: only each tile's own feature icon,
+          // the same as the card intro's buttons.
+          info: hub.querySelectorAll('.hub-tile .hub-sq').length === 0 &&
+            [...hub.querySelectorAll('.hub-tip svg')].every(svg => svg.closest('.hub-ti')) &&
+            hub.querySelectorAll('.hub-tile .hub-tip .hub-ti').length === 4,
           chips: hub.querySelectorAll('.hub-chip').length, ring: getComputedStyle(hub.querySelector('.hub-ring')).getPropertyValue('--p').trim(),
           keepLabel: hub.querySelector('.hub-keep .hub-rl').textContent,
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
@@ -12786,8 +12790,8 @@ try {
         }));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
-        /Go deeper in your Psyche Report, compare with friends in Psyche Sync, and track your progress in Psyche Hub\./.test(paidIntro) &&
-          !/Unlock/.test(paidIntro) && await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-home-intro .cx-go')].map(n => n.dataset.cxGo).join() === 'report,sync,hub'),
+        /Go deeper in your Psyche Report, compare with friends in Psyche Sync, get advice from Ask PsycheAI, and track your progress in Psyche Hub\./.test(paidIntro.replace(/\s+/g, ' ')) &&
+          !/Unlock/.test(paidIntro) && await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-home-intro .cx-go')].map(n => n.dataset.cxGo).join() === 'card,report,sync,ask,hub'),
         paidIntro);
       check('and Copy link is one of the card\'s tools there, with no sync on My Psyche',
         await sp.evaluate(() => Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="copy"]')) &&
@@ -13113,8 +13117,8 @@ try {
       check('structured: the unlock offer promises no secret bonus and names no roast',
         offerParts.secret === 0 && !/secret bonus|roast/i.test(offerParts.lockedText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the Psyche Report, with an en dash, not an em dash',
-        /Your personality on one card, read from your own data\./.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
-          /Unlock your Psyche Report for the reasoning behind it, compare with friends in Psyche Sync, and track your progress in Psyche Hub\./.test(offerParts.intro),
+        /your personality on one card, read from your own data/i.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
+          /Psyche Card – your personality on one card, read from your own data\. Unlock the reasoning in your Psyche Report, compare with friends in Psyche Sync, get advice from Ask PsycheAI, and track your progress in Psyche Hub\./.test(offerParts.intro.replace(/\s+/g, ' ')),
         offerParts.intro);
       const shareFirst = await sp.evaluate(() => {
         const panel = document.querySelector('#profile-body .full-report-locked');

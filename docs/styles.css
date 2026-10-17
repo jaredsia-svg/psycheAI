@@ -5100,6 +5100,24 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-go:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); }
 .cx-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cx-go .hub-svg { width: 13px; height: 13px; stroke-width: 2.2; }
+/* A button and the comma or full stop after it stay together. */
+.cx-tail { white-space: nowrap; }
+/* Each tile's name carries its feature's icon, the same as the intro's buttons;
+   the hub's grid sits beside its title, in the title's gradient. */
+.hub-ti { display: inline-flex; vertical-align: -2px; margin-right: .35rem; color: var(--accent); }
+.hub-ti .hub-svg { width: 15px; height: 15px; }
+.hub-bar h2 .hub-title-mark { display: inline-block; width: 21px; height: 21px; vertical-align: -3px; margin-right: .45rem; }
+/* The "?" no taller than its neighbours. */
+.hub-go.is-icon::after { line-height: 1; }
+/* On a laptop the wide buttons are their word alone; on a phone they are
+   narrower, leaving the tile's name its room. */
+@media (min-width: 760px) {
+  .hub-go[data-hub-go="card"] .hub-svg, .hub-go[data-hub-go="report"] .hub-svg,
+  .hub-go[data-hub-go="syncs"] .hub-svg, .hub-go[data-hub-go="asked"] .hub-svg { display: none; }
+}
+@media (max-width: 759px) {
+  .hub-tile .hub-acts { width: 40%; }
+}
 /* Four colours on a plain white panel (the gradient frame stays): tiles
    lavender, then the peach, mint and sky rows, each with its own thin outline. */
 .hub-card { background: linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,

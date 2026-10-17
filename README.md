@@ -4801,6 +4801,20 @@ Data Saver on or on a 2G connection (`navigator.connection`). The poster and the
 A slow first visit is more likely the host than the page: Render's free instances sleep after about 15
 idle minutes and take 30–60s to wake, and a region far from the readers adds a round trip per request.
 
+### The card intro names all five features; the hub's tiles carry their icons
+
+Since late October 2026 the intro reads *"[Psyche Card] – your personality on one card, read from your
+own data. Go deeper in your [Psyche Report], compare with friends in [Psyche Sync], get advice from
+[Ask PsycheAI], and track your progress in [Psyche Hub]."* Before an unlock, the second sentence starts
+*"Unlock the reasoning in your [Psyche Report]"*. `introClauses` cuts the paragraph into clauses that
+each end with their button. The button's comma or full stop is kept with it, so neither starts a line. It
+is one plain paragraph on a laptop and a phone alike; right-aligning each clause on a phone was tried and
+undone. The Card button opens the card full size and Ask opens the panel. The hub's tiles carry
+the same icons before their names, and the hub's grid sits left of its title in the title's gradient
+(`#hub-title-grad`). On a laptop Read, See list and History are their word alone. On a phone the
+button column is 40% of a tile (it was half). The "?" has a line height of 1, so it is no taller than the
+other buttons.
+
 ### The card intro's next steps, as buttons in the sentence
 
 The Psyche Card's intro is one line, then where to go next: *"Your personality on one card, read from
@@ -4819,7 +4833,11 @@ The question box empties as a question is sent. The question shows in the thread
 written, and goes back into the box only if sending fails. Minimising keeps the page where the reader
 has scrolled to. `popOwnEntry(y)` turns the browser's scroll restoration off for the step back, which had
 been putting back the position the panel was opened at, and on again 400ms after it. `minimiseAsk` also
-scrolls back after closing, since closing hands focus to whatever opened the panel.
+scrolls back after closing, since closing hands focus to whatever opened the panel. That still bounced:
+scroll restoration is kept per history entry and applied by the entry being returned to, so the page's
+own entry (still on auto) put back the position the panel was opened at for about 400ms. `openAsk` now
+turns restoration off on the page's entry before pushing the panel's. Minimising, by the button or by
+Back, leaves the page exactly where it is, and restoration comes on again once it has landed.
 
 The laptop hub is 1.1× (`zoom` on `.hub-card` from 760px): type, buttons, icons and spacing together, in
 the same width. The phone's is unchanged. On both, Download and Share are their icon alone at a quarter

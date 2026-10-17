@@ -2275,6 +2275,8 @@
   // and the offer. The numbers that come from the server (questions left, the
   // link's counts) are filled in by refreshHub when they arrive.
   const HUB_ICONS = {
+    // The Psyche Card: a portrait card with a face and two lines.
+    card: '<rect x="6" y="3" width="12" height="18" rx="2.5"/><circle cx="12" cy="9.5" r="2.5"/><path d="M9 15h6M9.5 18h5"/>',
     report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/><path d="M12 8.6l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
@@ -2314,10 +2316,11 @@
 
   // Each tile explains itself in one or two lines: its name is a button that
   // shows the words on hover or focus, and on a tap on a phone.
-  const hubTip = (key, name, nameClass) => {
+  const hubTip = (key, name, nameClass, icon) => {
     const H = Copy.STRUCTURED.hub;
     return '<button type="button" class="hub-tip" aria-expanded="false" aria-describedby="hub-tip-' + key + '">' +
-      '<span class="' + (nameClass || 'hub-name') + '">' + esc(name) + '</span></button>' +
+      '<span class="' + (nameClass || 'hub-name') + '">' + (icon ? '<span class="hub-ti">' + hubIcon(icon) + '</span>' : '') +
+      esc(name) + '</span></button>' +
       '<span class="hub-tip-text" role="tooltip" id="hub-tip-' + key + '">' + esc(H.tips[key]) + '</span>';
   };
 
@@ -2325,7 +2328,7 @@
   // its buttons. Every tile in one shade; only the locked report glows.
   function hubTile(key, opts) {
     return '<div class="hub-tile hub-' + key + (opts.cta ? ' is-cta' : '') + '" data-hub="' + key + '">' +
-      '<div class="hub-l1">' + hubTip(opts.tip || key, opts.name) +
+      '<div class="hub-l1">' + hubTip(opts.tip || key, opts.name, '', opts.mark) +
         '<span class="hub-badge" data-hub-badge' + (opts.badge ? '' : ' hidden') + '>' + esc(opts.badge || '') + '</span>' +
         (opts.state || '<b class="hub-num" data-hub-num' + (opts.numLabel ? ' title="' + esc(opts.numLabel) + '"' : '') + '>' + esc(opts.num) + '</b>') +
       '</div>' +
@@ -2342,19 +2345,19 @@
     const fresh = syncs.filter(entry => entry.fresh).length;
     const asked = (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string').length;
     const tiles = [
-      hubTile('psyche', { icon: 'report', name: H.card, tip: 'card',
+      hubTile('psyche', { icon: 'report', mark: 'card', name: H.card, tip: 'card',
         state: '<span class="hub-ok" role="img" aria-label="' + esc(H.ready) + '">' + hubIcon('tick') + '</span>',
         buttons: [['card', H.read, 'open'], ['card-download', H.download, 'down']] }),
       explained
-        ? hubTile('report', { icon: 'report', name: H.report,
+        ? hubTile('report', { icon: 'report', mark: 'open', name: H.report,
             state: '<span class="hub-ok" role="img" aria-label="' + esc(H.unlocked) + '">' + hubIcon('tick') + '</span>',
             buttons: [['report', H.read, 'open'], ['pdf', H.download, 'down']] })
-        : hubTile('report', { icon: 'lock', name: H.report, cta: true,
+        : hubTile('report', { icon: 'lock', mark: 'open', name: H.report, cta: true,
             state: '<span class="hub-lockmark" role="img" aria-label="' + esc(H.locked) + '">' + hubIcon('lock') + '</span>', tip: firstFreeOffered() ? 'reportLocked' : 'reportBuy',
             buttons: [['unlock', firstFreeOffered() ? H.unlockFree : H.unlock, '', ' is-fill']] }),
-      hubTile('syncs', { icon: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
+      hubTile('syncs', { icon: 'sync', mark: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
         badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync'], ['share', H.share, 'share']] }),
-      hubTile('ask', { icon: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
+      hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
         // With answers to look back on: History the wide button, a small "?" to
         // ask a new one. Before any: Ask, the whole width.
         buttons: explained && asked ? [['asked', H.askHistory, 'history'], ['ask', H.askGo, 'ask', ' is-icon']] : [['ask', H.askGo, 'ask']] }),
@@ -2373,7 +2376,11 @@
     const saved = store.read(KEYS.lastBackup, null);
     const flow = explained ? 'rerun' : 'unlock';
     return '<section class="card section-card hub-card screen-only" aria-labelledby="hub-title">' +
-      '<div class="hub-bar"><h2 id="hub-title">' + esc(H.title) + '</h2></div>' +
+      // The hub's own mark beside its name, in the title's gradient.
+      '<div class="hub-bar"><h2 id="hub-title"><svg class="hub-svg hub-title-mark" viewBox="0 0 24 24" fill="none" stroke="url(#hub-title-grad)" ' +
+        'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><defs>' +
+        '<linearGradient id="hub-title-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3fa0"/>' +
+        '<stop offset="1" stop-color="#d1477a"/></linearGradient></defs>' + HUB_ICONS.grid + '</svg>' + esc(H.title) + '</h2></div>' +
       '<div class="hub-in">' +
       '<div class="hub-tiles">' + tiles.join('') + '</div>' +
       '<div class="hub-rows">' + hubLinkRowHtml(explained) +
@@ -2576,13 +2583,37 @@
     });
   }
 
-  // The card intro's three buttons: the report (My Report once unlocked, the
-  // unlock offer before), the Sync list, and the hub below.
+  // The card intro's paragraph, cut into clauses that each end with their
+  // button (and its comma or full stop, kept with it so neither starts a
+  // line). One plain paragraph on every screen.
+  function introClauses(text, paid) {
+    const G = Copy.STRUCTURED.cardGuide;
+    const button = key => '<a href="#" class="cx-go' + (key === 'hub' ? ' cx-hub-link' : '') + '" data-cx-go="' + key + '">' +
+      hubIcon(key === 'report' ? (paid ? 'open' : 'lock') : key === 'hub' ? 'grid' : key) +
+      '<span>' + esc(G.home.introLinks[key]) + '</span></a>';
+    const out = [];
+    let open = '';
+    for (const part of String(text).split(/(\{(?:card|report|sync|ask|hub)\}[.,]?)/)) {
+      const m = /^\{(card|report|sync|ask|hub)\}([.,]?)$/.exec(part);
+      if (!m) { open += esc(part); continue; }
+      open += '<span class="cx-tail">' + button(m[1]) + esc(m[2]) + '</span>';
+      // The card's button opens the paragraph rather than ending a clause.
+      if (m[1] !== 'card') { out.push('<span class="cx-clause">' + open + '</span>'); open = ''; }
+    }
+    if (open.trim()) out.push('<span class="cx-clause">' + open + '</span>');
+    return out.join(' ');
+  }
+
+  // The card intro's five buttons: the card full size, the report (My Report
+  // once unlocked, the unlock offer before), the Sync list, Ask PsycheAI, and
+  // the hub below.
   document.addEventListener('click', event => {
     const link = event.target.closest('.cx-go');
     if (!link) return;
     event.preventDefault();
     const where = link.dataset.cxGo;
+    if (where === 'card') { openPsycheCard(); return; }
+    if (where === 'ask') { openAsk(); return; }
     if (where === 'sync') { go('scan'); return; }
     if (where === 'report' && fullReportPage()) { go('full'); return; }
     const target = document.querySelector(where === 'report' ? '#view-profile .full-report-locked' : '#profile-body .hub-card');
@@ -3831,7 +3862,15 @@
     // over the page on a phone, rather than leaving the page under it.
     if ($('#ask-dialog').open) {
       askHistoryEntry = false;
+      // Where the reader is stays where it is (restoration was off for this
+      // step, see openAsk), and is turned on again once it has landed.
+      const y = window.scrollY;
       $('#ask-dialog').close();
+      window.scrollTo(0, y);
+      setTimeout(() => {
+        window.scrollTo(0, y);
+        if (!backToHub && 'scrollRestoration' in history) history.scrollRestoration = 'auto';
+      }, 400);
       dockAsk(false);
       refreshAskFab();
       return;
@@ -8146,10 +8185,7 @@
         // "Psyche Hub below" is a link down to the hub.
         // Then where to go next, as small buttons in the sentence: the report
         // (or its unlock), the Sync list, and the hub below.
-        '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree)
-          .replace(/\{(report|sync|hub)\}/g, (match, key) => '<a href="#" class="cx-go' + (key === 'hub' ? ' cx-hub-link' : '') +
-            '" data-cx-go="' + key + '">' + hubIcon(key === 'report' ? (paid ? 'open' : 'lock') : key === 'sync' ? 'sync' : 'grid') +
-            '<span>' + esc(G.home.introLinks[key]) + '</span></a>') + '</p>' +
+        '<p class="cx-home-intro">' + introClauses(paid ? G.home.introPaid : G.home.introFree, paid) + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
           '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
       '</div>' +
@@ -10996,7 +11032,15 @@
     askCount();
     if (!dialog.open) {
       if (typeof dialog.show === 'function') dialog.show(); else dialog.setAttribute('open', '');
-      if (!askHistoryEntry) { history.pushState({ psycheaiAsk: true }, ''); askHistoryEntry = true; }
+      // Scroll restoration is kept per history entry and applied by the one
+      // being returned to: off on this page's entry before the panel's own is
+      // pushed, so minimising (a step back to it) never puts back the
+      // position the panel was opened at (popOwnEntry turns it on again).
+      if (!askHistoryEntry) {
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        history.pushState({ psycheaiAsk: true }, '');
+        askHistoryEntry = true;
+      }
     }
     $('#ask-fab').classList.remove('is-ready');
     dockAsk(true);

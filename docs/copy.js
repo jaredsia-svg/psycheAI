@@ -1382,12 +1382,14 @@
       // What the panel says before any part of the card is pointed at.
       home: {
         title: 'Your Psyche Card',
-        intro: 'Your personality on one card, read from your own data.',
-        // After the intro: where to go next, free and paid. {report}, {sync}
-        // and {hub} become small buttons in the sentence (the names below).
-        introFree: 'Unlock your {report} for the reasoning behind it, compare with friends in {sync}, and track your progress in {hub}.',
-        introPaid: 'Go deeper in your {report}, compare with friends in {sync}, and track your progress in {hub}.',
-        introLinks: { report: 'Psyche Report', sync: 'Psyche Sync', hub: 'Psyche Hub' },
+        // One paragraph naming the five features; each {name} is a small
+        // button (the names in introLinks). On a phone each clause ends its
+        // own line, so the buttons line up down the right.
+        introPaid: '{card} – your personality on one card, read from your own data. Go deeper in your {report}, ' +
+          'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
+        introFree: '{card} – your personality on one card, read from your own data. Unlock the reasoning in your {report}, ' +
+          'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
+        introLinks: { card: 'Psyche Card', report: 'Psyche Report', sync: 'Psyche Sync', ask: 'Ask PsycheAI', hub: 'Psyche Hub' },
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
       },
