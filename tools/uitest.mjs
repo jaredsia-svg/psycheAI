@@ -11797,7 +11797,7 @@ try {
         return { names: [...hub.querySelectorAll('.hub-tile .hub-name')].map(n => n.textContent).join('|'),
           report: hub.querySelector('.hub-tile[data-hub="report"] [data-hub-num]').textContent,
           cta: hub.querySelectorAll('.hub-tile.is-cta').length,
-          colours: new Set([...hub.querySelectorAll('.hub-tile .hub-sq')].map(n => getComputedStyle(n).backgroundColor)).size,
+          colours: new Set([...hub.querySelectorAll('.hub-tile')].map(n => getComputedStyle(n, '::before').backgroundImage)).size,
           chips: hub.querySelectorAll('.hub-chip').length, ring: getComputedStyle(hub.querySelector('.hub-ring')).getPropertyValue('--p').trim(),
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
@@ -13607,7 +13607,7 @@ try {
           await rp.evaluate(() => [...document.querySelectorAll('#hub-link-dialog .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,syncs,credits') &&
           /0\s*opened your link/.test(card.text) &&
           /Every 3 connections who make their Psyche Card from your link earn you 1 credit\. Use a credit to ask PsycheAI a question or to gift a Psyche Report\./.test(card.text) &&
-          /Share your card or link above/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
+          /Share your card or link to start/.test(card.text) && !/bought the Psyche Report/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*credits/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&
           await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&

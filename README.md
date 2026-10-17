@@ -2451,7 +2451,7 @@ My Psyche ends with a **Your Referral** card (titled *Your link* until October 2
 and method, free or paid. It opens with what the link earns: *Every 3 connections who make their
 Psyche Card from your link earn you 1 credit. Use credits to gift a Psyche Report, with more premium
 features coming soon.* (Before the October 2026 change below it was 2 cards, or 1 friend's paid
-report, for a free Psyche Report of the reader's own.) Then it says *Share your card or link above*. A small **Copy link**
+report, for a free Psyche Report of the reader's own.) Then it says *Share your card or link to start*. A small **Copy link**
 sits right beside the title (`.referral-copy`, since October 2026; at first at the card's far right). It does exactly what the
 card's own **Copy link** does (`copyShareMessage`): the one share message with the short link, and
 *Copied ✓* on the button for two seconds. It runs before the click handler awaits anything, so the
@@ -5457,7 +5457,8 @@ My Psyche became the control panel for the whole site: a **Your hub** section (`
 docs/app.js, `.hub-*` in styles.css), under the card once the report is unlocked and at the foot of the
 page before it (after the Overview, the roast and the offer).
 
-- **Four tiles, each its own colour** (mixed into the page background, so the dark theme gets them):
+- **Four tiles, each its own colour**: white tiles with a coloured top edge, a filled gradient icon, and
+  the number and action link in that colour (picked over tinted tiles, which made the panel read busy):
   *Psyche Report* (purple: Unlocked and Open report, or Locked), *Ask PsycheAI* (pink: questions left as
   dots, Ask or Get 5 more), *Your Syncs* (blue: how many, a "new" badge, See syncs or Invite) and *Your
   link* (amber: opens, progress to the next credit or to the free report, Share link, and *Credits and
@@ -5465,11 +5466,12 @@ page before it (after the Overview, the roast and the offer).
   left, the link's counts) fill in when they arrive (`refreshHub`).
 - **The locked report glows**: a gradient ring and a slow pulse (still under reduced motion), an
   "Unlock free" badge while the free first report is on offer, and the only filled button in the hub.
+- **Your data** and **Keep** are two separate lavender boxes under the tiles.
 - **Your data**: a small confidence ring, *How it was read* (Evidence and method, now in a popout), and
   the sources as chips (ticked when loaded, dashed "+" to add; a chip opens the unlock or the re-run,
   as the old rows did).
 - **Keep**: Save a backup (with when it was last saved, `psycheai_last_backup`), *Download your AI
-  profile* (report holders only) and Delete everything. The page-foot buttons for these are hidden on
+  profile* (report holders only) and Delete everything (a small bin icon button, named for screen readers and on hover). The page-foot buttons for these are hidden on
   My Psyche, where the hub has them.
 - **The referral card is gone from the page**; its counts, credits and gift links open whole in the
   *Credits and gifts* popout, so its own handlers still run.
@@ -5480,6 +5482,11 @@ page before it (after the Overview, the roast and the offer).
   and drain) and what they are working on. Never the roast, the attachment style, the partner section
   or anything from the data itself.
 - The classic layout keeps its old confidence and referral cards: the hub is the structured layout's.
+- **On phones the hub is compact**, so all of it fits on about one screen (about 670–690px tall at 390px
+  wide, down from about 735): each tile's icon sits beside its name and its badge beside its number, the four
+  sources are an even 2×2 grid, the bin moves up onto the Keep line, and the two Keep buttons sit side by
+  side with the icon above the words. The two popouts become bottom sheets (full width, a grab handle, a
+  sticky title, text a size down). Laptops keep the larger size.
 
 ### Values & Beliefs: exactly three (October 2026)
 

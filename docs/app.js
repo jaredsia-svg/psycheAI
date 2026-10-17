@@ -2373,7 +2373,7 @@
             (explained
               ? '<button type="button" class="hub-btn" data-hub-go="ai" title="' + esc(H.aiTip) + '">' + hubIcon('spark') + esc(H.aiProfile) + '</button>'
               : '<button type="button" class="hub-btn is-locked" data-hub-go="unlock" title="' + esc(H.aiTip) + '">' + hubIcon('lock') + esc(H.aiLocked) + '</button>') +
-            '<button type="button" class="hub-del" data-hub-go="delete">' + hubIcon('trash') + esc(H.deleteAll) + '</button>' +
+            '<button type="button" class="hub-del" data-hub-go="delete" aria-label="' + esc(H.deleteAll) + '" title="' + esc(H.deleteAll) + '">' + hubIcon('trash') + '</button>' +
           '</span>' +
         '</div>' +
       '</div>' +

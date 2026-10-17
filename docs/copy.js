@@ -773,7 +773,7 @@
     referral: {
       title: 'Your Referral',
       blurb: 'Every 3 connections who make their Psyche Card from your link earn you 1 credit. Use a credit to ask PsycheAI a question or to gift a Psyche Report.',
-      shareHint: 'Share your card or link above to start.',
+      shareHint: 'Share your card or link to start.',
       // The small button at the head's right: the same share message and
       // link as the card's own Copy link.
       copyLink: 'Copy link',
