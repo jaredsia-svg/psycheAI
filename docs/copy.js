@@ -729,7 +729,7 @@
     askDialogTitle: 'Get 5 questions for Ask PsycheAI',
     askDialogBlurb: 'Five questions about your Psyche Report, each answered from it with steps to take this week. Questions you do not use stay for later.',
     askPayPrefix: 'Pay ',
-    premiumRerunDialogTitle: 'Re-run your Psyche Report',
+    premiumRerunDialogTitle: 'Re-run your Psyche Card and Report',
     premiumRerunDialogBlurb: 'One charge regenerates everything against your new data – your card and the Psyche Report together.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
@@ -767,7 +767,11 @@
     // nothing to pay at all.
     reviewProceed: 'Proceed',
     reviewSend: 'Send this',
-    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Run it again for US$2.',
+    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. A new Psyche Card now comes with your full Psyche Report: US$5 for both.',
+    // The sheet for a paid run past the free card: never a card alone since
+    // late October 2026, always the card and its report (authoriseAnalysis).
+    bundleDialogTitle: 'Your Psyche Card and Psyche Report',
+    bundleDialogBlurb: 'Your first Psyche Card is free. After that, a new card comes with your full Psyche Report: US$5 for both.',
     // Your link's numbers and credits (lib/referral.js): every connection's
     // card earns a credit, for a question or a gift.
     referral: {

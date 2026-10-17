@@ -401,6 +401,7 @@ function buildExport(options) {
             Name: { value: 'Aleç' },
             Username: { value: 'alec.runs' },
             Bio: { value: 'Trail runner. Dog dad. Coffee before sunrise.' },
+            'Private Account': { value: 'True' },
           },
         }],
       }),

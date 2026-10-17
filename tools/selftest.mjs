@@ -2906,7 +2906,7 @@ check('the reader\'s own handle is replaced with a placeholder',
   const sent = JSON.stringify(Digest.forModel(built));
   check('no link, website or city reaches the model, from any field',
     !/https?:|www\.|annbakes\.co|Leeds\b(?! )|"city"|"website"/.test(sent.replace(/14 Elm Street, Leeds/, '')) &&
-      JSON.stringify(Object.keys(Digest.forModel(built).profile)) === JSON.stringify(['name', 'username', 'bio']), sent.slice(0, 400));
+      JSON.stringify(Object.keys(Digest.forModel(built).profile).filter(key => key !== 'account')) === JSON.stringify(['name', 'username', 'bio']), sent.slice(0, 400));
   check('UK, Canadian and US postcodes are replaced, while plain numbers stay',
     !/LS1 4AP|M5V 2T6|94110/.test(sent) && /CA PsycheNumber/.test(sent) && /2024 steps and 10000 more/.test(sent), sent.slice(0, 600));
   check('the reader\'s own name is removed in any script, not only ASCII',
@@ -3120,6 +3120,26 @@ check('the bio reaches the digest on its own',
 check('and is not also poured into the caption pool',
   !digest.samples.captions.some(c => /Trail runner/.test(c)),
   JSON.stringify(digest.samples.captions.filter(c => /Trail runner/.test(c))));
+
+// Whether the account is private, from personal_information.json's "Private
+// Account": sent as `profile.account` beside the follower count, and only
+// when the export says.
+{
+  const sent = Digest.forModel(digest);
+  const unsaid = Digest.forModel(JSON.parse(JSON.stringify(Object.assign({}, digest, { profile: Object.assign({}, digest.profile, { account: undefined }) }))));
+  const hidden = Digest.omitActivity(JSON.parse(JSON.stringify(digest)));
+  check('a private account is read from the export and sent as profile.account, with the follower count beside it',
+    digest.profile.account === 'private' && sent.profile.account === 'private' && typeof sent.counts.followers === 'number',
+    JSON.stringify(sent.profile));
+  check('and when the export does not say, nothing is sent; unticking Activity takes it out with the counts',
+    !('account' in unsaid.profile) && !('account' in hidden.profile) &&
+      !('account' in Digest.forModel({ profile: { account: 'friends only' } }).profile), JSON.stringify(unsaid.profile));
+  const rule = prompts.ACCOUNT_AUDIENCE_RULE;
+  check('both prompts read a private account under 1,000 followers as close to messages, and a public one as curated',
+    /private account with fewer than 1,000 followers/.test(rule) && /close to their messages/.test(rule) &&
+      /curated and partly performative/.test(rule) && /assume nothing either way/.test(rule) &&
+      prompts.STRUCTURED_FREE_SYSTEM.includes(rule) && prompts.PROFILE_SYSTEM.includes(rule), rule.slice(0, 80));
+}
 
 // A caption carries its year and nothing else. A [post]/[story]/[reel] tag was
 // tried and removed: against a real archive of 623 stories and 20 posts every
@@ -4116,9 +4136,9 @@ check('the sample arrives in chronological order',
   // back to Instagram alone's tier.
   {
     const unticked = Digest.forModel(Digest.omitWhatsApp(JSON.parse(JSON.stringify(threeFree))));
-    check('with the chats unticked at the review, what is sent is held to Instagram alone\'s 82,000',
-      Digest.budgetFor(threeFree) === 126000 && Digest.budgetFor(unticked) === 82000 &&
-        Digest.evidenceChars(unticked) <= 82000 && Digest.poolSizes(unticked).public.total <= 32000,
+    check('with the chats unticked at the review, what is sent is held to Instagram alone\'s 100,000',
+      Digest.budgetFor(threeFree) === 136000 && Digest.budgetFor(unticked) === 100000 &&
+        Digest.evidenceChars(unticked) <= 100000 && Digest.poolSizes(unticked).public.total <= 50000,
       Digest.evidenceChars(unticked) + ' ' + JSON.stringify(Digest.poolSizes(unticked).public));
   }
   check('and Instagram is read exactly as it is without the chats',
@@ -4427,9 +4447,9 @@ check('search terms under 4 characters are dropped, however often repeated',
 check('every slot is a distinct term, so repeats cost one slot rather than many',
   new Set(searchSample.map(termOf)).size === searchSample.length,
   searchSample.length + ' slots, ' + new Set(searchSample.map(termOf)).size + ' distinct');
-check('the cap still binds, and is thirty-five, from fifty (and a hundred and fifty before that)',
+check('the cap still binds, and is fifty again (thirty-five for a while, a hundred and fifty at first)',
   searchSample.length === Digest.LIMITS.googleSearchTerms &&
-  Digest.LIMITS.googleSearchTerms === 35,
+  Digest.LIMITS.googleSearchTerms === 50,
   searchSample.length + ' vs ' + Digest.LIMITS.googleSearchTerms);
 // A top-N hides its own denominator in a way a chronological tail did not, so
 // the model is told how deep the tail behind it went.
@@ -4454,7 +4474,7 @@ check('the Takeout lists are sized by what they cost, not uniformly',
   // Cut by about a third again: Google adds less per character than the
   // reader's own words.
   Digest.LIMITS.youtubeChannels === 30 && Digest.LIMITS.youtubeTitles === 8 &&
-  Digest.LIMITS.googleSearchTerms === 35 && Digest.LIMITS.youtubeSearches === 25 &&
+  Digest.LIMITS.googleSearchTerms === 50 && Digest.LIMITS.youtubeSearches === 25 &&
   // And the premium read uses the same: it sets none of its own.
   !['youtubeChannels', 'youtubeTitles', 'googleSearchTerms', 'youtubeSearches'].some(key => key in Digest.DEEP_LIMITS),
   JSON.stringify([Digest.LIMITS.youtubeChannels, Digest.LIMITS.youtubeTitles,
@@ -5096,9 +5116,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // $0.151 for the structured layout's larger prompt: the tenth of a cent
   // keeps the same digest inside the cap.
   // $0.150 once Instagram's line came to 75,000; $0.161 with the three pools
-  // at 126,000.
-  check('the unlock\'s one call is capped at $0.161 with the shared 126,000-character digest',
-    Digest.COST_CAP === 0.161 && Digest.LIMITS.totalChars === 126000,
+  // at 126,000; $0.163 with the public pool at 50,000 (136,000).
+  check('the unlock\'s one call is capped at $0.163 with the shared 136,000-character digest',
+    Digest.COST_CAP === 0.163 && Digest.LIMITS.totalChars === 136000,
     Digest.COST_CAP + ' -> ' + Digest.LIMITS.totalChars);
 }
 
@@ -5119,53 +5139,53 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.FREE_MAX_OUTPUT_TOKENS * OUT_RATE;
   const fullWorst = ((DIG / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS) * IN_RATE +
     Digest.MAX_OUTPUT_TOKENS * OUT_RATE;
-  check('one digest of at most 126,000 characters, for the card and the full report alike',
-    Digest.DIGEST_CHARS === 126000 && DIG === 126000 && Digest.LIMITS.freeTotalChars === undefined &&
+  check('one digest of at most 136,000 characters, for the card and the full report alike',
+    Digest.DIGEST_CHARS === 136000 && DIG === 136000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card, its Overview and its roast cost at most 7.3 cents',
-    Digest.FREE_COST_CAP === 0.073 && freeWorst <= 0.073 + 1e-6, '$' + freeWorst.toFixed(4));
-  check('and the full premium report at most 16.1 cents',
-    Digest.COST_CAP === 0.161 && fullWorst <= 0.161 + 1e-6, '$' + fullWorst.toFixed(4));
+  check('with it, the free card, its Overview and its roast cost at most 7.6 cents',
+    Digest.FREE_COST_CAP === 0.076 && freeWorst <= 0.076 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('and the full premium report at most 16.3 cents',
+    Digest.COST_CAP === 0.163 && fullWorst <= 0.163 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
-    freeWorst > 0.071 && fullWorst > 0.159, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
+    freeWorst > 0.074 && fullWorst > 0.161, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
   check('and each ceiling still covers the digest, so neither call outgrows its price',
     Digest.charBudget(Digest.COST_CAP) >= DIG &&
     Digest.charBudget(Digest.FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= DIG,
     Digest.charBudget(Digest.COST_CAP) + ' / ' +
       Digest.charBudget(Digest.FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
   // Three pools by kind of evidence, and the fixed fields beside them.
-  check('the pools: public 40,000, conversations 72,000, searches 8,000, and 6,000 fixed — 126,000',
-    JSON.stringify(Digest.POOL_CAPS) === JSON.stringify({ public: 40000, conversations: 72000, searches: 8000 }) &&
+  check('the pools: public 50,000, conversations 72,000, searches 8,000, and 6,000 fixed — 136,000',
+    JSON.stringify(Digest.POOL_CAPS) === JSON.stringify({ public: 50000, conversations: 72000, searches: 8000 }) &&
       Digest.FIXED_CHARS === 6000 && Digest.POOL_CAPS.public + Digest.POOL_CAPS.conversations + Digest.POOL_CAPS.searches + Digest.FIXED_CHARS === DIG,
     JSON.stringify(Digest.POOL_CAPS));
   check('and the premium read\'s: public 70,000, conversations 95,000, searches 8,000 — 179,000',
     JSON.stringify(Digest.DEEP_POOL_CAPS) === JSON.stringify({ public: 70000, conversations: 95000, searches: 8000 }) &&
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.DEEP_LIMITS.totalChars === 179000 && Digest.DEEP_LIMITS.poolCaps === Digest.DEEP_POOL_CAPS &&
-      Digest.INSTAGRAM_PUBLIC_CHARS === 40000 && Digest.FACEBOOK_MIN_CHARS === 10000,
+      Digest.INSTAGRAM_PUBLIC_CHARS === 50000 && Digest.FACEBOOK_MIN_CHARS === 10000,
     JSON.stringify(Digest.DEEP_POOL_CAPS));
   check('every evidence list belongs to exactly one pool',
     Digest.EVIDENCE_LISTS.every(path => Object.values(Digest.POOLS).flat().filter(entry => entry[1] === path).length === 1) &&
       Object.values(Digest.POOLS).flat().length === Digest.EVIDENCE_LISTS.length);
-  check('a digest\'s line is 82,000 for Instagram alone, 126,000 with another source, 179,000 for the premium read',
-    Digest.budgetFor({}) === 82000 && Digest.SOLO_DIGEST_CHARS === 82000 &&
+  check('a digest\'s line is 100,000 for Instagram alone, 136,000 with another source, 179,000 for the premium read',
+    Digest.budgetFor({}) === 100000 && Digest.SOLO_DIGEST_CHARS === 100000 &&
       Digest.budgetFor({ whatsapp: { chats: [{ chat: 'c1' }] } }) === DIG && Digest.budgetFor({ google: { topChannels: ['x ×1'] } }) === DIG &&
       // An empty WhatsApp block is not a second source: it does not open the larger read.
-      Digest.budgetFor({ whatsapp: {} }) === 82000 && Digest.budgetFor({ whatsapp: { chats: [] } }) === 82000 &&
+      Digest.budgetFor({ whatsapp: {} }) === 100000 && Digest.budgetFor({ whatsapp: { chats: [] } }) === 100000 &&
       Digest.budgetFor({}, true) === Digest.DEEP_DIGEST_CHARS && !('SOURCE_CAPS' in Digest) && !('FREE_SOURCES_CHARS' in Digest));
-  // The two tiers: Instagram alone at the allocation the card was first
-  // sized at, about 80,000, cut by the same pools.
-  check('Instagram alone: public 32,000, conversations 46,000, 4,000 fixed — 82,000',
-    JSON.stringify(Digest.SOLO_POOL_CAPS) === JSON.stringify({ public: 32000, conversations: 46000, searches: 0 }) &&
-      Digest.SOLO_FIXED_CHARS === 4000 && Digest.SOLO_POOL_CAPS.public + Digest.SOLO_POOL_CAPS.conversations + Digest.SOLO_FIXED_CHARS === 82000,
+  // The two tiers: Instagram alone with smaller conversations and no
+  // searches, but the same 50,000 public pool.
+  check('Instagram alone: public 50,000, conversations 46,000, 4,000 fixed — 100,000',
+    JSON.stringify(Digest.SOLO_POOL_CAPS) === JSON.stringify({ public: 50000, conversations: 46000, searches: 0 }) &&
+      Digest.SOLO_FIXED_CHARS === 4000 && Digest.SOLO_POOL_CAPS.public + Digest.SOLO_POOL_CAPS.conversations + Digest.SOLO_FIXED_CHARS === 100000,
     JSON.stringify(Digest.SOLO_POOL_CAPS));
   {
-    const soloFree = ((82000 / CHARS_PER_TOKEN) + Digest.FREE_FIXED_INPUT_TOKENS) * IN_RATE + Digest.FREE_MAX_OUTPUT_TOKENS * OUT_RATE;
-    const soloFull = ((82000 / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS) * IN_RATE + Digest.MAX_OUTPUT_TOKENS * OUT_RATE;
-    check('and its card costs at most 6.3 cents, a full report from it at most 15.2',
-      Digest.SOLO_FREE_COST_CAP === 0.064 && soloFree <= 0.064 && Digest.SOLO_COST_CAP === 0.152 && soloFull <= 0.152 &&
-        Digest.charBudget(Digest.SOLO_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= 82000 &&
-        Digest.charBudget(Digest.SOLO_COST_CAP) >= 82000,
+    const soloFree = ((100000 / CHARS_PER_TOKEN) + Digest.FREE_FIXED_INPUT_TOKENS) * IN_RATE + Digest.FREE_MAX_OUTPUT_TOKENS * OUT_RATE;
+    const soloFull = ((100000 / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS) * IN_RATE + Digest.MAX_OUTPUT_TOKENS * OUT_RATE;
+    check('and its card costs at most 6.8 cents, a full report from it at most 15.6',
+      Digest.SOLO_FREE_COST_CAP === 0.068 && soloFree <= 0.068 && Digest.SOLO_COST_CAP === 0.156 && soloFull <= 0.156 &&
+        Digest.charBudget(Digest.SOLO_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= 100000 &&
+        Digest.charBudget(Digest.SOLO_COST_CAP) >= 100000,
       '$' + soloFree.toFixed(4) + ' / $' + soloFull.toFixed(4));
   }
   // Spare room flows one way: what the conversations leave goes to the
@@ -5250,7 +5270,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const extrasWordy = Digest.extrasSize(wordy);
     check('a reader who writes a lot keeps a guaranteed 3,000 of the extra lists, and their own words get the rest',
       extrasWordy >= 2500 && extrasWordy <= 3500 &&
-        Digest.poolSizes(wordy).public.total <= 32000 + (46000 - Digest.poolSizes(wordy).conversations.total) &&
+        Digest.poolSizes(wordy).public.total <= 50000 + (46000 - Digest.poolSizes(wordy).conversations.total) &&
         Digest.EXTRAS_GUARANTEED === 3000,
       JSON.stringify({ extras: extrasWordy, public: Digest.poolSizes(wordy).public }));
   }
@@ -5415,12 +5435,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const worstFree = Digest.forModel(worstFull);
   const worstFreeText = JSON.stringify(worstFree);
   // Measured as the model reads it, the measure the budget holds.
-  // Every pool at its ceiling, and the whole under the 126,000 line.
+  // Every pool at its ceiling, and the whole under the 136,000 line.
   {
     const pools = Digest.poolSizes(worstFull);
     check('the heaviest honest export lands under its line, every pool within its own ceiling',
       Digest.evidenceChars(worstFull) <= Digest.budgetFor(worstFull) && Digest.evidenceChars(worstFree) <= Digest.budgetFor(worstFull) &&
-        pools.public.total <= 40000 + (72000 - pools.conversations.total) && pools.conversations.total <= 72000 && pools.searches.total <= 8000 &&
+        pools.public.total <= 50000 + (72000 - pools.conversations.total) && pools.conversations.total <= 72000 && pools.searches.total <= 8000 &&
         pools.public.facebook >= Digest.FACEBOOK_MIN_CHARS - 1500,
       Digest.evidenceChars(worstFull) + ' / ' + Digest.evidenceChars(worstFree) + ' ' + JSON.stringify(pools));
   }
@@ -5487,12 +5507,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       JSON.stringify({ capped: [capped.directMessages.ownMessageSample.length, capped.samples.captions.length],
         filled: [filled.directMessages.ownMessageSample.length, filled.samples.captions.length] }));
     // Each pool on its own, at Instagram alone's tier: the messages close to
-    // its 46,000, the captions to its 32,000.
+    // its 46,000, the captions to its 50,000.
     const filledPools = Digest.poolSizes(filled);
     const filledSpare = 46000 - filledPools.conversations.total;
     check('and fills each pool close to its ceiling without passing it, public with what conversations left',
-      Digest.evidenceChars(filled) <= 82000 && filledPools.conversations.total <= 46000 && filledPools.conversations.total > 46000 * 0.95 &&
-        filledPools.public.total <= 32000 + filledSpare && filledPools.public.total > 32000 * 0.9,
+      Digest.evidenceChars(filled) <= 100000 && filledPools.conversations.total <= 46000 && filledPools.conversations.total > 46000 * 0.95 &&
+        filledPools.public.total <= 50000 + filledSpare && filledPools.public.total > 50000 * 0.9,
       JSON.stringify(filledPools));
     check('the extra it took is recorded and never sent',
       filled.__fill && filled.__fill.ownMessages === capped.directMessages.ownMessageSample.length &&
@@ -5562,8 +5582,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         Digest.evidenceChars(deeper) <= Digest.budgetFor(deeper, true) && !deeper.__deep &&
         !('captions' in Digest.DEEP_LIMITS) && !('messages' in Digest.DEEP_LIMITS),
       JSON.stringify(deepPools));
-    check('and Instagram\'s part of the public pool stays at its own 40,000, the rest left for Facebook',
-      deepPools.public.instagram <= 40000 && deepPools.public.facebook > 25000,
+    check('and Instagram\'s part of the public pool stays at its own 50,000, the rest left for Facebook',
+      deepPools.public.instagram <= 50000 && deepPools.public.facebook > 18000,
       JSON.stringify(deepPools.public));
     check('the premium read\'s two calls each fit their own cost cap at its 179,000-character line',
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
@@ -5615,17 +5635,17 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const after = Digest.poolSizes(added);
     const strip = d => { const out = JSON.parse(JSON.stringify(d)); delete out.facebook; delete out.whatsapp; return out; };
     const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-    check('the base digest is full: the conversations pool near its 72,000, Instagram\'s public part near its 40,000',
+    check('the base digest is full: the conversations pool near its 72,000, Instagram\'s public part near its 50,000',
       before.conversations.total > 72000 * 0.9 && before.conversations.total <= 72000 &&
-        before.public.total > 40000 * 0.9 && before.public.total <= 40000 + (72000 - before.conversations.total) &&
+        before.public.total > 50000 * 0.9 && before.public.total <= 50000 + (72000 - before.conversations.total) &&
         before.searches.total <= 8000 && Digest.evidenceChars(base) <= Digest.budgetFor(base), JSON.stringify(before));
-    // Public: Instagram's 40,000 left alone, Facebook in the 30,000 above it.
-    // Instagram keeps its 40,000; only what it had borrowed of the
+    // Public: Instagram's 50,000 left alone, Facebook in the 20,000 above it.
+    // Instagram keeps its 50,000; only what it had borrowed of the
     // conversations' room goes back, now the chats and Messenger fill it.
-    check('Facebook goes into the public pool\'s room above Instagram, which keeps its 40,000',
-      after.public.instagram >= 39000 && after.public.instagram <= 40000 + 1000 &&
+    check('Facebook goes into the public pool\'s room above Instagram, which keeps its 50,000',
+      after.public.instagram >= 49000 && after.public.instagram <= 50000 + 1000 &&
         added.samples.captions.length >= base.samples.captions.length - 10 && sameList(added.mostLikedAccounts, base.mostLikedAccounts) &&
-        sameList(added.google, base.google) && after.public.facebook > 25000 && after.public.total <= 70000,
+        sameList(added.google, base.google) && after.public.facebook > 18000 && after.public.total <= 70000,
       JSON.stringify(after.public));
     // Conversations: the chats go first, and the Instagram DMs and Messenger
     // share what is left of the 95,000.
@@ -8065,7 +8085,6 @@ check('the schema requires evidence on where they align and differ',
       out.halfAgain = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'half' });
       out.freeOnAnalysis = await intentFor({ product: 'analysis', promoCode: 'free' });
       out.quartIntent = await intentFor({ product: 'analysis', currency: 'sgd', promoCode: 'quart' });
-      out.quartPaid = await post({ digest: variant(6), product: 'analysis', paymentIntentId: out.quartIntent.id });
       out.quartAlone = await post({ digest: variant(7), product: 'analysis', promoCode: 'quart' });
       out.codeOnSync = await intentFor({ product: 'compatibility', promoCode: 'free' });
       out.freeCode = await intentFor({ product: 'unlock', currency: 'usd', promoCode: 'FREE' });
@@ -8123,18 +8142,17 @@ check('the schema requires evidence on where they align and differ',
   check('promo discount: a 100% code asks for no payment, a bad one is refused, and codes are for what is sold only',
     got.freeCode && got.freeCode.status === 200 && got.freeCode.free === true && !got.freeCode.id &&
       got.badCode && got.badCode.status === 402 && got.badCode.error === 'That code is not valid.' &&
-      got.freeOnAnalysis && got.freeOnAnalysis.status === 200 && got.freeOnAnalysis.free === true &&
+      got.freeOnAnalysis && got.freeOnAnalysis.status === 400 && /comes with your Psyche Report/.test(got.freeOnAnalysis.error) &&
       got.codeOnSync && got.codeOnSync.status === 402,
     JSON.stringify({ free: got.freeCode, bad: got.badCode, analysis: got.freeOnAnalysis, sync: got.codeOnSync }));
-  // Running the card again past the free one: a discount takes its share off
-  // that price too (S$3 less 25% is S$2.25), the payment buys the card, and
-  // the code is spent; on its own it still opens nothing.
-  check('promo discount: on a card run again, the sheet asks for the discounted price, and that payment runs it',
-    got.quartIntent && got.quartIntent.status === 200 && got.quartIntent.currency === 'sgd' && got.quartIntent.amount === 225 &&
-      got.quartIntent.discount && got.quartIntent.discount.percent === 25 &&
-      got.quartPaid && got.quartPaid.status === 200 && today['promo:QUART'] === 1 && today.card_paid >= 1 &&
-      got.quartAlone && got.quartAlone.status === 402 && /takes 25% off/.test(got.quartAlone.error),
-    JSON.stringify({ intent: got.quartIntent, paid: got.quartPaid, alone: got.quartAlone, today }));
+  // The card alone is no longer sold (late October 2026): past the free one a
+  // new card comes only with its report. No payment is made for it, with a
+  // code or without, and a code cannot buy it either.
+  check('the card alone is not sold: no payment for it, and a code cannot buy it',
+    got.quartIntent && got.quartIntent.status === 400 && /comes with your Psyche Report: US\$5 for both/.test(got.quartIntent.error) &&
+      got.quartAlone && got.quartAlone.status === 402 && /comes with your Psyche Report/.test(got.quartAlone.error) &&
+      !today['promo:QUART'],
+    JSON.stringify({ intent: got.quartIntent, alone: got.quartAlone, today }));
   check('stats routes: the totals need the token, and say how much of each code is left',
     got.noToken === 401 && got.wrongToken === 401 && Array.isArray(got.stats.promoCodes) &&
       got.stats.promoCodes.find(c => c.code === 'AVA').used === 2 && got.stats.promoCodes.find(c => c.code === 'AVA').cap === 2,

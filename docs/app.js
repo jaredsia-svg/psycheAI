@@ -5236,7 +5236,7 @@
         ' – a sample of your own words. Needed for any read at all.'],
       ['review-activity', 'includeActivity', 1,
         'Activity & timing', 'Activity & timing',
-        'Post counts, likes, saves and when you tend to be active. Numbers only, no text.'],
+        'Post counts, likes, saves, whether your account is private, and when you tend to be active. None of your words.'],
       // The raw follow list is no longer sent — hundreds of opaque handles
       // that said almost nothing — so this row no longer offers it. How many
       // accounts they follow is still sent, as a number, under Activity &
@@ -6123,6 +6123,10 @@
     // this new data is about to make stale, so the US$5 unlock price now
     // buys a regeneration of everything together — see the branch below.
     const alreadyUnlocked = Object.keys(paidAnalysis()).length > 0;
+    // Past the free card the same holds before an unlock too: a new card is
+    // never sold alone, only with its report (late October 2026), so a run
+    // that has to be paid for is this US$5 one.
+    const bundled = alreadyUnlocked || mustPayForAnalysis();
 
     // Present only in the same session as the upload — either the original
     // one, or a fresh Instagram export just read by askDataSources above.
@@ -6165,7 +6169,7 @@
     // standard digest of an Instagram export loaded again with them. The
     // standard digest beside it takes the same decisions.
     let premium = null;
-    if (alreadyUnlocked) {
+    if (bundled) {
       const adding = Object.values(extraSupplements || {}).some(Boolean);
       let base = state.digest || digest;
       if (freshInstagram && signals) {
@@ -6178,7 +6182,7 @@
     let decision;
     try {
       decision = await askReview(premium || digest,
-        { paymentDue: alreadyUnlocked || mustPayForAnalysis(), deep: Boolean(premium) });
+        { paymentDue: bundled, deep: Boolean(premium) });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -6195,7 +6199,7 @@
     if (decision === REVIEW_BACK) return REVIEW_BACK;
     if (!decision) return;
 
-    if (alreadyUnlocked) {
+    if (bundled) {
       // One US$5 charge regenerates everything together — the free report
       // and all four premium sections — against this reviewed digest.
       // Reuses runPremiumAnalysis's own bundled-refresh mechanism (built for
@@ -6274,18 +6278,26 @@
     // object itself rather than a copy, so that a retry sends the same bytes
     // the server already has an answer to.
     lastAttempt = { digest, auth };
+    // The bundle's report is written from this digest: kept as its own
+    // evidence once it lands (keepReportDigest), as an unlock's is.
+    // A code kept from before (a pending card-only promo run) goes the same
+    // way: the server no longer writes a card alone for a code.
+    const bundle = Boolean(auth && (auth.bundle || (auth.promoCode && !auth.paymentIntentId)));
+    if (bundle) store.write(KEYS.reportDigestNext, sent);
     try {
-      const result = await LLM.analyseProfile(sent, await withAttribution(auth),
+      const result = await LLM.analyseProfile(sent, await withAttribution(bundle ? bundledAuth(auth) : auth),
         { onJob: key => rememberJob(key, 'analysis', auth) });
-      await adoptProfile(result);
+      if (bundle) await adoptBundle(result);
+      else await adoptProfile(result);
     } catch (error) {
       // Terminal: whatever the job was, it is not coming. Cleared so a later
       // visit does not sit polling for something the server has already given
       // up on — the reader is being offered a retry instead, which is a better
       // answer than a spinner.
       clearJob();
-      // The server knows this Instagram account has had its free card: the
-      // run is offered at the re-run price instead, over the same digest.
+      // The server knows this Instagram account has had its free card (a new
+      // device, or after Delete everything): the card is offered only with
+      // its report, US$5 for both, over the same digest.
       if (error && error.freeUsed && !auth) {
         if (runCount() < freeAnalyses) store.write(RUNS_KEY, freeAnalyses);
         stopElapsed();
@@ -6303,8 +6315,27 @@
       guardUnload(false);
     }
   }
-  // Said on the US$2 sheet when it opens because the account's free card is spent.
+  // Said on the US$5 sheet when it opens because the account's free card is spent.
   let analysisNote = '';
+
+  /**
+   * A new card and its Psyche Report, bought together (authoriseAnalysis).
+   * The server wrote the card first and the report anchored to it, and sends
+   * the card back beside the report as `freeCard` (cardThenFull in
+   * server.js): the card is taken as a fresh card would be, then the report
+   * laid under it as an unlock's is. The classic layout writes both in one
+   * report and sends no `freeCard`, so that report is the card's too.
+   */
+  async function adoptBundle(result, savedName) {
+    const card = (result.data && result.data.freeCard) || result.data;
+    await adoptProfile(Object.assign({}, result, { data: card }), savedName);
+    await adoptFullReport(result, false, savedName);
+    keepReportDigest();
+    if (fullReportPage()) go('full');
+    else { renderProfile(); show('profile'); }
+    openPaidSections();
+    refreshAskCredits().catch(() => {});
+  }
 
   /**
    * Take delivery of a finished report, from wherever it arrived.
@@ -6440,6 +6471,7 @@
         show('profile');
         openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
+      else if (job.auth && job.auth.bundle) await adoptBundle(result, job.ownName);
       else await adoptProfile(result, job.ownName);
       return true;
     } catch (error) {
@@ -6764,10 +6796,8 @@
       // the free-run allowance mustPayForAnalysis() tracks, so the note has
       // to say so even for a reader with free runs left. See
       // rerunWithAdditionalData's own alreadyUnlocked branch.
-      (Object.keys(paidAnalysis()).length
-        ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNoteUnlocked) + '</p>'
-        : mustPayForAnalysis()
-          ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNote) + '</p>' : '') +
+      (Object.keys(paidAnalysis()).length || mustPayForAnalysis()
+        ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNoteUnlocked) + '</p>' : '') +
       '</div>';
   }
 
@@ -9951,6 +9981,9 @@
       // renderProfile shuts every section, and this is the one moment that is
       // wrong: the reader has just paid for the four premium ones.
       openPaidSections();
+      // The report brought one more free question: the count read again, so
+      // the hub and Ask PsycheAI show the card's unused one beside it.
+      refreshAskCredits().catch(() => {});
       dialog.close();
     } catch (error) {
       // The ways to pay come back: a refused code or free report is exactly
@@ -10113,6 +10146,10 @@
     const kind = product === 'analysis' ? 'analysis'
       : product === 'compatibility' ? 'compatibility'
       : product === 'ask' ? 'ask' : 'unlock';
+    // A new card and its report together, for a reader past their free card
+    // (authoriseAnalysis): the unlock's price and ledger, over the digest the
+    // upload just reviewed, so nothing is collected and no receipt resumed.
+    const bundle = product === 'bundle';
     // The re-run button's own route to this same US$5 product, used only
     // when premium is already unlocked and the reader is adding/changing
     // data — see rerunWithAdditionalData. Ledgers and prices exactly like a
@@ -10134,7 +10171,7 @@
     pendingPremiumDigest = null;
     if (preparedDigest) {
       pendingPremiumDigest = preparedDigest;
-    } else if (kind === 'unlock' && !unlockReceipt()) {
+    } else if (kind === 'unlock' && !bundle && !unlockReceipt()) {
       const collected = await collectDataForPremium();
       // Back at the supplement offer abandons the unlock. Nothing has been
       // charged and no dialog has been opened, so this simply returns.
@@ -10146,13 +10183,15 @@
       kind === 'analysis' ? TEXT.analysisDialogTitle
         : kind === 'ask' ? TEXT.askDialogTitle
         : rerunAll ? TEXT.premiumRerunDialogTitle
+        : bundle ? TEXT.bundleDialogTitle
         : TEXT.premiumDialogTitle;
     // The unlock's sheet is its title and the ways to pay: what it opens was
     // set out in the offer, and that new data redraws the card was said in
     // the data popout before the first file was picked (#datasources-confirm).
     const blurb = kind === 'analysis' ? (analysisNote || TEXT.analysisDialogBlurb)
       : kind === 'ask' ? TEXT.askDialogBlurb
-      : rerunAll ? TEXT.premiumRerunDialogBlurb : '';
+      : rerunAll ? TEXT.premiumRerunDialogBlurb
+      : bundle ? (analysisNote || TEXT.bundleDialogBlurb) : '';
     $('#premium-dialog-blurb').textContent = blurb;
     $('#premium-dialog-blurb').hidden = !blurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
@@ -10196,7 +10235,7 @@
     // that is left to do, so this returns before `create-payment-intent` is
     // ever reached: asking Stripe for a second PaymentIntent here is how a
     // reader ends up charged twice for one unlock.
-    const receipt = kind === 'unlock' ? unlockReceipt() : null;
+    const receipt = kind === 'unlock' && !bundle ? unlockReceipt() : null;
     if (receipt && hasUnfetchedUnlock()) {
       $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
       // Already paid: there is no price to state.
@@ -10306,8 +10345,8 @@
    * getting that restore wrong would send a reader's US$5 down the analysis
    * path, so it is done in the `close` handler where every exit passes.
    */
-  function askAnalysisPayment() {
-    return askPaymentFor('analysis', $('#rerun-with-data'));
+  function askBundlePayment() {
+    return askPaymentFor('bundle', $('#rerun-with-data'));
   }
 
   // Both of the above, and the shape is worth having once rather than twice:
@@ -10343,7 +10382,13 @@
    */
   async function authoriseAnalysis() {
     if (!mustPayForAnalysis()) return null;
-    const auth = await askAnalysisPayment();
+    // Past the free card, a card is never sold alone (late October 2026):
+    // the US$5 unlock buys a new card and its Psyche Report together, the
+    // card written first and the report anchored to it (cardThenFull in
+    // server.js). `bundle` marks it, so runAnalysis, a resumed job and a
+    // pending-purchase record all know a full report is coming.
+    const paid = await askBundlePayment();
+    const auth = paid ? Object.assign({}, paid, { bundle: true }) : null;
     // Deliberately says nothing itself. The two callers are on different
     // screens — the upload page and the report — and each has its own place
     // to put the message. Flashing #profile-alert from here left the upload

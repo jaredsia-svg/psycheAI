@@ -2294,6 +2294,24 @@ the exact same summary again is answered free (it is the card already made), and
 spent. Paid runs, promo codes and requests without a username are not limited by it; the daily
 budget still bounds them. `PSYCHEAI_FREE_PER_ACCOUNT=0` turns it off.
 
+**Past the free card, never a card alone (late October 2026).** The US$2 card re-run is gone. A
+reader past their free card (refused with `freeUsed` on a new device or after Delete everything, or
+on a browser whose free run is spent) is offered only the card and its Psyche Report together, the
+US$5 unlock: *"This Instagram account has already had its free Psyche Card. A new Psyche Card now
+comes with your full Psyche Report: US$5 for both."* `authoriseAnalysis` opens the sheet as
+`bundle` (the unlock's price and ledger, over the digest the upload just reviewed: nothing
+collected, no receipt resumed) and marks the auth `bundle: true`. `runAnalysis` then sends it as
+`product: 'unlock'` with no anchor, so the server writes the card first and the report anchored to
+it (`cardThenFull`, or one call with `PSYCHEAI_MERGED_UNLOCK`), and `adoptBundle` takes the card as a
+fresh card would be taken and lays the report under it. A resumed job or a pending purchase
+carries the `bundle` mark, so a closed tab gets both back. The classic layout's re-run button bundles
+the same way. The bundle gives both free Ask PsycheAI questions (card and report). The server
+enforces it too: `create-payment-intent` refuses `product: 'analysis'`, and a promo code on a card
+run without the report is refused (`CARD_ALONE_REFUSAL`). An `analysis` payment made before this
+deployed is still honoured. Why: a reader who comes back has already seen what the card says, and is
+paying for what is new, which is mostly the report. Two prices (US$2, then US$5 to unlock) split one
+decision in two.
+
 ## Invite three friends, get the full report free
 
 Each browser makes a random secret (`psycheai_referral`); its public code is the first 12 hex
@@ -2989,7 +3007,10 @@ now each carry a lock (`unlockPartsHtml`). A free reader still has no My Report 
   Report, each once per referral code. The card's is given when any card is written for the link (free
   or a re-run) and, for a link that already had a card, the first time its balance is read — at first
   it came only with an account's first free card, so a reader who had made one before never got it.
-  The report's was two at first, then one. The prompt is told a reader
+  The report's was two at first, then one. The gift is awaited before the run replies: it used to
+  be fired and forgotten, and on Redis the page's balance read (made as soon as the report landed)
+  could beat it, so a reader who unlocked with the card's question unused saw 1 where they had 2,
+  and kept seeing it. The page also reads the balance again once an unlock finishes. The prompt is told a reader
   may have only the card and its Overview, and never to point them at a section they lack. The answer's
   source line says "your results" rather than "your report".
 - **The first report** still unlocks when one person opens the reader's link: easy on purpose for now.
@@ -4768,6 +4789,25 @@ evidence honestly:
 Both calls use **structured outputs**, so the response is guaranteed to match the schema and the UI
 renders it without defensive parsing. Both stream, because thinking tokens and a long report share
 one output budget.
+
+### Who a caption was written for: private or public
+
+Instagram's `personal_information.json` carries `"Private Account": {"value": "True"}`.
+`docs/instagram.js` reads it into `profile.privateAccount` (left unset when absent), and the digest
+sends it as `profile.account`, `'private'` or `'public'`, beside `counts.followers`. `forModel` passes only
+those two values, and unticking "Activity & timing" at the review takes it out with the counts. The
+review's line says so: *"…whether your account is private…"*. `ACCOUNT_AUDIENCE_RULE` in
+`lib/prompts.js`, in both the card's prompt and the report's, sets the weight:
+- **A private account under 1,000 followers** writes for a circle the reader let in, so its captions
+  read close to their messages in candour.
+- **A public account, or a private one with 1,000 followers or more,** writes for an audience, so its
+  captions are curated, partly performative self-presentation, and messages, searches and rhythm carry
+  more of what lies under it.
+- **No flag:** the model assumes nothing.
+
+Posts and stories are not told apart: a `[post]`/`[story]` tag was tried and removed before (see the
+caption-tag note), and the audience matters more than the format. The rule cost about 120 prompt
+tokens, so `FREE_FIXED_INPUT_TOKENS` went to 11,300 and `FREE_COST_CAP` to $0.076.
 
 ### Who a caption is about
 
@@ -6669,6 +6709,20 @@ reads the tier the same way. A digest built with a second source fills Instagram
 (`poolTier: 'sources'`). Facebook comes in only at the unlock, so it never decides the free tier; the
 premium read keeps its own pools for every reader. A heavy Instagram-only account's 200 captions now
 just pass the 32,000, so its captions are cut to about 180.
+
+**Late October 2026: public 50,000 in both tiers, Google searches 50.** The public pool (Instagram's
+share of it too, `INSTAGRAM_PUBLIC_CHARS`) is 50,000 whether or not a second source is loaded. Captions
+were the list the cap bound hardest: a private account's stories and posts say more than their rank
+among sources suggested, and 18,000 more characters is under half a cent a call. The lines are now
+**100,000** for Instagram alone and **136,000** with another source. Worst cases: free card $0.068 /
+$0.075, a full report from that digest $0.156 / $0.163 (`SOLO_*` and `FREE_COST_CAP`/`COST_CAP`).
+`googleSearchTerms` went from 35 to 50, because the item counts, not the 8,000 pool, were what bound
+Google (about 4,500 used). The premium read keeps its 70,000 public pool, so Facebook's room above
+Instagram there is now 20,000 rather than 30,000 (never under its 10,000). The caption start count
+stays at 200: when it binds, `buildFilled` raises it to fill the pool anyway, so starting at 250 or 300
+would change which captions are picked first but not how many go or what they cost. The year rule
+(no year more than a quarter of the places) already yields: `allocatePlaces` hands out any places the
+cap left unclaimed with the cap lifted, and there is no cap at all when every caption fits.
 
 ### Spare room flows one way: conversations to public, never back
 

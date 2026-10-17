@@ -502,6 +502,8 @@ function readerText(value) {
   return value;
 }
 
+const CARD_ALONE_REFUSAL = 'Past your free Psyche Card, a new card comes with your Psyche Report: US$5 for both.';
+
 async function handleAnalyse(request, response) {
   const body = await readJsonBody(request);
   if (!body || typeof body.digest !== 'object' || body.digest === null || Array.isArray(body.digest)) {
@@ -536,6 +538,11 @@ async function handleAnalyse(request, response) {
     return;
   }
 
+  // A code buys the card and its report together, never the card alone.
+  if (promoCode && !full) {
+    sendJson(response, 402, { error: CARD_ALONE_REFUSAL });
+    return;
+  }
   const promoProblem = promoCode ? promoRefusal(promoCode, body.digest) : null;
   if (promoProblem) {
     sendJson(response, 402, { error: promoProblem });
@@ -596,7 +603,7 @@ async function handleAnalyse(request, response) {
   // the number of keys in the few objects it copies whole. An honest digest
   // never gets here; Digest.build lands every real export under the line.
   // Counted as the model reads it, the same measure the trim loop uses.
-  // 126,000, or the premium read's 179,000 (Digest.budgetFor).
+  // 136,000, or the premium read's 179,000 (Digest.budgetFor).
   if (Digest.evidenceChars(sent) > Digest.budgetFor(sent, deep)) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
@@ -659,7 +666,7 @@ async function handleAnalyse(request, response) {
   if (!paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account)) {
     stats.count('free_refused_account');
     sendJson(response, 402, {
-      error: 'This Instagram account has already had its free Psyche Card. You can run it again for a small fee.',
+      error: 'This Instagram account has already had its free Psyche Card. A new Psyche Card comes with your Psyche Report: US$5 for both.',
       freeUsed: true,
     });
     return;
@@ -767,9 +774,14 @@ async function handleAnalyse(request, response) {
       // (lib/referral.js, grantRefusal).
       if (full) referral.afterFullReport(account);
       // One free Ask PsycheAI question with a Psyche Report, and one with a
-      // card, free or re-run: once each per link (lib/askcredits.js).
-      if (full) askCredits.gift(body.myRef, 'report').catch(() => {});
-      if (!full) askCredits.gift(body.myRef, 'card').catch(() => {});
+      // card, free or re-run: once each per link (lib/askcredits.js). Awaited,
+      // so it is counted before the reply goes: the page reads the balance as
+      // soon as the report arrives, and a gift still in flight to Redis read
+      // as the card's one question alone, where the reader had two.
+      await askCredits.gift(body.myRef, full ? 'report' : 'card').catch(() => {});
+      // A card and its report bought together (no card to anchor to): the
+      // card's question comes with it too.
+      if (full && !body.anchor) await askCredits.gift(body.myRef, 'card').catch(() => {});
       // The free card's account, and the friend who invited them.
       if (made === 'card') {
         referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
@@ -908,6 +920,13 @@ async function handleCreatePaymentIntent(request, response) {
   // fallback to the cheaper one.
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
+  // The card alone is no longer sold (late October 2026): past the free one,
+  // a new card comes only with its report, the US$5 unlock. A PaymentIntent
+  // already made for it is still honoured on /api/analyse.
+  if (product === 'analysis') {
+    sendJson(response, 400, { error: CARD_ALONE_REFUSAL });
+    return;
+  }
   const label = product === 'analysis' ? 'PsycheAI – additional analysis'
     : product === 'ask' ? 'PsycheAI – Ask PsycheAI, 5 questions' : 'PsycheAI – Psyche Report';
   // The currency the page showed its price in, from the shared table; an
@@ -926,11 +945,11 @@ async function handleCreatePaymentIntent(request, response) {
       sendJson(response, 402, { error: checked.reason });
       return;
     }
-    // The full report, a card run again past the free one, and Ask
+    // The full report (with a new card past the free one) and Ask
     // PsycheAI's five questions: the things sold. A discount re-prices each
     // the same way.
-    if (product !== 'unlock' && product !== 'analysis' && product !== 'ask') {
-      sendJson(response, 402, { error: 'Promo codes are for the full report, running your card again and Ask PsycheAI questions.' });
+    if (product !== 'unlock' && product !== 'ask') {
+      sendJson(response, 402, { error: 'Promo codes are for the Psyche Report and Ask PsycheAI questions.' });
       return;
     }
     if (checked.percent >= 100) {

@@ -415,6 +415,12 @@
         out.profile.gender = out.profile.gender || mapValue(item, 'Gender');
         out.profile.website = out.profile.website || mapValue(item, 'Website');
         out.profile.birthday = out.profile.birthday || mapValue(item, 'Date of birth', 'Birthday');
+        // "Private Account": "True" or "False". Left unset when the export
+        // does not say, so the model is told nothing rather than a guess.
+        if (typeof out.profile.privateAccount !== 'boolean') {
+          const flag = String(mapValue(item, 'Private Account') || '').trim().toLowerCase();
+          if (flag === 'true' || flag === 'false') out.profile.privateAccount = flag === 'true';
+        }
       }
       // The bio is *not* pushed into the caption pool, and used to be. It
       // reaches the digest on its own as `profile.bio`, so pooling it here

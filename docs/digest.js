@@ -218,7 +218,9 @@
     // leftover rather than a decision, and it showed: 4,294 characters, the
     // second-largest thing in a block that had already been halved twice.
     youtubeSearches: 25,
-    googleSearchTerms: 35,
+    // 50 since late October 2026 (35 before): the item counts, not the 8,000
+    // pool, were what bound Google, which came to about 4,500.
+    googleSearchTerms: 50,
     // Gemini prompts are collected on the device and **not sent**. The text
     // was 15,396 characters at a median of 289 on a real export, and most of
     // that was pasted payload rather than anything the reader wrote — a JSON
@@ -509,8 +511,9 @@
   // 80,000-character digest inside the cap at the worst-case output.
   //
   // $0.161 since the digest became three pools at 126,000 — see the worked
-  // figures under "what each call can cost, at most".
-  const COST_CAP = 0.161;
+  // figures under "what each call can cost, at most". $0.163 with the public
+  // pool at 50,000 (136,000).
+  const COST_CAP = 0.163;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They
@@ -551,7 +554,7 @@
   // than by export, and spare room is shared inside a kind, never across:
   //
   //                   free     premium
-  //   public          40,000   70,000   Instagram captions, comments, likes,
+  //   public          50,000   70,000   Instagram captions, comments, likes,
   //                                     saves, topics and accounts; Facebook's
   //                                     posts, comments, friends and searches
   //   conversations   72,000   95,000   WhatsApp chats, Instagram DMs and
@@ -561,21 +564,24 @@
   //   fixed            6,000    6,000   counts, rhythm, chat timings, notes
   //                                     (measured at 5,950 with three chats)
   //
-  //   most            126,000  179,000
+  //   most            136,000  179,000
   //
   // Inside a pool the order is the point. Conversations: WhatsApp chats go in
   // first (a chat the reader chose to export is a close connection), and
   // Instagram DMs and Messenger share what is left, the larger trimmed first.
-  // Public: Instagram fills first, up to 40,000 in both reads, and Facebook —
+  // Public: Instagram fills first, up to 50,000 in both reads, and Facebook —
   // offered only at the unlock — takes the room left in the pool, never less
   // than 10,000 when both are there. Room a pool does not use is not handed
   // to another, so a thin Google never grows the messages and a heavy inbox
   // never crowds out the captions.
-  const POOL_CAPS = { public: 40000, conversations: 72000, searches: 8000 };
+  const POOL_CAPS = { public: 50000, conversations: 72000, searches: 8000 };
   const DEEP_POOL_CAPS = { public: 70000, conversations: 95000, searches: 8000 };
   // Instagram's own share of the public pool, in both reads: the premium
   // read's larger public pool is room for Facebook, not for more captions.
-  const INSTAGRAM_PUBLIC_CHARS = 40000;
+  // 50,000 since late October 2026 (40,000 before), the same for Instagram
+  // alone: captions are the reader's own words, and a private account's
+  // stories say more than their rank among sources suggests.
+  const INSTAGRAM_PUBLIC_CHARS = 50000;
   // Facebook's part of the public pool is never trimmed below this to make
   // room for Instagram.
   const FACEBOOK_MIN_CHARS = 10000;
@@ -590,24 +596,27 @@
   //
   // The free read's pools above are for a reader who loaded a second source
   // at the first upload — a WhatsApp chat or Google — and who has shown more
-  // interest by doing so. A reader who loaded Instagram alone gets the
-  // allocation the card was first sized at, about 80,000, cut the same way:
+  // interest by doing so. A reader who loaded Instagram alone gets smaller
+  // conversations and no searches, but the same public pool:
   //
   //                   Instagram only   Instagram + another source
-  //   public              32,000         40,000
+  //   public              50,000         50,000
   //   conversations       46,000         72,000
   //   searches                 —          8,000
   //   fixed                4,000          6,000   (Instagram alone measures 2,600)
   //
-  //   most                82,000        126,000
+  //   most               100,000        136,000
   //
-  // 32,000 and 46,000 because a full real account came to about 30,000 of
-  // public evidence and 42,500 of DMs. The tier is read off the digest itself
+  // 46,000 because a full real account came to about 42,500 of DMs. The
+  // public pool was 32,000 here (about 30,000 measured) until late October
+  // 2026, when it became 50,000 in both tiers: a heavy account's captions
+  // were the list the cap bound hardest, and the room costs under half a
+  // cent a call. The tier is read off the digest itself
   // (carriesSecondSource): a source unticked at the review does not count,
   // and the server's size check reads it the same way. Facebook is offered
   // only at the unlock, so it never decides the free tier. The premium read
   // has its own pools for every reader (DEEP_POOL_CAPS).
-  const SOLO_POOL_CAPS = { public: 32000, conversations: 46000, searches: 0 };
+  const SOLO_POOL_CAPS = { public: 50000, conversations: 46000, searches: 0 };
   const SOLO_FIXED_CHARS = 4000;
   const SOLO_DIGEST_CHARS = SOLO_POOL_CAPS.public + SOLO_POOL_CAPS.conversations + SOLO_FIXED_CHARS;
   /** Whether a digest carries a source beside Instagram, with something of it still in. */
@@ -800,7 +809,7 @@
     if (caps.conversations === Infinity) return 0;
     return Math.max(0, caps.conversations - poolSizes(digest).conversations.total);
   }
-  /** Instagram's own part of the public pool: up to 40,000 (32,000 alone), plus the spill. */
+  /** Instagram's own part of the public pool: up to 50,000, plus the spill. */
   function instagramPublicLimit(caps, spare) {
     return Math.min(caps.public, INSTAGRAM_PUBLIC_CHARS) + (spare || 0);
   }
@@ -816,7 +825,7 @@
   // merged into the room its pool has left; with nothing added, exactly the
   // digest the card was drawn from. (Its names still say "deep", from when it
   // was an option called Deeper read.)
-  /** The line a digest is held to: 82,000 for Instagram alone, 126,000 with another source, 179,000 for the premium read. */
+  /** The line a digest is held to: 100,000 for Instagram alone, 136,000 with another source, 179,000 for the premium read. */
   function budgetFor(digest, deep) {
     if (deep) return DEEP_DIGEST_CHARS;
     const line = LIMITS.totalChars || DIGEST_CHARS;
@@ -845,7 +854,7 @@
   // the room was simply unused. So Instagram is built once at the caps,
   // measured against its two pools, then built again with the message cap
   // raised by what the conversations pool has left and the caption cap by
-  // what Instagram's 40,000 of the public pool has left. The places added are
+  // what Instagram's 50,000 of the public pool has left. The places added are
   // recorded (`__fill`, never sent). A chat added after — WhatsApp first in
   // its pool — then takes its room back from the Instagram DMs, never the
   // other way round (trimToPools).
@@ -905,16 +914,16 @@
   // ---------- what each call can cost, at most ----------
   //
   // Worst case, not average: every token of each output cap reserved as if
-  // the model thinks for all of it, against a digest at its full 126,000
+  // the model thinks for all of it, against a digest at its full 136,000
   // (every pool at its ceiling):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                 11,000 prompt + 36,000 digest × $0.75/M = $0.0353
-  //                 at most $0.0728                    → FREE_COST_CAP $0.073
+  //                 11,300 prompt + 38,857 digest × $0.75/M = $0.0376
+  //                 at most $0.0751                    → FREE_COST_CAP $0.076
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
-  //                 38,100 prompt + 36,000 digest × $0.75/M = $0.0556
-  //                 at most $0.1606                    → COST_CAP $0.161
+  //                 38,100 prompt + 38,857 digest × $0.75/M = $0.0577
+  //                 at most $0.1627                    → COST_CAP $0.163
   //
   // COST_CAP prices a full report written from the card's own digest (the
   // export gone, nothing added); a premium read at its own pools is priced
@@ -939,18 +948,22 @@
   // $0.073 once the card's call wrote the Overview as well (October 2026):
   // the executive summary and each pattern's evidence, about 600 more
   // prompt tokens and about 550 more output inside the same 10,000.
-  const FREE_COST_CAP = 0.073;
-  // Instagram alone, at its 82,000 (see "two free tiers"):
+  // $0.075 with the public pool at 50,000 (late October 2026); $0.076 once
+  // the card's prompt said who the captions were written for (11,300).
+  const FREE_COST_CAP = 0.076;
+  // Instagram alone, at its 100,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                 11,000 prompt + 23,429 digest × $0.75/M = $0.0258
-  //                 at most $0.0633                    → SOLO_FREE_COST_CAP $0.064
+  //                 11,300 prompt + 28,571 digest × $0.75/M = $0.0299
+  //                 at most $0.0674                    → SOLO_FREE_COST_CAP $0.068
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
-  //                 38,100 prompt + 23,429 digest × $0.75/M = $0.0461
-  //                 at most $0.1511                    → SOLO_COST_CAP $0.152
-  const SOLO_FREE_COST_CAP = 0.064;
-  const SOLO_COST_CAP = 0.152;
+  //                 38,100 prompt + 28,571 digest × $0.75/M = $0.0500
+  //                 at most $0.1550                    → SOLO_COST_CAP $0.156
+  //
+  // $0.064 and $0.152 at 82,000, while Instagram alone's public pool was 32,000.
+  const SOLO_FREE_COST_CAP = 0.068;
+  const SOLO_COST_CAP = 0.156;
   const FREE_MAX_OUTPUT_TOKENS = 10000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
   // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 6,117
@@ -971,7 +984,9 @@
   // report shared one confidence rule (CONFIDENCE_SCORING, 10,959 measured).
   // 11,100 once Values & Beliefs became exactly three (11,003 measured); the
   // three free caps still pay for their digests at it.
-  const FREE_FIXED_INPUT_TOKENS = 11100;
+  // 11,300 once it said who the captions were written for
+  // (ACCOUNT_AUDIENCE_RULE, 11,223 measured).
+  const FREE_FIXED_INPUT_TOKENS = 11300;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -1780,6 +1795,13 @@
         name: signals.profile.name || signals.profile.username || '',
         username: signals.profile.username || '',
         bio: trim(signals.profile.bio, 400),
+        // Who sees what they post: 'private' or 'public', only when the export
+        // says (personal_information.json, "Private Account"). Read with
+        // counts.followers: a private account under 1,000 followers writes
+        // its captions for a circle, not an audience (ACCOUNT_AUDIENCE_RULE
+        // in lib/prompts.js).
+        ...(typeof signals.profile.privateAccount === 'boolean'
+          ? { account: signals.profile.privateAccount ? 'private' : 'public' } : null),
         // No city and no website: the first places where they live, the
         // second names them (a shop, a portfolio), and neither says anything
         // about a personality.
@@ -2911,7 +2933,8 @@
       schema: 'psycheai-digest/1',
       // Field by field: a digest built before city and website were dropped,
       // or one sent by hand, carries nothing more than these.
-      profile: (({ name, username, bio }) => ({ name: String(name || ''), username: String(username || ''), bio: String(bio || '') }))(plain(d.profile) || {}),
+      profile: (({ name, username, bio, account }) => Object.assign({ name: String(name || ''), username: String(username || ''), bio: String(bio || '') },
+        account === 'private' || account === 'public' ? { account } : null))(plain(d.profile) || {}),
       samples: {
         captions: listOf(samples.captions),
         comments: listOf(samples.comments),
@@ -3061,6 +3084,8 @@
   function omitActivity(digest) {
     delete digest.counts;
     delete digest.rhythm;
+    // Whether the account is private goes with the counts it is read beside.
+    if (digest.profile) delete digest.profile.account;
     return digest;
   }
 

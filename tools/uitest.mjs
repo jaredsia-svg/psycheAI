@@ -1235,7 +1235,8 @@ try {
       check('a reader in Singapore is shown the Psyche Report at S$7',
         shown.tiers.length > 0 && shown.tiers.every(text => /^S\$7\b/.test(text)), shown.tiers.join(' | '));
       check('and the FAQ quotes the same local prices',
-        shown.faq.includes('unlock=S$7') && shown.faq.includes('analysis=S$3'), shown.faq.join(' | '));
+        shown.faq.length > 0 && shown.faq.every(entry => /^(unlock|ask)=S\$7$/.test(entry)) && !shown.faq.some(entry => /^analysis=/.test(entry)),
+        shown.faq.join(' | '));
       check('with no US-dollar price left anywhere on the page', !shown.dollars);
 
       let asked = null;
@@ -1992,7 +1993,7 @@ try {
       check('a reader who owes nothing is offered nothing',
         (await banner()).shown === false, JSON.stringify(await banner()));
 
-      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() });
+      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO, bundle: true }, at: Date.now() });
       const owed = await banner();
       check('a paid analysis that never arrived is offered on the next visit',
         owed.shown && owed.canPress, JSON.stringify(owed));
@@ -2024,7 +2025,7 @@ try {
       // The export is what the analysis is written from, and it lives only on
       // the device. A button that could only fail is worse than no button, so
       // the offer names the one thing that would fix it instead.
-      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() }, false);
+      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO, bundle: true }, at: Date.now() }, false);
       const noExport = await banner();
       check('with the export gone, the offer says so and offers no button to press',
         noExport.shown && !noExport.canPress && /load your instagram data again/i.test(noExport.text),
@@ -2034,7 +2035,7 @@ try {
       // restores it from memory resumes the same context — no reload, no
       // boot() — and the offer used to be made only at boot, so the reader
       // most likely to need it was the one least likely to see it.
-      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() });
+      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO, bundle: true }, at: Date.now() });
       await resumePage.evaluate(() => { document.querySelector('#pending-work').hidden = true; });
       check('an offer dismissed or missed is not showing before the page is left',
         (await banner()).shown === false);
@@ -2053,7 +2054,7 @@ try {
       // so an older offer would fail at the server having promised at the
       // browser.
       await seed({
-        kind: 'analysis', auth: { promoCode: UITEST_PROMO },
+        kind: 'analysis', auth: { promoCode: UITEST_PROMO, bundle: true },
         at: Date.now() - 31 * 24 * 60 * 60 * 1000,
       });
       check('a purchase older than the payment window is withdrawn, not offered',
@@ -9587,20 +9588,22 @@ try {
   // This run is paid — run #1 already spent the free allowance — so the
   // payment sheet is the next stop, not the model.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  check('re-running with the loaded data still asks to pay before analysing',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
+  // Past the free card a card is never sold alone: the re-run is the card and
+  // its report together, at the unlock's US$5.
+  check('re-running with the loaded data asks to pay for the card and report together before analysing',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Card and Report');
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
-  // A discount code works here as on the full report: the card run again is
-  // re-priced (US$2 less 50% is US$1), and the payment that follows is that one.
+  // A discount code works here as on the full report: the re-run is re-priced
+  // (US$5 less 50% is US$2.50), and the payment that follows is that one.
   await page.fill('#premium-promo-input', 'UIHALF');
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => /50% off/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
     .catch(() => {});
   const rerunPrice = await page.$$eval('#premium-price .premium-price-row', rows => rows.map(row =>
     [row.querySelector('dt').textContent.trim(), row.querySelector('dd').textContent.trim()]));
-  check('a discount code re-prices running the card again too',
+  check('a discount code re-prices the re-run too',
     /UIHALF applied: 50% off\./.test(await page.locator('#premium-status').innerText()) &&
-      JSON.stringify(rerunPrice) === JSON.stringify([['Price', 'US$2'], ['Promo UIHALF (50% off)', '−US$1'], ['You pay', 'US$1']]) &&
+      JSON.stringify(rerunPrice) === JSON.stringify([['Price', 'US$5'], ['Promo UIHALF (50% off)', '−US$2.50'], ['You pay', 'US$2.50']]) &&
       analyseBodies.length === beforeMergedSend, JSON.stringify(rerunPrice));
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
   await page.click('#premium-mock-pay');
@@ -9614,8 +9617,8 @@ try {
     JSON.stringify({ sources: mergedBody.digest.coverage.sources,
       captions: mergedBody.digest.samples.captions.length }));
   check('exactly one analysis was sent for it', analyseBodies.length === beforeMergedSend + 1);
-  check('and it ran on the discounted payment, as a card, not on the code',
-    Boolean(mergedBody.paymentIntentId) && !mergedBody.promoCode && mergedBody.product !== 'unlock', JSON.stringify({ product: mergedBody.product }));
+  check('and it ran on the discounted payment, as the card and report together, not on the code',
+    Boolean(mergedBody.paymentIntentId) && !mergedBody.promoCode && mergedBody.product === 'unlock', JSON.stringify({ product: mergedBody.product }));
   check('and the merged digest still respects the character budget',
     mergedBody.digest.coverage.digestChars <= 240991,
     mergedBody.digest.coverage.digestChars + ' chars');
@@ -9878,45 +9881,15 @@ try {
     Boolean(JSON.parse(analyseBodies[beforeReplaceSend]).digest.google),
     analyseBodies[beforeReplaceSend]);
 
-  // Unlock premium first, with the promo code — mock mode's cash-free path,
-  // used elsewhere in this suite — so the rerun below has a real paid unlock
-  // to carry (or not carry) forward. The data sources popout opens first on
-  // every unlock, showing Google already loaded; carrying on with it changes
-  // nothing, so the payment sheet follows with no consent to give.
-  await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
-  await page.locator('.premium-unlock').first().click();
-  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
-  check('the unlock\'s data sources popout shows Google as already loaded',
-    await page.evaluate(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
-      .classList.contains('is-added')));
-  check('and offers no Deeper read option: every unlock reads the premium digest',
-    (await page.locator('#datasources-deeper, #datasources-deeper-input').count()) === 0);
-  check('and with nothing newly loaded, no note says the card may change',
-    !(await page.locator('#datasources-confirm').isVisible()));
-  await page.click('#datasources-continue');
-  // The export is still open in this tab, so the premium read is rebuilt
-  // from it at the premium pools — lines not reviewed yet — and reviewed
-  // before the payment sheet, though nothing was added.
-  await page.waitForSelector('#review-dialog[open], #premium-dialog[open]', { timeout: 15000 });
-  check('with the export still open, the deeper premium read is reviewed before payment',
-    (await page.locator('#review-dialog[open]').count()) === 1);
-  if (await page.locator('#review-dialog[open]').count()) await page.click('#review-send');
-  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  await page.fill('#premium-promo-input', UITEST_PROMO);
-  await page.click('#premium-promo-apply');
-  await page.waitForFunction(() => {
-    const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
-    return Boolean(p && p.premiumAnalysis);
-  }, { timeout: 30000 });
-  {
-    const unlockBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-    // The export is open, so it is the deeper premium read — still anchored,
-    // since nothing was added and the card stands.
-    check('an unlock with nothing new sends the deeper premium read, anchored to the card, so the card is not redrawn',
-      unlockBody.product === 'unlock' && unlockBody.deep === true && Boolean(unlockBody.anchor) &&
-        unlockBody.digest.coverage.digestChars >= JSON.parse(analyseBodies[beforeReplaceSend]).digest.coverage.digestChars,
-      JSON.stringify({ product: unlockBody.product, deep: unlockBody.deep, anchor: Boolean(unlockBody.anchor) }));
-  }
+  // No separate unlock any more: past the free card a re-run is the card and
+  // its report together (late October 2026), so the paid re-runs above have
+  // already written the Psyche Report, on the unlock's own charge.
+  check('the paid re-runs above already brought the Psyche Report, on the unlock\'s charge',
+    await page.evaluate(() => Boolean((JSON.parse(localStorage.getItem('psycheai_profile') || 'null') || {}).premiumAnalysis)) &&
+      JSON.parse(analyseBodies[beforeReplaceSend]).product === 'unlock' && (await page.locator('.premium-unlock:visible').count()) === 0,
+    JSON.stringify({ product: JSON.parse(analyseBodies[beforeReplaceSend]).product,
+      premium: await page.evaluate(() => Object.keys((JSON.parse(localStorage.getItem('psycheai_profile') || 'null') || {}).premiumAnalysis || {})),
+      unlockButtons: await page.locator('.premium-unlock:visible').count() }));
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
   // The confidence card's fineprint has to say US$5 now, unconditionally —
   // this reader still has free runs available (clearRunCount was never
@@ -9953,7 +9926,7 @@ try {
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('the dialog names this as a full re-run rather than a first unlock',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Report');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Card and Report');
   check('and says the charge regenerates everything, not just the paid sections',
     /regenerates everything/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
@@ -10312,9 +10285,9 @@ try {
     analyseBodies.length === beforeFirstFree + 1);
   check('and the browser records that the free run has been used',
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
-  check('the price of the next one is shown before anything is pressed',
+  check('the price of the next one is shown before anything is pressed: the card and report together, US$5',
     (await page.locator('#rerun-price-note').isVisible()) &&
-    /US\$2/.test(await page.locator('#rerun-price-note').innerText()),
+    /Psyche Card and Psyche Report costs US\$5/.test(await page.locator('#rerun-price-note').innerText()),
     await page.locator('#rerun-price-note').innerText());
 
   // Route one to a second analysis: re-running with additional data. The
@@ -10329,8 +10302,8 @@ try {
     (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeLoad);
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
-  check('re-running with more data is charged, at the end rather than the start',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again',
+  check('re-running with more data is charged, at the end rather than the start, as the card and report together',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Card and Report',
     await page.locator('#premium-dialog-title').innerText());
   const beforeDecline = analyseBodies.length;
   await page.click('#premium-cancel');
@@ -10388,8 +10361,8 @@ try {
   await page.click('#review-send');
 
   await page.waitForSelector('#premium-dialog[open]', { timeout: 25000 });
-  check('so deleting and re-uploading is charged too, rather than being a free reset',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
+  check('so deleting and re-uploading is charged too, rather than being a free reset, and only with the report',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Your Psyche Card and Psyche Report');
   check('and nothing was sent to the model while that sheet was up',
     analyseBodies.length === beforeReupload);
 
@@ -10399,8 +10372,8 @@ try {
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   await openAllSections(page);
   const paidBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-  check('paying runs the analysis, with the payment attached for the server to verify',
-    typeof paidBody.paymentIntentId === 'string' && paidBody.paymentIntentId.length > 0,
+  check('paying runs the analysis, with the payment attached for the server to verify, as the unlock',
+    typeof paidBody.paymentIntentId === 'string' && paidBody.paymentIntentId.length > 0 && paidBody.product === 'unlock' && !paidBody.anchor,
     JSON.stringify(paidBody.paymentIntentId));
   check('and the run count climbs, so the one after this is charged as well',
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '2');
@@ -10832,7 +10805,8 @@ try {
   check('the FAQ gives a contact address',
     /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
   check('the prices are named, once, with what each buys — and Psyche Sync is free',
-    /US\$5/.test(about) && /US\$2/.test(about) && /every Psyche Sync/i.test(about));
+    /a new Psyche\s+Card comes with your Psyche Report, (<span[^>]*>)?US\$5(<\/span>)? for both/.test(about) && !/US\$2\b/.test(about) &&
+      /every Psyche Sync/i.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
   check('the question about a thin account is gone, not half-removed',
@@ -14073,9 +14047,10 @@ try {
       // the card already made, answered from the result cache at no cost).
       await answerReview(rp, { untickTopics: true });
       await rp.waitForSelector('#premium-dialog[open]', { timeout: 60000 });
-      check('a second free card for the same Instagram account is refused, and the US$2 re-run is offered with why',
-        /already had its free Psyche Card/.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
-          /Run your Psyche Card again/.test(await rp.locator('#premium-dialog-title').innerText()),
+      check('a second free card for the same Instagram account is refused, and only the card and report together are offered, with why',
+        /already had its free Psyche Card\. A new Psyche Card now comes with your full Psyche Report: US\$5 for both/.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
+          (await rp.locator('#premium-dialog-title').innerText()) === 'Your Psyche Card and Psyche Report' &&
+          !/Run your Psyche Card again/.test(await rp.locator('#premium-dialog').innerText()),
         await rp.locator('#premium-dialog').innerText());
       await rp.click('#premium-cancel');
       await rp.waitForTimeout(300);
@@ -14222,6 +14197,39 @@ try {
       check('nor is it offered again on the re-run\'s sheet: the reader now has a Psyche Report',
         await rp.evaluate(() => typeof window !== 'undefined' && document.querySelectorAll('#profile-body .unlock-share').length === 0));
 
+      // The same account on a new device, past its free card and its report:
+      // the card is never sold alone, so paying writes a new card and its
+      // Psyche Report together.
+      {
+        const bp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+        try {
+          const sent = [];
+          bp.on('request', req => { if (req.url().endsWith('/api/analyse')) { try { sent.push(JSON.parse(req.postData())); } catch (e) { /* not JSON */ } } });
+          await bp.goto(base, { waitUntil: 'load' });
+          await bp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+          await chooseDepth(bp);
+          await answerReview(bp, { untickTopics: true });
+          await bp.waitForSelector('#premium-dialog[open]', { timeout: 60000 });
+          await bp.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 });
+          await bp.click('#premium-mock-pay');
+          await bp.waitForFunction(() => {
+            const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+            return Boolean(p && p.card && p.premiumAnalysis && p.explained);
+          }, null, { timeout: 60000 });
+          const paidRun = sent.find(body => body.paymentIntentId) || {};
+          const landed = await bp.evaluate(() => {
+            const p = JSON.parse(localStorage.getItem('psycheai_profile'));
+            return { name: p.card && p.card.name, roast: Boolean(p.report && p.report.bonus), kept: Boolean(localStorage.getItem('psycheai_report_digest')),
+              report: document.querySelectorAll('#profile-body .part-card').length > 0 };
+          });
+          check('on a new device past the free card, paying writes the card and its Psyche Report together, at the unlock\'s price',
+            paidRun.product === 'unlock' && !paidRun.anchor && sent.filter(body => !body.paymentIntentId).length === 1 &&
+              Boolean(landed.name) && landed.roast && landed.kept && landed.report, JSON.stringify({ landed, product: paidRun.product }));
+        } finally {
+          await bp.close();
+        }
+      }
+
       // The credit three cards earned is given away: a gift link that unlocks
       // one full report for whoever opens it.
       await rp.reload({ waitUntil: 'load' });
@@ -14275,7 +14283,7 @@ try {
         day['via:uitest-creator:open'] >= 1 && day['via:uitest-creator:export_loaded'] >= 1 && day['via:uitest-creator'] >= 1 &&
           day['step:unlock_open'] >= 1 && day.referral_friend === 3 && day.referral_first === 1 && day.referral_report === 1 &&
           day.referral_gifted === 1 &&
-          day.free_refused_account === 1, JSON.stringify(day));
+          day.free_refused_account === 2, JSON.stringify(day));
       check('the invite-friends flow runs with no page errors', rpErrors.length === 0, rpErrors.join(' | '));
     } finally {
       await rp.close();

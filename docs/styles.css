@@ -3172,7 +3172,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 @keyframes roast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* My Psyche's roast, under the card: a secret bonus rather than a section.
-   A gradient frame and a soft glow while it is shut, a few sparks drifting
+   A gradient frame while it is shut (only the button glows), a few sparks drifting
    up behind the title, and one bright button. Once revealed it settles to a
    plain card, so the writing reads as easily as the rest of the page. */
 .bonus-card.secret-roast {
@@ -3182,7 +3182,7 @@ details.more[open] > summary::after { content: ' ▴'; }
     linear-gradient(160deg, color-mix(in srgb, var(--accent-soft) 70%, var(--bg-alt)), var(--bg-alt) 70%) padding-box,
     linear-gradient(120deg, var(--accent), var(--accent-2), var(--warn), var(--accent)) border-box;
   background-size: 100% 100%, 300% 300%;
-  box-shadow: 0 10px 34px color-mix(in srgb, var(--accent-2) 22%, transparent), var(--shadow);
+  box-shadow: var(--shadow);
   animation: secret-frame 6s linear infinite;
 }
 @keyframes secret-frame { to { background-position: 0 0, 300% 0; } }
@@ -4268,11 +4268,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .provenance-item { display: flex; align-items: center; gap: .5rem; font-size: .78rem; color: var(--ink-soft); }
 .provenance-item b { color: var(--ink); font-weight: 600; white-space: nowrap; }
-/* A free report's foot is one line: Delete everything on the left, who wrote
-   the card on the right, the two boxes the same height. Wraps to two lines
+/* A free report's foot is one line, centred under the page: Delete everything,
+   then who wrote the card, the two boxes the same height. Wraps to two lines
    only when the screen is too narrow for both. */
 #view-profile.profile-free .profile-foot {
-  display: flex; flex-wrap: wrap; align-items: stretch; justify-content: flex-start; gap: .7rem; margin-top: 1.4rem;
+  display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: .7rem; margin-top: 1.4rem;
 }
 #view-profile.profile-free .profile-foot .cta-row { margin: 0; align-items: stretch; }
 #view-profile.profile-free .profile-foot .cta-row .btn { min-height: 0; padding-block: .45rem; }
