@@ -4252,9 +4252,10 @@
         continue;
       }
 
-      // Little writing to read: said once, with the way back to the popout.
-      if (!thinWarned && thinDigest(digest)) {
+      // Little writing to read: said once a session, with the way back to the popout.
+      if (!thinWarned && !thinSaid() && thinDigest(digest)) {
         thinWarned = true;
+        markThinSaid();
         if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
       }
       }
@@ -5592,9 +5593,10 @@
         await new Promise(resolve => setTimeout(resolve, 30));
         digest = Digest.build(signals, { includeMessages: true });
 
-        // Little writing to read: said once, with the way back to the offer.
-        if (!thinWarned && thinDigest(digest)) {
+        // Little writing to read: said once a session, with the way back to the offer.
+        if (!thinWarned && !thinSaid() && thinDigest(digest)) {
           thinWarned = true;
+          markThinSaid();
           if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
         }
         }
@@ -9631,18 +9633,47 @@
     if (!$('#more-data-dialog') || !Number.isFinite(score) || score >= MORE_DATA_BELOW) return Promise.resolve(true);
     return noteDialog(TEXT.moreDataTitle, TEXT.moreDataText(score), TEXT.moreDataContinue, TEXT.moreDataBack);
   }
-  // A first upload with almost no writing in it (no captions to speak of, few
-  // messages of their own, and no WhatsApp chat or Google) would make a card
-  // that is mostly a guess. Said before the review, once, with the way back
-  // to "Add your data".
-  const THIN_WRITING = 10;
-  const THIN_MESSAGES = 50;
-  function thinDigest(digest) {
+  // A first upload with too little of the reader's own writing makes a card
+  // that is mostly a guess, and spends their one free card on it. Measured
+  // in characters they wrote (captions, comments, their own messages on
+  // Instagram, WhatsApp and Facebook, Facebook posts), not in the digest's
+  // size, which counts, likes and follows inflate: under 20,000 (about
+  // 3,000 words), or a digest under 50,000 in all, is thin. Said before the
+  // review, once, with the way back to "Add your data" (late October 2026;
+  // until then only fewer than 10 captions and 50 messages, with no second
+  // source, counted).
+  const THIN_OWN_CHARS = 20000;
+  const THIN_DIGEST_CHARS = 50000;
+  function ownWritingChars(digest) {
     const d = digest || {};
-    const written = ((d.samples && d.samples.captions) || []).length + ((d.samples && d.samples.comments) || []).length;
-    const messages = ((d.directMessages && d.directMessages.ownMessageSample) || []).length;
-    return written < THIN_WRITING && messages < THIN_MESSAGES && !Digest.carriesSecondSource(d);
+    const lists = [
+      d.samples && d.samples.captions, d.samples && d.samples.comments,
+      d.directMessages && d.directMessages.ownMessageSample,
+      d.whatsapp && d.whatsapp.ownMessageSample,
+      d.facebook && d.facebook.postSample, d.facebook && d.facebook.commentSample,
+      d.facebook && d.facebook.ownMessageSample,
+    ];
+    let total = 0;
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (const line of list) {
+        // The reader's own words only: not the «them: …» line they answered,
+        // nor the year and chat tags.
+        const text = String(typeof line === 'string' ? line : (line && line.text) || '')
+          .replace(/«[^»]*»/g, '').replace(/^(\s*\[[^\]]{1,12}\])+\s*/, '');
+        total += text.trim().length;
+      }
+    }
+    return total;
   }
+  function thinDigest(digest) {
+    return ownWritingChars(digest) < THIN_OWN_CHARS || Digest.evidenceChars(digest || {}) < THIN_DIGEST_CHARS;
+  }
+  // Said once a browser session, not on every attempt: a reader who has been
+  // told and carried on is not told again until they come back another day.
+  const THIN_SAID = 'psycheai_thin_said';
+  function thinSaid() { try { return sessionStorage.getItem(THIN_SAID) === '1'; } catch (error) { return false; } }
+  function markThinSaid() { try { sessionStorage.setItem(THIN_SAID, '1'); } catch (error) { /* blocked */ } }
 
   // The data popout's answer behind the latest unlock review, so Back on the
   // payment sheet can open that review again without asking for it twice.

@@ -628,10 +628,10 @@
     // Before that page, when the card's confidence is under 80: more sources
     // make a better report.
     // Before the review on a first upload with almost no writing in it.
-    thinDataTitle: 'Your Instagram has little writing in it',
-    thinDataText: 'Your card is read from what you write: captions, comments and messages. Yours has very little, ' +
-      'so your card would be mostly a guess. Adding a WhatsApp chat with a close connection, or your Google data, ' +
-      'will make it much more accurate.',
+    thinDataTitle: 'Your data has little writing in it',
+    thinDataText: 'Your card is read mostly from what you write: captions, comments and messages. Yours has little, ' +
+      'so your card would be partly a guess, and your free Psyche Card is once per Instagram account. Adding WhatsApp ' +
+      'chats with close friends, your Google data or your Facebook data will make it much more accurate.',
     thinDataAdd: 'Add more data',
     thinDataContinue: 'Continue anyway',
     moreDataTitle: 'Make your report more accurate',

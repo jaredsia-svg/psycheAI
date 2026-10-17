@@ -6898,6 +6898,18 @@ captions and comments, fewer than 50 of the reader's own DM lines, and no WhatsA
 it", saying a WhatsApp chat with a close connection or Google data will make the card much more accurate.
 "Add more data" goes back to the popout with Instagram still loaded; "Continue anyway" goes on to the
 review. It is said once per upload. It reuses the low-confidence note's popup (`noteDialog`).
+
+**Late October 2026: thin by the reader's own writing.** The old rule (fewer than 10 captions and comments,
+fewer than 50 DM lines, no second source) caught only nearly empty accounts. A digest is now thin when the
+reader wrote fewer than 20,000 characters of it (about 3,000 words: captions, comments, their own messages
+on Instagram, WhatsApp and Facebook, and Facebook posts, without the «them: …» context or the tags), or
+when the digest is under 50,000 in all (`ownWritingChars`, `THIN_OWN_CHARS`, `THIN_DIGEST_CHARS`). Size
+alone was the wrong measure: counts, likes and follows fill a digest without saying how someone writes or
+thinks. The saving in tokens is small, since a card's cost is mostly its output (about 4.6¢ thin against
+8.4¢ full, worst case). What a thin run really wastes is the reader's one free card, so the note now says so,
+and names Facebook beside WhatsApp and Google. It is one gentle note ("Add more data" / "Continue
+anyway"), shown once per browser session (`psycheai_thin_said` in sessionStorage), not on every attempt.
+The UI suite's pages start with it said, since the sample export is small; the thin-data check clears it.
 `buildExportZip({ silent: true })` in `tools/fixture.mjs` makes such an export for the UI suite.
 
 ### The roast goes gentle on someone who is struggling

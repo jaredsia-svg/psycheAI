@@ -389,7 +389,10 @@ const browser = await chromium.launch();
 // it closed, as its ✕ leaves it; the note's own checks use a page without
 // this (rawNewPage). browser.newPage makes its context through newContext, so
 // the raw page is made from a raw context, closed with it.
-const PRIVATE_CLOSED = () => { try { sessionStorage.setItem('psycheai_private_closed', '1'); } catch (e) { /* about:blank */ } };
+// Every page starts as a reader who has closed the private-browsing notice and
+// been told once this session that their data is thin (the sample export is
+// small): only the checks about those notes clear them.
+const PRIVATE_CLOSED = () => { try { sessionStorage.setItem('psycheai_private_closed', '1'); sessionStorage.setItem('psycheai_thin_said', '1'); } catch (e) { /* about:blank */ } };
 const originalNewPage = browser.newPage.bind(browser);
 const rawNewContext = browser.newContext.bind(browser);
 const rawNewPage = async options => {
@@ -1066,6 +1069,7 @@ try {
     const thinPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await thinPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await thinPage.evaluate(() => sessionStorage.removeItem('psycheai_thin_said'));
       await thinPage.click('#open-sources');
       await thinPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [pick] = await Promise.all([
@@ -1079,8 +1083,9 @@ try {
       await thinPage.waitForSelector('#more-data-dialog[open], #review-dialog[open]', { timeout: 30000 });
       check('an Instagram with almost no writing is told, before the review, that more data would help',
         (await thinPage.locator('#more-data-dialog[open]').count()) === 1 &&
-          (await thinPage.locator('#more-data-title').innerText()) === 'Your Instagram has little writing in it' &&
-          /WhatsApp chat with a close connection, or your Google data/.test(await thinPage.locator('#more-data-text').innerText()) &&
+          (await thinPage.locator('#more-data-title').innerText()) === 'Your data has little writing in it' &&
+          /WhatsApp chats with close friends, your Google data or your Facebook data/.test(await thinPage.locator('#more-data-text').innerText()) &&
+          /once per Instagram account/.test(await thinPage.locator('#more-data-text').innerText()) &&
           (await thinPage.locator('#more-data-continue').innerText()).trim() === 'Add more data',
         await thinPage.locator('#more-data-dialog').innerText());
       await thinPage.click('#more-data-continue');
