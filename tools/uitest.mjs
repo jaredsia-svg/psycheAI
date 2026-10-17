@@ -31,7 +31,7 @@ const check = (label, ok, detail) => {
 // the target first; this is a fact about the page, not about the test. Only
 // for things on the page — a button inside an open modal needs no scrolling,
 // and scrolling the page under one just moves the coordinates off it.
-// My Psyche's Evidence and method opens from the hub (October 2026).
+// My Psyche's Confidence score (the method card) opens from the hub (October 2026).
 async function openMethod(page) {
   await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
   const open = await page.evaluate(() => document.querySelector('#hub-method-dialog').open);
@@ -11771,9 +11771,18 @@ try {
         hubFoot.download && hubFoot.footBackup && hubFoot.footDelete && hubFoot.hubBackup && hubFoot.hubDelete, JSON.stringify(hubFoot));
       await sp.click('.hub-card [data-hub-go="method"]');
       await sp.waitForSelector('#hub-method-dialog[open] .method-card', { timeout: 10000 });
-      check('structured: paid, How it was read opens Evidence and method, whose note says what adding data and re-running costs',
+      check('structured: paid, the confidence ring opens Confidence score, whose note says what adding data and re-running costs',
         await sp.evaluate(() => (document.querySelector('#hub-method-dialog .sources-read-note') || {}).textContent ===
-          'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.'));
+          'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.' &&
+          document.querySelector('#hub-method-dialog .hub-dialog-title').textContent === 'Confidence score'));
+      check('Confidence score: every source open, no Change or Add on the rows and no WhatsApp advice, one Add / change data link by YOUR DATA',
+        await sp.evaluate(() => {
+          const body = document.querySelector('#hub-method-dialog .hub-dialog-body');
+          return body.querySelectorAll('.source-read').length === 4 && !body.querySelector('.source-read-action, .source-read-hint') &&
+            [...body.querySelectorAll('.source-read-more')].every(m => !m.hidden) &&
+            body.querySelectorAll('.sources-read-title .sources-read-change').length === 1 &&
+            body.querySelector('.sources-read-change').textContent === 'Add / change data ›';
+        }));
       await sp.click('#hub-method-dialog .hub-dialog-close');
       check('structured: paid, the way into My Report is "See Psyche Report" with an arrow to the right, one button across the card\'s three tools',
         await sp.evaluate(() => {
@@ -11791,36 +11800,71 @@ try {
       check('structured: Back lands on My Psyche: the card, then the hub — no roast, no referral card, no parts',
         hubShape.order === 'hub' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
-      // The hub (October 2026): four tiles, the data row and Keep.
+      // The hub (October 2026): a gradient bar, four tiles in one shade, two
+      // lines each; the data row and Keep.
       const hubTiles = await sp.evaluate(() => {
         const hub = document.querySelector('#profile-body .hub-card');
-        return { names: [...hub.querySelectorAll('.hub-tile .hub-name')].map(n => n.textContent).join('|'),
-          report: hub.querySelector('.hub-tile[data-hub="report"] [data-hub-num]').textContent,
+        const tile = key => hub.querySelector('.hub-tile[data-hub="' + key + '"]');
+        const goes = key => [...tile(key).querySelectorAll('.hub-acts [data-hub-go]')].map(b => b.textContent).join();
+        return { title: hub.querySelector('.hub-bar h2').textContent,
+          names: [...hub.querySelectorAll('.hub-tile .hub-name')].map(n => n.textContent).join('|'),
+          tick: Boolean(tile('report').querySelector('.hub-ok')), report: goes('report'), syncs: goes('syncs'), ask: goes('ask'),
+          link: [...tile('link').querySelectorAll('[data-hub-stat]')].map(n => n.dataset.hubStat).join(),
+          copy: Boolean(tile('link').querySelector('.hub-copy')),
           cta: hub.querySelectorAll('.hub-tile.is-cta').length,
-          colours: new Set([...hub.querySelectorAll('.hub-tile')].map(n => getComputedStyle(n, '::before').backgroundImage)).size,
+          shades: new Set([...hub.querySelectorAll('.hub-tile .hub-sq')].map(n => getComputedStyle(n).backgroundColor)).size,
+          tips: hub.querySelectorAll('.hub-tip').length, rowTips: hub.querySelectorAll('.hub-row .hub-tip').length,
+          info: hub.querySelectorAll('.hub-tip svg').length === 4,
           chips: hub.querySelectorAll('.hub-chip').length, ring: getComputedStyle(hub.querySelector('.hub-ring')).getPropertyValue('--p').trim(),
+          keepLabel: hub.querySelector('.hub-keep .hub-rl').textContent,
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
-      check('the hub has four tiles in four colours — Psyche Report (unlocked, not glowing), Ask PsycheAI, Your Syncs, Your link — then the data row and Keep',
-        hubTiles.names === 'Psyche Report|Ask PsycheAI|Your Syncs|Your link' && hubTiles.report === 'Unlocked' && hubTiles.cta === 0 &&
-          hubTiles.colours === 4 && hubTiles.chips === 4 && hubTiles.ring === String(sampleReport.confidence.score) &&
+      check('Psyche Hub: four tiles in one shade — Psyche Report (a tick, Read and Download), Your Syncs (Sync), Ask PsycheAI (Ask, History), Your link (copy, then opened · cards · credits) — then the data row and Keep',
+        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Report|Your Syncs|Ask PsycheAI|Your link' && hubTiles.tick &&
+          hubTiles.report === 'Read,Download' && hubTiles.syncs === 'Sync' && hubTiles.ask === 'Ask' && hubTiles.link === 'opens,friends,available' &&
+          hubTiles.copy && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.chips === 4 &&
+          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Keep' &&
           hubTiles.keep === 'backup,ai,delete', JSON.stringify(hubTiles));
+      check('each tile\'s icon and name is its tooltip (no "i", none on the rows)',
+        hubTiles.tips === 4 && hubTiles.rowTips === 0 && hubTiles.info, JSON.stringify(hubTiles));
+      await sp.click('.hub-tile[data-hub="syncs"] .hub-tip');
+      check('a tap on a tile\'s name shows its words; a tap elsewhere hides them',
+        await sp.evaluate(() => { const t = document.querySelector('#hub-tip-syncs'); return getComputedStyle(t).display === 'block' &&
+          /Compare your card with a friend/.test(t.textContent); }) &&
+          await sp.click('.hub-bar').then(() => sp.evaluate(() => getComputedStyle(document.querySelector('#hub-tip-syncs')).display === 'none')));
       await sp.click('.hub-card [data-hub-go="link"]');
       await sp.waitForSelector('#hub-link-dialog[open] .referral-card', { timeout: 10000 });
-      check('Credits and gifts opens the link\'s counts, credits and gifts in a popout',
+      check('the link\'s counts open its credits and gifts in a popout',
         await sp.evaluate(() => document.querySelectorAll('#hub-link-dialog .referral-card .referral-n').length === 4 &&
           document.querySelector('#hub-link-dialog .hub-dialog-title').textContent === 'Your link: credits and gifts'));
       await sp.click('#hub-link-dialog .hub-dialog-close');
       {
-        const [download] = await Promise.all([sp.waitForEvent('download'), sp.click('.hub-card [data-hub-go="ai"]')]);
+        let early = false;
+        const listen = () => { early = true; };
+        sp.on('download', listen);
+        await sp.click('.hub-card [data-hub-go="ai"]');
+        await sp.waitForSelector('#hub-confirm-dialog[open]', { timeout: 10000 });
+        await sp.waitForTimeout(300);
+        sp.off('download', listen);
+        check('AI Personal Context explains itself first, with Back and Download, and downloads nothing yet',
+          !early && await sp.evaluate(() => document.querySelector('#hub-confirm-title').textContent === 'AI Personal Context' &&
+            [...document.querySelectorAll('#hub-confirm-dialog .hub-confirm-btns button')].map(b => b.textContent.trim()).join() === 'Back,Download'));
+        const [download] = await Promise.all([sp.waitForEvent('download'), sp.click('#hub-confirm-dialog [data-hub-confirm="ai"]')]);
         const path = await download.path();
         const text = path ? readFileSync(path, 'utf8') : '';
-        check('Download your AI profile saves a Markdown file about the reader: who they are, their patterns, interests and how they connect',
-          /\.md$/.test(download.suggestedFilename()) && /^# About /.test(text) && /## Who I am/.test(text) && /## My patterns/.test(text) &&
+        check('Download saves the AI Personal Context: how to talk to the reader first, then who they are, their patterns, interests, how they connect and work',
+          /AI Personal Context.*\.md$/.test(download.suggestedFilename()) && /^# About /.test(text) &&
+            text.indexOf('## How to talk to me') > 0 && text.indexOf('## How to talk to me') < text.indexOf('## Who I am') &&
+            /- Be structured: clear steps/.test(text) && /## My patterns/.test(text) &&
             /## My interests/.test(text) && /## How I connect with people/.test(text) && /## How I work/.test(text) &&
-            /## What I am working on/.test(text) && text.includes(sampleReport.patterns[0].name), text.slice(0, 300));
+            /## My rhythm and energy/.test(text) && /## What I am working on/.test(text) && text.includes(sampleReport.patterns[0].name), text.slice(0, 400));
         check('and never the roast, the attachment style or the partner section',
           !text.includes(String(sampleReport.bonus.harsh).slice(0, 40)) && !/attachment|ideal partner|who suits you/i.test(text));
+        await sp.click('.hub-card [data-hub-go="backup"]');
+        await sp.waitForSelector('#hub-confirm-dialog[open]', { timeout: 10000 });
+        check('Save a backup explains itself first too; Back closes it',
+          await sp.evaluate(() => document.querySelector('#hub-confirm-title').textContent === 'Save a backup') &&
+            await sp.click('#hub-confirm-dialog [data-hub-confirm="back"]').then(() => sp.evaluate(() => !document.querySelector('#hub-confirm-dialog').open)));
       }
 
       // ---- Ask PsycheAI ----
@@ -12427,9 +12471,9 @@ try {
         return {
           text: card.textContent,
           full: Array.from(card.querySelectorAll('.source-read-what li')).map(n => n.textContent),
-          folded: Array.from(card.querySelectorAll('.source-read-more[id]')).every(n => n.hidden),
+          open: Array.from(card.querySelectorAll('.source-read-more[id]')).every(n => !n.hidden),
           ticks: Array.from(card.querySelectorAll('.source-read')).map(n => n.querySelectorAll('.source-tick.is-on').length + '/' +
-            n.querySelectorAll('.source-tick').length + (n.querySelector('.source-read-action').textContent === '+ Add' ? '+' : '')).join(),
+            n.querySelectorAll('.source-tick').length + ((n.querySelector('.source-read-none') || {}).textContent === 'Not added' ? '+' : '')).join(),
           google: (card.querySelector('.source-read[data-source="google"] .source-read-what') || {}).textContent || '',
           order: Array.from(card.querySelectorAll('.source-read')).map(n => n.getAttribute('data-source')).join(),
           hint: (() => { const h = card.querySelector('.source-read[data-source="whatsapp"] .source-read-hint');
@@ -12438,15 +12482,10 @@ try {
           summaryChips: card.querySelectorAll('.trait-evidence .ev').length,
         };
       });
-      check('structured: Your data runs Instagram, WhatsApp, Google, Facebook, and recommends up to 3 close chats',
-        evidence.order === 'instagram,whatsapp,google,facebook' &&
-          evidence.hint === 'Up to 3 chats with close connections are recommended.', JSON.stringify({ order: evidence.order, hint: evidence.hint }));
-      check('structured: what was read is folded away; added sources carry green ticks (Google one, WhatsApp none of three here), the rest "+ Add"',
-        evidence.folded && evidence.ticks === '1/1,0/0+,1/1,0/0+', evidence.ticks);
-      await sp.click('#hub-method-dialog .source-read[data-source="instagram"] .source-read-toggle');
-      check('the source\'s name folds out its full list',
-        await sp.evaluate(() => !document.querySelector('#hub-method-dialog .source-read[data-source="instagram"] .source-read-more').hidden &&
-          document.querySelector('#hub-method-dialog .source-read[data-source="instagram"] .source-read-toggle').getAttribute('aria-expanded') === 'true'));
+      check('structured: Your data runs Instagram, WhatsApp, Google, Facebook, with no chat advice in the popout',
+        evidence.order === 'instagram,whatsapp,google,facebook' && evidence.hint === '', JSON.stringify({ order: evidence.order, hint: evidence.hint }));
+      check('structured: what was read is open from the start; added sources carry green ticks (Google one, WhatsApp none of three here), the rest "Not added"',
+        evidence.open && evidence.ticks === '1/1,0/0+,1/1,0/0+', evidence.ticks);
       check('structured: with the digest, each source row lists what was read and counted from it',
         // Totals rounded to read at a glance; what was read stays exact.
         evidence.full.includes('180 of your 9.7k messages read, from 38 conversations') &&
@@ -12958,12 +12997,12 @@ try {
         check('and Ask PsycheAI is offered with the card alone', overview.fab, JSON.stringify(overview));
         const locked = await sp.evaluate(() => {
           const tile = document.querySelector('#profile-body .hub-card .hub-tile[data-hub="report"]');
-          return tile && { cta: tile.classList.contains('is-cta'), num: tile.querySelector('[data-hub-num]').textContent,
-            badge: (tile.querySelector('[data-hub-badge]:not([hidden])') || {}).textContent || '',
+          const go = tile && tile.querySelector('.hub-acts [data-hub-go]');
+          return tile && { cta: tile.classList.contains('is-cta'), button: go.dataset.hubGo + ':' + go.textContent + ':' + go.classList.contains('is-fill'),
             glow: getComputedStyle(tile).animationName, last: tile.closest('.hub-card') === document.querySelector('#profile-body').lastElementChild };
         });
-        check('before the unlock the hub closes the page, and its Psyche Report tile is locked, glowing, with an Unlock free badge',
-          Boolean(locked) && locked.cta && locked.num === 'Locked' && locked.badge === 'Unlock free' && locked.glow === 'hub-glow' && locked.last,
+        check('before the unlock the hub closes the page, and its Psyche Report tile glows, with one filled Unlock free button',
+          Boolean(locked) && locked.cta && locked.button === 'unlock:Unlock free:true' && locked.glow === 'hub-glow' && locked.last,
           JSON.stringify(locked));
         await seed(false);
       }

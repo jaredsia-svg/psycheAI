@@ -5451,42 +5451,44 @@ Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merge
 The free prompt grew to 10,959 tokens (`FREE_FIXED_INPUT_TOKENS` 11,000); `DEEP_FREE_COST_CAP` $0.084 →
 $0.085. The ring's explanation on the card no longer says the score depends on how much was read.
 
-### My Psyche's hub (October 2026)
+### Psyche Hub (October 2026)
 
-My Psyche became the control panel for the whole site: a **Your hub** section (`hubHtml` in
-docs/app.js, `.hub-*` in styles.css), under the card once the report is unlocked and at the foot of the
-page before it (after the Overview, the roast and the offer).
+My Psyche's control panel: a **Psyche Hub** section (`hubHtml` in docs/app.js, `.hub-*` in styles.css),
+under the card once the report is unlocked and at the foot of the page before it (after the Overview,
+the roast and the offer). The first version read as one more section, so it was redrawn to look like
+the site's panel and to use as few words as possible:
 
-- **Four tiles, each its own colour**: white tiles with a coloured top edge, a filled gradient icon, and
-  the number and action link in that colour (picked over tinted tiles, which made the panel read busy):
-  *Psyche Report* (purple: Unlocked and Open report, or Locked), *Ask PsycheAI* (pink: questions left as
-  dots, Ask or Get 5 more), *Your Syncs* (blue: how many, a "new" badge, See syncs or Invite) and *Your
-  link* (amber: opens, progress to the next credit or to the free report, Share link, and *Credits and
-  gifts*). Each has one big number or status and one action. The numbers from the server (questions
-  left, the link's counts) fill in when they arrive (`refreshHub`).
-- **The locked report glows**: a gradient ring and a slow pulse (still under reduced motion), an
-  "Unlock free" badge while the free first report is on offer, and the only filled button in the hub.
-- **Your data** and **Keep** are two separate lavender boxes under the tiles.
-- **Your data**: a small confidence ring, *How it was read* (Evidence and method, now in a popout), and
-  the sources as chips (ticked when loaded, dashed "+" to add; a chip opens the unlock or the re-run,
-  as the old rows did).
-- **Keep**: Save a backup (with when it was last saved, `psycheai_last_backup`), *Download your AI
-  profile* (report holders only) and Delete everything (a small bin icon button, named for screen readers and on hover). The page-foot buttons for these are hidden on
-  My Psyche, where the hub has them.
-- **The referral card is gone from the page**; its counts, credits and gift links open whole in the
-  *Credits and gifts* popout, so its own handlers still run.
-- **Your AI profile** (`aiProfileMarkdown`): a short Markdown file made on the device, to paste into
-  ChatGPT, Claude or Gemini. Who they are (the summary), MBTI and Big Five in words, motivators, values
-  and beliefs, patterns, interests, how they connect (love languages both ways, conflict style, what they
-  bring and where it gets hard), how they work (edge, strengths, what holds them back, careers that suit
-  and drain) and what they are working on. Never the roast, the attachment style, the partner section
-  or anything from the data itself.
+- **A gradient bar with its name**, centred, over a panel with the same light wash as the My Syncs header
+  (`.scan-hero`). No icon or subtitle.
+- **Four small tiles in one shade, two lines each**: the icon, the name and its one number or state, then
+  its buttons. *Psyche Report* (a tick; Read and Download, which is the PDF), *Your Syncs* (how many;
+  Sync), *Ask PsycheAI* (questions left; Ask, and History once there are answers, which opens My Report's
+  Appendix 2), *Your link* (a copy-link icon in the corner, then opened · cards · credits, all one size,
+  which open *Credits and gifts*). Only the locked report has colour of its own: a breathing gradient
+  ring and one filled *Unlock free* (or *Unlock*) button. The server's numbers fill in as they arrive
+  (`refreshHub`).
+- **Tooltips, no "i"**: each tile's icon and name are one button whose one or two lines show on hover or
+  focus, and on a tap on a phone (a tap elsewhere or Escape hides them). The two rows have none: the ring
+  and the buttons say what they are.
+- **Data row**: the confidence ring and "High confidence ›" (opening *Confidence score*), then the four
+  sources as chips, in one line on a laptop and two by two on a phone.
+- **Keep row** ("Keep" labelled on a laptop): Save a backup (with when it was last saved,
+  `psycheai_last_backup`), *AI Personal Context* (report holders only) and a bin for Delete everything.
+  Backup and AI Personal Context open a short popout first (what the file holds, that it is made on the
+  device) with Back and Download: nothing downloads on the first click.
+- **Confidence score** (was Evidence and method) opens in a popout cut down for the hub: every source
+  open, "Not added" where missing, one *Add / change data* link by YOUR DATA instead of one per row, and
+  no WhatsApp advice.
+- **The referral card is gone from the page**; it opens whole in the *Credits and gifts* popout, so its
+  own handlers still run. On phones the popouts rise from the bottom as sheets.
+- **AI Personal Context** (`aiProfileMarkdown`, was "AI profile"): a short Markdown file made on the
+  device, to paste into ChatGPT, Claude or Gemini. It opens with **How to talk to me** (`howToTalkTo`),
+  built only from what clearly leans one way: a Big Five trait at 65 or more or 35 or less, an MBTI
+  T/F or J/P letter held more than slightly, and the conflict style. Then who they are, personality,
+  what drives them, patterns, interests, how they connect, how they work (with work style and
+  watch-outs), their rhythm and social energy, and what they are working on. Never the roast, the
+  attachment style or the partner section.
 - The classic layout keeps its old confidence and referral cards: the hub is the structured layout's.
-- **On phones the hub is compact**, so all of it fits on about one screen (about 670–690px tall at 390px
-  wide, down from about 735): each tile's icon sits beside its name and its badge beside its number, the four
-  sources are an even 2×2 grid, the bin moves up onto the Keep line, and the two Keep buttons sit side by
-  side with the icon above the words. The two popouts become bottom sheets (full width, a grab handle, a
-  sticky title, text a size down). Laptops keep the larger size.
 
 ### Values & Beliefs: exactly three (October 2026)
 
