@@ -5481,6 +5481,12 @@ the site's panel and to use as few words as possible:
   Save your profile sky, so the eye can follow them; buttons, chips, counts and the score ring are
   see-through on their section's colour with a thin outline, and Unlock free is the one filled button.
   The four tiles are one grouped box, a strip with dividers on a laptop and a list on a phone.
+- **Late October 2026 polish:** the tiles' box is see-through (the hub's gradient shows through; the rows
+  keep their colours); a lock where the locked report's tick would be; tooltips on the tile and row names
+  (no longer clipped), Signal Strength's saying to tap the score; the link's counts dotted, as they are not
+  buttons; *Save Profile*; no second popout after a backup saved from the hub; who wrote the card centred
+  under the hub; and "Psyche Hub below" in the card's description is a link down to it (the description
+  now shows on a phone too, under the buttons).
 - **Psyche Sync** (was Your Syncs): *See list* and a Share icon for the reader's link. **Ask PsycheAI**,
   once there are answers: *History* wide and a small *?* to ask a new one; before, Ask across the width.
 - **Phones a size up** (late October 2026): titles about 14px, buttons about 13px and at least 40px

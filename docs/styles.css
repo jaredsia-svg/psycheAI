@@ -4152,10 +4152,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   #view-profile.profile-structured .psyche-card-hint { display: none; }
   #view-profile.profile-structured .psyche-card-slot { cursor: default; }
   .cx-home-title { order: 1; margin: 0; text-align: center; }
-  .cx-home-intro { display: none; }
+  /* Under the buttons on a phone, a size down: what the card is, and where
+     the report and the hub are. */
+  .cx-home-intro { order: 5; margin: .2rem .2rem 0; font-size: .82rem; line-height: 1.5; text-align: center; }
   .cx-home-hint { order: 3; justify-content: center; text-align: left; }
   .cx-tools { order: 4; }
-  .cx-stage { order: 5; }
+  .cx-stage { order: 6; }
 }
 /* On a phone the explanation rises from the foot of the screen instead. */
 @media (max-width: 719px) {
@@ -5004,12 +5006,10 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-saved { position: absolute; top: -.45rem; right: -.3rem; font-size: .52rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
   .hub-del { margin-left: 0; }
   /* The data row's ring centred; Keep's name centred above its three buttons. */
-  .hub-data .hub-conf { flex-basis: 100%; justify-content: center; }
   .hub-linkhead { flex-basis: 100%; justify-content: center; }
   .hub-linkstats { flex-basis: 100%; margin: 0; justify-content: center; gap: .2rem .7rem; }
   .hub-linknote { order: 3; flex-basis: 100%; justify-content: center; }
   .hub-linkrow .referral-ready-row, .hub-linkrow .referral-status, .hub-linkrow .referral-gifts { order: 4; }
-  .hub-keep .hub-rl { flex-basis: 100%; text-align: center; }
   .hub-keep .hub-del { order: 2; }
   .hub-btn .hub-svg { display: none; }
   .hub-stats { font-size: .6rem; gap: .2rem; padding: .34rem .2rem; } .hub-stats b { font-size: .74rem; }
@@ -5066,3 +5066,34 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-go.is-icon { flex: 0 0 44px; }
 .hub-go.is-icon .hub-go-label { display: none; }
 .hub-go.is-icon .hub-svg { display: block; width: 18px; height: 18px; stroke-width: 2.2; }
+
+/* Late October 2026 fixes: the tiles' strip no longer clips its tooltips; the
+   three rows explain themselves by their names too; the link's counts are
+   dotted, as they are not buttons; Ask beside History is a word on a laptop
+   and a "?" on a phone; and who wrote the card is centred under the hub. */
+.hub-tiles { overflow: visible; }
+.hub-row { position: relative; }
+.hub-row .hub-tip-text { left: .5rem; right: auto; max-width: 22rem; }
+.hub-datahead, .hub-keephead { display: inline-flex; align-items: center; gap: .6rem; }
+.hub-row .hub-tip:hover .hub-rl, .hub-row .hub-tip.is-open .hub-rl { color: var(--accent); }
+.hub-linkstat { border-style: dashed !important; }
+.hub-go.is-icon { flex: 1 1 0; }
+.hub-go.is-icon .hub-go-label { display: inline; }
+.hub-go.is-icon .hub-svg { display: inline; width: 13px; height: 13px; stroke-width: 1.8; }
+.hub-go.is-icon::after { content: "?"; display: none; font-size: 1.05rem; font-weight: 700; }
+#view-profile.profile-hub .profile-foot { justify-content: center; }
+@media (max-width: 759px) {
+  .hub-go.is-icon { flex: 0 0 44px; }
+  .hub-go.is-icon .hub-go-label, .hub-go.is-icon .hub-svg { display: none; }
+  .hub-go.is-icon::after { display: inline; }
+  .hub-datahead, .hub-keephead { flex-basis: 100%; justify-content: center; }
+  .hub-row .hub-tip-text { left: .4rem; right: .4rem; max-width: none; }
+}
+/* The locked report's mark, where the unlocked one has its green tick. */
+.hub-lockmark { flex: none; margin-left: auto; display: grid; place-items: center; color: color-mix(in srgb, var(--ink-soft) 80%, var(--bg-alt)); }
+.hub-lockmark .hub-svg { width: 18px; height: 18px; stroke-width: 2.2; }
+/* "Psyche Hub below" in the card's description: a link down to the hub. */
+.cx-hub-link { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* The tiles' box see-through, so the hub's own gradient shows through it; a
+   thin outline keeps the four together. The three rows keep their colours. */
+.hub-tiles { background: transparent; border-color: color-mix(in srgb, var(--accent) 22%, transparent); }

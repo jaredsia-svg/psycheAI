@@ -11781,7 +11781,8 @@ try {
         await sp.evaluate(() => (document.querySelector('#hub-method-dialog .sources-read-note') || {}).textContent ===
           'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.' &&
           document.querySelector('#hub-method-dialog .hub-dialog-title').textContent === 'Signal strength' &&
-          document.querySelector('.hub-card .hub-conf').textContent === 'Signal Strength' + document.querySelector('.hub-card .hub-ring').textContent));
+          document.querySelector('.hub-card .hub-datahead .hub-rl').textContent === 'Signal Strength' &&
+          document.querySelector('.hub-card .hub-conf').textContent === document.querySelector('.hub-card .hub-ring').textContent));
       check('Signal strength: every source open, no Change or Add on the rows and no WhatsApp advice, one Add / change data link by YOUR DATA',
         await sp.evaluate(() => {
           const body = document.querySelector('#hub-method-dialog .hub-dialog-body');
@@ -11818,28 +11819,28 @@ try {
           tick: Boolean(tile('report').querySelector('.hub-ok')) && Boolean(tile('psyche').querySelector('.hub-ok')), report: goes('report'), syncs: goes('syncs'), ask: goes('ask'),
           card: goes('psyche'),
           link: [...hub.querySelectorAll('.hub-linkrow .referral-n')].map(n => n.dataset.stat).join(),
-          linkButtons: [...hub.querySelectorAll('.hub-linkrow button')].filter(b => !b.closest('[hidden]'))
+          linkButtons: [...hub.querySelectorAll('.hub-linkrow button:not(.hub-tip)')].filter(b => !b.closest('[hidden]'))
             .map(b => b.getAttribute('aria-label') || b.textContent.trim()).join(),
           rowOrder: [...hub.querySelectorAll('.hub-rows > .hub-row')].map(r => r.classList[1]).join(),
           cta: hub.querySelectorAll('.hub-tile.is-cta').length,
           shades: new Set([...hub.querySelectorAll('.hub-tile')].map(n => getComputedStyle(n).backgroundColor)).size,
           ok: getComputedStyle(hub.querySelector('.hub-ok')).color === getComputedStyle(document.documentElement).getPropertyValue('--good').trim() ||
             getComputedStyle(hub.querySelector('.hub-ok')).color === 'rgb(47, 125, 91)',
-          tips: hub.querySelectorAll('.hub-tip').length, rowTips: hub.querySelectorAll('.hub-row .hub-tip').length,
+          tips: hub.querySelectorAll('.hub-tile .hub-tip').length, rowTips: hub.querySelectorAll('.hub-row .hub-tip').length,
           info: hub.querySelectorAll('.hub-tip svg, .hub-tile .hub-sq').length === 0,
           chips: hub.querySelectorAll('.hub-chip').length, ring: getComputedStyle(hub.querySelector('.hub-ring')).getPropertyValue('--p').trim(),
           keepLabel: hub.querySelector('.hub-keep .hub-rl').textContent,
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
-      check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Psyche Sync (See list, Share), Ask PsycheAI (Ask; History and ? once asked) — then Your Link, Signal Strength and Save your profile',
+      check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Psyche Sync (See list, Share), Ask PsycheAI (Ask; History and ? once asked) — then Your Link, Signal Strength and Save Profile',
         hubTiles.title === 'Your Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Psyche Sync|Ask PsycheAI' && hubTiles.tick &&
           hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'See list,Share' && hubTiles.ask === 'Ask' &&
           hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
           hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
-          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Save your profile' &&
+          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Save Profile' &&
           hubTiles.keep === 'backup,ai,delete', JSON.stringify(hubTiles));
-      check('each tile\'s name is its tooltip (no "i", no icon, none on the rows)',
-        hubTiles.tips === 4 && hubTiles.rowTips === 0 && hubTiles.info, JSON.stringify(hubTiles));
+      check('each tile\'s and row\'s name is its tooltip (no "i", no icon)',
+        hubTiles.tips === 4 && hubTiles.rowTips === 3 && hubTiles.info, JSON.stringify(hubTiles));
       await sp.click('.hub-tile[data-hub="syncs"] .hub-tip');
       check('a tap on a tile\'s name shows its words; a tap elsewhere hides them',
         await sp.evaluate(() => { const t = document.querySelector('#hub-tip-syncs'); return getComputedStyle(t).display === 'block' &&
@@ -13326,7 +13327,7 @@ try {
           toolsBelow: top('#profile-side .cx-tools').top >= card.bottom - 1,
           noButton: !document.querySelector('.cx-open-full'),
           oneBox: getComputedStyle(document.querySelector('#profile-top')).borderTopStyle === 'solid',
-          noIntro: !shown('#profile-side .cx-home-intro'), noTapToOpen: !shown('#psyche-card-hint'),
+          introWithHubLink: shown('#profile-side .cx-home-intro') && Boolean(document.querySelector('#profile-side .cx-hub-link')), noTapToOpen: !shown('#psyche-card-hint'),
           noHintLine: !shown('#profile-side .cx-home-hint'),
           // The expand mark: inside the card's bottom-right corner, faded.
           expand: (() => {
@@ -13340,7 +13341,7 @@ try {
             l.getBoundingClientRect().height < 20),
           spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
-      check('structured: on a phone the card sits in one box: title, the card with a faded expand mark in its corner, then the three actions',
+      check('structured: on a phone the card sits in one box: title, the card with a faded expand mark in its corner, then the three actions, and its description with the link down to the hub',
         Object.entries(phoneBox).every(([k, v]) => k === 'spill' ? v <= 1 : v), JSON.stringify(phoneBox));
       check('structured: on a phone the card has a thin, faint edge',
         /inset/.test(await sp.evaluate(() => getComputedStyle(document.querySelector('#psyche-card')).boxShadow)) ||
@@ -13667,7 +13668,7 @@ try {
           /1 card = 1 credit = 1 question or report to gift/.test(card.text) &&
           await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&
             !document.querySelector('#profile-body .referral-card:not(.hub-linkrow)')) &&
-          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button')].filter(b => !b.closest('[hidden]'))
+          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button:not(.hub-tip)')].filter(b => !b.closest('[hidden]'))
               .map(b => b.getAttribute('aria-label')).join() === 'Copy your link'),
         JSON.stringify(card));
       await closeLink(rp);

@@ -2314,10 +2314,10 @@
 
   // Each tile explains itself in one or two lines: its name is a button that
   // shows the words on hover or focus, and on a tap on a phone.
-  const hubTip = (key, name) => {
+  const hubTip = (key, name, nameClass) => {
     const H = Copy.STRUCTURED.hub;
     return '<button type="button" class="hub-tip" aria-expanded="false" aria-describedby="hub-tip-' + key + '">' +
-      '<span class="hub-name">' + esc(name) + '</span></button>' +
+      '<span class="' + (nameClass || 'hub-name') + '">' + esc(name) + '</span></button>' +
       '<span class="hub-tip-text" role="tooltip" id="hub-tip-' + key + '">' + esc(H.tips[key]) + '</span>';
   };
 
@@ -2349,14 +2349,15 @@
         ? hubTile('report', { icon: 'report', name: H.report,
             state: '<span class="hub-ok" role="img" aria-label="' + esc(H.unlocked) + '">' + hubIcon('tick') + '</span>',
             buttons: [['report', H.read, 'open'], ['pdf', H.download, 'down']] })
-        : hubTile('report', { icon: 'lock', name: H.report, cta: true, state: ' ', tip: firstFreeOffered() ? 'reportLocked' : 'reportBuy',
+        : hubTile('report', { icon: 'lock', name: H.report, cta: true,
+            state: '<span class="hub-lockmark" role="img" aria-label="' + esc(H.locked) + '">' + hubIcon('lock') + '</span>', tip: firstFreeOffered() ? 'reportLocked' : 'reportBuy',
             buttons: [['unlock', firstFreeOffered() ? H.unlockFree : H.unlock, '', ' is-fill']] }),
       hubTile('syncs', { icon: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
         badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync'], ['share', H.share, 'share']] }),
       hubTile('ask', { icon: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
         // With answers to look back on: History the wide button, a small "?" to
         // ask a new one. Before any: Ask, the whole width.
-        buttons: explained && asked ? [['asked', H.askHistory, 'history'], ['ask', H.askGo, 'question', ' is-icon']] : [['ask', H.askGo, 'ask']] }),
+        buttons: explained && asked ? [['asked', H.askHistory, 'history'], ['ask', H.askGo, 'ask', ' is-icon']] : [['ask', H.askGo, 'ask']] }),
     ];
     const digest = state.digest;
     const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
@@ -2377,16 +2378,17 @@
       '<div class="hub-tiles">' + tiles.join('') + '</div>' +
       '<div class="hub-rows">' + hubLinkRowHtml(explained) +
         '<div class="hub-row hub-data" aria-label="' + esc(H.data) + '">' +
-          '<button type="button" class="hub-conf" data-hub-go="method" aria-label="' + esc(H.signalOf(score)) + '">' +
-            '<span class="hub-rl">' + esc(H.signal) + '</span>' +
-            '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span></button>' +
+          // The name explains itself; the score opens Signal strength.
+          '<span class="hub-datahead">' + hubTip('data', H.signal, 'hub-rl') +
+            '<button type="button" class="hub-conf" data-hub-go="method" aria-label="' + esc(H.signalOf(score)) + '">' +
+            '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span></button></span>' +
           '<span class="hub-chips">' + sources.map(([key, label, loaded]) =>
             '<button type="button" class="hub-chip' + (loaded ? '' : ' is-add') + '" data-hub-source="' + key + '" data-flow="' + flow + '"' +
             ' aria-label="' + esc(loaded ? H.sourceLoaded(label) : H.sourceAdd(label)) + '">' +
             (loaded ? esc(label) + hubIcon('tick') : hubIcon('plus') + esc(label)) + '</button>').join('') + '</span>' +
         '</div>' +
         '<div class="hub-row hub-keep" aria-label="' + esc(H.keep) + '">' +
-          '<span class="hub-rl">' + esc(H.keep) + '</span>' +
+          '<span class="hub-keephead">' + hubTip('keep', H.keep, 'hub-rl') + '</span>' +
           '<button type="button" class="hub-btn" data-hub-go="backup">' + hubIcon('save') + '<span>' + esc(H.backup) + '</span>' +
             '<span class="hub-saved' + (saved ? '' : ' is-never') + '">' + esc(saved ? H.savedAgo(agoText(saved)) : H.neverSaved) + '</span></button>' +
           (explained
@@ -2407,7 +2409,7 @@
     const R = TEXT.referral;
     const stat = (key, label) => '<li class="hub-linkstat"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</li>';
     return '<div class="hub-row hub-linkrow referral-card" data-paid="' + (paid ? '1' : '0') + '" aria-label="' + esc(H.link) + '">' +
-      '<span class="hub-linkhead"><span class="hub-rl">' + esc(H.link) + '</span>' +
+      '<span class="hub-linkhead">' + hubTip('link', H.link, 'hub-rl') +
         '<button type="button" class="hub-copy hub-linkcopy" data-hub-go="copy" aria-label="' + esc(H.copyLink) + '" title="' + esc(H.copyLink) + '">' +
           hubIcon('copy') + '</button></span>' +
       '<ul class="hub-linkstats">' + stat('opens', H.statOpened) + stat('friends', H.statCards) + stat('credits', H.statCredits) + '</ul>' +
@@ -2574,6 +2576,14 @@
     });
   }
 
+  document.addEventListener('click', event => {
+    const link = event.target.closest('.cx-hub-link');
+    if (!link) return;
+    event.preventDefault();
+    const hub = document.querySelector('#profile-body .hub-card');
+    if (hub) hub.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+
   // Save a backup and AI Personal Context explain themselves first: nothing
   // downloads until the reader says so.
   // Locked (AI Personal Context before the report): the same words, with
@@ -2593,7 +2603,7 @@
     const button = event.target.closest('[data-hub-confirm]');
     if (!button) return;
     const dialog = document.getElementById('hub-confirm-dialog');
-    if (button.dataset.hubConfirm === 'backup') saveBackup();
+    if (button.dataset.hubConfirm === 'backup') saveBackup({ quiet: true });
     else if (button.dataset.hubConfirm === 'ai') downloadAiProfile();
     dialog.close();
   });
@@ -8053,7 +8063,9 @@
         '</div>' +
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
-        '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree) + '</p>' +
+        // "Psyche Hub below" is a link down to the hub.
+        '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree)
+          .replace(esc(G.home.hubLink), '<a href="#hub-title" class="cx-hub-link">' + esc(G.home.hubLink) + '</a>') + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
           '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
       '</div>' +
@@ -10554,7 +10566,10 @@
       .replace(/^Psyche Report/, 'Psyche Backup').replace(/\.pdf$/, '.json');
   }
 
-  function saveBackup() {
+  // From the hub, its Save Backup popout has already said what the file is
+  // for, so no second popout after (quiet). Elsewhere (My Report's menu, the
+  // classic page's foot) the file still gets its few words after.
+  function saveBackup(options) {
     if (!state.profile) return;
     const blob = new Blob([JSON.stringify(backupFile())], { type: 'application/json' });
     const href = URL.createObjectURL(blob);
@@ -10569,6 +10584,7 @@
     store.write(KEYS.lastBackup, new Date().toISOString());
     const savedLine = document.querySelector('#profile-body .hub-saved');
     if (savedLine) { savedLine.textContent = Copy.STRUCTURED.hub.savedAgo('today'); savedLine.classList.remove('is-never'); }
+    if (options && options.quiet) return;
     // Then what the file is for, in plain words.
     const B = Copy.STRUCTURED.backupSaved, dialog = $('#backup-dialog');
     $('#backup-dialog-title').textContent = B.title;
@@ -10576,7 +10592,7 @@
     $('#backup-dialog-ok').textContent = B.ok;
     if (!dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
   }
-  $('#save-backup').addEventListener('click', saveBackup);
+  $('#save-backup').addEventListener('click', () => saveBackup());
   $('#backup-dialog-ok').addEventListener('click', () => $('#backup-dialog').close());
   $('#backup-dialog').addEventListener('click', event => { if (event.target === $('#backup-dialog')) $('#backup-dialog').close(); });
 
