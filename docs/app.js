@@ -2288,6 +2288,7 @@
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     tick: '<path d="M4.5 12.8l4.6 4.7L19.5 6.5"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    question: '<path d="M8.8 9a3.3 3.3 0 1 1 4.8 2.9c-1 .5-1.6 1.2-1.6 2.4v.4"/><path d="M12 18.2v.1"/>',
     open: '<path d="M4 6.5C6.5 5 9.5 5 12 6.5v13C9.5 18 6.5 18 4 19.5zM20 6.5C17.5 5 14.5 5 12 6.5v13c2.5-1.5 5.5-1.5 8 0z"/>',
     down: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
     share: '<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>',
@@ -2351,9 +2352,11 @@
         : hubTile('report', { icon: 'lock', name: H.report, cta: true, state: ' ', tip: firstFreeOffered() ? 'reportLocked' : 'reportBuy',
             buttons: [['unlock', firstFreeOffered() ? H.unlockFree : H.unlock, '', ' is-fill']] }),
       hubTile('syncs', { icon: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
-        badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync']] }),
+        badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync'], ['share', H.share, 'share']] }),
       hubTile('ask', { icon: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
-        buttons: [['ask', H.askGo, 'ask']].concat(explained && asked ? [['asked', H.askHistory, 'history']] : []) }),
+        // With answers to look back on: History the wide button, a small "?" to
+        // ask a new one. Before any: Ask, the whole width.
+        buttons: explained && asked ? [['asked', H.askHistory, 'history'], ['ask', H.askGo, 'question', ' is-icon']] : [['ask', H.askGo, 'ask']] }),
     ];
     const digest = state.digest;
     const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
@@ -2476,6 +2479,7 @@
       case 'report': leaveHub(); go('full'); break;
       case 'pdf': exportPdf(); break;
       case 'card': openPsycheCard(); break;
+      case 'share': shareMyLink(button); break;
       case 'card-download': downloadCardImage({ currentTarget: button }); break;
       case 'asked': leaveHub(); openAskAppendix(); break;
       case 'unlock': openPremiumDialog(button, 'unlock'); break;

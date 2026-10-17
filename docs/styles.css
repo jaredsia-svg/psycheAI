@@ -5031,7 +5031,38 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-linknote span { font-size: .72rem; }
   .hub-ring { width: 42px; height: 42px; } .hub-ring b { width: 33px; height: 33px; font-size: .84rem; }
   /* Download is just its icon on a phone; Read keeps its word beside it. */
-  .hub-go[data-hub-go="card-download"], .hub-go[data-hub-go="pdf"] { flex: 0 0 44px; }
-  .hub-go[data-hub-go="card-download"] .hub-svg, .hub-go[data-hub-go="pdf"] .hub-svg { display: block; width: 18px; height: 18px; }
-  .hub-go[data-hub-go="card-download"] .hub-go-label, .hub-go[data-hub-go="pdf"] .hub-go-label { display: none; }
+  .hub-go[data-hub-go="card-download"], .hub-go[data-hub-go="pdf"], .hub-go[data-hub-go="share"] { flex: 0 0 44px; }
+  .hub-go[data-hub-go="card-download"] .hub-svg, .hub-go[data-hub-go="pdf"] .hub-svg, .hub-go[data-hub-go="share"] .hub-svg { display: block; width: 18px; height: 18px; }
+  .hub-go[data-hub-go="card-download"] .hub-go-label, .hub-go[data-hub-go="pdf"] .hub-go-label, .hub-go[data-hub-go="share"] .hub-go-label { display: none; }
 }
+
+/* Late October 2026: one soft colour per section so the eye can follow it
+   (tiles lavender, Your Link peach, Signal Strength mint, Save your profile
+   sky), and buttons, chips and counts see-through on their section's colour,
+   a thin outline each. The four tiles are one grouped box: a strip with
+   dividers on a laptop, a list with dividers on a phone. Unlock free stays
+   the one filled button. */
+.hub-linkrow { --sec: #fff6ef; background: var(--sec); border-color: #f6e2d2; }
+.hub-data { --sec: #f1f9f5; background: var(--sec); border-color: #d9eee3; }
+.hub-keep { --sec: #f2f6fd; background: var(--sec); border-color: #dde6f6; }
+.hub-data .hub-ring b { background: var(--sec); }
+.hub-go:not(.is-fill), .hub-btn:not(.is-locked), .hub-copy, .hub-del, .hub-chip:not(.is-add), .hub-linkstat {
+  background: transparent; box-shadow: none; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.hub-del { border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.hub-go:not(.is-fill):hover, .hub-btn:not(.is-locked):hover, .hub-copy:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.hub-del:hover { background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.hub-tiles { gap: 0; background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt));
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--bg-alt)); border-radius: 14px; overflow: hidden; }
+.hub-tile, .hub-tile.is-cta { border: 0; border-radius: 0; background: transparent; }
+.hub-tile + .hub-tile { border-left: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+@media (max-width: 759px) {
+  .hub-tiles { grid-template-columns: 1fr; }
+  .hub-tile { flex-direction: row; align-items: center; padding: .55rem .7rem; gap: .6rem; }
+  .hub-tile + .hub-tile { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+  .hub-l1 { flex: 1; min-width: 0; }
+  .hub-acts { flex: none; width: 50%; }
+}
+/* A small icon-only button (Ask's "?" beside History), the size of Download on a phone. */
+.hub-go.is-icon { flex: 0 0 44px; }
+.hub-go.is-icon .hub-go-label { display: none; }
+.hub-go.is-icon .hub-svg { display: block; width: 18px; height: 18px; stroke-width: 2.2; }

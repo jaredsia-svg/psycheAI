@@ -5477,6 +5477,12 @@ the site's panel and to use as few words as possible:
 - **Header**: *Your Psyche Hub*, centred in gradient type with a short gradient rule under it, inside a
   gradient ring and a soft glow that mark it as the site's control panel. Tile and row titles are all
   bold and the same size.
+- **Colour per section** (late October 2026): the tiles lavender, Your Link peach, Signal Strength mint,
+  Save your profile sky, so the eye can follow them; buttons, chips, counts and the score ring are
+  see-through on their section's colour with a thin outline, and Unlock free is the one filled button.
+  The four tiles are one grouped box, a strip with dividers on a laptop and a list on a phone.
+- **Psyche Sync** (was Your Syncs): *See list* and a Share icon for the reader's link. **Ask PsycheAI**,
+  once there are answers: *History* wide and a small *?* to ask a new one; before, Ask across the width.
 - **Phones a size up** (late October 2026): titles about 14px, buttons about 13px and at least 40px
   tall, chips and counts a step larger, so it is easier to tap; Download is just its icon there.
   Laptops keep the compact sizes.

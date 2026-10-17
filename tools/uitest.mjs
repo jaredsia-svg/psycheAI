@@ -11831,9 +11831,9 @@ try {
           keepLabel: hub.querySelector('.hub-keep .hub-rl').textContent,
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
-      check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Your Syncs (Sync), Ask PsycheAI (Ask, History) — then Your Link, Signal Strength and Save your profile',
-        hubTiles.title === 'Your Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Your Syncs|Ask PsycheAI' && hubTiles.tick &&
-          hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'Sync' && hubTiles.ask === 'Ask' &&
+      check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Psyche Sync (See list, Share), Ask PsycheAI (Ask; History and ? once asked) — then Your Link, Signal Strength and Save your profile',
+        hubTiles.title === 'Your Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Psyche Sync|Ask PsycheAI' && hubTiles.tick &&
+          hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'See list,Share' && hubTiles.ask === 'Ask' &&
           hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
           hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
           hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Save your profile' &&
