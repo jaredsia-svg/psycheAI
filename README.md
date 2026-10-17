@@ -4790,6 +4790,49 @@ Both calls use **structured outputs**, so the response is guaranteed to match th
 renders it without defensive parsing. Both stream, because thinking tokens and a long report share
 one output budget.
 
+### The server decides who gets the free card; a bundle's link is registered
+
+Every first upload asks for the free card, whatever the browser made before. Until late October 2026,
+the browser's own run count (`psycheai_runs`, which survives Delete everything) sent any later upload
+straight to the paid sheet. That charged a second Instagram account on the same laptop, which the
+server would have given a free card. Now the server's once-per-account check decides. If it refuses
+(`freeUsed`), the card and report bundle is offered over the same reviewed digest, with nothing loaded
+again. The refusal comes before any model call, so it costs nothing. The browser count still prices
+the re-run button, where the account has certainly had its card. An identical re-upload within the
+results cache's hours gets the same card back, which gives nothing away.
+
+A card bought with its report (an anchorless unlock: a new device, or after Delete everything) now runs
+`referral.afterFreeCard` as a free card does. That records the new link's owner, so friends' cards from
+it are credited, and spends the account's guess. Before, the owner was recorded only for free cards, so a
+bundle buyer's link never earned credits.
+
+### One 179,000 line for every read
+
+Since late October 2026 every read is held to the same pools, whether free or paid, Instagram alone or
+with other sources. These are the premium read's: public 70,000 (Instagram's share 50,000, Facebook at
+least 10,000 beside it), conversations 95,000 (15,000 a conversation, 450 WhatsApp messages) and Google
+8,000, plus 6,000 fixed. The Instagram-only tier (100,000) and the free read with a second source
+(136,000) are gone. Why: with Facebook offered at the first upload, the premium read's only edge was
+room, and one line means the report explains its card from exactly the evidence the card was drawn
+from. `premiumDigestFrom` returns the card's own digest when nothing is added at the unlock, so no
+deeper rebuild happens. Worst cases: free card 8.5¢ (`FREE_COST_CAP`, was 6.8¢ Instagram alone and
+7.6¢ with a source), full report 17.2¢ (`COST_CAP`). The daily free ceiling of 200 is at most about
+US$17. `SOLO_*` names remain as aliases of the one line.
+
+### Add your data: four sources, two lines each; Back on the payment sheet
+
+The first upload's *Add your data* popout offers Facebook too (Instagram required; WhatsApp, Google and
+Facebook optional). Each row is two lines at most: the tag sits beside the name ("Google Takeout
+(Optional)"), where a generic `.mode-title` flex rule had pushed it onto a line of its own, and the
+WhatsApp line is "Up to 3 close-friend chats (.zip or .txt)", which fits a phone.
+
+The payment sheet's Cancel is **Back**: it returns to the step before the sheet (`premiumBackStep`).
+For an unlock, that is the review again over the sources already loaded (`collectDataForPremium`
+re-entered with the same answer, `lastPremiumCollected`). For a re-run it is `rerunWithAdditionalData`
+again, and for a first upload past the free card it is the same digest's review (`PAY_BACK` from
+`authoriseAnalysis`). From the review, Back goes on to the data popout as before. Ask PsycheAI and
+Sync purchases have nothing before the sheet, so Back closes it.
+
 ### Who a caption was written for: private or public
 
 Instagram's `personal_information.json` carries `"Private Account": {"value": "True"}`.
@@ -6706,7 +6749,7 @@ card. Instagram alone gets the allocation the card was first sized at, about 80,
 The tier is read off the digest itself (`carriesSecondSource`, `poolCapsFor`, `budgetFor`): a source
 unticked at the review does not count, so what is sent falls back to 82,000, and the server's size check
 reads the tier the same way. A digest built with a second source fills Instagram at the larger tier first
-(`poolTier: 'sources'`). Facebook comes in only at the unlock, so it never decides the free tier; the
+(`poolTier: 'sources'`). Facebook, offered at the first upload since late October 2026, counts as a second source; the
 premium read keeps its own pools for every reader. A heavy Instagram-only account's 200 captions now
 just pass the 32,000, so its captions are cut to about 180.
 
@@ -7001,8 +7044,9 @@ room is now shared **by kind of evidence**, and spare room is shared **inside a 
 | Fixed | 6,000 | 6,000 | counts, rhythm, each chat's timings, notes (measured at 5,950 with three chats) |
 | **Line** | **126,000** | **179,000** | `DIGEST_CHARS`, `DEEP_DIGEST_CHARS`; `budgetFor(digest, deep)` |
 
-Facebook is offered only at the unlock, and Messenger with it; the first upload takes Instagram, up to
-three WhatsApp chats and Google. Instagram fills its two pools with the reader's own words
+Facebook (and Messenger with it) was offered only at the unlock until late October 2026; the first
+upload now takes Instagram, up to three WhatsApp chats, Google and Facebook. Beside Facebook, Instagram
+keeps 40,000 of the free read's 50,000 public pool, and Facebook never less than 10,000. Instagram fills its two pools with the reader's own words
 (`buildFilled`: messages up to the conversations pool, captions up to Instagram's 40,000), and a chat added
 after takes its room back from the Instagram DMs. Measured on a heavy synthetic account: Instagram alone
 114,000 (DMs fill the conversations pool); with three chats and Google 120,000 (chats 34,000, DMs cut

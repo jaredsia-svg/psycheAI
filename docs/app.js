@@ -4113,22 +4113,23 @@
     const scrollBefore = window.scrollY;
     let thinWarned = false;
     for (;;) {
+      let digest = null;
+      {
       let collected;
       try {
         collected = await askDataSources({
           title: TEXT.dataSourcesFirstTitle,
           blurb: TEXT.dataSourcesFirstBlurb,
-          // Instagram, then one WhatsApp chat with a close friend, then
-          // Google, both of those optional. Facebook stays available from the
-          // report page afterwards, which is where somebody who wants it will
-          // already be.
-          sources: ['instagram', 'whatsapp', 'google'],
+          // Instagram, then WhatsApp chats with close friends, Google and
+          // Facebook, all three optional (Facebook since late October 2026:
+          // it was offered only from the report page before).
+          sources: ['instagram', 'whatsapp', 'google', 'facebook'],
           first: true,
           requireInstagram: true,
           sublines: { instagram: TEXT.dataSourcesFirstInstagram },
           // Up to three chats with close connections, and Google, both optional.
           titles: { whatsapp: TEXT.whatsappFirstTitle },
-          tags: { instagram: TEXT.sourceRequired, whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional },
+          tags: { instagram: TEXT.sourceRequired, whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional, facebook: TEXT.sourceOptional },
           // Up to three chats, as on the report page.
           whatsappMax: 3,
         });
@@ -4160,7 +4161,6 @@
           typeof collected.whatsapp === 'object' ? { whatsapp: collected.whatsapp } : null);
       }
 
-      let digest;
       if (state.signals) {
         digest = Digest.build(state.signals, { includeMessages: true });
       } else if (state.digest) {
@@ -4191,10 +4191,13 @@
         thinWarned = true;
         if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
       }
+      }
 
       let decision;
       try {
-        decision = await askReview(digest, { paymentDue: mustPayForAnalysis() });
+        // Free to try: the server decides whether this Instagram account has
+        // had its free card (see runAnalysis's freeUsed branch).
+        decision = await askReview(digest, { paymentDue: false });
       } catch (error) {
         showUploadError((error && error.message) || 'Could not build your evidence summary.');
         return;
@@ -4204,14 +4207,16 @@
       if (decision === REVIEW_BACK) continue;
       if (!decision) { abandonUpload(scrollBefore); return; }
 
-      const auth = await authoriseAnalysis();
-      if (auth === false) { showUploadError(TEXT.analysisDeclined); return; }
-
+      // Every first upload asks for the free card, whatever this browser
+      // has made before (late October 2026): the server knows whether this
+      // Instagram account has had it, and a second account on the same
+      // laptop is still owed one. Refused, the card and report are offered
+      // together over this same reviewed digest (runAnalysis, freeUsed).
       applyReviewDecision(digest, decision);
       state.digest = digest;
       pendingDataSourceReads = {};
       writeDigest(digest);
-      await runAnalysis(digest, auth);
+      await runAnalysis(digest, null);
       return;
     }
   }
@@ -5190,6 +5195,9 @@
   //   REVIEW_BACK  — Back. Reopen the supplement offer, keeping what was added.
   //   null         — Escape, or the dialog closed some other way. Abandon.
   const REVIEW_BACK = 'review:back';
+  // Back on the payment sheet: the step before it (the review) again, rather
+  // than a declined payment.
+  const PAY_BACK = 'pay:back';
 
   // This used to take a `getImages` lazy extractor alongside the digest, and a
   // count, and a "your photos could not be carried over" flag — three
@@ -5463,7 +5471,6 @@
     let digest;
     let decision = null;
     let signals;
-    let uploadAuth = null;
     try {
       // Read everything the export has, unconditionally. The choice of what
       // to send used to gate this step, before the reader had seen any of
@@ -5486,6 +5493,7 @@
       // how a reader adds a source they had skipped, so the thing they are
       // then reviewing has to include it.
       for (;;) {
+        {
         // Skipping resolves an empty object; Back resolves null and abandons
         // the run. Seeded with whatever a previous pass added, so returning
         // here does not throw away an archive already read.
@@ -5507,9 +5515,12 @@
           thinWarned = true;
           if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
         }
+        }
 
-        decision = await askReview(digest, { paymentDue: mustPayForAnalysis() });
-        if (decision !== REVIEW_BACK) break;
+        // Free to try: the server decides (see startFromSources).
+        decision = await askReview(digest, { paymentDue: false });
+        if (decision === REVIEW_BACK) continue;
+        break;
       }
     } catch (error) {
       showUploadError((error && error.message) || 'Could not read that archive.');
@@ -5522,22 +5533,10 @@
       return;
     }
 
-    // Money last, and only once the reader has seen what they are buying.
-    //
-    // Two things had to be true before this line could be reached at all, and
-    // both are reasons it is not one line earlier: the archive has parsed, so
-    // nobody is charged for a file that turns out to be unusable; and the
-    // review has been agreed, so nobody is charged before seeing exactly what
-    // will be sent.
-    //
-    // Nothing is persisted above this point, so declining leaves the browser
-    // exactly as it was.
-    uploadAuth = await authoriseAnalysis();
-    if (uploadAuth === false) {
-      showUploadError(TEXT.analysisDeclined);
-      return;
-    }
-
+    // Every first upload asks for the free card (see startFromSources): the
+    // server knows whether this Instagram account has had it. Money comes
+    // only if it says so, and only once the archive has parsed and the
+    // review is agreed (runAnalysis's freeUsed branch, over this digest).
     applyReviewDecision(digest, decision);
 
     state.digest = digest;
@@ -5551,7 +5550,7 @@
     // session without asking for the Instagram export again.
     state.signals = signals;
     writeDigest(digest);
-    await runAnalysis(digest, uploadAuth);
+    await runAnalysis(digest, null);
   }
 
   // The per-row "Load data" button in the confidence card's sources
@@ -6217,7 +6216,13 @@
       // Kept until the charge has bought something: a reader who cancels the
       // payment sheet and comes back finds Google and Facebook still loaded.
       // Cleared in runPremiumAnalysis once the run succeeds.
-      await openPremiumDialog($('#rerun-with-data'), 'rerunAll', premium || digest);
+      // Back from the payment sheet reviews the same data again, and Back
+      // there goes on to the data popout, as everywhere else.
+      await openPremiumDialog($('#rerun-with-data'), 'rerunAll', premium || digest, {
+        back: async () => {
+          if ((await rerunWithAdditionalData(extraSupplements, freshInstagram)) === REVIEW_BACK) addDataAndRerun();
+        },
+      });
       return;
     }
 
@@ -6305,7 +6310,9 @@
         analysisNote = TEXT.freeUsedBlurb;
         const paid = await authoriseAnalysis();
         analysisNote = '';
-        if (paid) return runAnalysis(digest, paid);
+        // Back has no review to return to here (it was agreed before the
+        // refusal), so it is the same as not paying: the retry offer.
+        if (paid && paid !== PAY_BACK) return runAnalysis(digest, paid);
         offerRetry(error.message);
         return;
       }
@@ -9472,6 +9479,10 @@
   // that shared variable, and reading it again here used to crash the
   // original call once its network response finally arrived.
   let premiumRunInFlight = false;
+  // What Back on the payment sheet returns to, and whether it was pressed
+  // (askPaymentFor resolves PAY_BACK rather than null for it).
+  let premiumBackStep = null;
+  let premiumWentBack = false;
 
   /**
    * Offered when the unlock button is pressed and this reader has only ever
@@ -9550,18 +9561,26 @@
     return written < THIN_WRITING && messages < THIN_MESSAGES && !Digest.carriesSecondSource(d);
   }
 
-  async function collectDataForPremium() {
+  // The data popout's answer behind the latest unlock review, so Back on the
+  // payment sheet can open that review again without asking for it twice.
+  let lastPremiumCollected = null;
+  async function collectDataForPremium(startWith) {
     if (!(await readersReady())) return null;
-    if (!(await offerMoreData())) return null;
+    if (!startWith && !(await offerMoreData())) return null;
+    let given = startWith || null;
     for (;;) {
-      let collected;
-      try {
-        collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb, cardNote: true });
-      } catch (error) {
-        flash('#profile-alert', (error && error.message) || 'Could not read that file.');
-        return null;
+      let collected = given;
+      given = null;
+      if (!collected) {
+        try {
+          collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb, cardNote: true });
+        } catch (error) {
+          flash('#profile-alert', (error && error.message) || 'Could not read that file.');
+          return null;
+        }
       }
       if (!collected) return null;
+      lastPremiumCollected = collected;
       const fresh = key => typeof collected[key] === 'object';
       const anyFresh = ['instagram', 'google', 'facebook', 'whatsapp'].some(fresh);
       if (!anyFresh && !state.digest) {
@@ -9666,6 +9685,10 @@
     if (!base) return null;
     const adding = {};
     for (const [key, value] of Object.entries(extra || {})) if (value) adding[key] = value;
+    // Every read has had the same pools since late October 2026, so with
+    // nothing added the unlock reads exactly what the card was drawn from:
+    // nothing to rebuild, and no lines the reader has not seen.
+    if (!Object.keys(adding).length) return base;
     const rebuilt = signals ? deepDigestFrom(signals, base, adding) : null;
     if (rebuilt) return rebuilt;
     if (!Object.keys(adding).length) return base;
@@ -10137,7 +10160,7 @@
    * the attempt ends — cancelled, failed or unlocked all leave a clean cover
    * behind, in case the reader closes the dialog and tries again.
    */
-  async function openPremiumDialog(button, product, preparedDigest) {
+  async function openPremiumDialog(button, product, preparedDigest, options) {
     // Three products share this dialog now. `kind` is what the server is told
     // and what verifyPaid checks the payment against, so a wrong value here
     // sends a reader's US$5 to the wrong ledger — hence a lookup with an
@@ -10169,14 +10192,20 @@
     // collect sections that were paid for on an earlier visit, so it is
     // neither charged nor asked for anything.
     pendingPremiumDigest = null;
+    premiumWentBack = false;
+    premiumBackStep = (options && options.back) || null;
     if (preparedDigest) {
       pendingPremiumDigest = preparedDigest;
     } else if (kind === 'unlock' && !bundle && !unlockReceipt()) {
-      const collected = await collectDataForPremium();
+      const collected = await collectDataForPremium(options && options.collected);
       // Back at the supplement offer abandons the unlock. Nothing has been
       // charged and no dialog has been opened, so this simply returns.
       if (!collected) return;
       pendingPremiumDigest = collected;
+      // Back from the payment sheet: the review again, over the sources
+      // already loaded, with nothing read twice.
+      const again = lastPremiumCollected;
+      premiumBackStep = () => openPremiumDialog(button, product, undefined, { collected: again });
     }
     if (kind === 'unlock') trackStep('unlock_open');
     $('#premium-dialog-title').textContent =
@@ -10367,7 +10396,7 @@
       };
       dialog.addEventListener('close', () => {
         onPaymentAuthorised = runPremiumAnalysis;
-        if (!settled) resolve(null);
+        if (!settled) resolve(premiumWentBack && product === 'bundle' ? PAY_BACK : null);
       }, { once: true });
       openPremiumDialog(button, product);
     });
@@ -10388,6 +10417,7 @@
     // server.js). `bundle` marks it, so runAnalysis, a resumed job and a
     // pending-purchase record all know a full report is coming.
     const paid = await askBundlePayment();
+    if (paid === PAY_BACK) return PAY_BACK;
     const auth = paid ? Object.assign({}, paid, { bundle: true }) : null;
     // Deliberately says nothing itself. The two callers are on different
     // screens — the upload page and the report — and each has its own place
@@ -10497,7 +10527,17 @@
   // (see premiumRunInFlight's declaration) — refusing the close in the first
   // place removes that trigger entirely, rather than only guarding against it
   // once payment has cleared.
-  $('#premium-cancel').addEventListener('click', () => $('#premium-dialog').close());
+  // Back, not Cancel: the sheet is the last step of a flow, so it returns to
+  // the one before it (premiumBackStep, set by whoever opened the sheet: the
+  // review, for an unlock, a re-run or a first upload past the free card).
+  // With no step to return to it simply closes.
+  $('#premium-cancel').addEventListener('click', () => {
+    const step = premiumBackStep;
+    premiumBackStep = null;
+    premiumWentBack = true;
+    $('#premium-dialog').close();
+    if (step) setTimeout(() => step(), 0);
+  });
   // Deliberately no backdrop-click-to-close listener at all — the dialog's own
   // clicks are otherwise left alone rather than closing it.
   $('#premium-dialog').addEventListener('cancel', event => {

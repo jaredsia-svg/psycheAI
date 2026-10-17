@@ -3915,6 +3915,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .datasources-dialog .mode-options::-webkit-scrollbar-track { background: transparent; }
 .datasources-dialog .mode-option { padding: .55rem .75rem; gap: .65rem; align-items: center; border-radius: 10px; }
 .datasources-dialog .mode-option strong { font-size: .95rem; margin-bottom: 0; }
+/* The tag sits beside the title ("Google Takeout (Optional)"), so each source
+   is two lines at most: the name, then what to load. */
+.datasources-dialog .mode-option strong .mode-title { display: inline; }
+.datasources-dialog .mode-option .mode-tag:empty { display: none; }
 .datasources-dialog .mode-body { line-height: 1.3; }
 .datasources-dialog .mode-option .muted { display: block; font-size: .8rem; line-height: 1.3; margin-top: .1rem; }
 .datasources-dialog .mode-icon { font-size: 1.2rem; }
@@ -4596,11 +4600,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   .report-promo-cta::before { content: '✨ '; }
 }
 
-/* A first upload: Instagram is the one source required, so it stands out. */
-.datasources-dialog.is-first-upload .mode-option[data-datasource="instagram"] {
+/* Instagram is the one source required, so it stands out, on a first upload
+   and on the report page's popouts alike. */
+.datasources-dialog .mode-option[data-datasource="instagram"] {
   border: 2px solid var(--accent); background: var(--accent-soft);
 }
-.datasources-dialog.is-first-upload .mode-option[data-datasource="instagram"] .mode-tag-required {
+.datasources-dialog .mode-option[data-datasource="instagram"] .mode-tag-required {
   display: inline-block; margin-left: .25rem; padding: .05rem .5rem; border-radius: 999px;
   background: var(--accent); color: #fff; font-size: .72rem; font-weight: 650; vertical-align: middle;
 }

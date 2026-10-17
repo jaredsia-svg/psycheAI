@@ -603,7 +603,7 @@ async function handleAnalyse(request, response) {
   // the number of keys in the few objects it copies whole. An honest digest
   // never gets here; Digest.build lands every real export under the line.
   // Counted as the model reads it, the same measure the trim loop uses.
-  // 136,000, or the premium read's 179,000 (Digest.budgetFor).
+  // 179,000 for every read (Digest.budgetFor).
   if (Digest.evidenceChars(sent) > Digest.budgetFor(sent, deep)) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
@@ -782,10 +782,14 @@ async function handleAnalyse(request, response) {
       // A card and its report bought together (no card to anchor to): the
       // card's question comes with it too.
       if (full && !body.anchor) await askCredits.gift(body.myRef, 'card').catch(() => {});
-      // The free card's account, and the friend who invited them.
-      if (made === 'card') {
+      // The free card's account, and the friend who invited them. A card and
+      // its report bought together (no card to anchor to: a new device, or
+      // after Delete everything) is that link's card too, so its owner is
+      // recorded the same way: without it, friends' cards from the new link
+      // were never credited ("the referrer has to have made a card").
+      if (made === 'card' || (full && !body.anchor)) {
         referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
-          guessed: Boolean(body.guess) })
+          guessed: made === 'card' ? Boolean(body.guess) : false })
           .then(outcome => {
             if (outcome && outcome.credited) {
               stats.count('referral_friend');

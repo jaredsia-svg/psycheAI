@@ -644,9 +644,8 @@
     deepReviewNote: 'This is what the Psyche Report is written from: everything your card was read from, with the data you just added on top.',
     // The premium read rebuilt from the export still open in the tab: the
     // same sources, more of each.
-    deepRebuiltNote: 'This is what the Psyche Report is written from: the data your card was read from, read in more depth, with anything you just added.',
-    premiumSourcesBlurb: 'Add a source or replace one with newer data – more data, a fuller report. ' +
-      'Or carry on with what is loaded.',
+    deepRebuiltNote: 'This is what the Psyche Report is written from: the data your card was read from, with anything you just added.',
+    premiumSourcesBlurb: 'More data, a fuller report: add or replace a source, or carry on. You review what is sent first.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
     // The free card's unlock offer leads with sharing: one connection opening
     // the reader's link unlocks their first Psyche Report free
@@ -756,7 +755,7 @@
     // plainly that the second one is not another charge, because a second
     // progress bar after a payment otherwise reads like one.
     premiumRefreshingFree: 'Writing your Psyche Report from the new data – this takes a few minutes. Your card is redrawn with it at no extra charge…',
-    premiumCancel: 'Cancel',
+    premiumCancel: 'Back',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',
     // The account's free card is spent (one per Instagram account): said on
@@ -865,7 +864,7 @@
     // The WhatsApp row: up to three chats, each exported on its own.
     // `max` is 3 from the report page, 1 on a first upload.
     whatsappRowEmpty: (max = 3) => max === 1 ? 'One chat from WhatsApp (.zip or .txt)'
-      : 'Up to ' + max + ' chats with close connections (.zip or .txt)',
+      : 'Up to ' + max + ' close-friend chats (.zip or .txt)',
     whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded – tap to load a different one'
       : n + ' of ' + max + ' chats loaded – tap to ' + (n >= max ? 'start over' : 'add another'),
     // The first upload's WhatsApp row and the tag on its two optional rows.
@@ -906,8 +905,7 @@
     // stays clickable, so a reader can replace any one of them, Instagram
     // included, without starting the whole report over.
     dataSourcesTitle: 'Add or change your data',
-    dataSourcesBlurb: 'Add a source or replace one with newer data. Nothing is sent until you ' +
-      'review it on the next screen.',
+    dataSourcesBlurb: 'Add or replace a source. Before anything is sent, you review exactly what it contains and can untick anything.',
     // The same popout opened from the welcome page, where there is nothing to
     // change yet — "Add or change" describes a report that does not exist and
     // offers to replace data nobody has loaded.
@@ -923,8 +921,7 @@
     // was spending the reader's first line of attention on the one part of
     // this screen that needs no explaining. What is left is the part they
     // could not have guessed.
-    dataSourcesFirstBlurb: 'Before any data is sent for analysis, you will be able to review ' +
-      'exactly what it contains and untick anything you are not comfortable sharing.',
+    dataSourcesFirstBlurb: 'Before anything is sent, you review exactly what it contains and can untick anything.',
     // The Instagram row's own line on that same popout. The markup's version
     // ends "to replace it", which is right on the report page and describes
     // replacing something that does not exist yet here.

@@ -98,11 +98,12 @@
     messageMaxChars: 483,
     // No one conversation's lines may run past this many characters, however
     // much room its pool has left: one relationship never outweighs the rest
-    // of the evidence. 12,000 for any conversation — an Instagram DM thread,
-    // a Messenger conversation, a WhatsApp chat — and 15,000 in the premium
-    // read (DEEP_LIMITS). About fifty lines with their context.
-    messageThreadChars: 12000,
-    igThreadChars: 12000,
+    // of the evidence. 15,000 for any conversation — an Instagram DM thread,
+    // a Messenger conversation, a WhatsApp chat — in every read since late
+    // October 2026 (12,000 in the free read before). About sixty lines with
+    // their context.
+    messageThreadChars: 15000,
+    igThreadChars: 15000,
     // Past this a message is not used at all: an 800-character message is
     // almost always pasted or forwarded — an article, an announcement, a
     // chain message — not something the reader wrote. One carrying a link is
@@ -244,12 +245,12 @@
     // The reader's own messages from up to three WhatsApp chats, sampled per
     // chat like any other conversation and tagged [c1]–[c3]. Each chat is
     // guaranteed a quarter of the places when it has that many.
-    waMessages: 300,
-    // No one WhatsApp chat's lines may run past this many characters (15,000
-    // in the premium read): about fifty lines with their context. Three of
+    waMessages: 450,
+    // No one WhatsApp chat's lines may run past this many characters: about
+    // sixty lines with their context. Three of
     // them at their ceiling are half of the conversations pool, so no one
     // chat sets the tone of the report. See POOLS.
-    waThreadChars: 12000,
+    waThreadChars: 15000,
     waMinShare: 0.25,
     // And at most two fifths of them, as a hard ceiling: when two or three
     // chats are loaded, places a chat cannot use are left empty rather than
@@ -513,7 +514,7 @@
   // $0.161 since the digest became three pools at 126,000 — see the worked
   // figures under "what each call can cost, at most". $0.163 with the public
   // pool at 50,000 (136,000).
-  const COST_CAP = 0.163;
+  const COST_CAP = 0.172;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They
@@ -569,12 +570,15 @@
   // Inside a pool the order is the point. Conversations: WhatsApp chats go in
   // first (a chat the reader chose to export is a close connection), and
   // Instagram DMs and Messenger share what is left, the larger trimmed first.
-  // Public: Instagram fills first, up to 50,000 in both reads, and Facebook —
-  // offered only at the unlock — takes the room left in the pool, never less
-  // than 10,000 when both are there. Room a pool does not use is not handed
+  // Public: Instagram fills first, up to 50,000 in both reads, and Facebook
+  // takes the room left in the pool, never less than 10,000 when both are
+  // there (so Instagram keeps 40,000 of the free read's 50,000 beside it). Room a pool does not use is not handed
   // to another, so a thin Google never grows the messages and a heavy inbox
   // never crowds out the captions.
-  const POOL_CAPS = { public: 50000, conversations: 72000, searches: 8000 };
+  // One set of pools for every read since late October 2026: the free card,
+  // the report and the unlock all read the same 179,000, so the report
+  // explains its card from exactly the evidence the card was drawn from.
+  const POOL_CAPS = { public: 70000, conversations: 95000, searches: 8000 };
   const DEEP_POOL_CAPS = { public: 70000, conversations: 95000, searches: 8000 };
   // Instagram's own share of the public pool, in both reads: the premium
   // read's larger public pool is room for Facebook, not for more captions.
@@ -592,33 +596,20 @@
   const DIGEST_CHARS = poolTotal(POOL_CAPS);
   const DEEP_DIGEST_CHARS = poolTotal(DEEP_POOL_CAPS);
 
-  // ---------- two free tiers ----------
+  // ---------- one line for every read ----------
   //
-  // The free read's pools above are for a reader who loaded a second source
-  // at the first upload — a WhatsApp chat or Google — and who has shown more
-  // interest by doing so. A reader who loaded Instagram alone gets smaller
-  // conversations and no searches, but the same public pool:
-  //
-  //                   Instagram only   Instagram + another source
-  //   public              50,000         50,000
-  //   conversations       46,000         72,000
-  //   searches                 —          8,000
-  //   fixed                4,000          6,000   (Instagram alone measures 2,600)
-  //
-  //   most               100,000        136,000
-  //
-  // 46,000 because a full real account came to about 42,500 of DMs. The
-  // public pool was 32,000 here (about 30,000 measured) until late October
-  // 2026, when it became 50,000 in both tiers: a heavy account's captions
-  // were the list the cap bound hardest, and the room costs under half a
-  // cent a call. The tier is read off the digest itself
-  // (carriesSecondSource): a source unticked at the review does not count,
-  // and the server's size check reads it the same way. Facebook is offered
-  // only at the unlock, so it never decides the free tier. The premium read
-  // has its own pools for every reader (DEEP_POOL_CAPS).
-  const SOLO_POOL_CAPS = { public: 50000, conversations: 46000, searches: 0 };
-  const SOLO_FIXED_CHARS = 4000;
-  const SOLO_DIGEST_CHARS = SOLO_POOL_CAPS.public + SOLO_POOL_CAPS.conversations + SOLO_FIXED_CHARS;
+  // Until late October 2026 there were three lines: 100,000 for Instagram
+  // alone, 136,000 with a second source, and 179,000 for the premium read.
+  // Now every read, free or paid, Instagram alone or not, is held to the
+  // premium read's pools (public 70,000 with Instagram's own share 50,000,
+  // conversations 95,000 at 15,000 a conversation, searches 8,000). The card
+  // and its report read the same evidence, so an unlock with nothing added
+  // sends exactly what the card was drawn from. The worst-case free card rose
+  // from 6.8 or 7.6 cents to 8.5 (FREE_COST_CAP); only a heavy account fills it.
+  // carriesSecondSource stays, for the thin-data note.
+  const SOLO_POOL_CAPS = POOL_CAPS;
+  const SOLO_FIXED_CHARS = FIXED_CHARS;
+  const SOLO_DIGEST_CHARS = poolTotal(POOL_CAPS);
   /** Whether a digest carries a source beside Instagram, with something of it still in. */
   function carriesSecondSource(digest) {
     const d = digest && typeof digest === 'object' ? digest : {};
@@ -634,7 +625,7 @@
     const caps = LIMITS.poolCaps || POOL_CAPS;
     // The premium read's, or a test's own.
     if (caps !== POOL_CAPS) return caps;
-    return LIMITS.poolTier === 'sources' || carriesSecondSource(digest) ? POOL_CAPS : SOLO_POOL_CAPS;
+    return POOL_CAPS;
   }
   LIMITS.totalChars = DIGEST_CHARS;
   LIMITS.poolCaps = POOL_CAPS;
@@ -645,7 +636,7 @@
   // runs conversation by conversation that dropped the last three of a real
   // reader's ten and left 14,000 of the conversations pool empty. Filling
   // never asks for more than this (buildFilled).
-  LIMITS.maxListItems = 1000;
+  LIMITS.maxListItems = 1500;
 
   // Which evidence list belongs to which pool, and to which source. Every
   // list in EVIDENCE_LISTS is in exactly one pool (a check in
@@ -825,12 +816,10 @@
   // merged into the room its pool has left; with nothing added, exactly the
   // digest the card was drawn from. (Its names still say "deep", from when it
   // was an option called Deeper read.)
-  /** The line a digest is held to: 100,000 for Instagram alone, 136,000 with another source, 179,000 for the premium read. */
+  /** The line a digest is held to: 179,000 for every read (or a test's own). */
   function budgetFor(digest, deep) {
     if (deep) return DEEP_DIGEST_CHARS;
-    const line = LIMITS.totalChars || DIGEST_CHARS;
-    if (line !== DIGEST_CHARS) return line;
-    return poolCapsFor(digest) === SOLO_POOL_CAPS ? SOLO_DIGEST_CHARS : DIGEST_CHARS;
+    return LIMITS.totalChars || DIGEST_CHARS;
   }
   const DEEP_LIMITS = {
     totalChars: DEEP_DIGEST_CHARS, poolCaps: DEEP_POOL_CAPS, maxListItems: 1500,
@@ -950,7 +939,8 @@
   // prompt tokens and about 550 more output inside the same 10,000.
   // $0.075 with the public pool at 50,000 (late October 2026); $0.076 once
   // the card's prompt said who the captions were written for (11,300).
-  const FREE_COST_CAP = 0.076;
+  // $0.085 with one 179,000 line for every read (late October 2026).
+  const FREE_COST_CAP = 0.085;
   // Instagram alone, at its 100,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
@@ -962,8 +952,8 @@
   //                 at most $0.1550                    → SOLO_COST_CAP $0.156
   //
   // $0.064 and $0.152 at 82,000, while Instagram alone's public pool was 32,000.
-  const SOLO_FREE_COST_CAP = 0.068;
-  const SOLO_COST_CAP = 0.156;
+  const SOLO_FREE_COST_CAP = FREE_COST_CAP;
+  const SOLO_COST_CAP = COST_CAP;
   const FREE_MAX_OUTPUT_TOKENS = 10000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
   // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 6,117

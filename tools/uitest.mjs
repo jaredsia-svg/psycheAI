@@ -50,6 +50,19 @@ async function closeMethod(page) {
   if (await page.evaluate(() => document.querySelector('#hub-method-dialog').open)) await page.click('#hub-method-dialog .hub-dialog-close');
 }
 
+// Leaving the payment sheet: Back returns to the review before it (for an
+// unlock, a re-run or a paid first upload), and Escape there abandons the
+// attempt, as Cancel used to in one press.
+async function leavePayment(page) {
+  await page.click('#premium-cancel');
+  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, null, { timeout: 15000 });
+  await page.waitForSelector('#review-dialog[open]', { timeout: 1500 }).catch(() => {});
+  if (await page.locator('#review-dialog[open]').count()) {
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#review-dialog').open, null, { timeout: 15000 });
+  }
+}
+
 async function clickClear(page, selector) {
   await page.locator(selector).scrollIntoViewIfNeeded();
   await page.evaluate(sel => {
@@ -479,7 +492,7 @@ try {
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
   const askBlurb = await page.locator('#datasources-dialog-blurb').innerText();
   check('the popout explains that a review comes before anything is sent',
-    /review/i.test(askBlurb) && /before any data is sent/i.test(askBlurb) &&
+    /review/i.test(askBlurb) && /before anything is sent/i.test(askBlurb) &&
     /untick/i.test(askBlurb), askBlurb);
   check('and it is titled for a reader who has nothing to change yet',
     (await page.locator('#datasources-dialog-title').innerText()) === 'Add your data',
@@ -498,11 +511,19 @@ try {
     (await rowLabel('instagram')) === 'Instagram Required' &&
       await page.evaluate(() => getComputedStyle(document.querySelector('#datasources-dialog [data-datasource="instagram"]')).borderTopWidth === '2px'),
     await rowLabel('instagram'));
-  check('and the WhatsApp and Google rows say they are optional, WhatsApp\'s line naming close connections',
+  check('and the WhatsApp, Google and Facebook rows say they are optional, WhatsApp\'s line naming close friends',
     (await rowLabel('whatsapp')) === 'WhatsApp chats (Optional)' &&
-      (await rowLabel('google')) === 'Google Takeout (Optional)' &&
-      /Up to 3 chats with close connections \(\.zip or \.txt\)/.test(await page.locator('#datasources-dialog [data-datasource="whatsapp"]').innerText()),
-    await rowLabel('whatsapp') + ' / ' + await rowLabel('google'));
+      (await rowLabel('google')) === 'Google Takeout (Optional)' && (await rowLabel('facebook')) === 'Facebook (Optional)' &&
+      /Up to 3 close-friend chats \(\.zip or \.txt\)/.test(await page.locator('#datasources-dialog [data-datasource="whatsapp"]').innerText()),
+    await rowLabel('whatsapp') + ' / ' + await rowLabel('google') + ' / ' + await rowLabel('facebook'));
+  // Each source two lines at most: the tag beside the name, then what to load.
+  check('each source is two lines at most, the tag beside its name',
+    await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')].every(row => {
+      const name = row.querySelector('strong').getBoundingClientRect();
+      const line = row.querySelector('.mode-body > .muted').getBoundingClientRect();
+      const lh = parseFloat(getComputedStyle(row.querySelector('strong')).lineHeight) || 20;
+      return name.height < lh * 1.6 && line.height < lh * 1.6;
+    })));
   check('the qualifier is set back from the name rather than reading as part of it',
     await page.evaluate(() => {
       const row = document.querySelector('#datasources-dialog [data-datasource="instagram"]');
@@ -520,11 +541,12 @@ try {
   check('the blurb does not spend its first line instructing the obvious',
     !/^load your data below/i.test(askBlurb), askBlurb);
 
-  check('the first-run popout offers Instagram, WhatsApp and Google, not Facebook',
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 3 &&
-    (await page.locator('#datasources-dialog [data-datasource="facebook"]').isVisible()) === false);
-  check('and its download instructions leave Facebook out to match',
-    (await page.locator('#datasources-dialog [data-help="facebook"]').isVisible()) === false);
+  check('the first-run popout offers Instagram, WhatsApp, Google and Facebook',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4 &&
+    (await page.locator('#datasources-dialog [data-datasource="facebook"]').isVisible()) === true);
+  check('and its download instructions include Facebook to match',
+    (await page.locator('#datasources-dialog [data-help="facebook"]').count()) === 1 &&
+      await page.evaluate(() => !document.querySelector('#datasources-dialog [data-help="facebook"]').hidden));
   check('the instructions offer the illustrated walkthrough at their foot',
     await page.locator('#datasources-guide-open').count() === 1);
   await page.click('#datasources-back');
@@ -1091,11 +1113,11 @@ try {
         help: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]:not([hidden]) h3')].map(h => h.textContent),
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
-      check('a new reader is offered Instagram (Required), WhatsApp chats (Optional), then Google Takeout (Optional)',
+      check('a new reader is offered Instagram (Required), WhatsApp chats, Google Takeout and Facebook (each Optional)',
         JSON.stringify(shown.rows) === JSON.stringify(['Instagram Required', 'WhatsApp chats (Optional)',
-          'Google Takeout (Optional)']), JSON.stringify(shown.rows));
+          'Google Takeout (Optional)', 'Facebook (Optional)']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
-        JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout']) &&
+        JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
         JSON.stringify(shown.help));
       const [igPick] = await Promise.all([
@@ -8735,10 +8757,10 @@ try {
   // the report page still offers all four from this same dialog — and
   // `display: flex` beats `[hidden]` unless a rule says otherwise, which is
   // precisely how a "hidden" row stays on screen.
-  check('it offers Instagram, WhatsApp and Google, and not Facebook',
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 3 &&
+  check('it offers Instagram, WhatsApp, Google and Facebook',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4 &&
     await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible() &&
-    !(await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()),
+    await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible(),
     (await page.locator('#datasources-dialog .mode-option:visible').count()) + ' rows shown');
   // The row's own line, for the same reason as the title.
   const igLine = '#datasources-dialog .mode-option[data-datasource="instagram"] .mode-body > .muted';
@@ -8798,7 +8820,7 @@ try {
       '#datasources-dialog .mode-option[data-datasource="instagram"]').className));
   check('and it is still the first-upload popout, not the report page\'s wording',
     (await page.locator('#datasources-dialog-title').innerText()).trim() === 'Add your data' &&
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 3,
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4,
     await page.locator('#datasources-dialog-title').innerText());
 
   await page.keyboard.press('Escape');
@@ -9557,7 +9579,13 @@ try {
     await page.locator('#review-dialog').isVisible());
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  check('the payment sheet says Back, not Cancel', (await page.locator('#premium-cancel').innerText()).trim() === 'Back');
   await page.click('#premium-cancel');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  check('and Back returns to the review it came from, not to the report',
+    await page.evaluate(() => document.querySelector('#review-dialog').open && !document.querySelector('#premium-dialog').open));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#review-dialog').open, null, { timeout: 15000 });
   await page.waitForTimeout(300);
 
   // Loading Google for real, all the way through to a paid re-run: the
@@ -9655,7 +9683,7 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  await page.click('#premium-cancel');
+  await leavePayment(page);
   await page.waitForTimeout(300);
   check('declining the re-run leaves the report and its digest exactly as they were',
     (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeDecline0 &&
@@ -10306,7 +10334,7 @@ try {
     (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Card and Report',
     await page.locator('#premium-dialog-title').innerText());
   const beforeDecline = analyseBodies.length;
-  await page.click('#premium-cancel');
+  await leavePayment(page);
   await page.waitForTimeout(400);
   check('declining costs nothing and leaves the existing report alone',
     analyseBodies.length === beforeDecline &&
@@ -10358,24 +10386,22 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
   check('and reviews it before asking for anything',
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  // A different summary of the same account: the exact same one is simply
+  // the card already made, answered from the result cache at no cost.
+  await page.uncheck('#review-topics');
   await page.click('#review-send');
-
-  await page.waitForSelector('#premium-dialog[open]', { timeout: 25000 });
-  check('so deleting and re-uploading is charged too, rather than being a free reset, and only with the report',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Your Psyche Card and Psyche Report');
-  check('and nothing was sent to the model while that sheet was up',
-    analyseBodies.length === beforeReupload);
-
-  // Paying goes through, and the payment reaches the server with the request.
-  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
-  await page.click('#premium-mock-pay');
+  // Every first upload asks for the free card, whatever this browser made
+  // before: the server decides (a second Instagram account on the same
+  // laptop is still owed one). This server has the once-per-account rule
+  // off, so the card is free; with it on, the server refuses and the card
+  // and report are offered together over the same data (the invite-friends
+  // flow below checks that).
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
-  await openAllSections(page);
-  const paidBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-  check('paying runs the analysis, with the payment attached for the server to verify, as the unlock',
-    typeof paidBody.paymentIntentId === 'string' && paidBody.paymentIntentId.length > 0 && paidBody.product === 'unlock' && !paidBody.anchor,
-    JSON.stringify(paidBody.paymentIntentId));
-  check('and the run count climbs, so the one after this is charged as well',
+  check('after Delete everything a re-upload asks the server for a free card rather than charging first',
+    analyseBodies.length === beforeReupload + 1 && !JSON.parse(analyseBodies[beforeReupload]).paymentIntentId &&
+      JSON.parse(analyseBodies[beforeReupload]).product !== 'unlock' &&
+      !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  check('and the run count still climbs',
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '2');
 
   // Reset to an ordinary upload again — same reasoning as the reset above
@@ -11490,7 +11516,7 @@ try {
       await dp.waitForSelector('#review-dialog[open]', { timeout: 30000 });
       await dp.click('#review-send');
       await dp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-      await dp.click('#premium-cancel');
+      await leavePayment(dp);
       await dp.waitForFunction(() => !document.querySelector('#premium-dialog').open, null, { timeout: 15000 });
       await dp.locator('.premium-unlock').first().click();
       await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
@@ -13170,7 +13196,7 @@ try {
       check('structured: with nothing changed it goes to the US$5 unlock — never the US$2 re-run — and asks no consent',
         !/Psyche Card again/i.test(await sp.locator('#premium-dialog-title').innerText()) &&
         (await sp.locator('#premium-dialog input[type="checkbox"]').count()) === 0);
-      await sp.click('#premium-cancel');
+      await leavePayment(sp);
       await sp.waitForTimeout(400);
       check('structured: and Cancel leaves the report as it was',
         await sp.evaluate(() => !document.querySelector('#supplement-dialog').open && !document.querySelector('#premium-dialog').open));
@@ -14052,7 +14078,7 @@ try {
           (await rp.locator('#premium-dialog-title').innerText()) === 'Your Psyche Card and Psyche Report' &&
           !/Run your Psyche Card again/.test(await rp.locator('#premium-dialog').innerText()),
         await rp.locator('#premium-dialog').innerText());
-      await rp.click('#premium-cancel');
+      await leavePayment(rp);
       await rp.waitForTimeout(300);
 
       // Three friends, each a different account on a phone of their own
