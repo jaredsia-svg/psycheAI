@@ -2576,12 +2576,17 @@
     });
   }
 
+  // The card intro's three buttons: the report (My Report once unlocked, the
+  // unlock offer before), the Sync list, and the hub below.
   document.addEventListener('click', event => {
-    const link = event.target.closest('.cx-hub-link');
+    const link = event.target.closest('.cx-go');
     if (!link) return;
     event.preventDefault();
-    const hub = document.querySelector('#profile-body .hub-card');
-    if (hub) hub.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    const where = link.dataset.cxGo;
+    if (where === 'sync') { go('scan'); return; }
+    if (where === 'report' && fullReportPage()) { go('full'); return; }
+    const target = document.querySelector(where === 'report' ? '#view-profile .full-report-locked' : '#profile-body .hub-card');
+    if (target) target.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
 
   // Save a backup and AI Personal Context explain themselves first: nothing
@@ -4348,6 +4353,15 @@
       button.title = label;
     };
     const still = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // A reader saving data, or on a 2G connection, is not sent 4MB of video
+    // unasked: the poster and its play button stay, and play works as ever.
+    const sparing = () => {
+      const net = navigator.connection;
+      return Boolean(net && (net.saveData || /(^|-)2g$/.test(String(net.effectiveType || ''))));
+    };
+    // Playing on its own waits until the page has loaded and settled, so the
+    // video never competes with what the reader came to see first.
+    let settled = false;
     const clock = seconds => {
       const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
       return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
@@ -4459,14 +4473,21 @@
       video.currentTime = 0;
       silent();
     });
+    const autoplay = () => {
+      if (settled && onScreen && video.muted && !still() && !sparing() && !heldByReader) go();
+    };
     if ('IntersectionObserver' in window) {
+      // Mostly on screen (half of it), not just its edge.
       new IntersectionObserver(entries => {
         onScreen = entries[entries.length - 1].isIntersecting;
         if (fullElement() === frame || expanded()) return;
         if (!onScreen) video.pause();
-        else if (video.muted && !still() && !heldByReader) go();
-      }, { threshold: 0.4 }).observe(video);
+        else autoplay();
+      }, { threshold: 0.5 }).observe(video);
     }
+    const settle = () => setTimeout(() => { settled = true; autoplay(); }, 1500);
+    if (document.readyState === 'complete') settle();
+    else window.addEventListener('load', settle, { once: true });
     paint();
     tick();
   }
@@ -8123,8 +8144,12 @@
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
         // "Psyche Hub below" is a link down to the hub.
+        // Then where to go next, as small buttons in the sentence: the report
+        // (or its unlock), the Sync list, and the hub below.
         '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree)
-          .replace(esc(G.home.hubLink), '<a href="#hub-title" class="cx-hub-link">' + esc(G.home.hubLink) + '</a>') + '</p>' +
+          .replace(/\{(report|sync|hub)\}/g, (match, key) => '<a href="#" class="cx-go' + (key === 'hub' ? ' cx-hub-link' : '') +
+            '" data-cx-go="' + key + '">' + hubIcon(key === 'report' ? (paid ? 'open' : 'lock') : key === 'sync' ? 'sync' : 'grid') +
+            '<span>' + esc(G.home.introLinks[key]) + '</span></a>') + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
           '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
       '</div>' +

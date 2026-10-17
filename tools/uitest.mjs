@@ -11837,7 +11837,7 @@ try {
           hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'See list,Share' && hubTiles.ask === 'Ask' &&
           hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
           hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
-          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Save Profile' &&
+          hubTiles.ring === String(sampleReport.confidence.score) && hubTiles.keepLabel === 'Save Your Profile' &&
           hubTiles.keep === 'backup,ai,delete', JSON.stringify(hubTiles));
       check('each tile\'s and row\'s name is its tooltip (no "i", no icon)',
         hubTiles.tips === 4 && hubTiles.rowTips === 3 && hubTiles.info, JSON.stringify(hubTiles));
@@ -12786,7 +12786,9 @@ try {
         }));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
-        /See your Psyche Report for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
+        /Go deeper in your Psyche Report, compare with friends in Psyche Sync, and track your progress in Psyche Hub\./.test(paidIntro) &&
+          !/Unlock/.test(paidIntro) && await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-home-intro .cx-go')].map(n => n.dataset.cxGo).join() === 'report,sync,hub'),
+        paidIntro);
       check('and Copy link is one of the card\'s tools there, with no sync on My Psyche',
         await sp.evaluate(() => Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="copy"]')) &&
           !document.querySelector('#profile-side .cx-tool[data-act="compat"]')));
@@ -13111,8 +13113,8 @@ try {
       check('structured: the unlock offer promises no secret bonus and names no roast',
         offerParts.secret === 0 && !/secret bonus|roast/i.test(offerParts.lockedText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the Psyche Report, with an en dash, not an em dash',
-        /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
-          /Unlock the Psyche Report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
+        /Your personality on one card, read from your own data\./.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
+          /Unlock your Psyche Report for the reasoning behind it, compare with friends in Psyche Sync, and track your progress in Psyche Hub\./.test(offerParts.intro),
         offerParts.intro);
       const shareFirst = await sp.evaluate(() => {
         const panel = document.querySelector('#profile-body .full-report-locked');

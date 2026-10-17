@@ -1305,7 +1305,7 @@
       signalOf: score => 'Signal strength: ' + score + ' out of 100',
       sourceLoaded: name => name + ', loaded',
       sourceAdd: name => 'Add ' + name,
-      keep: 'Save Profile',
+      keep: 'Save Your Profile',
       backup: 'Save Backup',
       neverSaved: 'never saved',
       savedAgo: when => 'saved ' + when,
@@ -1382,11 +1382,12 @@
       // What the panel says before any part of the card is pointed at.
       home: {
         title: 'Your Psyche Card',
-        intro: 'Your personality on a single card – who you are most like, what drives you and how you connect, read from your own data.',
-        // After the intro: where the reasoning behind the card is, free and paid.
-        introFree: 'Unlock the Psyche Report to read the full analysis and reasoning behind your Psyche Card. Track your progress at Psyche Hub below.',
-        introPaid: 'See your Psyche Report for the full analysis and reasoning behind your Psyche Card. Track your progress at Psyche Hub below.',
-        hubLink: 'Psyche Hub below',
+        intro: 'Your personality on one card, read from your own data.',
+        // After the intro: where to go next, free and paid. {report}, {sync}
+        // and {hub} become small buttons in the sentence (the names below).
+        introFree: 'Unlock your {report} for the reasoning behind it, compare with friends in {sync}, and track your progress in {hub}.',
+        introPaid: 'Go deeper in your {report}, compare with friends in {sync}, and track your progress in {hub}.',
+        introLinks: { report: 'Psyche Report', sync: 'Psyche Sync', hub: 'Psyche Hub' },
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
       },

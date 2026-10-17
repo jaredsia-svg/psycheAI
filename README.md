@@ -4790,6 +4790,29 @@ Both calls use **structured outputs**, so the response is guaranteed to match th
 renders it without defensive parsing. Both stream, because thinking tokens and a long report share
 one output budget.
 
+### The front page's video plays only once the page has settled
+
+Measured on a simulated 4G connection (9 Mbps, 60ms) with the cache cleared, the front page shows content
+in about 0.4s and finishes loading in about 1.2s, at about 600KB. The upload readers and the PDF maker were
+already loaded on demand (`<template>` blocks, `loadReaders`, `loadPdf`). The video (54s, 720×1280,
+about 0.58 Mbit/s, 4MB) streams as it plays. It now plays on its own only once the page has loaded and
+1.5s have passed, only when half of it is on screen (the threshold was 40%), and never for a reader with
+Data Saver on or on a 2G connection (`navigator.connection`). The poster and the play button stay for them.
+A slow first visit is more likely the host than the page: Render's free instances sleep after about 15
+idle minutes and take 30–60s to wake, and a region far from the readers adds a round trip per request.
+
+### The card intro's next steps, as buttons in the sentence
+
+The Psyche Card's intro is one line, then where to go next: *"Your personality on one card, read from
+your own data. Go deeper in your [Psyche Report], compare with friends in [Psyche Sync], and track your
+progress in [Psyche Hub]."* Before an unlock it reads *"Unlock your [Psyche Report] for the reasoning
+behind it, …"* and the report button carries the lock icon. Each name is a small rounded button
+(`.cx-go`) with the hub's own icon. Report opens My Report once unlocked, and the unlock offer before.
+Sync goes to the Sync page. Hub scrolls down to the hub. Plain links were tried and rejected: three
+underlines read as clutter, and the names broke across lines in the narrow column beside the card.
+Rows with a line each read clearly but cost about 180px. In the hub, Ask beside History is a "?" a
+quarter of the row wide on both widths, and the last row is *Save Your Profile*.
+
 ### Ask PsycheAI's box and minimising; a larger laptop hub
 
 The question box empties as a question is sent. The question shows in the thread while the answer is
