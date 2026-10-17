@@ -2509,7 +2509,7 @@ try {
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
-        'Your personal AI coach that already knows you, built from your Instagram data';
+        'Your personal AI coach that already knows you, built from your Instagram data.';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()

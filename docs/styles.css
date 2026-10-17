@@ -5094,6 +5094,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-lockmark .hub-svg { width: 18px; height: 18px; stroke-width: 2.2; }
 /* "Psyche Hub below" in the card's description: a link down to the hub. */
 .cx-hub-link { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-/* The tiles' box see-through, so the hub's own gradient shows through it; a
-   thin outline keeps the four together. The three rows keep their colours. */
-.hub-tiles { background: transparent; border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
+/* Four colours on a plain white panel (the gradient frame stays): tiles
+   lavender, then the peach, mint and sky rows, each with its own thin outline. */
+.hub-card { background: linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,
+  linear-gradient(135deg, #7b3fa0, #d1477a, #f0a35a) border-box; }
+.hub-tiles { background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt)); }
