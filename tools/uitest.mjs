@@ -10415,11 +10415,14 @@ try {
   await openAllSections(page);
   await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+    // A character outside the catalogue, which has no emblem: the icon shows.
+    saved.report.essence.character = 'Bruce Banner';
     saved.report.essence.icon = 'a lighthouse, probably';
     localStorage.setItem('psycheai_profile', JSON.stringify(saved));
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
+  await toReport(page);
   await openAllSections(page);
   const swapped = (await page.locator('.essence-icon').innerText()).trim();
   check('a wordy icon is swapped for a placeholder rather than printed',
@@ -10440,6 +10443,7 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
+  await toReport(page);
   await openAllSections(page);
   check('a profile saved before characters still shows its noun',
     (await page.locator('.essence-noun').innerText()).includes('Riverbed'),
@@ -10581,9 +10585,9 @@ try {
         parseFloat(st.borderTopWidth) >= 2 && st.color !== 'rgb(255, 255, 255)';
     })));
   check('the My Syncs intro says what a sync gives, in a line',
-    (await page.locator('.scan-lede').innerText()) ===
+    (await page.locator('#view-scan .scan-lede').innerText()) ===
       'Open a connection\'s PsycheAI link for your Psyche Sync: what clicks between you, what to look out for, and how to relate better to each other.',
-    await page.locator('.scan-lede').innerText());
+    await page.locator('#view-scan .scan-lede').innerText());
   check('and it says, in a line, what the link is for',
     /Send it to a connection so they can sync with you/.test(await page.locator('#view-scan .link-panel').innerText()));
   const ownLink = await page.evaluate(() =>
