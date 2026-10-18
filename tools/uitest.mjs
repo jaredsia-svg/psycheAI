@@ -144,8 +144,6 @@ async function continueFromDataSources(page) {
   await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
 }
 
-// The whole re-run action with a free analysis in hand: open the popout,
-// change nothing, and go straight through to the review dialog.
 // The written report under a free card, fetched the way the unlock fetches it
 // — `product: 'unlock'`, a code, and the card as the anchor — then stored as
 // the app stores an adopted one and the page reloaded onto it. For the many
@@ -178,8 +176,10 @@ async function explainStoredProfile(page) {
   if (carried) await page.evaluate(titles => { window.__titles = titles; }, carried);
 }
 
-async function startFreeRerun(page) {
-  await clearRunCount(page);
+// The hub's Add / change data on an explained profile: the popout, changed
+// or not, then on to the review of the paid re-run (the run count is left
+// alone, so the re-run is the US$5 one that rewrites card and report).
+async function startRerun(page) {
   await openDataSourcesPopout(page);
   await continueFromDataSources(page);
 }
@@ -187,7 +187,7 @@ async function startFreeRerun(page) {
 // Loads or replaces one source inside the popout, then presses Continue —
 // the single combined action the button now performs. Unlike the old
 // standalone "Load data" button, nothing is free-standing any more: this
-// leads straight into the review dialog, same as startFreeRerun.
+// leads straight into the review dialog, same as startRerun.
 async function loadSource(page, source, buffer, name) {
   await openDataSourcesPopout(page);
   const [chooser] = await Promise.all([
@@ -1650,10 +1650,18 @@ try {
           rerunBodies.push(JSON.parse(request.postData() || '{}'));
         }
       };
+      // The hub's Add / change data re-runs only once the report is written
+      // (before that it opens the unlock), and that re-run is the paid one
+      // that rewrites card and report together.
+      await explainStoredProfile(jobPage);
+      await jobPage.evaluate(() => localStorage.setItem('psycheai_runs', '99'));
       jobPage.on('request', onRerunRequest);
-      await clearRunCount(jobPage);
-      await startFreeRerun(jobPage);
-      await answerReview(jobPage);
+      await startRerun(jobPage);
+      await jobPage.waitForSelector('#review-dialog[open], #premium-dialog[open]', { timeout: 20000 });
+      if (await jobPage.locator('#review-dialog[open]').count()) await jobPage.click('#review-send');
+      await jobPage.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+      await jobPage.fill('#premium-promo-input', UITEST_PROMO);
+      await jobPage.click('#premium-promo-apply');
       await waitForLength(rerunBodies, 1, 30000);
       jobPage.off('request', onRerunRequest);
       check('a re-run from the report page asks for a background job too',
