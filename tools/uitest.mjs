@@ -5519,7 +5519,9 @@ try {
       // Sideways as well as down. A single unbreakable word — "Agreeableness"
       // — was pushing its own score past the card's right edge on a phone,
       // where the frame's overflow:hidden swallowed it silently.
-      const widest = Math.max(...[...card.querySelectorAll('*')]
+      // A scene's drawing may run past its own picture, which clips it, so
+      // only the picture itself is measured, not the shapes inside it.
+      const widest = Math.max(...[...card.querySelectorAll('*')].filter(el => !el.ownerSVGElement)
         .map(el => el.getBoundingClientRect().right));
       // Full screen is the card alone: what is left of the bar (the close
       // button, and on a phone the line saying to tap) sits under it.
@@ -5841,7 +5843,7 @@ try {
   for (const [label, needle] of [
     ['a signal strength figure', /\b\d{1,3}\s+Signal strength/i],
     ['the Big Five', /Big Five/],
-    ['an MBTI reading', /MBTI\s[\s\S]{0,40}\b[EI][NS][FT][JP]\b/],
+    ['an MBTI reading', /MBTI\s[\s\S]{0,200}\b[EI][NS][FT][JP]\b/],
     ['interests', /Interests/],
     ['values', /Values/],
     ['beliefs', /beliefs/i],
@@ -6057,7 +6059,7 @@ try {
   // the data page; Back leaves the unlock.
   {
     const score = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).report.confidence.score);
-    await clickClear(page, '#profile-body .premium-unlock');
+    await clickClear(page, '#profile-body .paid-card[data-paid="wellness"] .premium-unlock');
     if (score < 80) {
       await page.waitForSelector('#more-data-dialog[open]', { timeout: 10000 });
       const note = await page.locator('#more-data-dialog').innerText();
@@ -6069,7 +6071,7 @@ try {
       await page.waitForTimeout(300);
       check('and Back there leaves the unlock, with nothing else open',
         !(await page.locator('#more-data-dialog[open], #datasources-dialog[open], #premium-dialog[open]').count()));
-      await clickClear(page, '#profile-body .premium-unlock');
+      await clickClear(page, '#profile-body .paid-card[data-paid="wellness"] .premium-unlock');
     } else {
       check('at 80% confidence or more, the unlock goes straight to the data page',
         !(await page.locator('#more-data-dialog[open]').count()));
@@ -6189,6 +6191,7 @@ try {
       localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram'], digestChars: 1000 }, counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [] }));
     });
     await cardPage.reload({ waitUntil: 'load' });
+    await toReport(cardPage);
     await cardPage.waitForSelector('#profile-body .premium-unlock');
 
     await cardPage.route('**/api/create-payment-intent', async route => {
@@ -6217,7 +6220,7 @@ try {
       };
     });
 
-    await clickClear(cardPage, '#profile-body .premium-unlock');
+    await clickClear(cardPage, '#profile-body .paid-card[data-paid="wellness"] .premium-unlock');
     await skipPremiumDataOffer(cardPage);
     await cardPage.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
     await cardPage.waitForSelector('#premium-card-fallback:not([hidden])', { timeout: 10000 });
@@ -6237,8 +6240,10 @@ try {
       (await cardPage.locator('#premium-card-error').innerText()) === 'Your card was declined.');
     check('a decline leaves the dialog open and the sections still locked, so the reader can just try again',
       (await cardPage.locator('#premium-dialog').isVisible()) &&
-      (await cardPage.locator('#profile-body .paid-consolidated').count()) === 1 &&
-      (await cardPage.locator('#profile-body .paid-card').count()) === 0);
+      (await cardPage.evaluate(() => {
+        const covers = [...document.querySelectorAll('#profile-body .paid-card .premium-cover')];
+        return covers.length === 4 && covers.every(cover => !cover.hidden);
+      })));
 
     // Same mounted card, same button, only the confirm result changes — a
     // reader who fixes a typo or swaps cards after a decline retries on the
@@ -6248,9 +6253,12 @@ try {
     });
     await cardPage.click('#premium-card-pay');
     await cardPage.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
+    // Unlocked, the ideal partner is written into In relationships rather
+    // than a card of its own.
     const cardUnlocked = await cardPage.evaluate(() => {
-      const el = document.querySelector('#profile-body .ideal-partner-card');
-      return { text: el.innerText, coverHidden: el.querySelector('.premium-cover').hidden };
+      const el = document.querySelector('#profile-body .part-card[data-part-card="connect"]');
+      return { text: el.innerText,
+        coverHidden: [...document.querySelectorAll('#profile-body .premium-cover')].every(cover => cover.hidden) };
     });
     check('a successful card payment reveals the paid sections exactly as a wallet payment would',
       /honest verdict on what kind of partner/i.test(cardUnlocked.text) && cardUnlocked.coverHidden,
@@ -6322,19 +6330,21 @@ try {
   check('the progress bar is gone once the dialog closes',
     !(await page.locator('#premium-progress').isVisible()));
   // The unlock redraws the whole report — its written sections are the new
-  // response's too — and a redraw arrives shut, bar the four just paid for.
-  // Everything below reads section bodies, so they are opened again here.
-  const shutAfterUnlock = await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body .section-card:not(.paid-card):not(.confidence-card)')]
-      .every(card => card.classList.contains('is-collapsed')));
-  check('the redrawn report arrives shut, the way every render does',
-    shutAfterUnlock);
+  // response's too — and on a laptop a redraw arrives with every part open.
+  await page.waitForSelector('#profile-body .part-card', { timeout: 15000 });
+  const openAfterUnlock = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .part-card')].map(card => !card.classList.contains('is-collapsed')));
+  check('the redrawn report arrives with every part open, the way every render on a laptop does',
+    openAfterUnlock.length === 7 && openAfterUnlock.every(Boolean), JSON.stringify(openAfterUnlock));
   await openAllSections(page);
-  if (shots) await page.locator('#profile-body .ideal-partner-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
+  if (shots) await page.locator('#profile-body .relationships-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
+  // Unlocked, attachment and the ideal partner are written into In
+  // relationships, under How you connect.
   const unlocked = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .ideal-partner-card');
-    return { text: card.innerText, coverHidden: card.querySelector('.premium-cover').hidden,
-      expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded') };
+    const card = document.querySelector('#profile-body .part-card[data-part-card="connect"]');
+    return { text: card.innerText,
+      coverHidden: [...document.querySelectorAll('#profile-body .premium-cover')].every(cover => cover.hidden),
+      expanded: document.querySelector('#profile-body .wellness-card .premium-unlock').getAttribute('aria-expanded') };
   });
   // Against the mock's own wording (lib/mock.js's analysePremium) rather than
   // a paraphrase, so this fails if the real content never actually arrived.
@@ -6344,50 +6354,24 @@ try {
     /honest verdict on what kind of partner/i.test(unlocked.text) &&
     unlocked.coverHidden && unlocked.expanded === 'true',
     unlocked.text.slice(0, 200));
-  // The roast's own badge, beside the four paid ones. It marks the section the
-  // same way "Premium" does and says the opposite thing, so both halves are
-  // checked: that it is there and reads "Bonus", and that it is not styled as
-  // a paid badge — a "Bonus" in the accent colour of the four things a reader
-  // has to buy is worse than no badge, because it says "pay" about the one
-  // section that is free.
-  const roastBadge = await page.evaluate(() => {
-    const node = document.querySelector('.bonus-card .card-head .mode-badge');
-    if (!node) return null;
-    const paid = document.querySelector('.paid-card .card-head .mode-badge');
-    return {
-      text: node.textContent.trim(),
-      expected: window.PsycheCopy.TEXT.bonusBadge,
-      isBonus: node.classList.contains('bonus-badge'),
-      colour: getComputedStyle(node).color,
-      paidColour: paid ? getComputedStyle(paid).color : null,
-      // Same object, same size: a badge that sat differently would read as a
-      // different kind of thing rather than the other value of the same one.
-      size: getComputedStyle(node).fontSize,
-      paidSize: paid ? getComputedStyle(paid).fontSize : null,
-    };
-  });
-  check('the roast section carries a badge of its own',
-    Boolean(roastBadge) && roastBadge.text === roastBadge.expected && roastBadge.text === 'Bonus',
-    JSON.stringify(roastBadge));
-  check('and it is sized like the Premium badge, so the two read as one kind of thing',
-    Boolean(roastBadge) && roastBadge.size === roastBadge.paidSize,
-    JSON.stringify(roastBadge && { size: roastBadge.size, paid: roastBadge.paidSize }));
-  check('but coloured differently, because it promises the opposite of one',
-    Boolean(roastBadge) && roastBadge.isBonus && roastBadge.colour !== roastBadge.paidColour,
-    JSON.stringify(roastBadge && { colour: roastBadge.colour, paid: roastBadge.paidColour }));
-
   // The coverage line under the confidence score. It is what makes the number
   // checkable: a reader told "88/100, comprehensive fourteen-year archive" has
   // no way to know the model saw 3% of the messages, and "300 of 9,741 own
   // messages" says it plainly. Generated on every run, so if it renders
   // nowhere it is a field paid for and never seen.
+  // Signal strength, on My Psyche, is where the score sits now.
+  await toHub(page);
+  await openMethod(page);
+  const methodText = await page.locator('#hub-method-dialog .method-card').innerText();
+  await closeMethod(page);
+  await toReport(page);
+  await openAllSections(page);
+  // With the digest on the device the sources it read are listed, a row each
+  // (the model's own Read from line is the fallback without one).
   check('the confidence score shows what it was read from',
-    /Read from/i.test(profileText), profileText.slice(0, 160));
+    /Instagram/.test(methodText) && /Signal strength: \d+\/100/.test(methodText), methodText.slice(0, 300));
   check('and lists the coverage the model scored against',
-    await page.evaluate(() => {
-      const card = document.querySelector('#profile-body .confidence-card');
-      return Boolean(card) && /of \d+ captions/i.test(card.innerText);
-    }));
+    /of [\d,]+ captions/i.test(methodText), methodText.slice(0, 300));
 
   // The strengths line under the attachment style name, on screen rather than
   // only in the schema. It carries the whole tone of that section: the four
@@ -6397,7 +6381,7 @@ try {
   // nowhere would be the quiet way this addition fails, so both halves are
   // checked — that it appears, and that it appears *before* the reasoning.
   const attachmentText = await page.evaluate(() =>
-    document.querySelector('#profile-body .attachment-card .premium-body').innerText);
+    document.querySelector('#profile-body .attachment-card').innerText);
   check('the attachment section leads with what the style is good at',
     /genuinely good at/i.test(attachmentText), attachmentText.slice(0, 160));
   check('and it sits above the reasoning rather than after it',
@@ -6406,14 +6390,15 @@ try {
       attachmentText.indexOf('Mock reasoning showing the working'),
     attachmentText.slice(0, 200));
 
-  // The wellness read carries the same "not an assessment" caveat the roast
-  // used to, for the same reason: it is the paid section closest to health.
+  // The wellness read says it is not a health assessment, under its title,
+  // for the same reason: it is the paid section closest to health.
   check('the wellness caveat stays on screen beside the writing',
     await page.evaluate(() => {
       const card = document.querySelector('#profile-body .wellness-card');
-      const caveat = card && card.querySelector('.wellness-caveat');
-      return /not of your mental health/i.test(card.innerText) &&
-        Boolean(caveat) && caveat.offsetParent !== null;
+      const sub = card && card.querySelector('.card-sub');
+      const note = card && card.querySelector('.premium-body .fineprint');
+      return Boolean(sub) && /not a health assessment/i.test(sub.innerText) && sub.offsetParent !== null &&
+        Boolean(note) && /GP or qualified professional/i.test(note.innerText) && note.offsetParent !== null;
     }));
   check('no clinical condition is named in the mocked wellness content', await page.evaluate(() => {
     const text = document.querySelector('#profile-body .wellness-card').innerText;
@@ -6430,48 +6415,28 @@ try {
   // section alone, which is the easiest thing to leave half-done.
   check('the same payment opened all four sections, not just one',
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
-      return keys.every(key => {
-        const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
-        return card && card.querySelector('.premium-cover').hidden &&
-          !card.querySelector('.premium-body').hidden &&
-          card.querySelector('.premium-body').innerHTML.length > 0;
-      });
+      const wellness = document.querySelector('#profile-body .paid-card[data-paid="wellness"]');
+      const connect = document.querySelector('#profile-body .paid-card[data-paid="attachment"]');
+      const work = document.querySelector('#profile-body .paid-card[data-paid="careerAssessment"]');
+      return Boolean(wellness && connect && work) &&
+        [...document.querySelectorAll('#profile-body .premium-cover')].every(cover => cover.hidden) &&
+        !wellness.querySelector('.premium-body').hidden && wellness.querySelector('.wellness-tiles') !== null &&
+        connect.querySelector('.attach-top') !== null && connect.querySelector('.partner') !== null &&
+        work.querySelector('.career-edge') !== null;
     }),
-    String(await page.locator('#profile-body .paid-card .premium-cover[hidden]').count()) + ' opened');
+    String(await page.locator('#profile-body .paid-card').count()) + ' paid cards');
   // Same claim as the bundled-refresh path further down, checked here because
   // the two arrive by genuinely different routes: this one splices the four
   // cards in over the consolidated block (revealPaid), that one redraws the
   // whole report (renderProfile). Both have to leave what was just paid for
   // open, and neither proves it for the other.
-  check('and the four are open rather than shut, unlike every other section',
+  // Attachment and the ideal partner are one card once written, so three.
+  check('and the paid sections are on screen, in parts that are open',
     await page.evaluate(() => {
       const cards = [...document.querySelectorAll('#profile-body .paid-card')];
-      return cards.length === 4 && cards.every(card =>
-        !card.classList.contains('is-collapsed') &&
-        Boolean(card.querySelector('.premium-body').offsetParent));
+      return cards.length === 3 && cards.every(card =>
+        !card.closest('.part-card').classList.contains('is-collapsed') && Boolean(card.offsetParent));
     }));
-
-  // Each of the four cards renders its own header, so each has to carry its
-  // own "Premium" badge now that they are separate elements again rather
-  // than four items under one consolidated badge.
-  check('each of the four unlocked cards carries its own "Premium" badge',
-    await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
-      return keys.every(key => {
-        const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
-        const badge = card && card.querySelector('.mode-badge');
-        return Boolean(badge) && badge.textContent.trim() === 'Premium';
-      });
-    }));
-  // Same word-wrap hazard as the consolidated block's badge, now checked on
-  // a real section heading competing with its own title text for space.
-  await page.setViewportSize({ width: 375, height: 800 });
-  const cardBadgeLineFragments = await page.evaluate(() =>
-    document.querySelector('#profile-body .paid-card[data-paid="idealPartner"] .mode-badge').getClientRects().length);
-  await page.setViewportSize({ width: 1100, height: 900 });
-  check('an unlocked card\'s badge never breaks its own word across two lines, even at phone width',
-    cardBadgeLineFragments === 1, cardBadgeLineFragments + ' line fragment(s)');
 
   // ---- the "analysed by" footer grows a second line once paid content exists ----
   //
@@ -6501,7 +6466,7 @@ try {
   const wellnessCard = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .wellness-card');
     return { text: card.innerText, html: card.innerHTML,
-      facets: card.querySelectorAll('.wellness-facet').length,
+      facets: card.querySelectorAll('.wellness-tile').length,
       bars: card.querySelectorAll('.bar, .progress, .confidence-meter').length };
   });
   check('all six dimensions render', wellnessCard.facets === 6, String(wellnessCard.facets));
@@ -6511,8 +6476,8 @@ try {
     wellnessCard.bars === 0 && !/\b\d+\s*\/\s*(?:10|100)\b/.test(wellnessCard.text) &&
     !/\b\d{1,3}\s*%/.test(wellnessCard.text),
     String(wellnessCard.bars) + ' bars');
-  check('the sub-line says plainly it is a behavioural read rather than a health assessment',
-    /behavioural read, not a health assessment/i.test(wellnessCard.text));
+  check('the sub-line says plainly it is a read of behaviour rather than a health assessment',
+    /read of online behaviour, not a health assessment/i.test(wellnessCard.text));
   check('each dimension shows a band and its own confidence',
     /steady|mixed|under strain|not enough evidence/i.test(wellnessCard.text) &&
     (await page.locator('#profile-body .wellness-card .wellness-confidence').count()) === 6);
@@ -6521,12 +6486,18 @@ try {
   // precisely so this path renders in every run.
   check('a "not enough evidence" band renders as its own neutral state',
     (await page.locator('#profile-body .wellness-card .wellness-not-enough-evidence').count()) === 1);
-  check('the overall read and the suggestions both render',
-    /Taken together/i.test(wellnessCard.text) && /What might actually help/i.test(wellnessCard.text));
-  check('the static caveat is shown with the writing, not buried',
-    /not of your mental health/i.test(wellnessCard.text) &&
-    /talk to a GP or a qualified professional/i.test(wellnessCard.text) &&
-    (await page.locator('#profile-body .wellness-caveat').isVisible()));
+  // The suggestions are on the development plan's timeline, with every other
+  // action in the report.
+  check('the overall read renders, and the suggestions are on the development plan',
+    /Taken together/i.test(wellnessCard.text) &&
+    await page.evaluate(() => {
+      const first = ((JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis.wellness || {}).suggestions || [])[0];
+      const plan = document.querySelector('#profile-body .development-card');
+      return Boolean(first && plan) && plan.innerText.includes(first.title);
+    }));
+  check('the static note is shown with the writing, not buried',
+    /a GP or qualified professional can help/i.test(wellnessCard.text) &&
+    (await page.locator('#profile-body .wellness-card .premium-body > .fineprint').isVisible()));
   // Scoped to the model's own output, with the caveat excluded — the caveat
   // is the one part of this card that is *supposed* to contain the word
   // "diagnosis", because saying "this is not a diagnosis of anything" is its
@@ -6535,14 +6506,11 @@ try {
   check('no clinical condition is named in the writing (the caveat may say "not a diagnosis")',
     await page.evaluate(() => {
       const card = document.querySelector('#profile-body .wellness-card').cloneNode(true);
-      const caveat = card.querySelector('.wellness-caveat');
+      const caveat = card.querySelector('.card-sub');
       if (caveat) caveat.remove();
       return !/\b(depression|anxiety disorder|adhd|bipolar|ptsd|ocd|insomnia|diagnos)/i
         .test(card.textContent);
     }));
-  check('the caveat does disclaim a diagnosis, which is why it is excluded above',
-    /it is not a diagnosis/i.test(
-      await page.locator('#profile-body .wellness-caveat').innerText()));
 
   // ---- attachment style, and the career coach ----
   //
@@ -6550,20 +6518,11 @@ try {
   // relationships". It is its own card now, so the checks are that it left
   // the old home and arrived intact in the new one — a move that renders in
   // both places, or in neither, is the failure worth catching.
-  check('attachment is its own card and no longer inside the relationships one',
+  check('attachment, written into In relationships, keeps its style, its working and its evidence',
     await page.evaluate(() => {
-      const card = document.querySelector('#profile-body .attachment-card');
-      const rel = [...document.querySelectorAll('#profile-body .card-head h2')]
-        .find(h => h.textContent.includes('In relationships'));
-      const relCard = rel && rel.closest('.section-card');
-      return Boolean(card) && Boolean(relCard) &&
-        !/Attachment:/.test(relCard.innerText) && /Attachment:/.test(card.innerText);
-    }));
-  check('it kept its working, its signals and its caveat through the move',
-    await page.evaluate(() => {
-      const text = document.querySelector('#profile-body .attachment-card').innerText;
-      return /Read from/i.test(text) && /What it means in practice/i.test(text) &&
-        /cannot be read reliably/i.test(text);
+      const card = document.querySelector('#profile-body .relationships-card.attachment-card');
+      return Boolean(card) && Boolean(card.querySelector('.attach-style strong')) &&
+        /Mock reasoning showing the working/i.test(card.innerText) && card.querySelectorAll('.attach-top .trait-evidence .ev').length > 0;
     }));
   // "Where you would thrive" was a list of ideal environments inferred from an
   // export with no job history. Asserted absent from the page, not just from
@@ -6571,43 +6530,25 @@ try {
   check('"Where you would thrive" is gone from the At work section',
     !/Where you would thrive/i.test(await page.locator('#profile-body').innerText()));
 
+  // How you work is one section: the coach's edge, then strengths and what
+  // holds you back, then the careers that suit.
   const careerCard = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .career-card');
-    return { text: card.innerText, facets: card.querySelectorAll('.career-facet').length,
-      edges: card.querySelectorAll('.career-edge').length,
-      horizons: [...card.querySelectorAll('.horizon-pill')].map(p => p.textContent.trim()) };
+    const card = document.querySelector('#profile-body .work-card.career-card');
+    return { text: card.innerText, pairs: card.querySelectorAll('.work-pair .partner-col').length,
+      edges: card.querySelectorAll('.career-edge').length, fit: card.querySelectorAll('.career-fit').length };
   });
-  check('the career assessment renders its situation, edge and both facets',
-    /Where you are/i.test(careerCard.text) && /Your edge/i.test(careerCard.text) &&
-    careerCard.edges === 1 && careerCard.facets === 2,
-    careerCard.facets + ' facets, ' + careerCard.edges + ' edge');
-  // The horizons are what make this section a coach's read rather than the
-  // "At work" section in the imperative, and "this week" leading is the point
-  // of grouping them — an action list that opens on next year is a wish list.
-  check('actions carry horizons, grouped with "this week" first',
-    careerCard.horizons.length === 3 && careerCard.horizons[0] === 'This week',
-    careerCard.horizons.join(' | '));
-  check('the two career sections are visibly different things',
-    await page.evaluate(() => {
-      // "Career assessment" carries the "Premium" badge inside the same <h2>
-      // now, so this checks the title text with the badge stripped rather
-      // than an exact match against the whole heading.
-      const titles = [...document.querySelectorAll('#profile-body .card-head h2')].map(h => {
-        const copy = h.cloneNode(true);
-        copy.querySelectorAll('.mode-badge').forEach(badge => badge.remove());
-        return copy.textContent.trim();
-      });
-      return titles.includes('At work') && titles.includes('Career assessment');
-    }));
-
+  check('the career assessment renders its edge, both sides of the work read and the careers that suit',
+    /Your edge/i.test(careerCard.text) && careerCard.edges === 1 && careerCard.pairs === 2 && careerCard.fit === 1,
+    JSON.stringify({ pairs: careerCard.pairs, edges: careerCard.edges, fit: careerCard.fit }));
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await toReport(page);
   await openAllSections(page);
   check('the unlock survives a reload, so a reader who paid does not pay twice',
     await page.evaluate(() => {
-      const card = document.querySelector('#profile-body .ideal-partner-card');
-      return Boolean(card) && card.querySelector('.premium-cover').hidden &&
+      const card = document.querySelector('#profile-body .part-card[data-part-card="connect"]');
+      return Boolean(card) && [...document.querySelectorAll('#profile-body .premium-cover')].every(cover => cover.hidden) &&
         /honest verdict on what kind of partner/i.test(card.innerText);
     }));
   check('and the two-line footer survives the reload with it',
@@ -6653,20 +6594,20 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await toReport(page);
   await openAllSections(page);
 
-  // Still one consolidated block, not four covers — nothing has actually
-  // come back yet, so the same rule as before payment applies. Its one
-  // button is what changes: a receipt exists, so it offers to fetch what
-  // was already bought rather than a price.
+  // Still the four covers — nothing has actually come back yet, so the same
+  // rule as before payment applies. Their button is what changes: a receipt
+  // exists, so it offers to fetch what was already bought rather than a price.
   check('a reader who paid but lost the analysis is not shown a price again',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')];
-      return buttons.length === 1 && !/US\$5/.test(buttons[0].textContent);
+      return buttons.length === 4 && buttons.every(b => !/US\$5/.test(b.textContent));
     }),
-    (await page.locator('#profile-body .premium-unlock').innerText()));
+    (await page.locator('#profile-body .premium-unlock').first().innerText()));
   check('the button offers to fetch what was already bought',
-    /paid for/i.test(await page.locator('#profile-body .premium-unlock').innerText()));
+    /paid for/i.test(await page.locator('#profile-body .premium-unlock').first().innerText()));
 
   // The one that actually protects money: opening the dialog in this state
   // must not ask Stripe for a second PaymentIntent. Counted against the real
@@ -6676,7 +6617,7 @@ try {
     if (request.url().includes('create-payment-intent')) intentRequests++;
   };
   page.on('request', countIntents);
-  await clickClear(page, '#profile-body .premium-unlock');
+  await clickClear(page, '#profile-body .paid-card[data-paid="wellness"] .premium-unlock');
   // No data offer on this path: the receipt already exists, so this reader is
   // collecting sections they paid for rather than starting a new unlock.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
@@ -6764,12 +6705,13 @@ try {
   page.off('request', countIntents);
   check('fetching again recovers all four sections without a second charge',
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
-      return keys.every(key => {
-        const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
-        return card && card.querySelector('.premium-cover').hidden &&
-          card.querySelector('.premium-body').innerHTML.length > 0;
-      });
+      const wellness = document.querySelector('#profile-body .paid-card[data-paid="wellness"]');
+      const connect = document.querySelector('#profile-body .paid-card[data-paid="attachment"]');
+      const work = document.querySelector('#profile-body .paid-card[data-paid="careerAssessment"]');
+      return Boolean(wellness && connect && work) &&
+        [...document.querySelectorAll('#profile-body .premium-cover')].every(cover => cover.hidden) &&
+        wellness.querySelector('.premium-body').innerHTML.length > 0 &&
+        connect.querySelector('.partner') !== null && work.querySelector('.career-edge') !== null;
     }) && intentRequests === 0,
     intentRequests + ' create-payment-intent requests during recovery');
   await openAllSections(page);
