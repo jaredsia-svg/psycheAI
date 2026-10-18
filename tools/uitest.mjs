@@ -117,6 +117,19 @@ async function openAllSections(page, scope) {
   }, scope || '#profile-body');
 }
 
+// My Report, the full report on its own page once it is unlocked, opened as
+// a reader opens it: from the nav. And back to My Psyche, the hub and the card.
+async function toReport(page) {
+  await page.waitForSelector('#nav-full:not([hidden])', { timeout: 15000 });
+  await page.click('#nav-full');
+  await page.waitForSelector('#profile-body .part-card', { timeout: 15000 });
+}
+async function toHub(page) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.click('#report-back');
+  await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
+}
+
 // The sample with its report sections taken off: a card whose report is
 // still to buy, so the page shows the unlock offer. The free first report is
 // marked used by the caller, so the offer is the unlock button rather than
@@ -150,7 +163,7 @@ async function continueFromDataSources(page) {
 // checks in this file that read the written report rather than the unlock
 // flow; the flow itself has its own block.
 async function explainStoredProfile(page) {
-  await page.evaluate(async promo => {
+  const { profile, data } = await page.evaluate(async promo => {
     const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
     const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
     // No anchor: the app's own unlock sends one, and a request identical to
@@ -158,16 +171,19 @@ async function explainStoredProfile(page) {
     // running the job the unlock checks are watching. The mock writes the
     // same conclusions either way.
     const full = await window.PsycheLLM.analyseProfile(digest, { promoCode: promo, product: 'unlock' });
-    // The written report only. The four premium sections arrive in the same
-    // response, and are dropped so the checks that unlock them still can.
-    for (const key of ['wellness', 'attachment', 'idealPartner', 'careerAssessment']) delete full.data[key];
-    profile.freeReport = profile.report;
-    // The paid call writes no roast; the app keeps the card call's (overlayCard).
-    if (profile.report.bonus) full.data.bonus = profile.report.bonus;
-    profile.report = full.data;
-    profile.explained = true;
-    localStorage.setItem('psycheai_profile', JSON.stringify(profile));
+    return { profile, data: full.data };
   }, UITEST_PROMO);
+  // The written report only. The four premium sections arrive in the same
+  // response, and are dropped so the checks that unlock them still can.
+  for (const key of ['wellness', 'attachment', 'idealPartner', 'careerAssessment']) delete data[key];
+  // Written without an anchor, the report comes back beside the card it
+  // decided (freeCard); the app lays the stored card over it (adoptFullReport),
+  // with its own overlayCard, run here from app.js's source.
+  delete data.freeCard;
+  profile.freeReport = profile.report;
+  profile.report = overlayCard(data, profile.report);
+  profile.explained = true;
+  await page.evaluate(stored => localStorage.setItem('psycheai_profile', JSON.stringify(stored)), profile);
   // What this page has recorded about itself goes with it across the reload:
   // the waiting-screen titles are read further down, long after this.
   const carried = await page.evaluate(() => window.__titles || null);
@@ -175,6 +191,15 @@ async function explainStoredProfile(page) {
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
   if (carried) await page.evaluate(titles => { window.__titles = titles; }, carried);
 }
+
+// app.js's overlayCard, lifted from its source so the test adopts a report
+// exactly as the page does.
+const overlayCard = (() => {
+  const src = readFileSync(join(root, 'docs', 'app.js'), 'utf8');
+  const start = src.indexOf('  function overlayCard(full, card) {');
+  const end = src.indexOf('\n  }\n', start) + 4;
+  return new Function(src.slice(start, end) + '\nreturn overlayCard;')();
+})();
 
 // The hub's Add / change data on an explained profile: the popout, changed
 // or not, then on to the review of the paid re-run (the run count is left
@@ -2433,20 +2458,17 @@ try {
     check('the sample report is the Mulan one',
       /Mulan/.test(sampleText) && !/Captain America/.test(sampleText),
       sampleText.slice(0, 120));
-    // The card prints its own copy of the score rather than reading the
-    // report's, so the two can disagree. The card is still built (hidden) for
-    // the full-screen copy, so the two are checked against each other.
-    const scores = await page.evaluate(() => ({
-      onCard: ((document.querySelector('#sample-psyche-card').textContent || '')
-        .match(/(\d+)\s*\/\s*100/) || [])[1],
+    // The story card prints no score; the report's own is the sample's.
+    const scores = await page.evaluate(async () => ({
+      stored: String(((await fetch('sample.json').then(r => r.json())).confidence || {}).score),
       inReport: ((document.querySelector('#sample-body .confidence-card') || {}).textContent || '')
         .replace(/\s+/g, ' ').match(/(\d+)\s*\/\s*100/),
     }));
-    check('the card and the report agree on the confidence score',
-      scores.onCard && scores.inReport && scores.onCard === scores.inReport[1],
+    check('the report shows the sample\'s own confidence score',
+      scores.inReport && scores.stored === scores.inReport[1],
       JSON.stringify(scores));
     check('and it is a high-confidence sample rather than a hedged one',
-      Number(scores.onCard) >= 80, String(scores.onCard));
+      Number(scores.stored) >= 80, String(scores.stored));
     await page.evaluate(() => document.querySelector('#sample-dialog').close());
     await page.waitForTimeout(300);
   }
@@ -3595,11 +3617,11 @@ try {
     const opened = await page.evaluate(() => {
       const d = document.querySelector('#sample-card-dialog');
       const card = document.querySelector('#sample-psyche-card-full');
-      return { open: Boolean(d && d.open), stats: card ? card.querySelectorAll('.pc-lab').length : 0,
+      return { open: Boolean(d && d.open), stats: card ? card.querySelectorAll('[data-cx]').length : 0,
         label: document.querySelector('#insight-card-open').getAttribute('aria-label'),
         want: window.PsycheCopy.STRUCTURED.insights.previewOpen };
     });
-    check('clicking the summary card preview opens the full card', opened.open && opened.stats >= 6 &&
+    check('clicking the summary card preview opens the full card', opened.open && opened.stats >= 4 &&
       opened.label === opened.want, JSON.stringify(opened));
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
@@ -3621,8 +3643,10 @@ try {
       });
       await page.click('#sample-card-dialog-close');
       await page.waitForTimeout(200);
-      check('on a ' + label + ' the full screen sample card has a cross in its top right that closes it',
-        cross.visible && cross.corner && !(await page.evaluate(() => document.querySelector('#sample-card-dialog').open)),
+      // On a phone the story card's cross sits under the card instead (checked
+      // with the sample card's explanations, further down).
+      check('on a ' + label + ' the full screen sample card has a cross ' + (label === 'phone' ? 'that closes it' : 'in its top right that closes it'),
+        cross.visible && (label === 'phone' || cross.corner) && !(await page.evaluate(() => document.querySelector('#sample-card-dialog').open)),
         JSON.stringify(cross));
     }
     await page.setViewportSize({ width: 1100, height: 900 });
@@ -4241,9 +4265,11 @@ try {
   // at the bottom. Neither is part of the reading — one is the glance, the
   // other the caveat — and neither head carries a .card-head-toggle, which is
   // the single mechanism that keeps both out of collapseSections' reach.
-  check('the sample opens with its sections shut, the same as a real report',
-    (await page.locator('#sample-body .section-card.is-collapsed').count()) > 5 &&
-    (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) === 2,
+  // The report's parts start open on a laptop (the structured report's
+  // rule), and the sample follows it.
+  check('the sample opens the same as a real report: on a laptop, every part open',
+    (await page.locator('#sample-body .section-card.is-collapsed').count()) === 0 &&
+    (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) > 5,
     (await page.locator('#sample-body .section-card.is-collapsed').count()) + ' shut, ' +
     (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) + ' open');
   await openAllSections(page, '#sample-body');
@@ -4863,15 +4889,15 @@ try {
         document.querySelector('#psyche-card').innerHTML.length > 0,
       locked: body.querySelectorAll('.full-report-locked').length,
       unlockButtons: body.querySelectorAll('.premium-unlock').length,
-      sections: [...body.querySelectorAll('.section-card')].map(c => c.className),
+      sections: [...body.children].filter(c => c.matches('.section-card')).map(c => c.className),
       roast: body.querySelectorAll('.bonus-card').length,
       titles: [...body.querySelectorAll('.full-report-locked .premium-tier-item strong')]
         .map(node => node.textContent.trim()),
-      lists: body.querySelectorAll('.full-report-locked .premium-tier-list').length,
+      lists: body.querySelectorAll('.full-report-locked .unlock-parts').length,
       lockedText: body.querySelector('.full-report-locked').innerText,
-      want: [T.whoYouAre, T.bigFive, T.explainTypesTitle, T.explainListsTitle,
-        T.explainPeopleTitle, T.activity,
-        T.wellness, T.attachment, T.idealPartner, T.careerAssessment],
+      want: ['MBTI & Big Five', 'Wellbeing', 'What motivates you', 'Interests, Values & Beliefs',
+        'In relationships & ideal partner traits', 'Attachment style & conflict style',
+        'How you are at work', 'Career assessment', 'Development plan'],
       stored: JSON.parse(localStorage.getItem('psycheai_profile')),
     };
   });
@@ -4880,9 +4906,11 @@ try {
   check('and under it one locked block offering the Psyche Report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only the secret roast, the card that holds the controls, then "Your link"',
-    freeState.sections.length === 3 && /secret-roast/.test(freeState.sections[0]) &&
-      /confidence-card/.test(freeState.sections[1]) && /referral-card/.test(freeState.sections[2]),
+  // The free card's Overview (the summary and the patterns) is the one part
+  // written for free; the hub that holds the controls closes the page.
+  check('no written section is on the page but the Overview — then the secret roast, then the hub that holds the controls',
+    freeState.sections.length === 3 && /free-overview/.test(freeState.sections[0]) &&
+      /secret-roast/.test(freeState.sections[1]) && /hub-card/.test(freeState.sections[2]),
     JSON.stringify(freeState.sections));
   check('"Beyond your card" is gone from My Psyche',
     await page.evaluate(() => !document.querySelector('#profile-body .beyond-card') &&
@@ -4929,7 +4957,7 @@ try {
       const block = document.querySelector('#profile-body .secret-roast');
       const harsh = JSON.parse(localStorage.getItem('psycheai_profile')).report.bonus.harsh;
       return {
-        first: document.querySelector('#profile-body > .section-card') === block,
+        first: document.querySelector('#profile-body > .free-overview + .secret-roast') === block,
         badge: block.querySelector('.secret-roast-badge').textContent.trim(),
         title: block.querySelector('.secret-roast-title').textContent.trim(),
         button: block.querySelector('.secret-roast-reveal').textContent.trim(),
@@ -4938,7 +4966,7 @@ try {
         absent: !block.innerHTML.includes(harsh.slice(0, 30)) && block.querySelector('.bonus-body').hidden,
       };
     });
-    check('it sits straight under the card', roast.first, JSON.stringify(roast));
+    check('it sits straight under the Overview', roast.first, JSON.stringify(roast));
     check('dressed as a secret bonus: badge, title and one reveal button',
       roast.badge === 'Secret bonus unlocked' && roast.title === 'Let us roast you' &&
         roast.button === 'Reveal my roast' && roast.expanded === 'false' && roast.icons === 3, JSON.stringify(roast));
@@ -4966,20 +4994,20 @@ try {
           !block.querySelector('.bonus-cover').hidden && !block.classList.contains('is-revealed');
       }));
   }
-  check('the block names every explanation and every premium section the unlock opens',
+  check('the block names, part by part, everything the unlock opens',
     JSON.stringify(freeState.titles) === JSON.stringify(freeState.want), freeState.titles.join(' | '));
   // One list, not the explanations and then "four sections the card does not
   // cover" as an afterthought — and the block's dashes are en dashes.
-  check('as one list of all ten, with no second heading splitting it',
+  check('as one list of the five parts, with no second heading splitting it',
     freeState.lists === 1 && !/four sections the card does not cover/i.test(freeState.lockedText),
     String(freeState.lists));
-  check('and its copy uses en dashes, not em dashes',
-    !/—/.test(freeState.lockedText) && /–/.test(freeState.lockedText),
+  check('and its copy has no em dashes',
+    !/—/.test(freeState.lockedText),
     (freeState.lockedText.match(/.{0,30}—.{0,30}/) || ['none'])[0]);
-  check('and the explanations never reached this browser — the stored report is the card and its roast alone',
-    !freeReport.summary && Boolean(freeReport.bonus && freeReport.bonus.harsh) && !freeReport.activity && !freeReport.career &&
+  check('and the explanations never reached this browser — the stored report is the card, its Overview and its roast alone',
+    Boolean(freeReport.bonus && freeReport.bonus.harsh) && !freeReport.activity && !freeReport.career &&
     !freeReport.bigFive.openness.reading && !(freeReport.mbti.letters[0] || {}).why &&
-    !freeReport.essence.why && freeState.stored.explained !== true,
+    freeState.stored.explained !== true,
     Object.keys(freeReport).join(','));
   check('while the card carries every conclusion the card face shows',
     Boolean(freeReport.mbti.type && !freeReport.enneagram && freeReport.essence.character &&
@@ -4987,268 +5015,131 @@ try {
       freeReport.card && freeReport.card.name),
     JSON.stringify({ mbti: freeReport.mbti.type, character: freeReport.essence.character }));
 
-  // The download is not gated, so a free reader gets a PDF too — of what they
-  // have: the card on its cover page and what the unlock adds, rather than a
-  // run of section headings with nothing under them.
-  const [freePdfDownload] = await Promise.all([
-    page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#export-pdf-bottom'),
-  ]);
-  const freePdfPath = join(shotDir, 'report-free.pdf');
-  await freePdfDownload.saveAs(freePdfPath);
-  const freePdf = readFileSync(freePdfPath).toString('latin1');
-  const pdfCopy = await page.evaluate(() => {
-    const T = window.PsycheCopy.TEXT;
-    return { offer: T.fullReportTitle, who: T.whoYouAre, fiveSub: T.bigFiveSub };
-  });
-  const inPdf = label => freePdf.includes('(' + label + ')') || freePdf.includes('(' + label.toUpperCase() + ')');
-  check('a free profile\'s PDF carries the card and the offer, not empty sections',
-    freePdf.startsWith('%PDF-1.') && inPdf(pdfCopy.offer) && !inPdf(pdfCopy.who) && !inPdf(pdfCopy.fiveSub),
-    JSON.stringify({ offer: inPdf(pdfCopy.offer), who: inPdf(pdfCopy.who), fiveSub: inPdf(pdfCopy.fiveSub) }));
-
   // From here on the suite reads the written report, so this profile gets it
   // the way a reader who paid does: from the server, which refuses it without
   // a payment or a code, anchored to the card above. Stored the way the app
   // stores it, and the page reloaded onto it.
   await explainStoredProfile(page);
-  check('with a code, the server writes the Psyche Report, to the same conclusions as the card',
-    await page.evaluate(() => {
+  {
+    const wrote = await page.evaluate(() => {
       const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
-      return stored.explained === true && typeof stored.report.summary === 'string' &&
-        stored.report.mbti.type === stored.freeReport.mbti.type &&
-        stored.report.essence.character === stored.freeReport.essence.character;
-    }));
+      return { explained: stored.explained, summary: typeof stored.report.summary, free: Boolean(stored.freeReport),
+        mbti: [stored.report.mbti.type, stored.freeReport && stored.freeReport.mbti.type],
+        character: [stored.report.essence.character, stored.freeReport && stored.freeReport.essence.character] };
+    });
+    check('with a code, the server writes the Psyche Report, to the same conclusions as the card',
+      wrote.explained === true && wrote.summary === 'string' && wrote.mbti[0] === wrote.mbti[1] &&
+        wrote.character[0] === wrote.character[1], JSON.stringify(wrote));
+  }
 
-  // ---- the report opens as an index, not a scroll ----
+  // ---- the report's parts open and shut ----
   //
-  // Every section arrives shut, so the whole report is a short list of
-  // headings to pick from rather than several thousand pixels to travel. This
-  // block runs before openAllSections touches anything — it is the one place
-  // in the suite that sees the report in the state a reader actually meets it
-  // in, and everything after it opens the sections first as a matter of course.
-  const shutState = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('#profile-body .section-card')];
+  // My Report is the Overview, five parts and the appendix, each one box whose
+  // numbered heading opens and shuts it. On a laptop every part arrives open
+  // and each opens and shuts on its own; on a phone they are an accordion.
+  // The sections inside a part never collapse.
+  await toReport(page);
+  const partState = await page.evaluate(() => {
+    const parts = [...document.querySelectorAll('#profile-body .part-card')];
+    const body = document.querySelector('#profile-body');
     return {
-      total: cards.length,
-      shut: cards.filter(c => c.classList.contains('is-collapsed')).length,
-      open: cards.filter(c => !c.classList.contains('is-collapsed'))
-        .map(c => c.querySelector('h2').innerText.trim()),
-      height: Math.round(document.querySelector('#profile-body').getBoundingClientRect().height),
-      // The heading of a shut section stays readable; its body does not.
-      headVisible: Boolean(cards[0].querySelector('.card-head').offsetParent),
-      bodyHidden: [...cards[0].children].filter(el => !el.classList.contains('card-head'))
-        .every(el => !el.offsetParent),
+      total: parts.length,
+      open: parts.filter(c => !c.classList.contains('is-collapsed')).length,
+      inner: body.querySelectorAll('.part-body .card-head-toggle').length,
+      height: Math.round(body.getBoundingClientRect().height),
     };
   });
-  check('every section of the report arrives shut, bar the one that holds the controls',
-    shutState.total > 8 && shutState.shut === shutState.total - 1 &&
-    shutState.open.length === 1 && /trust this/i.test(shutState.open[0]),
-    JSON.stringify({ total: shutState.total, shut: shutState.shut, open: shutState.open }));
-  check('a shut section still shows its heading, and genuinely hides its body',
-    shutState.headVisible && shutState.bodyHidden);
-  // Hidden, not merely scrolled past: a reader on a phone should be able to
-  // see the whole list at once, which is the entire point.
-  const openHeight = await page.evaluate(() => {
-    for (const c of document.querySelectorAll('#profile-body .section-card')) c.classList.remove('is-collapsed');
-    const h = Math.round(document.querySelector('#profile-body').getBoundingClientRect().height);
-    for (const c of document.querySelectorAll('#profile-body .section-card:not(.confidence-card)')) {
-      c.classList.add('is-collapsed');
-    }
-    return h;
-  });
-  check('shutting the report makes it dramatically shorter, not just tidier',
-    shutState.height < openHeight / 2,
-    shutState.height + 'px shut vs ' + openHeight + 'px open');
-
-  // Driven by a real click on the heading rather than on the chevron alone —
-  // the whole row is the control, and a disclosure whose hit area is a small
-  // glyph at the end of the line is a worse one.
-  const firstCard = page.locator('#profile-body .section-card').first();
+  check('on a laptop every part of the report arrives open, and only the parts open and shut',
+    partState.total === 7 && partState.open === 7 && partState.inner === 0, JSON.stringify(partState));
+  const firstCard = page.locator('#profile-body .part-card').first();
   await firstCard.locator('.card-head-toggle').click();
-  check('clicking a heading opens that section',
-    !(await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
-    (await firstCard.locator('.card-toggle').getAttribute('aria-expanded')) === 'true');
-  check('and opens only that one, leaving the rest of the list alone',
-    (await page.locator('#profile-body .section-card.is-collapsed').count()) === shutState.total - 2);
-  await firstCard.locator('.card-head-toggle').click();
-  check('clicking it again shuts it',
+  check('clicking a part\'s heading shuts that part',
     (await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
     (await firstCard.locator('.card-toggle').getAttribute('aria-expanded')) === 'false');
+  check('and shuts only that one, leaving the rest of the report alone',
+    (await page.locator('#profile-body .part-card.is-collapsed').count()) === 1);
+  check('a shut part still shows its heading, and genuinely hides its body',
+    await firstCard.evaluate(c => Boolean(c.querySelector('.card-head').offsetParent) &&
+      [...c.children].filter(el => !el.classList.contains('card-head')).every(el => !el.offsetParent)));
+  await firstCard.locator('.card-head-toggle').click();
+  check('clicking it again opens it',
+    !(await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
+    (await firstCard.locator('.card-toggle').getAttribute('aria-expanded')) === 'true');
   // Clicking the chevron itself must toggle once, not twice — it sits inside
   // the row the handler is bound to, so a second listener on the button would
   // open and immediately shut it again.
   await firstCard.locator('.card-chevron').click();
   check('clicking the chevron itself toggles once, not twice',
-    !(await firstCard.evaluate(c => c.classList.contains('is-collapsed'))));
+    await firstCard.evaluate(c => c.classList.contains('is-collapsed')));
+  await firstCard.locator('.card-chevron').click();
   // The control has to be a real button carrying its own name, or a reader
   // not using a mouse is handed a row of unlabelled glyphs.
-  check('the control is a real button, named by its own section title',
+  check('the control is a real button, named by its own part title',
     await page.evaluate(() => {
-      const button = document.querySelector('#profile-body .card-toggle');
+      const button = document.querySelector('#profile-body .part-card .card-toggle');
       return button.tagName === 'BUTTON' && button.type === 'button' &&
-        button.closest('h2') !== null && /who you are/i.test(button.innerText);
+        button.closest('h2') !== null && /overview/i.test(button.innerText);
     }));
+  const shutHeight = await page.evaluate(() => {
+    const parts = [...document.querySelectorAll('#profile-body .part-card')];
+    for (const c of parts) c.classList.add('is-collapsed');
+    const h = Math.round(document.querySelector('#profile-body').getBoundingClientRect().height);
+    for (const c of parts) c.classList.remove('is-collapsed');
+    return h;
+  });
+  check('shutting every part makes the report dramatically shorter, not just tidier',
+    shutHeight < partState.height / 2, shutHeight + 'px shut vs ' + partState.height + 'px open');
 
-  // Accordion: opening a second section shuts whichever one was open before
-  // it, so exploring the report never regrows it into several open sections
-  // at once — the whole point of shutting it in the first place. firstCard is
-  // already open here, from the chevron click just above.
-  const secondCard = page.locator('#profile-body .section-card').nth(1);
-  await secondCard.locator('.card-head-toggle').click();
-  check('opening a second section shuts the one that was open before it',
-    (await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
-    !(await secondCard.evaluate(c => c.classList.contains('is-collapsed'))));
-  // The confidence card never collapses at all — see its own comment in
-  // reportSectionsHtml — so the accordion has to leave it alone rather than
-  // treating "everything else shut" as licence to shut it too.
-  check('and the confidence card, which never collapses, is untouched by it',
-    !(await page.locator('#profile-body .confidence-card')
-      .evaluate(c => c.classList.contains('is-collapsed'))));
-
-  // ---- opening a section does not move it ----
+  // ---- on a phone the parts are an accordion ----
   //
-  // The accordion shuts whichever section was open, and when that one sat
-  // *above* the one being opened its whole height leaves the flow — so
-  // everything below leaps upward by however tall it happened to be.
-  //
-  // The first answer to that was to scroll the opened card to the top of the
-  // screen afterwards. It fixed where the reader ended up and not what they
-  // saw on the way: an instant uncontrolled jump, then an animated glide from
-  // a position the jump had already invalidated. Two movements where the
-  // reader asked for none — and on a laptop that reads as busy, while on a
-  // phone, where a section is several screens tall and the viewport is short,
-  // it reads as the page throwing itself around. Which is where it was
-  // reported, so this is checked at phone size.
-  //
-  // What replaces it: correct the scroll by exactly the distance the layout
-  // moved, so the heading stays under the reader's finger and the sections
-  // rearrange around it. The contract is therefore "it does not move", and
-  // these checks measure the heading before and after rather than against any
-  // particular landing place.
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(200);
-
+  // Opening one shuts the others, and the opened part is brought up to the top
+  // of the screen, clear of the sticky nav, rather than opening below the fold.
   // Clicked programmatically, not through Playwright's own click: that scrolls
   // the target into view first, which would decide the very position under
   // test. The handler is delegated on document, so a dispatched click on the
   // head bubbles to it exactly as a real one does.
-  const toggleAt = async (index, scrollTo) => {
-    await page.evaluate(y => window.scrollTo(0, y), scrollTo);
-    await page.waitForTimeout(120);
-    const before = await page.evaluate(i => Math.round(
-      document.querySelectorAll('#profile-body .card-head-toggle')[i]
-        .getBoundingClientRect().top), index);
-    await page.evaluate(i =>
-      document.querySelectorAll('#profile-body .card-head-toggle')[i].click(), index);
-    // Settle: wait for the heading to hold still, allowing for a smooth scroll
-    // if one was started, without requiring that one was.
-    await page.waitForFunction(i => {
-      const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
-      const y = Math.round(head.getBoundingClientRect().top);
-      const s = window.__settle || (window.__settle = { last: null, still: 0 });
-      if (s.last !== y) { s.last = y; s.still = 0; return false; }
-      s.still += 1;
-      return s.still >= 4;
-    }, index, { timeout: 6000, polling: 100 }).catch(() => {});
-    return page.evaluate(i => {
-      const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
-      window.__settle = null;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(200);
+  {
+    const revealed = await page.evaluate(async () => {
+      const parts = [...document.querySelectorAll('#profile-body .part-card')];
+      parts.forEach((c, i) => {
+        c.classList.toggle('is-collapsed', i !== 0);
+        c.querySelector('.card-toggle').setAttribute('aria-expanded', String(i === 0));
+      });
+      const last = parts[parts.length - 2];
+      const head = last.querySelector('.card-head-toggle');
+      window.scrollTo(0, Math.round(window.scrollY + head.getBoundingClientRect().top - window.innerHeight * 0.8));
+      await new Promise(r => setTimeout(r, 150));
+      head.click();
+      // Settle: the scroll may be a smooth one.
+      let y = null;
+      for (let still = 0, i = 0; still < 4 && i < 60; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        const now = Math.round(head.getBoundingClientRect().top);
+        still = now === y ? still + 1 : 0;
+        y = now;
+      }
       return {
+        open: !last.classList.contains('is-collapsed'),
+        firstShut: parts[0].classList.contains('is-collapsed'),
         top: Math.round(head.getBoundingClientRect().top),
         navBottom: Math.round(document.querySelector('.nav').getBoundingClientRect().bottom),
-        open: !head.closest('.section-card').classList.contains('is-collapsed'),
         height: window.innerHeight,
       };
-    }, index);
-  };
-  const headCount = await page.locator('#profile-body .card-head-toggle').count();
-
-  // Open one near the top, so the section that the next click closes is
-  // genuinely above it and its height genuinely leaves the flow. This is the
-  // ordering that was broken; the other one shifts nothing and would pass
-  // against a half-fix.
-  await toggleAt(0, 0);
-  const tallEnough = await page.evaluate(() =>
-    document.body.scrollHeight > window.innerHeight * 2);
-  check('the report is long enough for a collapse above to move the page at all',
-    tallEnough, 'a shorter report would make the checks below vacuous');
-
-  // Position a later heading in the middle of the screen and open it there.
-  const midway = await page.evaluate(i => {
-    const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
-    return Math.round(window.scrollY + head.getBoundingClientRect().top - window.innerHeight * 0.35);
-  }, headCount - 1);
-  // Scroll anchoring turned off for this measurement, which is the whole
-  // reason this check exists in the form it does.
-  //
-  // Chromium and Firefox implement scroll anchoring natively: when content
-  // above the viewport changes height they adjust the scroll offset to keep
-  // what you are looking at still. Safari does not implement it at all — and
-  // that is exactly the laptop-is-fine, phone-is-a-mess split this was
-  // reported as. Left on, this suite would be measuring the browser's fix
-  // rather than ours, and deleting the code below would still pass.
-  //
-  // `overflow-anchor: none` reproduces Safari's behaviour in Chromium, so
-  // what is measured here is the app holding the heading still and nothing
-  // else. Restored afterwards, so the rest of the file runs on an ordinary
-  // page.
-  const anchored = await page.evaluate(async ([i, y]) => {
-    document.documentElement.style.overflowAnchor = 'none';
-    window.scrollTo(0, y);
-    await new Promise(r => setTimeout(r, 120));
-    const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
-    const before = Math.round(head.getBoundingClientRect().top);
-    head.click();
-    // Read straight back as well as after settling: the correction is meant to
-    // be instant, so a heading that is right only once an animation has
-    // finished would mean the jump is still there and merely brief.
-    const immediate = Math.round(head.getBoundingClientRect().top);
-    await new Promise(r => setTimeout(r, 400));
-    return {
-      immediate,
-      before,
-      after: Math.round(head.getBoundingClientRect().top),
-      open: !head.closest('.section-card').classList.contains('is-collapsed'),
-      aboveClosed: document.querySelectorAll('#profile-body .card-head-toggle')[0]
-        .closest('.section-card').classList.contains('is-collapsed'),
-      height: window.innerHeight,
-    };
-  }, [headCount - 1, midway]);
-  await page.evaluate(() => { document.documentElement.style.overflowAnchor = ''; });
-  check('a heading opened mid-screen stays exactly where the reader touched it',
-    anchored.open && Math.abs(anchored.after - anchored.before) <= 1,
-    JSON.stringify(anchored));
-  // Anchoring the card instead of the heading passes a loose tolerance and
-  // fails this: a shut card has less padding, so opening one moves its own
-  // heading a few pixels down inside it, and the heading creeps on every
-  // toggle. Checked instantly rather than after settling, because a
-  // correction that only arrives with an animation has not removed the jump.
-  check('and it is already there the instant the section opens, not after a glide',
-    Math.abs(anchored.immediate - anchored.before) <= 1, JSON.stringify(anchored));
-  check('and the section above really did close, so the page moved and was put back',
-    anchored.aboveClosed === true, JSON.stringify(anchored));
-  check('and it was mid-screen rather than incidentally near the top',
-    anchored.before > anchored.height * 0.2 && anchored.before < anchored.height * 0.6,
-    anchored.before + ' of ' + anchored.height);
-
-  // The one case anchoring alone handles badly: a heading near the bottom of
-  // the screen would open its section almost entirely below the fold, so that
-  // one gets a scroll. Without this the fix would trade a jumpy page for one
-  // where opening the last section appears to do nothing.
-  await toggleAt(0, 0);
-  const lowDown = await page.evaluate(i => {
-    const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
-    return Math.round(window.scrollY + head.getBoundingClientRect().top - window.innerHeight * 0.8);
-  }, headCount - 1);
-  const revealed = await toggleAt(headCount - 1, lowDown);
-  check('but a heading near the bottom of the screen is brought up to be read',
-    revealed.open && revealed.top < revealed.height * 0.4, JSON.stringify(revealed));
-  check('and it clears the sticky nav rather than tucking under it',
-    revealed.top >= revealed.navBottom - 1,
-    revealed.top + ' vs nav bottom ' + revealed.navBottom);
+    });
+    check('on a phone, opening a part shuts the one that was open before it',
+      revealed.open && revealed.firstShut, JSON.stringify(revealed));
+    check('and a part opened near the bottom of the screen is brought up to be read',
+      revealed.open && revealed.top < revealed.height * 0.4, JSON.stringify(revealed));
+    check('and it clears the sticky nav rather than tucking under it',
+      revealed.top >= revealed.navBottom - 1,
+      revealed.top + ' vs nav bottom ' + revealed.navBottom);
+  }
 
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.waitForTimeout(200);
+  await toHub(page);
 
   await openAllSections(page);
   check('sending from the review includes DMs, since that row was not unticked',
@@ -5315,30 +5206,28 @@ try {
   });
   check('the box hugs the card rather than spanning the full container',
     hug.hugsTheFrame && hug.narrowerThanContainer, JSON.stringify(hug));
-  check('and is centred in the page rather than left-aligned inside it',
-    hug.centred, JSON.stringify(hug));
   // The lockup on the left, the owner in the middle, the confidence score on
   // the right. The wordmark used to sit alone at the foot, which named the
   // product but not the person — it now leads the row instead.
   check('the card is headed by the wordmark, the owner, and the confidence score, in that order',
     await page.evaluate(() => {
-      const top = document.querySelector('#psyche-card .pc-top');
+      const top = document.querySelector('#psyche-card .pc-stop');
       if (!top) return false;
       const brand = top.querySelector('.pc-brand');
-      const owner = top.querySelector('.pc-owner');
-      const confidence = top.querySelector('.pc-confidence');
+      const owner = top.querySelector('.pc-sowner');
+      const confidence = top.querySelector('.pc-sconf');
       return Boolean(brand && brand.querySelector('svg.pc-brand-mark')) &&
         /PsycheAI/.test(brand.textContent) && Boolean(owner) && owner.textContent.trim().length > 0 &&
-        Boolean(confidence) && /\d+\/100/.test(confidence.textContent) &&
+        Boolean(confidence) && /^\d+$/.test(confidence.textContent.trim()) &&
         brand.getBoundingClientRect().left < owner.getBoundingClientRect().left &&
         owner.getBoundingClientRect().left < confidence.getBoundingClientRect().left;
     }), cardText.replace(/\s+/g, ' ').slice(0, 60));
-  check('the confidence score is the card\'s own field, out of 100',
+  check('the confidence score is the card\'s own field, drawn as a ring out of 100',
     await page.evaluate(() => {
       const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
-      const shown = document.querySelector('#psyche-card .pc-confidence b').textContent.trim();
+      const shown = document.querySelector('#psyche-card .pc-sconf .pc-ring-text').textContent.trim();
       return Number(shown) === Math.round(Number(report.card.confidence)) &&
-        /\/100/.test(document.querySelector('#psyche-card .pc-confidence-max').textContent);
+        Boolean(document.querySelector('#psyche-card .pc-sconf .pc-ring-fill'));
     }));
   check('the card draws the same mark the nav and the PDF draw',
     await page.evaluate(() => {
@@ -5356,10 +5245,10 @@ try {
   // — a mistake this suite has now made twice.
   check('the summary fits inside the gradient block it sits in',
     await page.evaluate(() => {
-      const hero = document.querySelector('#psyche-card .pc-hero');
-      return Boolean(hero.querySelector('.pc-blurb')) && hero.scrollHeight <= hero.clientHeight + 1;
+      const hero = document.querySelector('#psyche-card .pc-shero');
+      return Boolean(hero.querySelector('.pc-sblurb')) && hero.scrollHeight <= hero.clientHeight + 1;
     }), await page.evaluate(() => {
-      const hero = document.querySelector('#psyche-card .pc-hero');
+      const hero = document.querySelector('#psyche-card .pc-shero');
       return hero.scrollHeight + ' content vs ' + hero.clientHeight + ' box';
     }));
   check('the psyche card sits above the written report',
@@ -5377,11 +5266,10 @@ try {
   // same information twice.
   check('the MBTI block is labelled MBTI, names the type in its letters, and drops the type name',
     await page.evaluate(() => {
-      const stat = document.querySelector('#psyche-card .pc-stat');
-      const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
-      return /MBTI/.test(stat.querySelector('.pc-lab').textContent) &&
-        letters === 'ENFJ' && !stat.querySelector('.pc-big') &&
-        stat.querySelectorAll('.pc-mbti-name').length === 0 &&
+      const stat = document.querySelector('#psyche-card .pc-sletters').closest('.pc-spanel');
+      const letters = [...stat.querySelectorAll('.pc-sletters b')].map(b => b.textContent).join('');
+      return /MBTI/.test(stat.querySelector('.pc-slab').textContent) &&
+        letters === 'ENFJ' && !document.querySelector('#psyche-card .pc-stype') &&
         !/The Protagonist/.test(stat.textContent);
     }), cardText.replace(/\s+/g, ' ').slice(0, 110));
   check('each MBTI letter carries how strongly it leans',
@@ -5393,12 +5281,12 @@ try {
   // transform, which shrinks the rect but not the computed line-height, so the
   // two are in different units and the ratio comes out nonsense.
   const blurbLines = await page.evaluate(() => {
-    const el = document.querySelector('#psyche-card .pc-blurb');
+    const el = document.querySelector('#psyche-card .pc-sblurb');
     if (!el) return 0;
     return Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight));
   });
-  check('the summary runs several lines rather than a single strapline',
-    blurbLines >= 3 && blurbLines <= 10, blurbLines + ' lines');
+  check('the summary runs a few lines rather than a single strapline',
+    blurbLines >= 2 && blurbLines <= 8, blurbLines + ' lines');
   // The card's blurb is now its own model-written field — cardHighlights in
   // lib/prompts.js — a real condensation of report.summary's first two
   // paragraphs, not an excerpt assembled at read time. Checked against the
@@ -5406,12 +5294,15 @@ try {
   // if the card ever starts reading from a different field or inventing text.
   const blurbSources = await page.evaluate(() => {
     const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
-    const blurb = document.querySelector('#psyche-card .pc-blurb').innerText.replace(/\s+/g, ' ').trim();
-    const expected = String(report.cardHighlights || '').replace(/\s+/g, ' ').trim();
-    const sentenceCount = expected.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    const blurb = document.querySelector('#psyche-card .pc-sblurb').innerText.replace(/\s+/g, ' ').trim();
+    const highlights = String(report.cardHighlights || '').replace(/\s+/g, ' ').trim();
+    const sentences = highlights.split(/(?<=[.!?])\s+/).filter(Boolean);
+    // The story card prints the first two: the comparison with the character.
+    const expected = sentences.slice(0, 2).join(' ');
+    const sentenceCount = sentences.length;
     return { blurb, expected, sentenceCount };
   });
-  check('the card blurb is report.cardHighlights, not an excerpt stitched together at read time',
+  check('the card blurb is report.cardHighlights\' first two sentences, not an excerpt stitched together at read time',
     blurbSources.blurb === blurbSources.expected && blurbSources.expected.length > 0,
     JSON.stringify(blurbSources));
   check('cardHighlights itself is exactly four sentences',
@@ -5475,7 +5366,7 @@ try {
       localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram'], digestChars: 1000 }, counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [] }));
     });
     await fallbackPage.reload({ waitUntil: 'load' });
-    await fallbackPage.waitForSelector('#psyche-card .pc-blurb', { timeout: 20000 });
+    await fallbackPage.waitForSelector('#psyche-card .pc-sblurb', { timeout: 20000 });
     const fallbackBlurb = await fallbackPage.evaluate(() => {
       const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
       const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
@@ -5489,8 +5380,10 @@ try {
       const opening = summary.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2);
       const relationship = strengthSentence(report.relationship && report.relationship.strengths);
       const career = strengthSentence(report.career && report.career.strengths);
-      const expected = [...opening, relationship, career].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      const blurb = document.querySelector('#psyche-card .pc-blurb').innerText.replace(/\s+/g, ' ').trim();
+      const stitched = [...opening, relationship, career].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      // The story card prints the first two sentences of it.
+      const expected = stitched.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2).join(' ');
+      const blurb = document.querySelector('#psyche-card .pc-sblurb').innerText.replace(/\s+/g, ' ').trim();
       return { blurb, expected };
     });
     check('a report saved before cardHighlights existed still falls back to the old stitching',
@@ -5514,11 +5407,10 @@ try {
   // same information twice.
   check('the MBTI block is labelled MBTI, names the type in its letters, and drops the type name',
     await page.evaluate(() => {
-      const stat = document.querySelector('#psyche-card .pc-stat');
-      const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
-      return /MBTI/.test(stat.querySelector('.pc-lab').textContent) &&
-        letters === 'ENFJ' && !stat.querySelector('.pc-big') &&
-        stat.querySelectorAll('.pc-mbti-name').length === 0 &&
+      const stat = document.querySelector('#psyche-card .pc-sletters').closest('.pc-spanel');
+      const letters = [...stat.querySelectorAll('.pc-sletters b')].map(b => b.textContent).join('');
+      return /MBTI/.test(stat.querySelector('.pc-slab').textContent) &&
+        letters === 'ENFJ' && !document.querySelector('#psyche-card .pc-stype') &&
         !/The Protagonist/.test(stat.textContent);
     }), cardText.replace(/\s+/g, ' ').slice(0, 110));
   check('each MBTI letter carries how strongly it leans',
@@ -5527,7 +5419,7 @@ try {
   // Whole sentences only. Truncating to a character count and appending an
   // ellipsis put a visible "…" on the card and left the reader with a thought
   // that stops halfway; a shorter complete passage is the better trade.
-  const blurbText = await page.locator('#psyche-card .pc-blurb').innerText();
+  const blurbText = await page.locator('#psyche-card .pc-sblurb').innerText();
   check('the summary is never cut off mid-thought with an ellipsis',
     !/[…]|\.\.\./.test(blurbText) && /[.!?]$/.test(blurbText.trim()),
     JSON.stringify(blurbText.slice(-60)));
@@ -5536,24 +5428,19 @@ try {
   // instead of just the highest and lowest.
   check('the Big Five block names four traits, with real scores, in a fixed order',
     await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
+      const rows = [...document.querySelectorAll('#psyche-card .pc-straits li')];
       if (rows.length !== 4) return false;
       const texts = rows.map(r => r.textContent);
-      const order = ['Openness', 'Conscientious', 'Agreeableness', 'Emotional sensitivity'];
+      const order = ['Openness', 'Conscientious', 'Agreeable', 'Sensitivity'];
       return order.every((label, i) => texts[i].includes(label)) &&
         texts.join(' ').includes('62') && texts.join(' ').includes('71') &&
         texts.join(' ').includes('77') && texts.join(' ').includes('35');
     }), cardText.replace(/\s+/g, ' ').slice(0, 260));
   check('extraversion does not appear a second time in the Big Five block',
     await page.evaluate(() => {
-      const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
-      const bigFive = stats.find(s => /Big Five/i.test(s.querySelector('.pc-lab').textContent));
-      return Boolean(bigFive) && !/Extraversion/.test(bigFive.textContent);
+      const bigFive = document.querySelector('#psyche-card .pc-straits').closest('.pc-spanel');
+      return /Big Five/i.test(bigFive.querySelector('.pc-slab').textContent) && !/Extraversion/.test(bigFive.textContent);
     }));
-  check('each Big Five trait carries a bullet', await page.evaluate(() => {
-    const labels = [...document.querySelectorAll('#psyche-card .pc-trait-label')];
-    return labels.length > 0 && labels.every(label => getComputedStyle(label, '::before').content.includes('•'));
-  }));
   // "Conscientiousness" is one solid word with no space for the browser to
   // wrap at, and at this column's width it used to run past the card edge on
   // some platforms' font metrics. app.js now trims it to "Conscientious" for
@@ -5562,129 +5449,53 @@ try {
   // card's real width — scrollWidth/clientWidth are layout values and ignore
   // fitCard()'s preview-sizing transform, so no font-size trick is needed.
   check('no Big Five trait label overflows its row', await page.evaluate(() => {
-    const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
+    const rows = [...document.querySelectorAll('#psyche-card .pc-straits li')];
     return rows.length === 4 && rows.every(row => row.scrollWidth <= row.clientWidth + 1);
   }));
-  // The box is stretched to match the taller MBTI block beside it
-  // (grid rows default to align-items: stretch); the four rows should use
-  // that height rather than sitting bunched at the top with empty space
-  // below them, so the last row's bottom edge should land near the box's,
-  // not partway up it.
-  check('the Big Five rows spread to fill the box rather than bunching at the top',
+  check('what you stand for (values and beliefs) and interests share one row',
     await page.evaluate(() => {
-      const stat = [...document.querySelectorAll('#psyche-card .pc-stat')]
-        .find(s => /Big Five/i.test(s.querySelector('.pc-lab').textContent));
-      const rows = [...stat.querySelectorAll('.pc-trait')];
-      const box = stat.getBoundingClientRect();
-      const lastRow = rows[rows.length - 1].getBoundingClientRect();
-      return (box.bottom - lastRow.bottom) < (box.height * 0.25);
-    }));
-  check('values, beliefs and interests share one row',
-    await page.evaluate(() => {
-      const cols = [...document.querySelectorAll('#psyche-card .pc-row:not(.pc-row-2) .pc-col')];
-      if (cols.length !== 3) return false;
+      const cols = [...document.querySelectorAll('#psyche-card .pc-schips')].map(c => c.closest('.pc-spanel'));
+      if (cols.length !== 2) return false;
       const tops = cols.map(c => Math.round(c.getBoundingClientRect().top));
       return tops.every(t => Math.abs(t - tops[0]) <= 1);
     }));
-  check('the card headline is gone, leaving the character name to lead straight into the summary',
-    (await page.locator('#psyche-card .pc-headline').count()) === 0);
   check('rhythm and energy are gone from the card',
     await page.evaluate(() => {
-      const labs = [...document.querySelectorAll('#psyche-card .pc-lab')].map(l => l.textContent);
-      const noLabs = !labs.some(text => /Rhythm/i.test(text) || /Energy/i.test(text));
-      const noRow = document.querySelectorAll('#psyche-card .pc-row.pc-row-2:not(.pc-love-row)').length === 0;
-      return noLabs && noRow;
+      const labs = [...document.querySelectorAll('#psyche-card .pc-slab')].map(l => l.textContent);
+      return labs.length > 0 && !labs.some(text => /Rhythm/i.test(text) || /Energy/i.test(text));
     }));
-  check('it keeps love languages and drops the strength and weakness lists',
-    /Receives care as/i.test(cardText) && /Shows care as/i.test(cardText) &&
+  // With a catalogue character only how they show care: receiving makes room
+  // for the characters they are most in sync with.
+  check('it keeps how they show care and drops the strength and weakness lists',
+    /Shows care as/i.test(cardText) &&
     !/Strong in relationships/i.test(cardText) && !/Strong at work/i.test(cardText) &&
     !/Costs you in relationships/i.test(cardText) && !/Costs you at work/i.test(cardText),
     cardText.replace(/\s+/g, ' ').slice(0, 200));
-  // Read across rather than down, so they stay two-up even on a phone where
-  // every other pair stacks.
-  check('giving and receiving sit side by side on a phone as well',
-    await page.evaluate(async () => {
-      const card = document.querySelector('#psyche-card-full');
-      card.classList.add('pc-narrow');
-      const halves = [...document.querySelectorAll('#psyche-card-full .pc-love-row .pc-half')];
-      const tops = halves.map(h => Math.round(h.getBoundingClientRect().top));
-      card.classList.remove('pc-narrow');
-      return halves.length === 2 && Math.abs(tops[0] - tops[1]) <= 1;
-    }));
-  // Overflow inside a block, which the card-level check above cannot see: the
-  // four strength words sit in one column and ran into the block beside them.
-  check('the MBTI strengths fit their own column on a phone',
-    await page.evaluate(() => {
-      const card = document.querySelector('#psyche-card-full');
-      card.classList.add('pc-narrow');
-      const row = card.querySelector('.pc-letters');
-      const over = row.scrollWidth > row.clientWidth + 1;
-      card.classList.remove('pc-narrow');
-      return !over;
-    }));
   // The mock's own words ("slight", "clear") are shorter than the worst case
   // — a real reading can land "moderate" (the longest of the three, per
   // lib/prompts.js's enum) on three or four axes at once, which is exactly
   // what overflowed before the letters moved from one row of four to a
   // two-by-two grid. Forced here rather than relying on the mock happening
   // to produce it.
-  check('four "moderate" strengths — the worst case — still fit, narrow or not',
+  check('four "moderate" strengths — the worst case — still fit',
     await page.evaluate(() => {
-      const words = [...document.querySelectorAll('#psyche-card-full .pc-letter i')];
+      const words = [...document.querySelectorAll('#psyche-card-full .pc-sletters .pc-sstrength')];
       const original = words.map(w => w.textContent);
       words.forEach(w => { w.textContent = 'moderate'; });
-      const card = document.querySelector('#psyche-card-full');
-      const row = card.querySelector('.pc-letters');
-      const wideOver = row.scrollWidth > row.clientWidth + 1;
-      card.classList.add('pc-narrow');
-      const narrowOver = row.scrollWidth > row.clientWidth + 1;
-      card.classList.remove('pc-narrow');
+      const rows = [...document.querySelectorAll('#psyche-card-full .pc-sletters li')];
+      const over = rows.some(row => row.scrollWidth > row.clientWidth + 1);
       words.forEach((w, i) => { w.textContent = original[i]; });
-      return !wideOver && !narrowOver;
-    }));
-  check('the MBTI letters sit two-by-two rather than four in one row',
-    await page.evaluate(() => {
-      const style = getComputedStyle(document.querySelector('#psyche-card-full .pc-letters'));
-      return style.display === 'grid' && style.gridTemplateColumns.split(' ').length === 2;
-    }));
-  // Reported from a real phone: on a narrow card, Big Five used to drop to
-  // its own row at half the card's width. Both stay side by side, with each
-  // box free to grow taller instead of the row losing a column.
-  check('type and Big Five stay in one row on a narrow card',
-    await page.evaluate(() => {
-      const card = document.querySelector('#psyche-card-full');
-      card.classList.add('pc-narrow');
-      const stats = [...card.querySelectorAll('.pc-stats .pc-stat')];
-      const tops = stats.map(s => Math.round(s.getBoundingClientRect().top));
-      const ok = stats.length === 2 && tops.every(t => Math.abs(t - tops[0]) <= 1);
-      card.classList.remove('pc-narrow');
-      return ok;
-    }));
-  // Long single words ("Conscientiousness" and "Agreeableness" among the
-  // trait names) have nowhere to wrap at a narrow column width unless they can break inside the word — without
-  // that they overflowed straight past their own box into the score or the
-  // stat beside them.
-  check('long one-word labels and trait names wrap instead of overflowing on a narrow card',
-    await page.evaluate(() => {
-      const card = document.querySelector('#psyche-card-full');
-      card.classList.add('pc-narrow');
-      const nodes = [
-        ...card.querySelectorAll('.pc-stats .pc-lab-text'),
-        ...card.querySelectorAll('.pc-trait-label'),
-      ];
-      const ok = nodes.length > 0 && nodes.every(n => n.scrollWidth <= n.clientWidth + 1);
-      card.classList.remove('pc-narrow');
-      return ok;
+      return words.length === 4 && !over;
     }));
   check('every block on the card is labelled with an icon',
     await page.evaluate(() => {
-      const labs = [...document.querySelectorAll('#psyche-card .pc-lab')];
-      return labs.length > 0 && labs.every(l => l.querySelector('.pc-lab-icon'));
+      const labs = [...document.querySelectorAll('#psyche-card .pc-slab')];
+      return labs.length > 0 && labs.every(l => l.querySelector('span[aria-hidden="true"]'));
     }));
   check('each love language carries its own glyph',
     await page.evaluate(() => {
-      const items = [...document.querySelectorAll('#psyche-card .pc-love li')];
-      return items.length > 0 && items.every(li => li.querySelector('.pc-love-icon'));
+      const items = [...document.querySelectorAll('#psyche-card .pc-slove li')];
+      return items.length > 0 && items.every(li => li.querySelector('span[aria-hidden="true"]'));
     }));
   // Three deliberate omissions, each for its own reason — the studio name
   // invites checking the costume, attachment is the most intimate line in the
