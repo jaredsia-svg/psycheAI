@@ -1198,8 +1198,10 @@
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts – plus the sections only the Psyche Report has.',
-      // Under the price in the head: the other way to it (lib/referral.js, claimFirst).
-      premiumFree: 'Share with a friend and get it free!',
+      // Beside the price in the head: the first one free with the first card
+      // (PSYCHEAI_FIRST_RUN merged), then the price for a re-run.
+      premiumFree: 'Your first one is free!',
+      premiumThen: 'then',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
@@ -1329,7 +1331,7 @@
       unlock: 'Unlock',
       ask: 'Ask PsycheAI',
       questionsLeft: n => n + (n === 1 ? ' question left' : ' questions left'),
-      questionsOf: (n, of) => n + ' of ' + of + (of === 1 ? ' question left' : ' questions left'),
+      questionsOf: (asked, of) => asked + ' of ' + of + (of === 1 ? ' question asked' : ' questions asked'),
       freeQuestion: n => n + (n === 1 ? ' free question' : ' free questions'),
       askGo: 'Ask',
       askHistory: 'History',
@@ -1383,7 +1385,7 @@
         keep: 'Your profile lives only in this browser. Save a backup to bring it back, take your AI Personal Context, or delete it all.',
         card: 'Your Psyche Card: who you are at a glance. Read it full size or download it to share.',
         syncs: 'Compare your card with a friend\'s to see what clicks between you. The number is how many syncs you have.',
-        ask: 'Ask PsycheAI anything about your report. 2/5 means 2 questions left of 5; History shows past answers.',
+        ask: 'Ask PsycheAI anything about your report. 2/5 means you have asked 2 of your 5 questions; History shows past answers.',
       },
       // The two popouts that come before a download.
       confirm: {
@@ -1434,9 +1436,10 @@
         // One paragraph naming the five features; each {name} is a small
         // button (the names in introLinks). On a phone each clause ends its
         // own line, so the buttons line up down the right.
-        introPaid: 'This is your {card} – your personality on one card, read from your own data. Go deeper in your {report}, ' +
+        // {br}: a line break on a phone only, so the report's sentence starts a line.
+        introPaid: 'This is your {card} – your personality on one card, read from your own data. {br}Go deeper in your {report}, ' +
           'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
-        introFree: 'This is your {card} – your personality on one card, read from your own data. Unlock the reasoning in your {report}, ' +
+        introFree: 'This is your {card} – your personality on one card, read from your own data. {br}Unlock the reasoning in your {report}, ' +
           'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
         introLinks: { card: 'Psyche Card', report: 'Psyche Report', sync: 'Psyche Sync', ask: 'Ask PsycheAI', hub: 'Psyche Hub' },
         hover: 'Hover over any part of your card to learn more about your personality.',

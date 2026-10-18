@@ -5207,3 +5207,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .drive-lines b { display: block; color: var(--ink); }
 .drive-lines span { color: var(--ink-soft); font-size: .94rem; }
 @media (min-width: 720px) { .drive-lines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* The card intro's second sentence on its own line, on a phone only ({br} in copy.js). */
+.cx-br { display: none; }
+@media (max-width: 759px) { .cx-br { display: inline; } }
+/* "then" between the front page's free badge and the re-run price. */
+.premium-tier-then { font-size: .8rem; font-weight: 600; color: var(--ink-soft); }

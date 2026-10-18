@@ -2494,17 +2494,19 @@
       node.textContent = num;
       node.setAttribute('aria-label', label);
     };
-    // Questions as left/of, where "of" is what is left plus what this reader
-    // has actually asked (Appendix 2's list): never asked, 5/5; after two,
-    // 3/5. A remembered high-water mark read 5/6 for a reader who had asked
-    // nothing, once a link credit went on a gift instead of a question.
+    // Questions as asked/of (October 2026; left/of until then), where "of" is
+    // what is left plus what this reader has actually asked (Appendix 2's
+    // list): never asked, 0/5; after two, 2/5. Not a remembered high-water
+    // mark, which read 5/6 for a reader who had asked nothing once a link
+    // credit went on a gift instead of a question.
     if (askCreditsNow && typeof askCreditsNow.total === 'number') {
-      const n = Math.max(0, Number(askCreditsNow.total) || 0);
-      const of = n + askThread().length;
+      const left = Math.max(0, Number(askCreditsNow.total) || 0);
+      const asked = askThread().length;
+      const of = left + asked;
       const node = hub.querySelector('.hub-tile[data-hub="ask"] [data-hub-num]');
       if (node) {
-        node.innerHTML = esc(String(n)) + (of > 0 ? '<small>/' + esc(String(of)) + '</small>' : '');
-        node.setAttribute('aria-label', H.questionsOf(n, of));
+        node.innerHTML = esc(String(asked)) + (of > 0 ? '<small>/' + esc(String(of)) + '</small>' : '');
+        node.setAttribute('aria-label', H.questionsOf(asked, of));
       }
     }
   }
@@ -2658,7 +2660,7 @@
     let open = '';
     for (const part of String(text).split(/(\{(?:card|report|sync|ask|hub)\}[.,]?)/)) {
       const m = /^\{(card|report|sync|ask|hub)\}([.,]?)$/.exec(part);
-      if (!m) { open += esc(part); continue; }
+      if (!m) { open += esc(part).replace('{br}', '<br class="cx-br">'); continue; }
       open += '<span class="cx-tail">' + button(m[1]) + esc(m[2]) + '</span>';
       // The card's button opens the paragraph rather than ending a clause.
       if (m[1] !== 'card') { out.push('<span class="cx-clause">' + open + '</span>'); open = ''; }
@@ -3021,9 +3023,10 @@
       '<div class="premium-tier-head">' +
         '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
         '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
-        // The other way in, share the link, then the price, on one line.
+        // The first one free, then the price of a re-run, on one line.
         '<span class="premium-tier-pricebox">' +
         '<span class="premium-free-badge">' + Copy.lineIcon('🎁') + '<span>' + esc(I.premiumFree) + '</span></span>' +
+        '<span class="premium-tier-then">' + esc(I.premiumThen) + '</span>' +
         '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span></span>' +
       '</div>' +
       '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +

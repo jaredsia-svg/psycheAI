@@ -2526,10 +2526,15 @@ A run with no account to hold it to gets the card alone.
   (judgeGuess still mints a report grant when called without `creditTo`; the server no longer does). The cast
   says "win a free credit"; the popout says the credit is on their link. Counted as `guess_won_credit`; the
   first read itself as `first_full`.
-- **The price wording** (the FAQ, the guides, the search pages, llms.txt and the re-run sheet) now says the
+- **The price wording** (the front page's Psyche Report badge, "Your first one is free! then S$7", the FAQ, the guides, the search pages, llms.txt and the re-run sheet) now says the
   first Psyche Card and Psyche Report are free and a re-run is US$5. That is true only while the switch is
   `merged`: going back to `card` should take the wording back too (the re-run sheet follows the switch on its
-  own; the static pages do not).
+  own; the static pages and the front page's badge do not).
+- **The card intro on a phone** breaks before "Go deeper in your Psyche Report" (or "Unlock the reasoning…"),
+  so the report's sentence starts a line (`{br}` in `introPaid`/`introFree`, `.cx-br`, shown under 760px).
+- **Ask PsycheAI's count in the hub is asked/total** (was left/total): 0/5 before any question, 2/5 after
+  two; a reader with none at all reads 0. The total is still what is left plus what was asked, never a
+  remembered high-water mark.
 - The free-report-for-one-open panel still serves readers on the card path.
 
 ### Share-first: the first Psyche Report free for one connection opening the link (October 2026)
