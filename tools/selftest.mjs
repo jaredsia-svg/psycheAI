@@ -6714,6 +6714,13 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       'evidence' in classicSchema.properties.interests.items.properties &&
       /prints every one/.test(structured.properties.interests.description));
   }
+  // WhatsApp chats are the reader's own pick of up to three, usually their
+  // closest: their volume is depth by choice, never evidence of a narrow
+  // social life (a moderate-introvert read citing "35,000 messages in two
+  // chats" against 378 Instagram threads, October 2026).
+  check('every prompt that scores extraversion says WhatsApp chats are hand-picked and never count towards I',
+    ['STRUCTURED_FREE_SYSTEM', 'MERGED_SYSTEM', 'STRUCTURED_FULL_SYSTEM', 'CLASSIC_FULL_SYSTEM'].every(k =>
+      /WhatsApp chats are hand-picked/.test(prompts[k]) && /never depth leaning introvert|never count it towards \*\*I\*\*/.test(prompts[k])));
   check('its shareable card keeps the same fields, and none is the Enneagram',
     Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
     !('enneagram' in structured.properties.card.properties));

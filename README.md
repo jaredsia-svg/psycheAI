@@ -2502,6 +2502,24 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### WhatsApp volume is not introversion (October 2026)
+
+A reader who had read as a slight extravert came back a moderate introvert, the E/I case citing "378 active
+direct message threads … your volume is overwhelmingly concentrated in two WhatsApp chats logging over
+35,000 messages each". That reasoning is wrong by construction: the reader chooses up to three WhatsApp
+chats to add, usually with their closest people, so all of that volume sits in a few chats for anyone.
+The messages-per-thread rule (thousands across a few conversations is depth, leaning I) was written for
+Instagram's own DMs, where the spread is the reader's behaviour, not their choice.
+
+Both the card's prompt (which the merged first run reads too) and the full report's now say so: WhatsApp
+chats are hand-picked; their volume is never set against Instagram or Messenger threads, never called
+"concentrated" and never counted towards I. Breadth comes from `activeThreads`, `activeGroupThreads` and
+distinct people; WhatsApp adds who starts conversations, reply speed and how they write.
+
+Two other changes this month made the E/I read more exposed to it: the merged first run writes the card
+and report in one call from a longer prompt, and the trimmed Big Five moved the extraversion evidence into
+the E/I `why`, which is told to name the breadth number behind the score.
+
 ### A new reader's first run: the card and the report together, free (October 2026)
 
 A new reader's first free run now writes the Psyche Card and the Psyche Report together, the way the
