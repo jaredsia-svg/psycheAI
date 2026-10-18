@@ -7186,15 +7186,11 @@ try {
   // property of the whole report rather than as a check on those two, so the
   // next section added cannot quietly reintroduce a duplicate.
   // Line icons now, so told apart by their drawing rather than their text.
+  // (Wellbeing wore the development plan's seedling until October 2026; it is
+  // the sun now.)
   const glyphs = await page.locator('#profile-body .card-icon').evaluateAll(nodes => nodes.map(n => n.innerHTML));
-  // One known pair is let through for now: the development plan wears the
-  // same seedling as Wellbeing (both 🌱 in app.js) — the owner's call which
-  // one changes. Any other repeat still fails.
-  const glyphOwners = await page.locator('#profile-body .card-icon').evaluateAll(nodes =>
-    nodes.map(n => n.closest('.section-card').classList.contains('development-card')));
-  const ownGlyphs = glyphs.filter((g, i) => !glyphOwners[i]);
   check('and no two sections wear the same glyph',
-    new Set(ownGlyphs.map(g => g.trim())).size === ownGlyphs.length,
+    new Set(glyphs.map(g => g.trim())).size === glyphs.length,
     String(glyphs.length));
   check('strengths and weaknesses sit side by side, in relationships and at work',
     (await page.locator('#profile-body .bring-pair .partner-grid').count()) === 1 &&

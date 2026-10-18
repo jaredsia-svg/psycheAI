@@ -1087,7 +1087,7 @@
    */
   const PAID_SECTIONS = [
     {
-      key: 'wellness', icon: '🌱', cardClass: 'wellness-card',
+      key: 'wellness', icon: '☀️', cardClass: 'wellness-card',
       title: () => TEXT.wellness, sub: () => TEXT.wellnessSub,
       coverTitle: () => TEXT.wellnessCoverTitle, coverBlurb: () => TEXT.wellnessCoverBlurb,
       body: wellnessBodyHtml,
@@ -2432,7 +2432,9 @@
       case 'report': leaveHub(); go('full'); break;
       case 'pdf': exportPdf(); break;
       case 'card': openPsycheCard(); break;
-      case 'share': shareMyLink(button); break;
+      // Without a share sheet the link is copied, and said so as Copy says it
+      // (October 2026: it called an absent callback and threw after copying).
+      case 'share': shareMyLink(button, flashCardStatus); break;
       case 'card-download': downloadCardImage({ currentTarget: button }); break;
       case 'asked': leaveHub(); openAskAppendix(); break;
       case 'unlock': openPremiumDialog(button, 'unlock'); break;
