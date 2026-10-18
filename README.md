@@ -2528,6 +2528,319 @@ change could pass without the live layout being exercised. Gone:
 - **Tests.** The UI suite's main server runs the structured layout; checks that compared against classic
   went, and the rest were moved onto structured markup.
 
+### Titles without "Your", each with its mark; no line over the card (October 2026)
+
+- **Titles:** My Psyche's card panel is "Psyche Card" and its hub "Psyche Hub". My Report's header is
+  "Psyche Report". My Syncs is "Psyche Sync", and its pill says only "Free, every time".
+- **Marks:** each title carries its mark on the left, in the hub's purple-to-pink gradient (`titleMark` in
+  app.js, from `HUB_ICONS`: card, grid, report, sync).
+- **No gradient line:** the line along the top of the Psyche Card and of its panel on My Psyche is gone.
+
+### Who starts conversations is a weak E/I row; no unsupported group chats (October 2026)
+
+- **`initiates` row.** Who starts the conversations, across their chats, is a weak row: they open most
+  (E), or the other side usually does (I). It is entered once for all chats, never per chat. The
+  never-counted list keeps reply speed and message counts inside one chat, and WhatsApp's volume.
+- **Group chats.** A report claimed "active ties across multiple group chats" and "WhatsApp group chats"
+  against `activeGroupThreads: 0` and three one-to-one WhatsApp chats. `CONVERSATIONS_RULE` now says no
+  field may claim group chats unless the counts show one: `activeGroupThreads` above 0, or a WhatsApp chat
+  whose `kind` is `group`.
+- **Cost:** `FREE_FIXED_INPUT_TOKENS` is 13,700 (13,663 measured), inside the 8.7¢ cap.
+
+### Mixed in their own words stays slight; thin ledgers stay slight (October 2026)
+
+A read with the five-year rows working (33 sustained conversations, neither way; 9% sustained, a weak I)
+still came back a moderate E at 69. The model's ledger was E 8 vs I 1. Two causes:
+- **Own words were lost.** The digest held the reader's own words from 2018: "I think I am quite mixed… a
+  lot of times I feel extroverted… many instances I feel introverted". `own-words` let the model pick only
+  one letter, so "mixed" had nowhere to go.
+- **The E rows were inflated.** Dinners, tennis and trips with old friends went in as `pursuits` and
+  `setting`.
+
+The changes:
+- **Mixed counts both ways, and caps the axis.** Calling themselves mixed, both or an ambivert is entered
+  under both letters, and the axis is then `slight` whatever the rest of the ledger builds (`scoreAxis`).
+  What someone says of themselves outweighs a lead built from behaviour.
+- **Thin ledgers stay slight.** `moderate` needs 10 points in play (was 6) and `clear` 14 (was 10). The
+  slight score scales by points in play over 10.
+- **`pursuits` is weak.** A sport or hobby with friends is common to everyone.
+- **`setting` E is strangers and big events only.** That means parties, mixers, conferences and meeting
+  new people. Seeing several groups of friends they already have is not this row.
+- **Cost:** the free card's prompt reserve is 13,600 (13,547 measured). `FREE_COST_CAP` and
+  `DEEP_FREE_COST_CAP` are 8.7¢.
+- **The sample** now adds up to E, N and F slight and J moderate, with extraversion 55.
+
+**Landing.** Every read that writes a card now lands on My Psyche at the card: a first free read, and a
+card bought with its report (`adoptBundle`). An unlock of a card the reader already held lands on the
+report, live or picked up after a reload.
+
+**The front page's pills.** Psyche Sync's "Free" and Ask PsycheAI's "1 question free, then … for 5" take
+the card tier's "Free" design: faint green (`--good-soft`) behind green text.
+
+### Breadth is sustained conversations in every field, not only the ledger (October 2026)
+
+A signature pattern, "The generous networker", cited "378 active direct message conversations over the
+lifetime of your account". The MBTI ledger's never-counted list already kept `activeThreads` out of the
+letters, but it bound only the ledger. `CONVERSATIONS_RULE` now says it once for everything: patterns,
+sections, the card and the ledger.
+- **The rule:** how many conversations someone ever wrote in, or any lifetime total of contacts, friends
+  or followers, is never evidence of how many people they keep up with. The number that measures that is
+  `engagedThreads.last5Years.atLeast50`.
+- **Where it sits:** in the report prompt's numbers rules and the card prompt's "Reading it"; once in the
+  merged prompt.
+- **Schemas:** the patterns' `evidence` descriptions say it too.
+- **Cost:** `FREE_FIXED_INPUT_TOKENS` 13,450 (13,441 measured), still inside the 8.6-cent cap.
+
+### A slight extravert read as moderate, and S off search counts (October 2026)
+
+The first report built on the ledger still called one reader a moderate E (extraversion 68), and gave them
+an S they are not. Two of the code's own rows did most of it:
+- **E/I:** the sustained row added Instagram's 40 to Messenger's 126 (a history from 2007) and entered
+  166 as a strong E. That weighed as much as the reader's own words.
+- **N/S:** the search-shape row read 7,330 practical searches against 509 conceptual as a medium S. But
+  "how to", "near me", prices and bookings are what anyone's search box is for.
+- **Model rows:** the model also cited group chats against `activeGroupThreads: 0`, and counted dinners
+  and trips with old friends as reaching out.
+
+The changes:
+- **Five years, and never a sum.** The browser readers count each conversation's own messages over the
+  five years up to the export's latest message, and send `engagedThreads.last5Years`: how many
+  conversations they wrote in then, and how many hold 10, 50 and 200 of their own messages (`instagram.js`
+  `recentPerThread`, Messenger in `supplement.js`; `forModel` passes the five integers). The scorer reads
+  only those, Instagram's and Messenger's added together; a source without them (a digest built before
+  this) adds nothing. The share is the five-year sustained count over the five-year conversations written
+  in.
+- **A count weighs less than words.** Over 100 sustained conversations is now a medium E; 50–100 a weak
+  E; under 20 a weak I.
+- **Group chats count for neither letter**, busy or empty. Whether someone group-chats on these apps is a
+  habit of the app, not of the person. The row is gone from the rubric, a ledger that names it is
+  dropped, and the never-counted list says so.
+- **`reach-out` means beyond the usual circle.** Plans for the same friends, however often, are
+  `convenes-known-circle`, which counts neither way.
+- **Strength is stricter.** `moderate` needs a margin of a third with 6 points in play (was a quarter with
+  5); `clear` needs two-thirds with 10 (was three-fifths). The extraversion bands are unchanged in their
+  ranges.
+- **N/S unwound.** `search-shapes` is no longer a row, and the never-counted list says a mostly practical
+  search history is everyone's. `compares-tracks` and `practical-craft` are weak, and leave out the
+  numbers a reader's job runs on and a sport's technique.
+
+The sample's extraversion moved from 58 to 57 with the new slight formula.
+
+### MBTI scored from a ledger, not an impression (October 2026)
+
+One reader's J/P came back J, J and P in a day. The digest was the same each time (its sampling is
+seeded), and each run was "moderate". The data genuinely ran both ways: planning for money and work, loose
+plans with friends. A model that forms one view and then writes a paragraph defending it lands wherever its
+first impression did. E/I had been patched rule by rule, with nine thousand characters of bands, bans and
+corrections, and still swung.
+
+Now the model judges each piece of evidence, and code does the adding up (`lib/mbtiScore.js`):
+
+- **The ledger:** for each axis the model writes a `ledger` first. It lists every piece of evidence for
+  either letter, each tagged with a rubric row (`RUBRIC`), the letter it points to, and a short note with
+  its count. `why` and `evidence` then explain what it shows. The ledger is never printed.
+- **Weights:** each rubric row has a fixed weight: strong 3 (their own words; the setting they choose; the
+  T/F tie-break), medium 2, weak 1. One entry per row and letter, so repeating a row adds nothing. Rows the
+  model may not use, wrong letters and duplicates are dropped (`cleanLedger`).
+- **Computed rows:** some rows the code works out from the digest and never accepts from the model
+  (`computedPieces`):
+  - *Sustained conversations* (Instagram's `engagedThreads.atLeast50`, plus Messenger's): over 100 is a
+    strong E; 50 or more a medium E; under 20 a medium I; anything between leans neither way. The bands
+    halve for under three years of data. (Since revised: five years, the larger source, weaker weights;
+    see "A slight extravert read as moderate" above.)
+  - *Share:* over 60% of conversations spoken in being sustained, with at least 30 of them, is a weak E.
+    Under 10%, around fewer than 50, is a weak I. A high share needs the floor because six kept up out of
+    eight is a small circle, not reach.
+  - *Both:* neither row counts when direct messages are not a channel the reader uses (under 1,000 of
+    their own messages and under 50 conversations spoken in). Someone who barely uses DMs is not counted
+    as an introvert.
+  - *Search shapes:* Google's `searchShapes` give a medium N or S at two to one, over at least 30.
+
+  The model once read 378 conversations "ever spoken in" as breadth. A number nobody reads cannot be
+  misread.
+- **Letter and strength:** the side with more points wins. A tie goes to the side with the strongest
+  single piece, then to the model's pick. `moderate` needs a margin (difference ÷ points in play) of a
+  quarter, with at least 5 points in play. `clear` needs three-fifths, with at least 10.
+- **The extraversion score** comes from the same result: slight 51–59, moderate 60–69, clear 70–85,
+  mirrored for I. At slight it is scaled by how much was in play, so one piece alone sits nearer 50.
+  The letter and the score can no longer disagree.
+- **Where it runs:** on the server, on every answer before it is served (`scrubbed`). On the two-call
+  path the card is scored before the report is anchored to it. When the sum changes the type, the
+  nickname, `card.mbti` and any line that named the old type follow. A report pinned to its card has no
+  ledger and is left alone. Scoring twice changes nothing.
+
+**The prompts got shorter.** Both prompts now share one section, `MBTI_LEDGER_RULES`. It holds the method,
+the rubric tables (`rubricText()`, so the prompt and the code cannot drift) and a short "never in a
+ledger" list:
+- volume;
+- totals that include what the reader never joined;
+- what happens inside one chat, and WhatsApp's hand-picked chats;
+- how and when they write, posting bursts included;
+- the platform's genre: a camera is not S, warmth is not F, a topic is not a thinking style;
+- a blank.
+
+This replaced the report prompt's "Reading extraversion fairly" and "N/S and T/F have the same problem"
+sections, and the card prompt's E/I bullets. The report prompt is about 15,000 characters shorter and the
+merged prompt about 19,000 shorter (`MERGED_FIXED_INPUT_TOKENS` 45,000 → 40,500).
+
+The card prompt is about 4,000 longer, because it now carries the rubric. `FREE_FIXED_INPUT_TOKENS` went
+from 11,900 to 13,300, and `FREE_COST_CAP` and `DEEP_FREE_COST_CAP` from 8.5¢ to 8.6¢. In the card prompt
+MBTI now comes before the Big Five, so the merged prompt's card rules (sliced from `# Big Five`) do not
+carry the section twice.
+
+**The model sees the computed rows.** The computed rows are added after the evidence, as a short note
+(`computedText`, sent by `freeBlocks`, `profileBlocks` and `mergedBlocks`). For example: "E/I, `sustained`:
+15 conversations … → I (medium, 2)". The model adds those points into its own sum before it writes `why`.
+Without the note, it couldn't foresee them. A close E/I could then flip in the code under a paragraph
+arguing the other letter. A report pinned to its card gets no note, because it writes no letters.
+
+**Flips are counted.** If the code's sum still overturns the letter the model picked, the server logs it
+(`[mbti]`) and counts `mbti_flip` plus `mbti_flip:<axis>`. If that rate climbs, the prompt needs
+tightening.
+
+`why` names no strength word and no score, because the code may move either after the model has written.
+The sample report carries ledgers that add up to its own letters (the extraversion score went from 52 to
+58 to match). A selftest re-scores the sample and checks that it agrees.
+
+### E/I bands and bans at the field; N/S read both ways (18 Oct 2026)
+
+The first report built with `engagedThreads` used it ("378 conversations joined with at least 40 sustained
+past 50 messages") and still came back a moderate E (64): it led with 378 and Facebook's raw count, cited
+"850 of 1,535 conversation openers in your primary chat", called "20 distinct contacts" breadth, and set the
+reader's own "quiet solitary weekends" aside as "personal pacing rather than social withdrawal". The rules
+were there; the model was not applying them where it wrote the field.
+
+- **Breadth, roughly defined** (judgement, said so in the prompt): conversations with at least 50 of their
+  own messages, over the whole span — under about 20 narrow (leans I), 20–50 ordinary (neither), 50–100 wide
+  (leans E), over 100 very wide; halved for under three years of data. The share sustained of all spoken in
+  is context, never the decider. Barely using direct messages is no evidence either way and never counts
+  towards I. Commenting is rare for nearly everyone, so people commented on is not breadth. The count of
+  conversations ever spoken in is given only beside the sustained count.
+- **Their own words about their energy count most**, either way (introvert, ambivert, drained by crowds,
+  alive in one), and contrary behaviour is weighed at face value, never re-described to set it aside.
+- **The kind of setting counts as much as how often.** Seeking new people and big events (parties, mixers,
+  conferences) and widening the circle lean E; preferring small, familiar groups, avoiding mixers and
+  strangers, and tiring in unfamiliar settings lean I. Earlier reports had read exactly this ("focused
+  gatherings over broad, superficial crowds… avoid large-scale industry mixers") and the prompt never
+  named it. Organising plans for a familiar circle is not seeking crowds: on its own it leans neither way.
+- **Strength.** Breadth alone carries a letter only to `slight`; `moderate` needs their words or conduct the
+  same way, and real evidence for the other letter makes it `slight`. On every axis, behaviour that runs both
+  ways — a letter a second reading could flip — is `slight`, never `moderate` (three runs on one reader went
+  ENTJ, ENTJ, ENTP with J/P flipping at "moderate").
+- **Bans at the field.** The E/I `why` and `evidence` descriptions now carry the bans themselves: no
+  spoken-in count or unjoined total as breadth, nothing inside one chat as breadth, no re-describing the
+  counter-case — the group-chat lesson again, that an explanation in the prompt is not a prohibition where
+  the field is written.
+- **N/S both ways.** It leaned N the way E/I leaned I: concreteness discounted as the platform, every N
+  signal counted, and precise figures explained away as "inputs to a bigger thesis". Sensing now has its own
+  evidence (practical skills built step by step, comparing specs and prices, sensory craft, exact tracking,
+  staying with what is in front of them); a topic is not a thinking style (following markets or politics
+  says nothing, how they engage with it does); precision is never explained away unless the data shows the
+  step; start from the middle.
+- **Search shapes over the whole history.** The model saw the top 50 of tens of thousands of searches. The
+  browser now counts every Google search by a plain English word match — practical (how to, near me, a
+  price, a fix, a booking) or conceptual (why, what if, meaning of, difference between, explained),
+  conceptual first, most matching neither — into `google.counts.searchShapes` (`searchShape` in
+  `docs/supplement.js`). Two integers; unticking Google searches at the review removes them too.
+- `FREE_FIXED_INPUT_TOKENS` 11,600 → 11,900 (11,738 measured), `MERGED_FIXED_INPUT_TOKENS` 43,500 → 45,000
+  (44,812 measured), `MERGED_COST_CAP` $0.184 → $0.185.
+
+### The roast keeps its My Psyche design in My Report (18 Oct 2026)
+
+Once the report was unlocked the roast moved from My Psyche to My Report's Appendix 1 and lost its look: the
+appendix drew it with the plain `roastBlock` (a grey striped cover and an outline button), dimmed further to
+the part's plain rows. The appendix now uses `secretRoastHtml` too, with `{ appendix: true, title }`: the
+animated gradient frame, the sparks, the badge and the glowing, pulsing reveal button, under "Appendix 1: Let
+us roast you". It keeps `.roast-appendix` and `data-appendix="roast"`; the structured layout's grey-room rules
+skip `.secret-roast`, and the appendix-only overrides that dimmed it are gone. `roastBlock` stays for the
+sample report.
+
+### One chain: character line, executive summary, card write-up (18 Oct 2026)
+
+Three short pieces of writing say who the reader is: the character line (`essence.why`, beside the
+character at the top of the Overview), the executive summary (`summary`, the Overview) and the card's
+write-up (`cardHighlights`, its two sentences on the cover, under the `card.headline` one-liner). Each was
+written on its own, held apart by "don't repeat" cross-references, and the paths disagreed on order: the card
+call wrote no character line, the report written to a card wrote a character line told to avoid the card's
+lines and a write-up the page then threw away, and the merged call wrote the character line before the
+write-up it was told to avoid.
+
+Now one chain, the same everywhere, in this order: the **character line** first; the **summary** second,
+building on it rather than retelling the comparison; then the **write-up** and the **headline**, condensed
+from the two. The card call writes all three (`STRUCTURED_FREE_ESSENCE` gains `why`, one `ESSENCE_WHY` for
+both schemas), so the card settles them: a report written to a card that carries its summary leaves out the
+write-up (`STRUCTURED_OVERVIEW_PINNED_SCHEMA`), and to a card that also has its character line, the essence
+too (`STRUCTURED_LINE_PINNED_SCHEMA`, chosen by `anchor.essenceWhy`); `overlayCard` keeps the card's line,
+summary and write-up. The merged call writes the chain in the same order and splits along the line-pinned
+schema. The only cross-references left are between pieces printed side by side: the summary does not retell
+the comparison the line above it makes, and the write-up does not open by naming the character printed
+above it.
+
+### No real reader's figures or handles in the prompts (18 Oct 2026)
+
+A sweep of every prompt for anything tied to one reader's data found three worked examples in the report
+prompt (and so the merged one) built from real reports: "378 Instagram conversations" quoted under three
+sections, "over 64,000 Google searches" against "86,000+", and two real-looking @handles in the
+misattributed-caption examples. Each went out with every request, for every reader: an anchor for the
+model to reach for the same figures, and a third party's handle in a prompt whose whole promise is
+de-identification. The lessons stay; the specifics are gone: "the same count of conversations" under three
+sections, "one figure for their searches … and a different one in another", invented figures (12,000
+searches, 9,000 distinct terms) for naming what a figure counts, and the caption examples rewritten with the
+digest's own `[P1]`/`[P2]` markers. A selftest refuses the old handles and figures in the prompt.
+
+### Breadth is conversations with real exchange, not conversations ever spoken in (18 Oct 2026)
+
+After the symmetric E/I rules a reader who calls himself a slight extravert at best came back a moderate E
+(64), the case resting on "378 active Instagram message threads" — quoted four times — and the Big Five
+line "you sustain contact across hundreds of contacts". `activeThreads` counts every conversation the
+reader ever wrote in, over the whole span of the export: one reply to a story counts the same as years of
+talk, and over fourteen years the number grows for anyone. The morning's rule had called "a few hundred" wide
+reach and a real point towards E; that was this project's own over-correction. The other two E points were
+"initiated 850 conversations in your closest WhatsApp thread" (one person, in a chat the reader picked) and
+"nearly 1,000 Messenger conversations" (Facebook's raw thread count, requests included).
+
+- **A new breadth number.** The browser already tallied each conversation's messages by sender to tell
+  spoken-in threads from the inbox, and threw the tallies away. It now keeps three integers,
+  `directMessages.engagedThreads` = `{ atLeast10, atLeast50, atLeast200 }`: how many of the conversations
+  they wrote in hold at least 10, 50 and 200 of their own messages (`engagedCounts` in `docs/instagram.js`).
+  Messenger gets the same in `facebook.counts.engagedThreads` (`docs/supplement.js`), its `threads` being
+  every conversation file, requests and filtered ones included. Counts only; `forModel` passes exactly the
+  three integers.
+- **The rules, written generally.** A count of conversations spoken in measures reach over the whole span,
+  not the people they keep up with: weak on its own, and never a claim about how many people they stay in
+  touch with; the breadth number is the conversations with real, repeated exchange. Any total that includes
+  what they never took part in — requests, unjoined conversations, Messenger's thread count, friend and
+  follower lists — is an inbox or a list, not reach. Who starts and how fast they reply inside one
+  conversation is attachment's evidence about that tie, never breadth. Depth stays neutral. The "few
+  hundred is wide reach" line is gone; the E bar, the E/I axis and the letter's evidence list now name
+  "conversations with real, repeated exchange". The card prompt carries the short version.
+- `FREE_FIXED_INPUT_TOKENS` 11,400 → 11,600 (11,459 measured), `MERGED_FIXED_INPUT_TOKENS` 43,000 → 43,500
+  (43,322 measured); the merged cap stays $0.184 ($0.1835 at most).
+
+### The report's character rule matches the card's (18 Oct 2026)
+
+A review of the merged prompt against the card-then-report pair found the report still carrying the base
+prompt's free-form character rule: "pick the character before you write anything else, then let the rest
+of the profile agree with it", "someone globally famous", examples outside the catalogue (Kevin Flynn,
+Superman) and Elsa, who is in it, as a bad pick, and the old same-sex rule. In the merged call it sat beside
+the card's catalogue rule, and against the scores-first order; in the report written to a card it told the
+model to bend the whole report towards a character already settled. A structured splice replaces it: the
+character comes from the catalogue, after MBTI, the Big Five and the patterns, on the card's own side rule
+(`CHARACTER_SIDE_RULE`: a woman one of the twelve women or the five who are neither, a man likewise), and
+once the card has named it, `essence.why` explains it and nothing else bends to it.
+
+The same day the full and merged schemas moved the character, the summary and the card's write-up to after
+"What drives you" and "How you connect / How you work": `confidence, mbti, bigFive, patterns, interests,
+beliefs, values, (topMotivators,) motivators, relationship, career, essence, summary, cardHighlights`, then
+the premium sections. The character is matched on temperament, drive and how they treat people, and drive
+(the motivators) and how they treat people (the relationships) had been written after it; the summary is
+"the whole report in miniature", closeness and work included. The patterns stay straight after the scores,
+since the sections point back at them. The merged call's copy of the card's summary rule says to write it
+after every section above it and after the character. The card call already picked the character after its
+interests, motivators and values, so its order is unchanged. The card prompt's
+"Two or three" signature patterns now say "Exactly three", as its schema, the report and the merged schema
+already did.
+
 ### MBTI: an evidence list per letter, and J/P read from planning (18 Oct 2026)
 
 Three reports for one reader (14 Oct card-then-report ENTJ, 18 Oct before the E/I fix INTJ, after it ENTP)
@@ -2574,8 +2887,8 @@ patterns and `cardHighlights` before `bigFive` and `mbti`, and the prompt said t
 card call wrote the character before its scores too, and every schema wrote `mbti.type` before the letters
 and each letter's `choice` before its `why`. Gemini's `responseJsonSchema` keeps key order, so that is the
 order the model commits in. Now:
-- full and merged: `confidence, mbti, bigFive, patterns, essence, summary, cardHighlights`, then the
-  sections; the patterns are decided "straight after MBTI and the Big Five, from the evidence and those
+- full and merged: `confidence, mbti, bigFive, patterns`, then the sections, with `essence, summary,
+  cardHighlights` after `career` (moved there the same day, below); the patterns are decided "straight after MBTI and the Big Five, from the evidence and those
   scores"; the merged call's copy of the card rules says so in place of the card's "decide them last" and
   "write it last but one";
 - card: `confidence, mbti, bigFive, …, beliefs, essence, summary, …` — the character just before the

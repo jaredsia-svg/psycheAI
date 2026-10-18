@@ -3672,10 +3672,13 @@ try {
   check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
     premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
     premiumTier.careerChips.join('|'));
-  check('and Psyche Sync is offered as free, in a green pill',
+  check('and Psyche Sync is offered as free, and Ask PsycheAI\'s price, both in the card tier\'s faint green "Free" design',
     await page.evaluate(() => { const c = document.querySelector('#view-welcome .insight-compat'), pill = c && c.querySelector('h3 .insight-free-pill');
-      return Boolean(pill) && pill.textContent === 'Free' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
-        getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)'; }));
+      const price = document.querySelector('#view-welcome .insight-ask .insight-price');
+      const badge = document.querySelector('#view-welcome .tier-badge-free');
+      const look = el => el && [getComputedStyle(el).backgroundColor, getComputedStyle(el).color].join();
+      return Boolean(pill && price && badge) && pill.textContent === 'Free' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
+        getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)' && look(pill) === look(badge) && look(price) === look(badge); }));
   check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
@@ -8176,7 +8179,7 @@ try {
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
     'Where you align', 'Where you differ', 'How to relate better',
-    'Your Psyche Syncs']);
+    'Psyche Sync']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 13, JSON.stringify(sharing));
   check('the page does not re-type any section title',
@@ -10972,10 +10975,10 @@ try {
 
   // ---- the compatibility page reads as its own page ----
   const scanText = await page.locator('#view-scan').innerText();
-  check('the sync page is titled Your Psyche Syncs',
-    (await page.locator('#scan-title').innerText()) === 'Your Psyche Syncs',
+  check('the sync page is titled Psyche Sync, with its mark on the left',
+    (await page.locator('#scan-title').innerText()) === 'Psyche Sync' && (await page.locator('#scan-title svg.title-mark').count()) === 1,
     await page.locator('#scan-title').innerText());
-  check('the Your Psyche Syncs title is the same size as My Report\'s',
+  check('the Psyche Sync title is the same size as My Report\'s',
     await page.evaluate(() => {
       const probe = document.createElement('h2');
       probe.className = 'report-hero-title';
@@ -11019,7 +11022,7 @@ try {
     return Boolean(history.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
   check('and are rendered, not just positioned',
-    /Your Psyche Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
+    /Psyche Sync/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
     scanText.slice(0, 400));
   check('past results still sit above the paste box on screen', await page.evaluate(() => {
     const history = document.querySelector('#scan-history').getBoundingClientRect();
@@ -11767,11 +11770,11 @@ try {
           !/Mock work style|Mock read of where they appear/.test(document.querySelector('#profile-body').textContent)));
       check('structured: the keep-the-PDF note has a ✕ in its corner; closing it leaves the left column level with the report\'s header',
         keepClosed.corner && keepClosed.gone && keepClosed.level, JSON.stringify(keepClosed));
-      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "6 parts" in the pill; the left menu has no title and no purple line on top',
+      check('structured: My Report opens with a header like My Syncs\': "Psyche Report", a line on what it is, "6 parts" in the pill; the left menu has no title and no purple line on top',
         await sp.evaluate(() => {
           const hero = document.querySelector('#profile-body .report-hero');
           const nav = document.querySelector('#profile-body .part-nav');
-          return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Your Psyche Report' &&
+          return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Psyche Report' && Boolean(hero.querySelector('.report-hero-title svg.title-mark')) &&
             /^6 parts/.test(hero.querySelector('.scan-eyebrow').textContent) && /Psyche Card/.test(hero.querySelector('.scan-lede').textContent) &&
             !nav.querySelector('.part-nav-title') && !/Your Psyche Report/.test(nav.textContent) &&
             !/linear-gradient/.test(getComputedStyle(nav).backgroundImage) && getComputedStyle(nav, '::before').content === 'none';
@@ -11943,7 +11946,7 @@ try {
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
       check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Psyche Sync (See list, Share), Ask PsycheAI (Ask; History and ? once asked) — then Your Link, Signal Strength and Save Profile',
-        hubTiles.title === 'Your Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Psyche Sync|Ask PsycheAI' && hubTiles.tick &&
+        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Psyche Sync|Ask PsycheAI' && hubTiles.tick &&
           hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'See list,Share' && hubTiles.ask === 'Ask' &&
           hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
           hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
@@ -12207,7 +12210,10 @@ try {
           const head = el => el && el.querySelector(':scope > .card-head .card-icon') && el.querySelector(':scope > .card-head h2');
           return Boolean(a) && /^Appendix 2: Ask PsycheAI$/.test(a.querySelector('.card-head h2').textContent) &&
             /^2 questions$/.test(a.querySelector('.card-head .card-sub').textContent) && Boolean(head(a)) &&
-            Boolean(roast) && /^Appendix 1: Let us roast you/.test(roast.querySelector('.card-head h2').textContent) && Boolean(head(roast)) &&
+            // The roast wears My Psyche's secret-roast design, its title in that design's own heading.
+            Boolean(roast) && roast.classList.contains('secret-roast') &&
+            /^Appendix 1: Let us roast you/.test(roast.querySelector('h2.secret-roast-title').textContent) &&
+            Boolean(roast.querySelector('.secret-roast-reveal')) &&
             Boolean(roast.closest('.part-card[data-part-card="appendix"]')) && Boolean(a.closest('.part-card[data-part-card="appendix"]')) &&
             Boolean(roast.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) &&
             a.querySelectorAll('details.ask-log').length === 2 && !a.querySelector('details.ask-log[open]'); }));
@@ -12700,7 +12706,7 @@ try {
         visuals.partWords === 0 && visuals.innerBars === 0, JSON.stringify([visuals.partWords, visuals.innerBars]));
       check('structured: wellbeing as two tiles across, three down', visuals.wellnessCols === 2, String(visuals.wellnessCols));
       check('structured: MBTI as four sliders, each marker pushed towards its letter by its strength',
-        visuals.sliders.join() === 'E@34%,N@20%,F@80%,J@6%', visuals.sliders.join());
+        visuals.sliders.join() === 'E@34%,N@34%,F@66%,J@20%', visuals.sliders.join());
       check('structured: MBTI and the Big Five as rows, the scale on the left and the reading beside it, in full',
         visuals.rows === 9 && visuals.whys === 4, JSON.stringify([visuals.rows, visuals.whys]));
       check('structured: the MBTI letter not chosen is faint', visuals.faint === 4, String(visuals.faint));
@@ -12899,12 +12905,14 @@ try {
           title: side.querySelector('.cx-home-title') && side.querySelector('.cx-home-title').textContent };
       });
       check('structured: My Psyche, unlocked, opens on the Psyche Card and what it means, above everything else',
-        Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
-      check('the card panel\'s purple top line is its own background, so it follows the rounded corners',
+        Object.values(paidTop).every(Boolean) && paidTop.title === 'Psyche Card', JSON.stringify(paidTop));
+      // No purple line along the top of the card or its panel (October 2026).
+      check('neither the card nor its panel carries a purple line along its top',
         await sp.evaluate(() => {
           const side = document.querySelector('#profile-side');
           return getComputedStyle(side, '::before').display === 'none' &&
-            /^linear-gradient/.test(getComputedStyle(side).backgroundImage) && getComputedStyle(side).overflow === 'visible';
+            getComputedStyle(document.querySelector('#psyche-card-section'), '::before').display === 'none' &&
+            !/^linear-gradient/.test(getComputedStyle(side).backgroundImage) && getComputedStyle(side).overflow === 'visible';
         }));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
@@ -13154,7 +13162,7 @@ try {
             const tools = [...side.querySelectorAll('.cx-tool')];
             const row = side.querySelector('.cx-tools').getBoundingClientRect();
             const span = tools.length === 3 ? tools[2].getBoundingClientRect().right - tools[0].getBoundingClientRect().left : 0;
-            return side.querySelector('.cx-pop').hidden && /^Your Psyche Card/.test(side.innerText.trim()) &&
+            return side.querySelector('.cx-pop').hidden && /^Psyche Card/.test(side.innerText.trim()) && Boolean(side.querySelector('.cx-home-title svg.title-mark')) &&
               Math.abs(span - row.width) <= 2 && row.width >= side.clientWidth - 40 &&
               /Hover over any part of your card/.test(side.innerText) && side.querySelector('.cx-home-intro').textContent.length > 40;
           })(),
@@ -14193,7 +14201,7 @@ try {
       await answerReview(rp, { untickTopics: true });
       await rp.waitForSelector('#premium-dialog[open]', { timeout: 60000 });
       check('a second free card for the same Instagram account is refused, and only the card and report together are offered, with why',
-        /already had its free Psyche Card\. A new Psyche Card now comes with your full Psyche Report: US\$5 for both/.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
+        /already had its free Psyche Card\. Unlock your Psyche Card and Psyche Report for US\$5\./.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
           (await rp.locator('#premium-dialog-title').innerText()) === 'Your Psyche Card and Psyche Report' &&
           !/Run your Psyche Card again/.test(await rp.locator('#premium-dialog').innerText()),
         await rp.locator('#premium-dialog').innerText());
@@ -14365,11 +14373,12 @@ try {
           const landed = await bp.evaluate(() => {
             const p = JSON.parse(localStorage.getItem('psycheai_profile'));
             return { name: p.card && p.card.name, roast: Boolean(p.report && p.report.bonus), kept: Boolean(localStorage.getItem('psycheai_report_digest')),
-              report: document.querySelectorAll('#profile-body .part-card').length > 0 };
+              // A card bought with its report lands on My Psyche, at the card (October 2026).
+              myPsyche: Boolean(document.querySelector('#profile-body .hub-card')) && document.querySelectorAll('#profile-body .part-card').length === 0 };
           });
-          check('on a new device past the free card, paying writes the card and its Psyche Report together, at the unlock\'s price',
+          check('on a new device past the free card, paying writes the card and its Psyche Report together, at the unlock\'s price, and lands on My Psyche',
             paidRun.product === 'unlock' && !paidRun.anchor && sent.filter(body => !body.paymentIntentId).length === 1 &&
-              Boolean(landed.name) && landed.roast && landed.kept && landed.report, JSON.stringify({ landed, product: paidRun.product }));
+              Boolean(landed.name) && landed.roast && landed.kept && landed.myPsyche, JSON.stringify({ landed, product: paidRun.product }));
         } finally {
           await bp.close();
         }

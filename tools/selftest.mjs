@@ -44,6 +44,7 @@ const Card = globalThis.PsycheCard;
 
 const prompts = await import('../lib/prompts.js').then(m => m.default);
 const mock = await import('../lib/mock.js').then(m => m.default);
+const mbtiScore = await import('../lib/mbtiScore.js').then(m => m.default);
 const claude = await import('../lib/claude.js').then(m => m.default);
 // The context cache is **off by default** — see the break-even written out in
 // lib/gemini.js — but the machinery is still there and still has to work the
@@ -1379,91 +1380,292 @@ const letterDesc = key => String((letterProps[key] || {}).description || '');
 // natural way to regress is to re-add the field rather than to edit `why`.
 check('the axis is one passage, not an argument and a rebuttal in two fields',
   !('counterEvidence' in letterProps));
-// Since 18 Oct 2026 each letter carries its evidence as a list, three or four
-// behaviours written with the paragraph and printed under it, the way a Big
-// Five trait once carried a reading and its evidence; never restating it.
-check('each letter lists three or four behaviours, written with its paragraph and after it, from different parts of the digest',
-  Object.keys(letterProps).indexOf('evidence') === Object.keys(letterProps).indexOf('why') + 1 &&
-  /^Three or four specific behaviours/.test(letterDesc('evidence')) &&
+// Since October 2026 each letter is scored from a ledger (lib/mbtiScore.js):
+// the model tags every piece of evidence for either letter with a rubric row,
+// and the code adds it up. Then the paragraph and its evidence list explain it.
+check('each letter writes its ledger first, then the paragraph, then the list, then the letter and strength it adds up to',
+  ['axis', 'ledger', 'why', 'evidence', 'choice', 'strength'].every((key, i, all) => i === 0 || Object.keys(letterProps).indexOf(key) > Object.keys(letterProps).indexOf(all[i - 1])));
+check('the ledger asks for both sides, one entry per row and letter, never a computed row',
+  /for EITHER letter/.test(String(letterProps.ledger && letterProps.ledger.description)) &&
+  /One entry per row and letter/.test(String(letterProps.ledger && letterProps.ledger.description)) &&
+  /Never a row the code computes/.test(String(letterProps.ledger && letterProps.ledger.description)));
+check('the list is three or four of the ledger\'s strongest pieces, from different parts of the digest',
+  /^Three or four of the ledger's strongest pieces/.test(letterDesc('evidence')) &&
   /from a different part of the digest and none used for another letter/.test(letterDesc('evidence')) &&
   /point at the behaviour, not the conclusion/.test(letterDesc('evidence')) &&
   /Fewer only when the data is genuinely thin/.test(letterDesc('evidence')));
 check('and the list and the paragraph are short and never overlap',
   /under about 15 words/.test(letterDesc('evidence')) &&
-  /The behaviour that runs the other way goes in `why`, not here/.test(letterDesc('evidence')) &&
-  /^Two or three sentences, one paragraph, written together with the `evidence` list that follows and printed above it, never repeating it/.test(letterDesc('why')) &&
-  /\*\*Each axis gets a real analysis in two parts, written together, that never overlap\*\*/.test(prompts.PROFILE_SYSTEM));
-// The tempering is the half that stops a letter being chosen on the first
-// thing that pointed at it, so it is required in the same paragraph and has to
-// carry its own count rather than being a hedge.
-check('`why` has to temper itself in the same paragraph',
-  /temper it in the same paragraph/i.test(letterDesc('why')) &&
-  /where behaviour runs the other way, say so plainly/i.test(letterDesc('why')));
-check('the tempering carries its own count and says what it does not overturn',
-  /give it its own count/i.test(letterDesc('why')) &&
-  /what it does and does not overturn/i.test(letterDesc('why')));
-check('an axis argued only in its own favour is named as the failure being prevented',
-  /argued only in its own favour is the failure this field exists to prevent/i.test(letterDesc('why')));
-// Even-handedness is not the goal — accuracy is. A model told to always temper
-// would invent a doubt on the axes that genuinely run one way.
+  /The pieces on the other side go in `why`, not here/.test(letterDesc('evidence')) &&
+  /^Two or three sentences, one paragraph, written together with the `evidence` list that follows and printed above it, never repeating it/.test(letterDesc('why')));
+// The tempering is still the paragraph's job: the ledger holds both sides,
+// and the reader is told what the other side is and why it did not win.
+check('`why` gives the other side its count and says what it does not overturn',
+  /the pieces on the other side, at their real weight and with their counts/.test(letterDesc('why')) &&
+  /what they do and do not overturn/.test(letterDesc('why')));
 check('and a one-sided axis may say so rather than manufacturing a doubt',
   /instead of manufacturing a doubt/i.test(letterDesc('why')));
-// Strength is read off how close that tempering comes, rather than asserted
-// and justified afterwards.
-check('strength is read off the balance inside `why`, not asserted',
-  /balance inside `why`\*?/i.test(letterDesc('strength')) &&
-  /rather than asserted on its own/i.test(letterDesc('strength')));
-check('and each of the three strengths is defined against that balance',
-  /`clear` only where the contrary behaviour stayed thin/i.test(letterDesc('strength')) &&
-  /`slight` where the two are close/i.test(letterDesc('strength')));
+// The code may move the strength or the letter after the model wrote, so the
+// paragraph must not name either.
+check('`why` names no strength word and no score, since the code sets them',
+  /Names no strength word and no score/.test(letterDesc('why')) &&
+  /It names no strength word and no score: the code sets those/.test(prompts.PROFILE_SYSTEM));
+check('choice and strength are what the ledger adds up to, and the code checks them',
+  /The code checks the sum/.test(letterDesc('choice')) && /The code checks it/.test(letterDesc('strength')) &&
+  /`clear` from two-thirds with at least 14 in play, `moderate` from a third with at least 10/.test(letterDesc('strength')));
+check('the card schema scores its letters from the same ledger and strength rule',
+  (() => {
+    const free = prompts.CARD_BASE_SCHEMA.properties.mbti.properties.letters.items.properties;
+    return free.ledger === letterProps.ledger && free.strength === letterProps.strength;
+  })());
 
-// The prompt half. Each axis's error has a direction, and naming it is what
-// makes the correction actionable rather than a general plea for care.
+// The prompt half: one section, shared word for word by the report and the
+// card, carrying the method, the rubric and what never goes in a ledger.
 const sys = prompts.PROFILE_SYSTEM;
-check('the prompt says N/S and T/F have the same medium problem E/I does',
-  /N\/S and T\/F have the same problem/i.test(sys));
-// The definitions come first, because a correction for the medium is useless
-// to a model that is fuzzy on what the pole means in the first place. Each
-// pole is pinned on the words that distinguish it from its opposite.
-check('Intuition is defined by meaning, abstraction, analogy and pattern',
-  /\*\*Intuition\*\* is an appetite for meaning, purpose, ideas, abstraction, analogy and pattern/.test(sys));
-check('Sensing is defined by facts, the senses, steps, specs and verifiable data',
-  /\*\*Sensing\*\* is an appetite for facts, the five senses, steps, specs, concrete verifiable data/.test(sys));
-// The commonest way to get this axis wrong in a *flattering* direction is to
-// treat N as the clever one, which would make the letter a compliment rather
-// than a preference.
-check('and neither N nor S is allowed to read as the deeper of the two',
-  /Neither is depth and neither is shallowness/i.test(sys));
-check('Thinking is defined by logic, fairness, plain criticism and tolerating dislike',
-  /\*\*Thinking\*\* decides by logic, consistency and fairness-as-impartiality/.test(sys) &&
-  /willing to be disliked for a position/i.test(sys));
-check('Feeling is defined by effect on people, harmony and withheld criticism',
-  /\*\*Feeling\*\* decides by the effect on people/.test(sys) &&
-  /keep harmony/i.test(sys) &&
-  /withhold a criticism rather than damage a bond/i.test(sys));
-check('and T/F is not allowed to be read as cold versus warm',
-  /Neither is warmth and neither is coldness/i.test(sys));
-
-check('N/S is corrected for the platform being a camera, not a person',
-  /Instagram is a camera/i.test(sys) && /concreteness is the genre/i.test(sys));
-check('and it says to read what they do once the concrete detail is down',
-  /once the concrete detail is down/i.test(sys));
-check('T/F is corrected for the platform rewarding warmth',
-  /warmth-performing medium/i.test(sys) && /kindness is the genre/i.test(sys));
-// The sharpest tell on the axis, and it falls straight out of the definition:
-// the F pole is defined by withholding criticism, and the platform withholds
-// criticism for everybody — so criticism that survives anyway is the signal.
-check('criticism surviving the medium is named as the axis\'s strongest T tell',
-  /criticism that appears anyway/i.test(sys) &&
-  /worth several times its weight as Thinking evidence/i.test(sys));
-check('and its absence is still not evidence of the opposite',
-  /Its absence, as always, is not evidence of the opposite/i.test(sys));
-// The direction matters as much as the existence of the bias: a warning that
-// did not say which way it runs would leave the model free to overcorrect.
-check('and the T/F error is named as running towards F, the way E/I runs towards E',
-  /The error on this axis runs towards F/i.test(sys));
-check('neither axis may be read off sheer volume',
-  /volume on this axis is as misleading as it is on E\/I/i.test(sys));
+check('the report and the card prompts carry the one MBTI ledger section, rubric included',
+  sys.includes(prompts.MBTI_LEDGER_RULES) && prompts.FREE_SYSTEM.includes(prompts.MBTI_LEDGER_RULES) &&
+  prompts.MBTI_LEDGER_RULES.includes(mbtiScore.rubricText()) &&
+  ['own-words', 'setting', 'tie-break', 'public-verdict', 'plans-ahead', 'last-minute', 'compares-tracks', 'theorises'].every(row => prompts.MBTI_LEDGER_RULES.includes('| `' + row + '` |')));
+check('and the merged prompt carries it once',
+  prompts.MERGED_SYSTEM.split(prompts.MBTI_LEDGER_RULES).length === 2);
+const ledgerRules = prompts.MBTI_LEDGER_RULES;
+check('the method: the model tags, the code adds up, both sides searched as hard',
+  /The code adds the ledger up/.test(ledgerRules) &&
+  /\*\*Search for the other letter as hard as for the one you expect\.\*\*/.test(ledgerRules) &&
+  /\*\*One entry per row and letter\*\*/.test(ledgerRules) &&
+  /Add it up yourself before you write `choice`, `strength` or anything that names the type/.test(ledgerRules));
+check('the computed rows are the code\'s, never the model\'s',
+  /\*\*Never the computed rows\.\*\*/.test(ledgerRules) && /`engagedThreads\.last5Years`, Instagram and Messenger together/.test(ledgerRules));
+check('volume is never in a ledger',
+  /\*\*Volume\.\*\* Messages sent, comments written, posts published, accounts followed/.test(ledgerRules));
+check('totals that include what they never joined are not reach, and activeThreads is reach over years',
+  /\*\*Totals that include what they never took part in\.\*\* `threads`/.test(ledgerRules) &&
+  /`activeThreads` counts every conversation they ever wrote in, one reply included/.test(ledgerRules) &&
+  /Null means unknown, not zero/.test(ledgerRules));
+check('what happens inside one chat is about the tie; WhatsApp is hand-picked and never E/I evidence',
+  /\*\*What happens inside one chat\*\*/.test(ledgerRules) &&
+  /WhatsApp chats are the up to three the reader hand-picked, their closest: their volume is never evidence on E\/I/.test(ledgerRules));
+// Who starts the conversations is a weak signal (October 2026): once, across
+// their chats, and never their volume.
+check('who starts the conversations counts weakly, once across their chats',
+  mbtiScore.RUBRIC['E/I'].initiates && mbtiScore.RUBRIC['E/I'].initiates.weight === 'weak' &&
+  mbtiScore.RUBRIC['E/I'].initiates.to.join() === 'E,I' && /Once for all their chats/.test(mbtiScore.RUBRIC['E/I'].initiates.text) &&
+  /Who starts the conversations is the one exception, and only as the weak `initiates` row/.test(ledgerRules) &&
+  !/how many messages\. That is about the tie[^.]*who starts it/.test(ledgerRules) && !/: who starts it, how fast/.test(ledgerRules));
+check('no field claims group chats the counts do not show',
+  /never say they take part in group chats unless the counts show one: `activeGroupThreads` above 0, or a WhatsApp chat whose `kind` is a group/.test(prompts.CONVERSATIONS_RULE));
+check('how and when they write is not evidence, posting bursts included',
+  /\*\*How and when they write\*\*: message or caption length, a late-night rhythm, liking far more than posting, posting in bursts/.test(ledgerRules) &&
+  /bursts are not P and steady posting is not J/.test(ledgerRules));
+check('the platform\'s genre: a camera is not S, warmth is not F, a topic is not a style',
+  /Instagram is a camera, so concrete detail in a caption is everyone's, not S/.test(ledgerRules) &&
+  /kind comments are everyone's, not F/.test(ledgerRules) &&
+  /a verdict made in public anyway counts towards T/.test(ledgerRules) &&
+  /A topic is not a thinking style/.test(ledgerRules));
+check('a blank is never evidence',
+  /\*\*A blank\.\*\* No close-friends list/.test(ledgerRules) &&
+  /A missing behaviour is evidence only where you would have expected to see it/.test(ledgerRules));
+check('no direct messages means no conversation rows and E/I near the middle',
+  /`coverage\.directMessagesIncluded` is false, or they barely use direct messages/.test(ledgerRules) &&
+  /the code counts no conversation rows/.test(ledgerRules));
+check('J/P mixed across areas is entered both ways',
+  /on J\/P, enter both, from the areas where they spend most of their time, money and effort/.test(ledgerRules));
+check('the extraversion score follows the E/I ledger, in the code\'s bands, and the other traits follow their axes',
+  /The extraversion score is set by the code from the E\/I ledger/.test(ledgerRules) &&
+  /\*\*E\*\* 51 to 59 at `slight`, 60 to 69 at `moderate`, 70 to 85 at `clear`, mirrored below 50 for \*\*I\*\*/.test(ledgerRules) &&
+  /Openness reads off N\/S, agreeableness off T\/F and conscientiousness off J\/P/.test(ledgerRules));
+check('base rates: most people sit near the middle',
+  /Most people sit near the middle on most traits; keep the extremes for extreme evidence/.test(ledgerRules));
+check('the old prose sections are gone, not kept beside the ledger',
+  !/Reading extraversion fairly —/.test(sys) && !/N\/S and T\/F have the same problem/.test(sys) &&
+  !/Start at 50\. Go above about 60/.test(prompts.FREE_SYSTEM));
+check('every field reads breadth off sustained conversations, never a lifetime count of conversations',
+  ['STRUCTURED_FREE_SYSTEM', 'STRUCTURED_FULL_SYSTEM', 'FULL_SYSTEM_BASE'].every(k => prompts[k].split(prompts.CONVERSATIONS_RULE).length === 2) &&
+  prompts.MERGED_SYSTEM.split(prompts.CONVERSATIONS_RULE).length === 2 &&
+  /not in a pattern, a section, the card or a ledger/.test(prompts.CONVERSATIONS_RULE) &&
+  /never a count of conversations they ever wrote in as breadth/i.test(JSON.stringify(prompts.STRUCTURED_FREE_SCHEMA.properties.patterns)) &&
+  /never a count of conversations they ever wrote in as breadth/.test(JSON.stringify(prompts.STRUCTURED_FULL_SCHEMA.properties.patterns)));
+check('the Big Five extraversion bullet follows the ledger and bans volume and group chats',
+  /For \*\*extraversion\*\*, the score follows the E\/I ledger/.test(sys) &&
+  /Message volume and group chats, busy or empty, are evidence for it in neither direction/.test(sys));
+// ---------- the MBTI ledger, added up (lib/mbtiScore.js) ----------
+{
+  const S = mbtiScore;
+  const dm = (sustained, active, sent = 5000, spanDays = 2000) => ({
+    directMessages: { activeThreads: active, sentByUser: sent, engagedThreads: { atLeast10: sustained * 2, atLeast50: sustained, atLeast200: 0,
+      last5Years: { active, atLeast10: sustained * 2, atLeast50: sustained, atLeast200: 0 } } },
+    rhythm: { spanDays },
+  });
+  const rowOf = (digest, row) => S.computedPieces(digest)['E/I'].find(p => p.row === row) || null;
+  // The bands on conversations with 50 or more of their own messages: a
+  // count weighs medium at most, below a reader's own words.
+  check('ledger: over 100 sustained conversations is a medium E, computed from the digest',
+    (rowOf(dm(120, 400), 'sustained') || {}).weight === 'medium' && rowOf(dm(120, 400), 'sustained').to === 'E');
+  check('ledger: 50 to 100 is a weak E, 20 to 50 neither way, under 20 a weak I',
+    rowOf(dm(60, 400), 'sustained').weight === 'weak' && rowOf(dm(60, 400), 'sustained').to === 'E' &&
+    rowOf(dm(30, 400), 'sustained').to === 'neutral' &&
+    rowOf(dm(10, 400), 'sustained').to === 'I' && rowOf(dm(10, 400), 'sustained').weight === 'weak');
+  check('ledger: under three years of data halves the bands',
+    rowOf(dm(60, 400, 5000, 700), 'sustained').weight === 'medium' && rowOf(dm(12, 400, 5000, 700), 'sustained').to === 'neutral');
+  // The share: over 60% sustained with at least 30 of them, or under 10% around a modest core.
+  check('ledger: a high share sustained is a weak E only above a floor of 30',
+    (rowOf(dm(40, 50), 'share') || {}).to === 'E' && rowOf(dm(40, 50), 'share').weight === 'weak' &&
+    rowOf(dm(20, 25), 'share') === null);
+  check('ledger: a low share around a modest core is a weak I, and a wide core is not',
+    (rowOf(dm(15, 300), 'share') || {}).to === 'I' && rowOf(dm(60, 1000), 'share') === null);
+  // Someone who barely uses direct messages gives no conversation rows at all.
+  check('ledger: barely using direct messages counts neither way',
+    S.computedPieces(dm(2, 10, 300))['E/I'].length === 0 && S.computedPieces({})['E/I'].length === 0 &&
+    S.computedPieces({ directMessages: { activeThreads: null, sentByUser: 9000 } })['E/I'].length === 0);
+  // Only the last five years, Instagram and Messenger together (a reader's
+  // lifetime 40 and 126, Messenger's from 2007, made 166: October 2026).
+  const recentDm = (life, recent, recentActive) => {
+    const out = dm(life, 378, 10143, 5098);
+    out.directMessages.engagedThreads.last5Years = { active: recentActive, atLeast10: recent * 2, atLeast50: recent, atLeast200: 0 };
+    return out;
+  };
+  const withFb = (digest, engagedThreads) => Object.assign(digest, { facebook: { counts: { engagedThreads } } });
+  check('ledger: only the last five years count, with their own share',
+    rowOf(recentDm(120, 30, 200), 'sustained').to === 'neutral' &&
+    /^30 Instagram conversations with 50 or more of their own messages in the last five years, of 200 they wrote in/.test(rowOf(recentDm(120, 30, 200), 'sustained').note) &&
+    (rowOf(recentDm(120, 40, 50), 'share') || {}).to === 'E');
+  check('ledger: Instagram and Messenger are added together, over the last five years only',
+    /^60 Instagram and Messenger conversations/.test(rowOf(withFb(recentDm(40, 25, 150), { atLeast50: 126, last5Years: { active: 80, atLeast50: 35 } }), 'sustained').note) &&
+    rowOf(withFb(recentDm(40, 25, 150), { atLeast50: 126, last5Years: { active: 80, atLeast50: 35 } }), 'sustained').weight === 'weak' &&
+    rowOf(withFb(recentDm(40, 25, 150), { atLeast50: 126 }), 'sustained').note.startsWith('25 Instagram conversations'));
+  check('ledger: without five-year counts, conversations count neither way',
+    S.computedPieces({ directMessages: { activeThreads: 378, sentByUser: 10143, engagedThreads: { atLeast50: 166 } } })['E/I'].length === 0);
+  check('ledger: group chats count for neither letter, busy or empty',
+    !S.computedPieces(Object.assign(dm(30, 400), { directMessages: Object.assign(dm(30, 400).directMessages, { activeGroupThreads: 40 }) }))['E/I'].some(p => p.row === 'group-chats') &&
+    !('group-chats' in S.RUBRIC['E/I']) && !S.COMPUTED.includes('group-chats') &&
+    S.cleanLedger('E/I', [{ row: 'group-chats', pointsTo: 'E', note: 'busy groups' }]).length === 0 &&
+    /\*\*Group chats\*\*, busy or empty/.test(prompts.MBTI_LEDGER_RULES) &&
+    /Message volume and group chats, busy or empty, are evidence for it in neither direction/.test(prompts.PROFILE_SYSTEM));
+  check('ledger: search shapes are no longer a row: a search box is mostly practical for everyone',
+    S.computedPieces({ google: { counts: { searchShapes: { conceptual: 509, practical: 7330 } } } })['N/S'].length === 0 &&
+    !S.COMPUTED.includes('search-shapes') &&
+    /a search history that is mostly practical \(Google's `searchShapes`\) is everyone's too, not S/.test(prompts.MBTI_LEDGER_RULES));
+  check('ledger: the S rows for comparing figures and practical craft are weak, and leave out work and sport',
+    S.RUBRIC['N/S']['compares-tracks'].weight === 'weak' && /outside their job/.test(S.RUBRIC['N/S']['compares-tracks'].text) &&
+    S.RUBRIC['N/S']['practical-craft'].weight === 'weak' && /A sport's technique does not count/.test(S.RUBRIC['N/S']['practical-craft'].text));
+  check('ledger: reaching out means beyond the usual circle; plans for the same friends lean neither way',
+    /beyond their usual circle/.test(S.RUBRIC['E/I']['reach-out'].text) && S.RUBRIC['E/I']['convenes-known-circle'].weight === 'none');
+  // The model's ledger, held to the rubric.
+  const cleaned = S.cleanLedger('E/I', [
+    { row: 'setting', pointsTo: 'I', note: 'avoids mixers' },
+    { row: 'setting', pointsTo: 'I', note: 'twice' },
+    { row: 'sustained', pointsTo: 'E', note: 'claims breadth' },
+    { row: 'share', pointsTo: 'E', note: 'claims share' },
+    { row: 'group-chats', pointsTo: 'I', note: 'no groups' },
+    { row: 'made-up', pointsTo: 'E', note: '' },
+    { row: 'reach-out', pointsTo: 'e', note: 'starts plans' },
+  ]);
+  check('ledger: unknown rows, computed rows, letters a row cannot point to and repeats are dropped',
+    cleaned.map(p => p.row + ':' + p.to).join() === 'setting:I,reach-out:E', JSON.stringify(cleaned));
+  const piece = (to, weight) => ({ row: 'x', to, weight });
+  const axis = list => S.scoreAxis('E/I', list, '');
+  check('ledger: the side with more points wins; a third\'s margin over 10 points is moderate, two-thirds over 14 clear',
+    axis([piece('E', 'strong'), piece('I', 'medium')]).strength === 'slight' &&
+    axis([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]).strength === 'slight' &&
+    axis([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]).strength === 'moderate' &&
+    axis([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('I', 'weak')]).strength === 'clear' &&
+    axis([piece('I', 'strong')]).strength === 'slight' && axis([piece('I', 'strong')]).choice === 'I');
+  // Their own words on both sides (mixed, an ambivert) keep the axis slight
+  // whatever the rest builds (October 2026).
+  const own = to => ({ row: 'own-words', to, weight: 'strong' });
+  check('ledger: own words entered under both letters keep the axis slight, whatever the lead',
+    axis([own('E'), own('I'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'medium')]).strength === 'slight' &&
+    axis([own('E'), own('I'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'medium')]).choice === 'E' &&
+    /enter it under both letters, and the axis stays slight/.test(S.RUBRIC['E/I']['own-words'].text) &&
+    S.RUBRIC['E/I'].pursuits.weight === 'weak' && /Seeing several groups of friends they already have is not this row/.test(S.RUBRIC['E/I'].setting.text));
+  check('ledger: a tie goes to the strongest single piece, then to the model\'s pick',
+    axis([piece('E', 'medium'), piece('E', 'weak'), piece('I', 'strong')]).choice === 'I' &&
+    S.scoreAxis('E/I', [], 'I').choice === 'I' && S.scoreAxis('E/I', [piece('E', 'weak'), piece('I', 'weak')], 'E').choice === 'E');
+  const ext = list => S.extraversionFrom(axis(list));
+  check('ledger: extraversion is 51 to 59 at slight, 60 to 69 moderate, 70 to 85 clear, mirrored for I',
+    ext([piece('E', 'weak'), piece('I', 'weak')]) === 51 &&
+    ext([piece('I', 'strong')]) >= 41 && ext([piece('I', 'strong')]) <= 49 &&
+    ext([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]) >= 60 &&
+    ext([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]) <= 69 &&
+    ext([piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong')]) === 15);
+  check('ledger: one piece alone sits nearer the middle than a slight lead over a full ledger',
+    ext([piece('E', 'weak')]) < ext([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'strong'), piece('I', 'weak')]));
+  // A whole answer: the letters, the type, its nickname, the score and the card's copies.
+  const answer = () => ({
+    mbti: { type: 'ENTJ', nickname: 'The Commander', letters: [
+      { axis: 'E/I', choice: 'E', strength: 'moderate', ledger: [
+        { row: 'own-words', pointsTo: 'I', note: 'calls themselves an introvert' },
+        { row: 'reach-out', pointsTo: 'E', note: 'starts plans' },
+        { row: 'sustained', pointsTo: 'E', note: 'the model counting breadth' },
+      ] },
+      { axis: 'N/S', choice: 'N', strength: 'clear', ledger: [{ row: 'theorises', pointsTo: 'N', note: 'asks what it means' }] },
+      { axis: 'T/F', choice: 'T', strength: 'clear', ledger: [{ row: 'tie-break', pointsTo: 'T', note: 'prices decide' }] },
+      { axis: 'J/P', choice: 'J', strength: 'clear', ledger: [{ row: 'plans-ahead', pointsTo: 'J', note: 'books ahead' }] },
+    ] },
+    bigFive: { extraversion: { score: 66, band: 'high' } },
+    card: { mbti: 'ENTJ', bigFive: { extraversion: 66 } },
+    summary: 'As an ENTJ, The Commander plans.',
+  });
+  const scored = S.scoreMbti(answer(), dm(10, 300));
+  check('ledger: the code sets the letters and strength from the ledger, the computed rows included',
+    scored.mbti.letters[0].choice === 'I' && scored.mbti.letters[0].strength === 'slight' &&
+    scored.mbti.letters[1].strength === 'slight' &&
+    scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'I' && /^10 Instagram conversations/.test(p.note)) &&
+    !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'E'),
+    JSON.stringify(scored.mbti.letters[0]));
+  check('ledger: the type, its nickname, the card\'s copies and the lines that named the old type follow',
+    scored.mbti.type === 'INTJ' && scored.mbti.nickname === 'The Architect' && scored.card.mbti === 'INTJ' &&
+    scored.summary === 'As an INTJ, The Architect plans.',
+    JSON.stringify([scored.mbti.type, scored.summary]));
+  check('ledger: the extraversion score and band follow the E/I result, and the card\'s copy with them',
+    scored.bigFive.extraversion.score < 50 && scored.bigFive.extraversion.score >= 41 && scored.bigFive.extraversion.band === 'moderate' &&
+    scored.card.bigFive.extraversion === scored.bigFive.extraversion.score, String(scored.bigFive.extraversion.score));
+  check('ledger: scoring twice changes nothing',
+    JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(scored)), dm(10, 300))) === JSON.stringify(scored));
+  const noLedger = answer();
+  noLedger.mbti.letters.forEach(l => delete l.ledger);
+  check('ledger: an answer without ledgers (a report pinned to its card) is left alone',
+    JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(noLedger)), dm(10, 300))) === JSON.stringify(noLedger));
+  const split = answer();
+  delete split.mbti.type;
+  check('ledger: a report split from its card is not given a type of its own',
+    !('type' in S.scoreMbti(split, {}).mbti));
+  // The sample report agrees with its own ledger.
+  const sampleCopy = JSON.parse(readFileSync(new URL('../docs/sample.json', import.meta.url), 'utf8'));
+  const rescored = S.scoreMbti(JSON.parse(JSON.stringify(sampleCopy)), {});
+  check('ledger: the sample report\'s letters, strengths and extraversion are what its ledgers add up to',
+    rescored.mbti.letters.every((l, i) => l.choice === sampleCopy.mbti.letters[i].choice && l.strength === sampleCopy.mbti.letters[i].strength) &&
+    rescored.mbti.type === sampleCopy.mbti.type && rescored.bigFive.extraversion.score === sampleCopy.bigFive.extraversion.score,
+    JSON.stringify(rescored.mbti.letters.map(l => l.choice + ' ' + l.strength)) + ' ' + rescored.bigFive.extraversion.score);
+  // The computed rows go to the model after the evidence, so its own sum is
+  // the code's, and a sum that still overturns the model's letter is counted.
+  const note = S.computedText(dm(15, 300));
+  check('ledger: the computed rows are handed to the model, with their points, after the evidence',
+    /Already in your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 Instagram conversations[^\n]*→ I \(weak, 1\)/.test(note) &&
+    /E\/I, `share`: 5%[^\n]*→ I \(weak, 1\)/.test(note) && S.computedText({}) === '', note);
+  const noteDigest = Object.assign(dm(15, 300), { coverage: { sources: ['instagram'] } });
+  const blockText = blocks => blocks.map(b => b.text || '').join('\n');
+  check('ledger: the card, the report and the one-call unlock all carry the note; a report pinned to its card does not',
+    [prompts.freeBlocks(noteDigest), prompts.profileBlocks(noteDigest), prompts.mergedBlocks(noteDigest)]
+      .every(b => blockText(b).indexOf(note) > blockText(b).indexOf('</evidence>')) &&
+    !blockText(prompts.profileBlocks(noteDigest, prompts.anchorFrom(answer()))).includes('Already in your MBTI ledgers') &&
+    /a note after the evidence lists them with their points: add those into each sum/.test(prompts.MBTI_LEDGER_RULES));
+  const flips = [];
+  S.scoreMbti(answer(), dm(10, 300), flips);
+  const kept = [];
+  S.scoreMbti(S.scoreMbti(answer(), dm(10, 300)), dm(10, 300), kept);
+  check('ledger: an axis whose sum overturned the model\'s own letter is reported, and rescoring reports nothing',
+    flips.join() === 'E/I E→I' && kept.length === 0, flips.join());
+  // The server scores every answer before it is served, and the card before a report is anchored to it.
+  const serverSource = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
+  check('ledger: the server scores every answer, and a card before its report is anchored to it',
+    /mbtiScore\.scoreMbti\(result\.data\.freeCard, digest, flips\)/.test(serverSource) &&
+    serverSource.indexOf('mbtiScore.scoreMbti(card.data, sent, flips)') > 0 &&
+    serverSource.indexOf('mbtiScore.scoreMbti(card.data, sent, flips)') < serverSource.indexOf('const anchor = prompts.anchorFrom(card.data);'));
+  check('ledger: the server logs and counts every overturned letter',
+    /stats\.count\('mbti_flip'\)/.test(serverSource) && /mbtiScore\.scoreMbti\(result\.data, digest, flips\)/.test(serverSource) &&
+    /countFlips\(flips, 'card'\)/.test(serverSource));
+}
 // Named digest fields, so the guidance points at things that exist rather than
 // at a general idea of evidence — which is also why `geminiPrompts` came off
 // this list rather than being left on it: the field is withheld now, and a
@@ -1473,19 +1675,6 @@ for (const field of ['topGoogleSearches', 'instagramTopics', 'mostEngagedWith', 
   check('the axis guidance points at the real digest field `' + field + '`',
     sys.includes(field), field);
 }
-// Posting in bursts is how nearly everyone posts, and a report that read it
-// as P pulled conscientiousness down with it (18 Oct 2026).
-check('J/P reads planning in their words and conduct, never posting rhythm',
-  /\*\*J\/P has the same problem: posting rhythm is the platform, not the person\.\*\*/.test(sys) &&
-  /never decide the letter on it/.test(sys) && /itineraries and bookings made well ahead/.test(sys) &&
-  /plans made on the day, trips booked at short notice/.test(sys) &&
-  /posting rhythm is the platform, not the person — bursty posting is how almost everyone posts/.test(prompts.FREE_SYSTEM) &&
-  !/J\/P is the least confounded/.test(sys + prompts.FREE_SYSTEM));
-check('the prompt orders the contrary behaviour found before strength is settled',
-  /look for the contrary behaviour before you settle `strength`/i.test(sys));
-check('and calls out a report that found every axis clear',
-  /clear` on all four axes is a report that did not look/i.test(sys));
-
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on a character, its franchise, an icon and a reason',
   ['character', 'franchise', 'icon', 'why'].every(k => k in essenceProps));
@@ -2272,7 +2461,6 @@ for (const [label, needle] of [
   ['tells the model not to identify other people', /Do not identify or speculate about specific other people/],
   ['blocks protected-attribute inference', /sexual orientation, health conditions/],
   ['blocks appearance-based classification', /classify anyone by appearance/],
-  ['warns about base rates', /Most people are near the middle/],
   // Other people are all over an export whether or not a photograph is
   // attached — named in captions, written to in messages, listed as friends —
   // so these limits outlived the pictures they were written for.
@@ -2325,12 +2513,10 @@ for (const [label, needle] of [
     /No source here carries timing data of any kind/],
   ['spells out that a watch count is not an evening', /a hundred openings, not an evening/],
   ['demands the per-axis writing be personal', /pasted into a stranger's profile/],
-  ['wants one of the four axes to land uncomfortably', /let at least one of the four sting slightly/],
   ['forbids smuggling a summary into the last axis', /do not write one into the last axis instead/],
   ['separates giving from receiving love', /give them separately for receiving and for giving/],
   ['hedges the receiving side harder', /which is thinner evidence, so hedge it harder/],
   ['warns that touch is invisible in this data', /Physical touch is close to invisible in this data/],
-  ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
   ['does not moralise about screen time', /not to moralise about screen time/],
@@ -2348,89 +2534,6 @@ for (const [label, needle] of [
   ['looks for the gap rather than the totals', /Read the \*\*gaps\*\*/],
   ['refuses to invent time it cannot measure', /No source here carries timing data of any kind/],
   ['will not name a private individual', /a friend or a relative is described rather than named/],
-  // The extraversion correction, made symmetric (18 Oct 2026). It began as a
-  // fix for introverts scored as extraverts off DM volume, then leaned the other
-  // way: depth read as introversion, introvert signals weighted up, and E alone
-  // held to a bar. Each part of the fair version is pinned separately: volume
-  // settles neither letter, breadth decides, depth is neutral, both letters
-  // meet the same bar.
-  ['says volume is evidence for neither letter', /\*\*Message volume is not evidence for either letter\.\*\*/],
-  ['names the error as running both ways', /The error has run both ways/],
-  ['says breadth decides', /\*\*Breadth decides\*\*/],
-  ['reads activeThreads as the breadth number and depth as neutral',
-    /is the breadth number, and depth is neutral/],
-  ['counts a few hundred active conversations as wide reach', /a few hundred is wide reach and a real point towards \*\*E\*\*/],
-  ['refuses to argue a wide count away with a few deep chats', /Never set a few deep chats against a wide count/],
-  ['counts plans, gathering people and several circles towards E', /Proposing plans, gathering people, coordinating group outings/],
-  ['counts a stated need for time alone towards I', /A stated need for time alone to recharge/],
-  ['counts group participation, not group membership, as the stronger evidence',
-    /Sustained group-chat \*participation\* is genuine extraversion evidence/],
-  // The correction to the correction: the first version of this block pointed
-  // at `threads`, which counts stranger DMs and silent groups, so an inbox
-  // full of mail nobody answered read as social reach.
-  ['sends the model to activeThreads rather than the raw thread count',
-    /\*\*Use .?activeThreads.?, never .?threads.?\.\*\*/],
-  ['says what the raw thread count actually contains',
-    /message requests, one-off DMs from strangers, group chats somebody was added to and never opened/],
-  ['warns that the two can differ by a wide margin',
-    /can differ by a factor of forty for the same person/],
-  ['treats a null active count as unknown rather than zero',
-    /that is unknown, not zero/],
-  ['refuses the raw group count as participation evidence',
-    /not the raw .?groupThreads.?, which counts groups they were added to and sat silent in/],
-  // Group DMs are a minority behaviour on these platforms whatever somebody's
-  // temperament — that life is on WhatsApp, iMessage or in a room, none of
-  // which is in the export. So the evidence runs one way: presence counts,
-  // absence says nothing. Reported after the first version read every zero as
-  // a point towards introversion.
-  ['treats group-chat evidence as one-directional',
-    /its absence means nothing at all/],
-  ['names zero group threads as the ordinary case, not the introverted one',
-    /Zero active group threads is the ordinary case, not the introverted one/],
-  ['knows the close-friends list is opt-in and usually unset',
-    /most accounts never configure the list/],
-  ['generalises the rule past those two fields',
-    /A missing behaviour is only evidence if you would have expected to see it/],
-  ['refuses to score a trait on a blank', /Never build a trait score, a type letter or a line of the report on the absence/],
-  ['prefers distinct people over comment volume',
-    /Five hundred comments spread over six people is a small world/],
-  ['weighs both sides by the same standard', /\*\*Weigh both sides by the same standard\.\*\*/],
-  ['no longer reads long messages, late nights or lurking as I', /liking and saving far more than posting \(which nearly everyone does\) are not evidence for \*\*I\*\*/],
-  ['starts at 50 with the same bar both ways, with numbers on it', /Start at 50 and let the evidence move it, either way, by the same bar\.\*\* Score above roughly 60/],
-  ['needs signs of seeking quiet for a low score, not just missing breadth',
-    /The absence of breadth evidence is not evidence for \*\*I\*\*/],
-  ['refuses message volume as trait evidence in the Big Five section',
-    /"You send a lot of messages" is not evidence for this trait/],
-  // The E/I letter and the extraversion score are two fields describing one
-  // trait, and readers put them side by side. Nothing tied them together, so a
-  // report could score 62 and then print "I" — the contradiction gets noticed
-  // immediately because both sit in the same summary card. The rule is numeric
-  // rather than a plea for consistency, so there is something to check.
-  ['ties the E/I letter to the extraversion score',
-    /The E\/I letter and the extraversion score are one finding/],
-  // Since 18 Oct 2026 MBTI is written first, so the score follows the letter
-  // and its strength, with numbers on each.
-  ['writes the E/I case first and has the score follow the letter', /`mbti` is written before `bigFive`, so the E\/I case is made\nfirst/],
-  ['gives that tie actual thresholds', /- \*\*E\*\*: `slight` 50 to 59, `moderate` about 60 to 69, `clear` 70 or above\./],
-  ['and the other side of it', /- \*\*I\*\*: `slight` 41 to 50, `moderate` about 31 to 40, `clear` 30 or below\./],
-  ['makes the middle band hedge rather than pick', /\*\*46 to 54\*\*\nis either letter at `slight`/],
-  ['forbids the axis reasoning contradicting the trait reading',
-    /must not argue against the trait's `reading`/],
-  ['restates the tie where the letter is actually chosen',
-    /The extraversion score you write after it has to match/],
-  // Absence of group threads. The prompt already explained why it means
-  // nothing, twice, and reports kept citing it anyway — an explanation is not
-  // a prohibition, so this is written as a ban on the phrasing itself, at the
-  // point the evidence strings are produced.
-  ['bans the empty group life from the evidence outright',
-    /never write the absence of group chats into the evidence/i],
-  ['names the phrasings it is banning', /"No active group threads", "no group conversations"/],
-  ['says why: these platforms are one-to-one',
-    /Instagram and Facebook messaging is overwhelmingly one-to-one/],
-  ['points out it separates nobody from anybody',
-    /what the \*average\* extravert's export looks like/],
-  ['calls the blank silence rather than a finding',
-    /it is silence, and silence does not go in an evidence list/],
   // Captions about other people. Reported from real output: a caption naming
   // somebody else's job or car was being read as the reader's own. Each half
   // of the correction is pinned — the rule, the handle test, and the reframe
@@ -2442,7 +2545,10 @@ for (const [label, needle] of [
   ['gives the model a mechanical test for whose handle is whose',
     /any other .?@handle.? is somebody else/],
   ['carries the worked example of a misattributed job',
-    /@mokkzy is the finance professional, the guru and the founder/],
+    /\[P1\] is the ex-banker, the coach and the founder/],
+  // Worked examples use invented markers and figures, never a real reader's
+  // handles or counts, which went out with every request (18 Oct 2026).
+  ['carries no real handle or real reader\'s figure in its examples', /^(?![\s\S]*(?:@mokkzy|@yuhanchong|378 Instagram|64,000|86,000))/],
   ['carries the worked example of a misattributed possession',
     /The reader does not own it and is not a collector/],
   ['refuses to let the correction become "ignore those captions"',
@@ -2459,15 +2565,11 @@ for (const [label, needle] of [
     /it is a stranger's life offered to them as their own/],
   ['stops the essence pick borrowing somebody else\'s biography',
     /picking a character off a borrowed biography/],
-  ['carries the same two-way bar onto the MBTI axis',
-    /\*\*E\*\* is earned with breadth — wide reach, many distinct people, plans proposed and people gathered — and \*\*I\*\* with a narrow circle together with signs of seeking quiet/],
   // Opting out of DMs deletes directMessages outright, taking every breadth
   // ratio with it and leaving publishing volume — the most misleading
   // evidence there is for this trait — as the only social signal left.
   ['handles the reader who opted out of messages',
     /coverage\.directMessagesIncluded.? is false/],
-  ['treats a missing message block as more reason to hedge, not less',
-    /has given you less breadth evidence: hedge and stay nearer the middle/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
@@ -2675,6 +2777,23 @@ check('a Takeout yields all four My Activity services',
 // The fixture carries a German-locale block: translated folder, translated
 // filename, translated title verbs, same URL shapes. If anything classifies on
 // English these records vanish and the counts drop by exactly 40 apiece.
+// Every search's shape, counted over the whole history for the N/S read
+// (18 Oct 2026), and taken out with the searches when they are unticked.
+{
+  const shape = globalThis.PsycheSupplement.searchShape;
+  const shapes = google.counts.searchShapes || { practical: 0, conceptual: 0 };
+  const built = Digest.build(signals, { supplements: { google } });
+  const unticked = Digest.omitGoogleSearches ? Digest.omitGoogleSearches(JSON.parse(JSON.stringify(built))) : null;
+  check('searches are counted by shape: practical, conceptual or neither, conceptual first',
+    shape('how to fix a bike chain') === 'practical' && shape('dentist near me') === 'practical' &&
+      shape('why do markets crash') === 'conceptual' && shape('why is my phone slow') === 'conceptual' &&
+      shape('difference between stoicism and buddhism') === 'conceptual' && shape('taylor swift') === null &&
+      shapes.practical + shapes.conceptual <= google.counts.googleSearches,
+    JSON.stringify(shapes));
+  check('and unticking Google searches at the review takes the shape counts with them',
+    !unticked || !(unticked.google && unticked.google.counts && unticked.google.counts.searchShapes),
+    JSON.stringify(unticked && unticked.google && unticked.google.counts));
+}
 check('localised records are classified too, so nothing reads English to decide',
   google.counts.watched === 940 && google.counts.googleSearches === 1240,
   google.counts.watched + ' watched, ' + google.counts.googleSearches + ' searches');
@@ -2756,6 +2875,11 @@ check('the other side of a Facebook conversation never reaches the fragment',
 // is why profile_information is read in a first pass.
 check('the account owner is resolved from profile_information', facebook.owner === 'Alec',
   JSON.stringify(facebook.owner));
+check('Messenger counts its conversations with real exchange over the last five years of its data too',
+  facebook.counts.engagedThreads && facebook.counts.engagedThreads.last5Years &&
+    Number.isInteger(facebook.counts.engagedThreads.last5Years.active) &&
+    facebook.counts.engagedThreads.last5Years.active >= 1,
+  JSON.stringify(facebook.counts.engagedThreads));
 
 // The likeliest mistake at this step is picking the Instagram zip a second
 // time. Meta's two exports overlap enough that it would partly parse — the
@@ -4309,6 +4433,35 @@ check('threads counts the whole inbox, active threads only what was answered',
   withDms.directMessages.activeThreads === 3 &&
   withDms.directMessages.activeThreads < withDms.directMessages.threads,
   withDms.directMessages.activeThreads + ' active of ' + withDms.directMessages.threads);
+// The breadth number since 18 Oct 2026: of the conversations they spoke in,
+// how many hold 10, 50 and 200 of their own messages. Three integers, and
+// the whitelist sends nothing else in their place.
+{
+  const engaged = withDms.directMessages.engagedThreads || {};
+  const sentEngaged = Digest.forModel(Object.assign({}, withDms, { directMessages: Object.assign({}, withDms.directMessages,
+    { engagedThreads: { atLeast10: '4', atLeast50: 2, atLeast200: 0, who: 'a name' } }) })).directMessages.engagedThreads;
+  check('the digest counts conversations with real exchange, never more than the ones spoken in',
+    Number.isInteger(engaged.atLeast10) && engaged.atLeast10 <= withDms.directMessages.activeThreads &&
+      engaged.atLeast50 <= engaged.atLeast10 && engaged.atLeast200 <= engaged.atLeast50 &&
+      IG.engagedCounts([1, 9, 10, 49, 50, 200, 500]).atLeast10 === 5 &&
+      IG.engagedCounts([1, 9, 10, 49, 50, 200, 500]).atLeast200 === 2 &&
+      JSON.stringify(sentEngaged) === JSON.stringify({ atLeast10: 4, atLeast50: 2, atLeast200: 0 }),
+    JSON.stringify({ engaged, sentEngaged }));
+  // The same counts over the last five years of the data (October 2026),
+  // up to the export's own latest message, never today.
+  const year = 365.25 * 86400;
+  const recent = IG.recentPerThread([[0, 100 * year], [0, 96 * year], [1, 94 * year], [1, 99 * year], [2, 90 * year]]);
+  const counted = IG.engagedCounts([60, 12, 3], [55, 0, 3]);
+  const sentRecent = Digest.forModel(Object.assign({}, withDms, { directMessages: Object.assign({}, withDms.directMessages,
+    { engagedThreads: { atLeast10: 4, atLeast50: 2, atLeast200: 0, last5Years: { active: '3', atLeast10: 2, atLeast50: 1, atLeast200: 0, who: 'x' } } }) })).directMessages.engagedThreads;
+  check('the digest counts the last five years of the data too, how many conversations were written in then included',
+    recent.get(0) === 2 && recent.get(1) === 1 && !recent.has(2) &&
+      JSON.stringify(counted.last5Years) === JSON.stringify({ active: 2, atLeast10: 1, atLeast50: 1, atLeast200: 0 }) &&
+      !('last5Years' in IG.engagedCounts([60])) &&
+      engaged.last5Years && Number.isInteger(engaged.last5Years.active) && engaged.last5Years.active <= withDms.directMessages.activeThreads &&
+      JSON.stringify(sentRecent.last5Years) === JSON.stringify({ active: 3, atLeast10: 2, atLeast50: 1, atLeast200: 0 }),
+    JSON.stringify({ recent: [...recent], counted, engaged, sentRecent }));
+}
 check('a group they were added to but never spoke in does not count as participation',
   withDms.directMessages.groupThreads === 1 && withDms.directMessages.activeGroupThreads === 0,
   withDms.directMessages.groupThreads + ' groups, ' +
@@ -5161,8 +5314,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 179000 && DIG === 179000 && Digest.DEEP_DIGEST_CHARS === 179000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card, its Overview and its roast cost at most 8.5 cents',
-    Digest.FREE_COST_CAP === 0.085 && freeWorst <= 0.085 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card, its Overview and its roast cost at most 8.7 cents',
+    Digest.FREE_COST_CAP === 0.087 && freeWorst <= 0.087 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most 17.2 cents',
     Digest.COST_CAP === 0.172 && fullWorst <= 0.172 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
@@ -5596,7 +5749,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('the premium read\'s two calls each fit their own cost cap at its 179,000-character line',
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS &&
-        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.085,
+        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.087,
       Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
     check('and together cost no more than twenty-six cents',
@@ -5820,7 +5973,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // card's own rules.
   const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '')
     .replace(prompts.CONDUCT_RULE, '').replace(prompts.DATA_WORDS, '')
-    .replace(prompts.CONFIDENCE_SCORING, '').split(prompts.NEUTRAL_PEOPLE_RULE).join('');
+    .replace(prompts.CONFIDENCE_SCORING, '').replace(prompts.MBTI_LEDGER_RULES, '').replace(prompts.CONVERSATIONS_RULE, '')
+    .split(prompts.NEUTRAL_PEOPLE_RULE).join('');
   // A quarter now the full report's prompt has lost the roast to this one.
   check('the card prompt is its own and short: its rules under a quarter of the full report\'s',
     freeRules.length < prompts.PROFILE_SYSTEM.length / 4 && freeRules.length > 4000,
@@ -5829,14 +5983,14 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // decide a letter or a score. These are the ones that have each been the
   // fix for a reported wrong answer; each must be in both prompts.
   const RULES = [
-    ['use activeThreads rather than threads', /`activeThreads`, never `threads`/],
-    ['E/I follows the extraversion score at 55 and 45', /55 or above[\s\S]{0,40}\bE\b[\s\S]{0,120}45 or below/],
-    ['an empty group-chat list is no evidence', /no information/],
+    ['activeThreads is reach over years, not people kept up with', /`activeThreads` counts every conversation they ever wrote in/],
+    ['the extraversion score follows the E/I ledger', /The extraversion score is set by the code from the E\/I ledger/],
+    ['group chats are no evidence, busy or empty', /\*\*Group chats\*\*, busy or empty/],
     ['liked captions are other people\'s words', /likedPostCaptions[\s\S]{0,80}other people/i],
     ['the redaction markers are blanks', /PsycheUser[\s\S]{0,800}as (?:a )?blanks?\b/],
     ['the author is not the subject', /author is not (?:automatically )?the subject/i],
     ['N/S: concrete detail is the platform', /camera[\s\S]{0,60}concrete/i],
-    ['T/F: the error runs towards F', /runs towards F|runs towards \*\*F\*\*/],
+    ['T/F: kind comments are the platform', /kind comments are everyone's, not F/],
     ['confidence is scored one way, from the sources loaded', /Start from the sources loaded/],
     ['physical touch is nearly invisible', /[Pp]hysical touch is (?:close to|nearly) invisible/],
     ['no diagnosis, ever', /condition|diagnos/],
@@ -5881,9 +6035,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     prompts.CARD_BASE_SYSTEM.split('# ')
       .every(part => prompts.STRUCTURED_FREE_SYSTEM.includes(part.split('\n')[0])));
   // Roast aside on both sides: it moved from the full schema to this one.
+  // Since October 2026 both carry the same MBTI ledger, and the full schema's
+  // letter descriptions shrank once the ledger carried the method, so the bar
+  // is a little over half rather than half.
   const roastChars = JSON.stringify(prompts.FREE_SCHEMA.properties.bonus).length;
   check('the card schema is small next to the full one, roast aside',
-    freeSchema.length - roastChars < (JSON.stringify(prompts.PROFILE_SCHEMA).length + roastChars) / 2);
+    freeSchema.length - roastChars < (JSON.stringify(prompts.PROFILE_SCHEMA).length + roastChars) * 0.55,
+    (freeSchema.length - roastChars) + ' vs ' + (JSON.stringify(prompts.PROFILE_SCHEMA).length + roastChars));
   check('and the roast is the last thing the card call writes, after the card itself',
     Object.keys(prompts.FREE_SCHEMA.properties).slice(-2).join() === 'card,bonus',
     Object.keys(prompts.FREE_SCHEMA.properties).join());
@@ -5984,9 +6142,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     prompts.profileBlocks(heavyWithDms, null)[0].text.includes(rendered));
 
   const card = (await mock.analyseCard(digest)).data;
-  check('the mock card is shaped like the schema, with no writing in it',
+  // No explanations, beyond the character line it writes first (18 Oct 2026).
+  check('the mock card is shaped like the schema, with no writing in it but the character line',
     Object.keys(card).sort().join(',') === Object.keys(prompts.FREE_SCHEMA.properties).sort().join(',') &&
-    !JSON.stringify(card).includes('"why"') && !JSON.stringify(card).includes('"reading"'),
+    !JSON.stringify(Object.assign({}, card, { essence: null })).includes('"why"') && !JSON.stringify(card).includes('"reading"'),
     Object.keys(card).join(','));
 
   const anchor = prompts.anchorFrom(card);
@@ -6067,7 +6226,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))
         .replace('# Confidence\n\n' + prompts.CONFIDENCE_SCORING + '\n\n', '')
         .replace('Decide them last, from everything above.', 'Decide them straight after MBTI and the Big Five, from the evidence and those scores.')
-        .replace('Write it last but one, after everything it sums up.', 'Write it after MBTI, the Big Five, the patterns and the character, from those.')) &&
+        .replace('Write it last but one, after everything it sums up.', 'Write it after every section above it in your schema — the type, the scores, the patterns, what drives them, how they connect and how they work — and after the character, from all of those.')) &&
       (prompts.MERGED_SYSTEM.match(/Start from the sources loaded/g) || []).length === 1 &&
       /where they and the rules above differ about one of those fields, these win/.test(prompts.MERGED_SYSTEM) &&
       /# The roast/.test(prompts.MERGED_SYSTEM) && /# Overview/.test(prompts.MERGED_SYSTEM));
@@ -6299,7 +6458,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('structured, one call: the unlock that adds data comes back shaped as the two calls return it, field for field the real schemas ask for',
       one.status === 200 && missing(shape(fresh.freeCard), shape(oneData.freeCard)).length === 0 && missing(fullTwo, fullOne).length === 0 &&
         cardGap.every(k => !inSchema(prompts.STRUCTURED_FREE_SCHEMA, k)) &&
-        fullGap.every(k => !inSchema(prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA, k)),
+        fullGap.every(k => !inSchema(prompts.STRUCTURED_LINE_PINNED_SCHEMA, k)),
       JSON.stringify(one.status) + ' ' + (one.crashed || '') + ' ' + JSON.stringify({ cardGap, fullGap }));
     check('and its values are put back to their allowed spelling (an upper-cased letter strength)',
       oneData.freeCard && oneData.freeCard.mbti.letters.every(l => ['slight', 'moderate', 'clear'].includes(l.strength)));
@@ -6706,7 +6865,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     check('structured Big Five: all five traits, each a score, a band and one line, no evidence list; MBTI carries the extraversion evidence',
       Object.keys(five).join() === 'openness,conscientiousness,extraversion,agreeableness,neuroticism' &&
       Object.values(five).every(t => Object.keys(t.properties).join() === 'reading,score,band' && /^One sentence: the specific behaviour from the data that sets this score/.test(t.properties.reading.description)) &&
-      /55 or higher always means E and 45 or lower always means I/.test(choice) &&
+      /The code checks the sum/.test(choice) &&
       /only place the extraversion evidence is laid out/.test(structured.properties.mbti.properties.letters.items.properties.evidence.description) && !/depth a Big Five trait gets/.test(why) &&
       /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /cite a breadth number in the E\/I axis's `evidence`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
@@ -6723,7 +6882,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   // chats" against 378 Instagram threads, October 2026).
   check('every prompt that scores extraversion says WhatsApp chats are hand-picked and never count towards I',
     ['STRUCTURED_FREE_SYSTEM', 'MERGED_SYSTEM', 'STRUCTURED_FULL_SYSTEM', 'FULL_SYSTEM_BASE'].every(k =>
-      /WhatsApp chats are hand-picked/.test(prompts[k]) && /never depth leaning introvert|never count it towards \*\*I\*\*/.test(prompts[k])));
+      /WhatsApp chats are the up to three the reader hand-picked/.test(prompts[k]) && /their volume is never evidence on E\/I/.test(prompts[k])));
   check('its shareable card keeps the same fields, and none is the Enneagram',
     Object.keys(structured.properties.card.properties).join() === Object.keys(baseSchema.properties.card.properties).join() &&
     !('enneagram' in structured.properties.card.properties));
@@ -6738,17 +6897,21 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const mbtiOrder = Object.keys(structured.properties.mbti.properties).join();
   const letterOrder = Object.keys(structured.properties.mbti.properties.letters.items.properties).join();
   check('MBTI and the Big Five are written first, MBTI leading, then the patterns, the character and the summary; the type after its letters, each letter after its case',
-    order.slice(0, 7).join() === 'confidence,mbti,bigFive,patterns,essence,summary,cardHighlights' &&
-    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,evidence,choice,strength' &&
+    order.slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
+    // The character, summary and write-up after What drives you and How you connect / work.
+    order.slice(order.indexOf('career') + 1, order.indexOf('career') + 4).join() === 'essence,summary,cardHighlights' &&
+    ['interests', 'values', 'beliefs', 'motivators', 'relationship'].every(key => order.indexOf(key) < order.indexOf('essence')) &&
+    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,ledger,why,evidence,choice,strength' &&
     'inPractice' in prompts.PROFILE_SCHEMA.properties.mbti.properties.letters.items.properties &&
     Object.keys(prompts.MERGED_SCHEMA.properties).slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
     /Decide them straight after MBTI and the Big Five/.test(prompts.STRUCTURED_ADDON) &&
     /\*\*MBTI comes before the Big Five\*\*, on the page and in the order you write/.test(prompts.STRUCTURED_ADDON) &&
-    /work axis by axis, then give the type the four letters spell/.test(prompts.STRUCTURED_FULL_SYSTEM),
+    /work axis by axis — the `ledger` first/.test(prompts.STRUCTURED_FULL_SYSTEM),
     [order.join(','), mbtiOrder, letterOrder].join(' | '));
   check('the card call too: scores first, the character just before the Overview, the type after its letters',
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).slice(0, 3).join() === 'confidence,mbti,bigFive' &&
-    /The extraversion score follows the E\/I letter, written before it/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    /The extraversion score is set by the code from the E\/I ledger/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    prompts.STRUCTURED_FREE_SYSTEM.indexOf('# MBTI') < prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five') &&
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('essence') === Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('summary') - 1 &&
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.mbti.properties).join() === 'letters,type,confidence,nickname',
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).join());
@@ -6850,13 +7013,23 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const overviewText = prompts.profileBlocks({}, overviewAnchor).map(b => b.text).join('\n');
   check('a card with its Overview anchors its summary, cleaned, and the paid call is told both are settled',
     overviewAnchor.summary === 'You are  steady .  Second paragraph.' &&
-      /Both are settled and your schema has no field for either/.test(overviewText) &&
+      /All are settled and your schema has no field for them/.test(overviewText) &&
       !/keep their ids, names and order exactly/.test(overviewText), JSON.stringify(overviewAnchor.summary));
-  check('and its schema leaves out the summary and the patterns, and nothing else',
-    prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
-      Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
-        .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'patterns,summary' &&
-      !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary'));
+  check('and its schema leaves out the summary, the patterns and the card\'s write-up, and nothing else',
+    (prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
+        Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
+          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'cardHighlights,patterns,summary' &&
+        !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary')));
+  // A card that also wrote its character line (18 Oct 2026) settles the whole
+  // chain: the paid call writes no essence either, and is told so.
+  {
+    const lineAnchor = prompts.anchorFrom(Object.assign({}, overviewCard, { essence: Object.assign({}, overviewCard.essence, { why: 'The same <steady> temper.' }) }));
+    const lineText = prompts.profileBlocks({}, lineAnchor).map(b => b.text).join('\n');
+    check('a card with its character line settles that too: no essence in the paid schema, and the call is told',
+      (lineAnchor.essenceWhy === 'The same  steady  temper.' && prompts.fullSchemaFor(lineAnchor) === prompts.STRUCTURED_LINE_PINNED_SCHEMA &&
+          !('essence' in prompts.STRUCTURED_LINE_PINNED_SCHEMA.properties) && /the character line \(`essenceWhy` below\)/.test(lineText)),
+      JSON.stringify(lineAnchor.essenceWhy));
+  }
   check('a pattern without its evidence keeps the old anchor, summary or not',
     !('summary' in prompts.anchorFrom(Object.assign({}, freeCard, { summary: 'Text.' }))));
   const olderAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
@@ -6914,7 +7087,11 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     /never state, hint at or explain it anywhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
       /Gender only decides which characters to choose among, and is never written/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /privately choosing the character's side \(see \*\*essence\*\*\), never written/.test(prompts.FULL_SYSTEM) &&
-      prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
+      // The report's character rule is the card's side rule since 18 Oct 2026.
+      prompts.FULL_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) && !prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
+      !/pick the character before you write anything else/.test(prompts.FULL_SYSTEM + prompts.MERGED_SYSTEM) &&
+      /When the card has already named the character, it is settled/.test(prompts.FULL_SYSTEM) &&
+      /Exactly three behaviours that explain the most/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/never on their gender|never on looks, gender/.test(prompts.FULL_SYSTEM + prompts.STRUCTURED_FREE_SYSTEM + prompts.CARD_BASE_SYSTEM));
   check('the catalogue is balanced: as many women as men, and a retired character is no longer offered',
     ['Mulan', 'Elsa', 'Moana', 'Rapunzel', 'Judy Hopps', 'Joy', 'Wonder Woman', 'Hermione Granger', 'Kuromi',
@@ -6982,9 +7159,14 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   }
   {
     const order = Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties);
-    check('the structured write-up is written after the patterns it sits above, and told not to repeat them',
-      order.indexOf('cardHighlights') > order.indexOf('patterns') &&
-      /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
+    // One chain since 18 Oct 2026: the character line, the summary, then the
+    // write-up condensed from the two.
+    check('the card writes its character line, then the summary, then the write-up condensed from both',
+      order.indexOf('essence') < order.indexOf('summary') && order.indexOf('summary') < order.indexOf('cardHighlights') &&
+      'why' in prompts.STRUCTURED_FREE_SCHEMA.properties.essence.properties &&
+      /condensed from the character line \(`essence\.why`\) and the executive summary \(`summary`\)/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
+      /Written second, after the character line/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.summary.description) &&
+      /drawn from the character line and the executive summary/.test(prompts.CARD_SCHEMA.properties.headline.description), order.join(','));
     check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
       /one list of exactly three in all/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /under 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
@@ -8954,13 +9136,12 @@ check('the schema requires evidence on where they align and differ',
   check('and that a back-reference alone does not make a case',
     /not a licence to assert/i.test(profile));
 
-  // E/I follows the Big Five extraversion score. Since 18 Oct 2026 its `why`
-  // is a full paragraph again: the score, the breadth behind it and what
-  // tempers it, each counted, never volume or depth.
-  check('E/I lays out the breadth behind the letter and what tempers it, never volume or depth, and the score follows',
-    /\*\*On E\/I\*\*, this paragraph decides the letter and, through it, the Big Five extraversion score written after it/.test(schema) &&
-    /plans proposed and people gathered/.test(schema) && /a stated need for time alone/.test(schema) &&
-    /Never argue it from message volume or from how deep a few chats run/.test(schema) &&
+  // E/I's list is the breadth; its paragraph weighs the other side, and
+  // neither argues from anything the ledger may not hold (October 2026).
+  check('E/I lays out the breadth behind the letter and what tempers it, never anything a ledger may not hold',
+    /On E\/I this is the breadth: the sustained count/.test(schema) &&
+    /plans proposed and people gathered/.test(schema) && /their own words about their energy/.test(schema) &&
+    /Never argues from anything the prompt's never-counted list keeps out of a ledger/.test(schema) &&
     !/deliberately shorter/.test(schema));
 
   // inPractice sits under a paragraph that is already concrete about the

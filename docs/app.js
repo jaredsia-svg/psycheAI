@@ -1189,6 +1189,9 @@
       character: (card.essence || {}).character || (out.essence || {}).character,
       franchise: (card.essence || {}).franchise || (out.essence || {}).franchise,
       icon: (card.essence || {}).icon || (out.essence || {}).icon,
+      // The character line, when the card wrote it: the first of the three
+      // the card settles (with the summary and the write-up).
+      why: (card.essence || {}).why || (out.essence || {}).why,
     });
     if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
     // The Overview the reader read free under their card: kept whole.
@@ -2182,6 +2185,12 @@
   };
   const hubIcon = key => '<svg class="hub-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + HUB_ICONS[key] + '</svg>';
+  // A page or panel title's mark, on its left in the title's gradient: the
+  // hub's grid, the card, the report, a sync. `id` names its gradient, one per mark.
+  const titleMark = (key, id) => '<svg class="hub-svg title-mark" viewBox="0 0 24 24" fill="none" stroke="url(#' + id + ')" ' +
+    'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><defs>' +
+    '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3fa0"/>' +
+    '<stop offset="1" stop-color="#d1477a"/></linearGradient></defs>' + HUB_ICONS[key] + '</svg>';
   const hubDots = (n, on) => n > 0 && n <= 6 ? '<span class="hub-dots" aria-hidden="true">' +
     Array.from({ length: n }, (_, i) => '<i' + (i < on ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
 
@@ -2302,10 +2311,7 @@
     const flow = explained ? 'rerun' : 'unlock';
     return '<section class="card section-card hub-card screen-only" aria-labelledby="hub-title">' +
       // The hub's own mark beside its name, in the title's gradient.
-      '<div class="hub-bar"><h2 id="hub-title"><svg class="hub-svg hub-title-mark" viewBox="0 0 24 24" fill="none" stroke="url(#hub-title-grad)" ' +
-        'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><defs>' +
-        '<linearGradient id="hub-title-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3fa0"/>' +
-        '<stop offset="1" stop-color="#d1477a"/></linearGradient></defs>' + HUB_ICONS.grid + '</svg>' + esc(H.title) + '</h2></div>' +
+      '<div class="hub-bar"><h2 id="hub-title">' + titleMark('grid', 'hub-title-grad').replace('title-mark', 'hub-title-mark') + esc(H.title) + '</h2></div>' +
       '<div class="hub-in">' +
       '<div class="hub-tiles">' + tiles.join('') + '</div>' +
       '<div class="hub-rows">' + hubLinkRowHtml(explained) +
@@ -2776,13 +2782,18 @@
    * roastBlock: the writing is not in the page until "Reveal my roast", and
    * revealRoast()/hideRoast() work it exactly the same way.
    */
-  function secretRoastHtml(bonus) {
+  // My Report's Appendix 1 too (18 Oct 2026): the same frame, sparks and
+  // glowing reveal as on My Psyche, under the appendix's own title.
+  function secretRoastHtml(bonus, options) {
     if (!bonus || !bonus.harsh) return '';
     const R = TEXT.secretRoast;
-    return '<section class="card section-card bonus-card secret-roast screen-only" aria-labelledby="secret-roast-title">' +
+    const appendix = Boolean(options && options.appendix);
+    const titleId = appendix ? 'appendix-roast-title' : 'secret-roast-title';
+    return '<section class="card section-card bonus-card secret-roast' + (appendix ? ' roast-appendix" data-appendix="roast"' : ' screen-only"') +
+      ' aria-labelledby="' + titleId + '">' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
-      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
+      '<h2 id="' + titleId + '" class="secret-roast-title">' + esc((options && options.title) || TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
       '<div class="bonus-cover secret-roast-cover">' +
       '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
       '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
@@ -6298,7 +6309,7 @@
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
       'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
-      'analysis. It usually takes up to a minute for the personality analysis to be ' +
+      'analysis. It usually takes a few minutes for the personality analysis to be ' +
       'completed. Please be patient.';
     startElapsed('Analysing');
     show('working');
@@ -6333,7 +6344,7 @@
       if (first) body.product = 'first';
       const result = await LLM.analyseProfile(sent, body,
         { onJob: key => rememberJob(key, 'analysis', auth) });
-      if (bundle || withCard(result)) await adoptBundle(result, undefined, { landOnHub: first });
+      if (bundle || withCard(result)) await adoptBundle(result);
       else {
         if (first) store.remove(KEYS.reportDigestNext);
         await adoptProfile(result);
@@ -6379,16 +6390,15 @@
    * laid under it as an unlock's is. A report with no `freeCard` is the card's
    * too.
    */
-  async function adoptBundle(result, savedName, options) {
+  async function adoptBundle(result, savedName) {
     const card = (result.data && result.data.freeCard) || result.data;
     await adoptProfile(Object.assign({}, result, { data: card }), savedName);
     await adoptFullReport(result, false, savedName);
     keepReportDigest();
-    // A first free read lands on My Psyche's hub, scrolled past the card,
-    // with the card and its report each a tap away.
-    if (options && options.landOnHub) { leaveHub(); go('profile'); }
-    else if (fullReportPage()) go('full');
-    else { renderProfile(); show('profile'); }
+    // Every read that writes a card lands on My Psyche, at the card (October
+    // 2026): a first free read and a card bought with its report alike. Only
+    // an unlock of a card already held lands on the report.
+    go('profile');
     openPaidSections();
     refreshAskCredits().catch(() => {});
   }
@@ -6523,11 +6533,12 @@
         // record a page from the previous deploy wrote for the same thing.)
         await adoptFullReport(result, Boolean(job.replaceCard), job.ownName);
         keepReportDigest();
-        renderProfile();
-        show('profile');
+        // An unlock picked up after a reload lands where a live one does: the report.
+        if (fullReportPage()) go('full');
+        else { renderProfile(); show('profile'); }
         openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
-      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName, { landOnHub: !job.auth });
+      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName);
       else await adoptProfile(result, job.ownName);
       return true;
     } catch (error) {
@@ -6953,7 +6964,7 @@
       // the hub's ring, opening Signal strength.
       '<div class="report-hero-meta"><p class="scan-eyebrow" id="report-hero-pill">' + esc(R.pill(parts, reportPdfPages())) + '</p>' +
         reportSignalHtml(report) + '</div>' +
-      '<h2 class="report-hero-title">' + esc(R.pageTitle) + '</h2>' +
+      '<h2 class="report-hero-title">' + titleMark('report', 'report-title-grad') + esc(R.pageTitle) + '</h2>' +
       '<p class="scan-lede">' + esc(R.lede) + '</p></header>';
   }
   // My Report's actions: Add data in Save a backup's place (the hub keeps Save Backup).
@@ -7787,7 +7798,7 @@
     // current). Each under the same section header as every other section.
     if (hasAppendix(report, ownPage)) {
       const roast = report.bonus && report.bonus.harsh
-        ? roastBlock(report.bonus, { flat: true, appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
+        ? secretRoastHtml(report.bonus, { appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
       html += partCardHtml('appendix', roast + (askable ? '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>' : ''), false);
     }
     return html;
@@ -7900,7 +7911,7 @@
       svg + '</svg><span>' + esc(G.tools[act]) + '</span></button>';
     return '<div class="cx" aria-label="' + esc(G.title) + '">' +
       '<div class="cx-home">' +
-        '<h2 class="cx-home-title">' + esc(G.home.title) + '</h2>' +
+        '<h2 class="cx-home-title">' + titleMark('card', 'card-title-grad') + esc(G.home.title) + '</h2>' +
         '<div class="cx-tools">' +
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
@@ -9821,8 +9832,9 @@
       // Every section changed, so the whole report is redrawn rather than
       // having bodies spliced into a page still showing the locked block.
       // renderProfile calls renderAnalysedBy and redraws the re-run price
-      // note, which says US$5 from this point on. Where the report has a page
-      // of its own, that page is where the reader lands.
+      // note, which says US$5 from this point on. An unlock of a card the
+      // reader already had lands on the report it bought; every read that
+      // writes a card lands on My Psyche, at the card (adoptBundle).
       if (fullReportPage()) {
         // The keep note at the report's head says it is ready, and where it is
         // kept (showKeepNote); there is no separate "ready" note any more.
@@ -11084,7 +11096,7 @@
     // There may be no profile yet on a device that was sent a link, so the
     // generic title in the markup stays the fallback.
     const who = state.profile && state.profile.card && state.profile.card.name;
-    $('#scan-title').textContent = TEXT.scanHistory;
+    $('#scan-title').innerHTML = titleMark('sync', 'sync-title-grad') + esc(TEXT.scanHistory);
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
     // One list, Psyche Sync: friends waiting to sync at the top, each with a

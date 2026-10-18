@@ -806,7 +806,7 @@
     // nothing to pay at all.
     reviewProceed: 'Proceed',
     reviewSend: 'Send this',
-    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. A new Psyche Card now comes with your full Psyche Report: US$5 for both.',
+    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',
     // The sheet for a paid run past the free card: never a card alone since
     // late October 2026, always the card and its report (authoriseAnalysis).
     bundleDialogTitle: 'Your Psyche Card and Psyche Report',
@@ -1004,7 +1004,7 @@
     inAppChrome: 'Open in Chrome',
     inAppCopy: 'Copy link',
     inAppCopied: 'Link copied',
-    scanHistory: 'Your Psyche Syncs',
+    scanHistory: 'Psyche Sync',
     // My Syncs: one list, friends waiting to sync at the top, then past syncs.
     syncsList: 'Sync list',
   };
@@ -1318,7 +1318,7 @@
     // the page before. It replaced the referral card and Evidence and method,
     // which now open from it.
     hub: {
-      title: 'Your Psyche Hub',
+      title: 'Psyche Hub',
       card: 'Psyche Card',
       ready: 'Ready',
       report: 'Psyche Report',
@@ -1417,7 +1417,7 @@
     },
     // My Psyche, once the full report is unlocked: the way into My Report.
     reportPage: {
-      pageTitle: 'Your Psyche Report',
+      pageTitle: 'Psyche Report',
       // The header's pill: the parts, and the PDF's pages once counted.
       pill: (parts, pages) => parts + ' parts' + (pages ? ' · ' + pages + ' pages' : ''),
       lede: 'The working behind your Psyche Card: what each result means, the evidence for it in your own data, and what to do with it.',
@@ -1431,7 +1431,7 @@
       title: 'How to read your Psyche Card',
       // What the panel says before any part of the card is pointed at.
       home: {
-        title: 'Your Psyche Card',
+        title: 'Psyche Card',
         // One paragraph naming the five features; each {name} is a small
         // button (the names in introLinks). On a phone each clause ends its
         // own line, so the buttons line up down the right.

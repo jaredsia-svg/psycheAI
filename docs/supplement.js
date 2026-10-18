@@ -190,6 +190,18 @@
     /^circle to search/i,
     /^https?:\/\//i,
   ];
+  // A search's shape by a plain word match, English only, so a rough count
+  // over the whole history rather than a reading of any one search. A search
+  // asking why or what something means is conceptual even when it is also
+  // practical ("why is my phone slow" counts once, as conceptual).
+  const CONCEPTUAL_SEARCH = /\b(why|what if|meaning of|what does .+ mean|difference between|theory|philosophy|explained|future of|history of|implications?|impact of|psychology of|origin of)\b/i;
+  const PRACTICAL_SEARCH = /\b(how to|how do i|how much|near me|nearby|prices?|cost|cheapest|discount|promo|reviews?|specs?|dimensions|size chart|opening hours|open now|fix|repair|install|set ?up|manual|recipe|weather|schedule|timetable|tickets?|booking|login|log in|download|directions|address|menu|delivery)\b/i;
+  function searchShape(text) {
+    if (CONCEPTUAL_SEARCH.test(text)) return 'conceptual';
+    if (PRACTICAL_SEARCH.test(text)) return 'practical';
+    return null;
+  }
+
   function isRealQuery(text) {
     return !NOT_A_QUERY.some(pattern => pattern.test(text));
   }
@@ -347,6 +359,14 @@
       // filed beside it that are not.
       if (!isRealQuery(clean)) return;
       out.counts.googleSearches++;
+      // The shape of every search, not just the top of the list (18 Oct
+      // 2026): practical ("how to", "near me", a price, a fix) or conceptual
+      // ("why", "what if", "meaning of", "difference between"). Two counts.
+      const shape = searchShape(clean);
+      if (shape) {
+        out.counts.searchShapes = out.counts.searchShapes || { practical: 0, conceptual: 0 };
+        out.counts.searchShapes[shape]++;
+      }
       bump(out.googleSearchTerms, clean.toLowerCase());
       keep(out.googleSearches, clean, LIMITS.searchBuffer);
       out.kinds.googleSearches = true;
@@ -540,6 +560,8 @@
       if (!out.threadIndex) Object.defineProperty(out, 'threadIndex', { value: new Map(), enumerable: false, writable: true });
       if (!out.threadIndex.has(key)) out.threadIndex.set(key, out.threadIndex.size);
       const thread = out.threadIndex.get(key);
+      // The reader's own messages per conversation, for engagedThreads below.
+      if (!out.ownByThread) Object.defineProperty(out, 'ownByThread', { value: new Map(), enumerable: false, writable: true });
       out.counts.threads++;
       const list = [];
       for (const msg of messages) {
@@ -549,6 +571,13 @@
         const ts = raw > 1e11 ? Math.round(raw / 1000) : raw;
         noteSpan(out.span, ts);
         if (!(out.owner && sender === out.owner)) out.counts.received++;
+        else {
+          out.ownByThread.set(thread, (out.ownByThread.get(thread) || 0) + 1);
+          if (ts) {
+            if (!out.ownTimes) Object.defineProperty(out, 'ownTimes', { value: [], enumerable: false, writable: true });
+            out.ownTimes.push([thread, ts]);
+          }
+        }
         const text = String(fixText((msg && msg.content) || '')).replace(/\s+/g, ' ').trim();
         if (text) list.push({ sender, text, ts });
       }
@@ -625,6 +654,14 @@
     }
 
     out.span = finishSpan(out.span);
+    // `threads` counts every conversation file in the archive, requests and
+    // filtered ones included; this counts the ones with real exchange.
+    if (out.owner && out.ownByThread) {
+      const recent = root.PsycheInstagram.recentPerThread(out.ownTimes || []);
+      const threads = [...out.ownByThread.keys()];
+      out.counts.engagedThreads = root.PsycheInstagram.engagedCounts(threads.map(t => out.ownByThread.get(t)),
+        threads.map(t => recent.get(t) || 0));
+    }
     report({ phase: 'done', done: seen.files, total: seen.files, label: 'Finished reading' });
     return out;
   }
@@ -639,6 +676,6 @@
     readGoogle, readFacebook, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
     // Exported for the tests, which hold the locale-proofing directly rather
     // than inferring it from a parsed archive.
-    hostOf, queryOf, productOf, stripLeadingVerb,
+    hostOf, queryOf, productOf, stripLeadingVerb, searchShape,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

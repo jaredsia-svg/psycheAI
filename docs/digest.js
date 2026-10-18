@@ -940,7 +940,10 @@
   // $0.075 with the public pool at 50,000 (late October 2026); $0.076 once
   // the card's prompt said who the captions were written for (11,300).
   // $0.085 with one 179,000 line for every read (late October 2026).
-  const FREE_COST_CAP = 0.085;
+  // $0.086 once the card's prompt carried the MBTI ledger and its rubric
+  // (MBTI_LEDGER_RULES, about 1,800 tokens more; 13,084 measured); $0.087
+  // with the breadth rule and the mixed-words cap beside it (13,547).
+  const FREE_COST_CAP = 0.087;
   // Instagram alone, at its 100,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
@@ -976,7 +979,12 @@
   // three free caps still pay for their digests at it.
   // 11,300 once it said who the captions were written for
   // (ACCOUNT_AUDIENCE_RULE, 11,223 measured).
-  const FREE_FIXED_INPUT_TOKENS = 11400;
+  // 13,300 once it carried the MBTI ledger section and its rubric tables
+  // (13,084 measured), and its own E/I and N/S/T/F bullets went. 13,450 once
+  // every field read breadth off sustained conversations (CONVERSATIONS_RULE,
+  // 13,441 measured). 13,600 once a reader's own words on both sides kept an
+  // axis slight (13,547 measured), with the cap at 8.7 cents.
+  const FREE_FIXED_INPUT_TOKENS = 13700;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -985,17 +993,17 @@
   // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                 11,000 prompt + 51,143 digest × $0.75/M = $0.0466
-  //                 at most $0.0841                    → DEEP_FREE_COST_CAP $0.085
+  //                 13,600 prompt + 51,143 digest × $0.75/M = $0.0486
+  //                 at most $0.0861                    → DEEP_FREE_COST_CAP $0.087
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669
   //                 at most $0.1719                    → DEEP_COST_CAP $0.172
   //
-  // $0.257 for the whole unlock at most, against a US$5 payment; $0.172 when
+  // $0.259 for the whole unlock at most, against a US$5 payment; $0.172 when
   // nothing is added and the card stands. Held by the same selftest check as
   // the standard caps.
-  const DEEP_FREE_COST_CAP = 0.085;
+  const DEEP_FREE_COST_CAP = 0.087;
   const DEEP_COST_CAP = 0.172;
 
   // The unlock that adds data in one call (lib/prompts.js, MERGED_SYSTEM),
@@ -1005,14 +1013,17 @@
   // card's lines and the roast:
   //
   //   both         30,000 out  × $3.75/M = $0.1125
-  //                 43,000 prompt + 51,143 digest × $0.75/M = $0.0706
-  //                 at most $0.1831                    → MERGED_COST_CAP $0.184
+  //                 40,500 prompt + 51,143 digest × $0.75/M = $0.0687
+  //                 at most $0.1812                    → MERGED_COST_CAP $0.185
   //
-  // against $0.257 for the two calls it replaces. If its answer fails its
+  // (40,500 since the MBTI ledger replaced some 15,000 characters of the
+  // report's prompt, October 2026; 39,021 measured.)
+  //
+  // against $0.259 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 43000;
+  const MERGED_FIXED_INPUT_TOKENS = 40500;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
-  const MERGED_COST_CAP = 0.184;
+  const MERGED_COST_CAP = 0.185;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -1928,6 +1939,10 @@
         // not identify its own owner, which is not the same as zero.
         activeThreads: messages.activeThreads,
         activeGroupThreads: messages.activeGroupThreads,
+        // Of those, how many hold at least 10, 50 and 200 of their own
+        // messages: real, repeated exchange, which a single reply does not
+        // make. Counts only.
+        engagedThreads: messages.engagedThreads,
         totalMessages: messages.total,
         sentByUser: messages.sent,
         receivedByUser: messages.received,
@@ -2389,7 +2404,9 @@
       const g = supplements.google;
       digest.coverage.sources.push('google');
       digest.google = {
-        note: 'From a Google Takeout "My Activity" export. Counts are complete; the text is sampled.',
+        note: 'From a Google Takeout "My Activity" export. Counts are complete; the text is sampled. counts.searchShapes, when present, ' +
+          'counts every Google search by a plain word match: practical (how to, near me, a price, a fix, a booking) or conceptual ' +
+          '(why, what if, meaning of, difference between, explained). Most searches match neither.',
         span: monthSpan(g.span),
         // Spread rather than passed through, so the distinct-domain count can
         // sit beside the visit count without mutating the supplement object
@@ -2960,11 +2977,21 @@
         if (typeof out.rhythm[key] === 'string') out.rhythm[key] = out.rhythm[key].slice(0, 7);
       }
     }
+    // Three small integers or nothing: what engagedCounts writes, and no more.
+    const engagedOf = value => {
+      const e = plain(value);
+      if (!e) return undefined;
+      const n = v => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0);
+      const r = plain(e.last5Years);
+      return Object.assign({ atLeast10: n(e.atLeast10), atLeast50: n(e.atLeast50), atLeast200: n(e.atLeast200) },
+        r ? { last5Years: { active: n(r.active), atLeast10: n(r.atLeast10), atLeast50: n(r.atLeast50), atLeast200: n(r.atLeast200) } } : {});
+    };
     const dm = plain(d.directMessages);
     if (dm) {
       out.directMessages = {
         threads: dm.threads, groupThreads: dm.groupThreads,
         activeThreads: dm.activeThreads, activeGroupThreads: dm.activeGroupThreads,
+        engagedThreads: engagedOf(dm.engagedThreads),
         totalMessages: dm.totalMessages, sentByUser: dm.sentByUser,
         receivedByUser: dm.receivedByUser, averageSentLength: dm.averageSentLength,
         note: dm.note,
@@ -3123,6 +3150,8 @@
   function omitGoogleSearches(digest) {
     if (!digest.google) return digest;
     digest.google.topGoogleSearches = [];
+    // The shape counts are read off the same searches, so they go with them.
+    if (digest.google.counts) delete digest.google.counts.searchShapes;
     if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.googleSearches;
     return digest;
   }
