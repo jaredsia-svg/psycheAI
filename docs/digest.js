@@ -976,7 +976,7 @@
   // three free caps still pay for their digests at it.
   // 11,300 once it said who the captions were written for
   // (ACCOUNT_AUDIENCE_RULE, 11,223 measured).
-  const FREE_FIXED_INPUT_TOKENS = 11600;
+  const FREE_FIXED_INPUT_TOKENS = 11900;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -1005,14 +1005,14 @@
   // card's lines and the roast:
   //
   //   both         30,000 out  × $3.75/M = $0.1125
-  //                 43,500 prompt + 51,143 digest × $0.75/M = $0.0710
-  //                 at most $0.1835                    → MERGED_COST_CAP $0.184
+  //                 45,000 prompt + 51,143 digest × $0.75/M = $0.0721
+  //                 at most $0.1846                    → MERGED_COST_CAP $0.185
   //
   // against $0.257 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 43500;
+  const MERGED_FIXED_INPUT_TOKENS = 45000;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
-  const MERGED_COST_CAP = 0.184;
+  const MERGED_COST_CAP = 0.185;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -2393,7 +2393,9 @@
       const g = supplements.google;
       digest.coverage.sources.push('google');
       digest.google = {
-        note: 'From a Google Takeout "My Activity" export. Counts are complete; the text is sampled.',
+        note: 'From a Google Takeout "My Activity" export. Counts are complete; the text is sampled. counts.searchShapes, when present, ' +
+          'counts every Google search by a plain word match: practical (how to, near me, a price, a fix, a booking) or conceptual ' +
+          '(why, what if, meaning of, difference between, explained). Most searches match neither.',
         span: monthSpan(g.span),
         // Spread rather than passed through, so the distinct-domain count can
         // sit beside the visit count without mutating the supplement object
@@ -3135,6 +3137,8 @@
   function omitGoogleSearches(digest) {
     if (!digest.google) return digest;
     digest.google.topGoogleSearches = [];
+    // The shape counts are read off the same searches, so they go with them.
+    if (digest.google.counts) delete digest.google.counts.searchShapes;
     if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.googleSearches;
     return digest;
   }

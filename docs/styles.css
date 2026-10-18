@@ -3153,18 +3153,18 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The roast as its own room: grey while it is covered, then the page's own
    colours once "Read it anyway" opens it, so it reads as easily as the rest.
    It fades in when revealed. */
-.layout-structured .bonus-card:not(.is-revealed) {
+.layout-structured .bonus-card:not(.is-revealed):not(.secret-roast) {
   background: color-mix(in srgb, var(--ink-soft) 13%, var(--bg-alt));
   border-color: color-mix(in srgb, var(--ink-soft) 22%, var(--bg-alt));
 }
-.layout-structured .bonus-card:not(.is-revealed) .bonus-cover {
+.layout-structured .bonus-card:not(.is-revealed):not(.secret-roast) .bonus-cover {
   background: repeating-linear-gradient(135deg,
     color-mix(in srgb, var(--ink-soft) 8%, var(--bg-alt)) 0 10px,
     color-mix(in srgb, var(--ink-soft) 15%, var(--bg-alt)) 10px 20px);
   border-color: color-mix(in srgb, var(--ink-soft) 30%, var(--bg-alt));
 }
-.layout-structured .bonus-card:not(.is-revealed) .bonus-cover h3 { color: var(--ink); }
-.layout-structured .bonus-card:not(.is-revealed) .bonus-reveal {
+.layout-structured .bonus-card:not(.is-revealed):not(.secret-roast) .bonus-cover h3 { color: var(--ink); }
+.layout-structured .bonus-card:not(.is-revealed):not(.secret-roast) .bonus-reveal {
   color: var(--ink); border-color: color-mix(in srgb, var(--ink-soft) 55%, var(--bg-alt)); background: var(--bg-alt);
 }
 .layout-structured .bonus-body:not([hidden]) { animation: roast-in .5s ease both; }
@@ -4245,22 +4245,8 @@ details.more[open] > summary::after { content: ' ▴'; }
   }
 }
 /* Part 05: a heading over two boxes of their own, not a disclosure. */
-/* The appendix is a part like the others, its two sections laid out as
-   every section in a part is: no fill, a rule between them. The roast keeps
-   only its striped cover, in the page's own light colours, not the grey room
-   it is on its own (.layout-structured .bonus-card above). */
-.layout-structured .part-body > .bonus-card.roast-appendix:not(.is-revealed) {
-  background: none; border-color: transparent; border-top-color: var(--line);
-}
-.layout-structured .part-body > .bonus-card.roast-appendix:first-child:not(.is-revealed) { border-top-color: transparent; }
-.layout-structured .part-body > .bonus-card.roast-appendix:not(.is-revealed) .bonus-cover {
-  background: repeating-linear-gradient(
-    135deg, var(--bg) 0 10px, color-mix(in srgb, var(--ink-soft) 7%, var(--bg)) 10px 20px);
-  border-color: var(--line);
-}
-.layout-structured .part-body > .bonus-card.roast-appendix:not(.is-revealed) .bonus-reveal {
-  color: var(--accent); border-color: var(--accent); background: var(--bg);
-}
+/* The appendix roast wears My Psyche's secret-roast design (.secret-roast
+   above), so nothing here dims it to the part's plain rows. */
 /* Who wrote the report and when: a quiet pill per line, closing the page. */
 .provenance { display: flex; justify-content: center; margin: 1.4rem 0 .4rem; }
 .provenance[hidden] { display: none; }

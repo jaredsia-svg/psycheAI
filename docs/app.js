@@ -2905,13 +2905,18 @@
    * roastBlock: the writing is not in the page until "Reveal my roast", and
    * revealRoast()/hideRoast() work it exactly the same way.
    */
-  function secretRoastHtml(bonus) {
+  // My Report's Appendix 1 too (18 Oct 2026): the same frame, sparks and
+  // glowing reveal as on My Psyche, under the appendix's own title.
+  function secretRoastHtml(bonus, options) {
     if (!bonus || !bonus.harsh) return '';
     const R = TEXT.secretRoast;
-    return '<section class="card section-card bonus-card secret-roast screen-only" aria-labelledby="secret-roast-title">' +
+    const appendix = Boolean(options && options.appendix);
+    const titleId = appendix ? 'appendix-roast-title' : 'secret-roast-title';
+    return '<section class="card section-card bonus-card secret-roast' + (appendix ? ' roast-appendix" data-appendix="roast"' : ' screen-only"') +
+      ' aria-labelledby="' + titleId + '">' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
-      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
+      '<h2 id="' + titleId + '" class="secret-roast-title">' + esc((options && options.title) || TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
       '<div class="bonus-cover secret-roast-cover">' +
       '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
       '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
@@ -8028,7 +8033,7 @@
     // current). Each under the same section header as every other section.
     if (hasAppendix(report, ownPage)) {
       const roast = report.bonus && report.bonus.harsh
-        ? roastBlock(report.bonus, { flat: true, appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
+        ? secretRoastHtml(report.bonus, { appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
       html += partCardHtml('appendix', roast + (askable ? '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>' : ''), false);
     }
     return html;

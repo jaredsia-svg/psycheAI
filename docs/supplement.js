@@ -190,6 +190,18 @@
     /^circle to search/i,
     /^https?:\/\//i,
   ];
+  // A search's shape by a plain word match, English only, so a rough count
+  // over the whole history rather than a reading of any one search. A search
+  // asking why or what something means is conceptual even when it is also
+  // practical ("why is my phone slow" counts once, as conceptual).
+  const CONCEPTUAL_SEARCH = /\b(why|what if|meaning of|what does .+ mean|difference between|theory|philosophy|explained|future of|history of|implications?|impact of|psychology of|origin of)\b/i;
+  const PRACTICAL_SEARCH = /\b(how to|how do i|how much|near me|nearby|prices?|cost|cheapest|discount|promo|reviews?|specs?|dimensions|size chart|opening hours|open now|fix|repair|install|set ?up|manual|recipe|weather|schedule|timetable|tickets?|booking|login|log in|download|directions|address|menu|delivery)\b/i;
+  function searchShape(text) {
+    if (CONCEPTUAL_SEARCH.test(text)) return 'conceptual';
+    if (PRACTICAL_SEARCH.test(text)) return 'practical';
+    return null;
+  }
+
   function isRealQuery(text) {
     return !NOT_A_QUERY.some(pattern => pattern.test(text));
   }
@@ -347,6 +359,14 @@
       // filed beside it that are not.
       if (!isRealQuery(clean)) return;
       out.counts.googleSearches++;
+      // The shape of every search, not just the top of the list (18 Oct
+      // 2026): practical ("how to", "near me", a price, a fix) or conceptual
+      // ("why", "what if", "meaning of", "difference between"). Two counts.
+      const shape = searchShape(clean);
+      if (shape) {
+        out.counts.searchShapes = out.counts.searchShapes || { practical: 0, conceptual: 0 };
+        out.counts.searchShapes[shape]++;
+      }
       bump(out.googleSearchTerms, clean.toLowerCase());
       keep(out.googleSearches, clean, LIMITS.searchBuffer);
       out.kinds.googleSearches = true;
@@ -647,6 +667,6 @@
     readGoogle, readFacebook, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
     // Exported for the tests, which hold the locale-proofing directly rather
     // than inferring it from a parsed archive.
-    hostOf, queryOf, productOf, stripLeadingVerb,
+    hostOf, queryOf, productOf, stripLeadingVerb, searchShape,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

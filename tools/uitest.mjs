@@ -12188,7 +12188,10 @@ try {
           const head = el => el && el.querySelector(':scope > .card-head .card-icon') && el.querySelector(':scope > .card-head h2');
           return Boolean(a) && /^Appendix 2: Ask PsycheAI$/.test(a.querySelector('.card-head h2').textContent) &&
             /^2 questions$/.test(a.querySelector('.card-head .card-sub').textContent) && Boolean(head(a)) &&
-            Boolean(roast) && /^Appendix 1: Let us roast you/.test(roast.querySelector('.card-head h2').textContent) && Boolean(head(roast)) &&
+            // The roast wears My Psyche's secret-roast design, its title in that design's own heading.
+            Boolean(roast) && roast.classList.contains('secret-roast') &&
+            /^Appendix 1: Let us roast you/.test(roast.querySelector('h2.secret-roast-title').textContent) &&
+            Boolean(roast.querySelector('.secret-roast-reveal')) &&
             Boolean(roast.closest('.part-card[data-part-card="appendix"]')) && Boolean(a.closest('.part-card[data-part-card="appendix"]')) &&
             Boolean(roast.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) &&
             a.querySelectorAll('details.ask-log').length === 2 && !a.querySelector('details.ask-log[open]'); }));

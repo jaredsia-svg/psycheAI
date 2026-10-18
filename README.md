@@ -2502,6 +2502,59 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### E/I bands and bans at the field; N/S read both ways (18 Oct 2026)
+
+The first report built with `engagedThreads` used it ("378 conversations joined with at least 40 sustained
+past 50 messages") and still came back a moderate E (64): it led with 378 and Facebook's raw count, cited
+"850 of 1,535 conversation openers in your primary chat", called "20 distinct contacts" breadth, and set the
+reader's own "quiet solitary weekends" aside as "personal pacing rather than social withdrawal". The rules
+were there; the model was not applying them where it wrote the field.
+
+- **Breadth, roughly defined** (judgement, said so in the prompt): conversations with at least 50 of their
+  own messages, over the whole span — under about 20 narrow (leans I), 20–50 ordinary (neither), 50–100 wide
+  (leans E), over 100 very wide; halved for under three years of data. The share sustained of all spoken in
+  is context, never the decider. Barely using direct messages is no evidence either way and never counts
+  towards I. Commenting is rare for nearly everyone, so people commented on is not breadth. The count of
+  conversations ever spoken in is given only beside the sustained count.
+- **Their own words about their energy count most**, either way (introvert, ambivert, drained by crowds,
+  alive in one), and contrary behaviour is weighed at face value, never re-described to set it aside.
+- **The kind of setting counts as much as how often.** Seeking new people and big events (parties, mixers,
+  conferences) and widening the circle lean E; preferring small, familiar groups, avoiding mixers and
+  strangers, and tiring in unfamiliar settings lean I. Earlier reports had read exactly this ("focused
+  gatherings over broad, superficial crowds… avoid large-scale industry mixers") and the prompt never
+  named it. Organising plans for a familiar circle is not seeking crowds: on its own it leans neither way.
+- **Strength.** Breadth alone carries a letter only to `slight`; `moderate` needs their words or conduct the
+  same way, and real evidence for the other letter makes it `slight`. On every axis, behaviour that runs both
+  ways — a letter a second reading could flip — is `slight`, never `moderate` (three runs on one reader went
+  ENTJ, ENTJ, ENTP with J/P flipping at "moderate").
+- **Bans at the field.** The E/I `why` and `evidence` descriptions now carry the bans themselves: no
+  spoken-in count or unjoined total as breadth, nothing inside one chat as breadth, no re-describing the
+  counter-case — the group-chat lesson again, that an explanation in the prompt is not a prohibition where
+  the field is written.
+- **N/S both ways.** It leaned N the way E/I leaned I: concreteness discounted as the platform, every N
+  signal counted, and precise figures explained away as "inputs to a bigger thesis". Sensing now has its own
+  evidence (practical skills built step by step, comparing specs and prices, sensory craft, exact tracking,
+  staying with what is in front of them); a topic is not a thinking style (following markets or politics
+  says nothing, how they engage with it does); precision is never explained away unless the data shows the
+  step; start from the middle.
+- **Search shapes over the whole history.** The model saw the top 50 of tens of thousands of searches. The
+  browser now counts every Google search by a plain English word match — practical (how to, near me, a
+  price, a fix, a booking) or conceptual (why, what if, meaning of, difference between, explained),
+  conceptual first, most matching neither — into `google.counts.searchShapes` (`searchShape` in
+  `docs/supplement.js`). Two integers; unticking Google searches at the review removes them too.
+- `FREE_FIXED_INPUT_TOKENS` 11,600 → 11,900 (11,738 measured), `MERGED_FIXED_INPUT_TOKENS` 43,500 → 45,000
+  (44,812 measured), `MERGED_COST_CAP` $0.184 → $0.185.
+
+### The roast keeps its My Psyche design in My Report (18 Oct 2026)
+
+Once the report was unlocked the roast moved from My Psyche to My Report's Appendix 1 and lost its look: the
+appendix drew it with the plain `roastBlock` (a grey striped cover and an outline button), dimmed further to
+the part's plain rows. The appendix now uses `secretRoastHtml` too, with `{ appendix: true, title }`: the
+animated gradient frame, the sparks, the badge and the glowing, pulsing reveal button, under "Appendix 1: Let
+us roast you". It keeps `.roast-appendix` and `data-appendix="roast"`; the structured layout's grey-room rules
+skip `.secret-roast`, and the appendix-only overrides that dimmed it are gone. `roastBlock` stays for the
+sample report.
+
 ### One chain: character line, executive summary, card write-up (18 Oct 2026)
 
 Three short pieces of writing say who the reader is: the character line (`essence.why`, beside the

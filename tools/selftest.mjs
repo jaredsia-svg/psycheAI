@@ -2363,7 +2363,26 @@ for (const [label, needle] of [
   // conversations as "sustained contact across hundreds of contacts".
   ['reads a count of conversations spoken in as reach over the span, not people kept up with',
     /\*\*A count of conversations spoken in measures reach over the whole span of the data, not the people they keep up with\.\*\*/],
-  ['and never as how many people they stay in touch with', /it never supports a claim about how many people they stay in touch with/],
+  ['and gives it only beside the sustained count, never as people they stay in touch with', /give it only beside the sustained count/],
+  // Rough bands for breadth, the share as context, and thin DM use as no
+  // evidence (18 Oct 2026): judgement, not measured norms, and said so.
+  ['sets rough bands on sustained conversations', /under about 20 is a narrow circle and leans \*\*I\*\*; about 20 to 50 is an ordinary circle and leans neither way; about 50 to 100 is wide and leans \*\*E\*\*/],
+  ['says the bands are rough guides, not measured norms', /These are rough guides, not measured norms/],
+  ['reads the share sustained as context, never deciding alone', /The share qualifies the count; it never decides the letter on its own/],
+  ['treats barely using direct messages as no evidence, never towards I', /messaging is not where their social life happens: it is no evidence either way/],
+  ['reads the kind of setting chosen, both ways', /\*\*The kind of setting they choose counts as much as how often they go out\.\*\*/],
+  ['keeps convening a familiar circle apart from seeking crowds', /Organising plans for a familiar group is not the same as seeking crowds/],
+  ['weighs their own words about their energy most, either way', /\*\*Their own words about their energy count most of all, either way:\*\*/],
+  ['forbids re-describing contrary behaviour to set it aside', /never re-describe it as something else \("pacing, not withdrawal"\) to set it aside/],
+  ['lets breadth alone carry a letter only to slight', /\*\*Breadth alone carries a letter only to `slight`:\*\*/],
+  ['calls an axis that runs both ways slight', /a letter that a second reading of the same data could reasonably flip is never `moderate`/],
+  // N/S, made symmetric the same day: Sensing's own evidence, topic is not
+  // style, no explaining precision away, and search shapes over the whole
+  // history.
+  ['gives Sensing evidence of its own', /\*\*Sensing has evidence of its own, as clear as Intuition's, so look for it as hard\.\*\*/],
+  ['says a topic is not a thinking style', /\*\*A topic is not a thinking style:\*\*/],
+  ['forbids explaining concrete precision away', /\*\*Never explain concrete precision away\*\* as "inputs to a bigger thesis" unless the data shows that step/],
+  ['reads the search ratio from the whole history', /`google\.counts\.searchShapes` counts every search by those two shapes/],
   ['makes the conversations with real, repeated exchange the breadth number', /The breadth number is how many of those conversations carry real, repeated exchange: `directMessages\.engagedThreads`/],
   ['keeps depth neutral', /Depth is neutral: almost everyone's messages sit mostly in a few conversations/],
   ['reads totals that include what they never joined as an inbox, not reach', /\*\*A total that includes what they never took part in is an inbox or a list, not reach\.\*\*/],
@@ -2685,6 +2704,23 @@ check('a Takeout yields all four My Activity services',
 // The fixture carries a German-locale block: translated folder, translated
 // filename, translated title verbs, same URL shapes. If anything classifies on
 // English these records vanish and the counts drop by exactly 40 apiece.
+// Every search's shape, counted over the whole history for the N/S read
+// (18 Oct 2026), and taken out with the searches when they are unticked.
+{
+  const shape = globalThis.PsycheSupplement.searchShape;
+  const shapes = google.counts.searchShapes || { practical: 0, conceptual: 0 };
+  const built = Digest.build(signals, { supplements: { google } });
+  const unticked = Digest.omitGoogleSearches ? Digest.omitGoogleSearches(JSON.parse(JSON.stringify(built))) : null;
+  check('searches are counted by shape: practical, conceptual or neither, conceptual first',
+    shape('how to fix a bike chain') === 'practical' && shape('dentist near me') === 'practical' &&
+      shape('why do markets crash') === 'conceptual' && shape('why is my phone slow') === 'conceptual' &&
+      shape('difference between stoicism and buddhism') === 'conceptual' && shape('taylor swift') === null &&
+      shapes.practical + shapes.conceptual <= google.counts.googleSearches,
+    JSON.stringify(shapes));
+  check('and unticking Google searches at the review takes the shape counts with them',
+    !unticked || !(unticked.google && unticked.google.counts && unticked.google.counts.searchShapes),
+    JSON.stringify(unticked && unticked.google && unticked.google.counts));
+}
 check('localised records are classified too, so nothing reads English to decide',
   google.counts.watched === 940 && google.counts.googleSearches === 1240,
   google.counts.watched + ' watched, ' + google.counts.googleSearches + ' searches');
