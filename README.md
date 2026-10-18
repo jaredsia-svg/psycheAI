@@ -2525,8 +2525,45 @@ change could pass without the live layout being exercised. Gone:
   so the name says so: `CARD_BASE_SYSTEM`/`CARD_BASE_SCHEMA` (were `CLASSIC_FREE_*`), `FULL_SYSTEM_BASE`
   (was also exported as `CLASSIC_FULL_SYSTEM`), and `BASE_FULL_SCHEMA` (was `CLASSIC_FULL_SCHEMA`), still
   the yardstick `tools/probe-schema.mjs` and a selftest measure the pinned schema against.
-- **Tests.** The UI suite's main server runs the structured layout; checks that compared against classic
-  went, and the rest were moved onto structured markup.
+- **Tests.** The UI suite's main server runs the structured page (nothing else exists), and its
+  classic-era checks were moved onto the structured markup rather than dropped wherever an equivalent
+  exists: the report is read on My Report (`toReport`), the card, hub and Signal strength on My Psyche
+  (`toHub`, `openMethod`); the report's disclosures are the seven part cards (all open on a laptop, an
+  accordion on a phone); the card checks read the story card (`.pc-s*`); download, share, copy, backup
+  and Delete everything are driven from the card's tools and the hub; the sources list is Signal
+  strength's "Your data"; a link is pasted on My Syncs; a re-run of an explained profile is the paid
+  card-and-report one, and on a free card Add / change data is the unlock. The main page's report is
+  adopted with app.js's own `overlayCard` (lifted from its source), keeping the premium sections out so
+  the unlock checks still unlock them — the state a profile saved before the one-call unlock is in. The
+  suite passes at 1,586 checks. Checks deleted, because what they pinned no longer exists:
+  - *Free card:* a free profile's PDF (no PDF download before the unlock).
+  - *Disclosures:* "every section arrives shut", the confidence card untouched by the accordion, the
+    laptop accordion, and the four scroll-anchoring checks with their vacuity guard (only parts open and
+    shut now; on a phone an opened part is scrolled to the top, which is checked).
+  - *Classic card:* centred box, inline preview capped at 470px, trait bullets, Big Five rows stretching,
+    "no headline", and the five narrow-card (`pc-narrow`) checks: two-up love row, MBTI strengths column,
+    letters two-by-two, type and Big Five in one row, long labels wrapping.
+  - *Compatibility popout* (`#compat-dialog`; its only opener `#test-compat-open` is always hidden): the
+    gradient on Test compatibility, opens, storage-model copy, no QR, titled Psyche Sync, says what the
+    link is for, closes, scroll kept, "Got their link?" paste box, closes behind a pasted link. Share and
+    copy moved to the hub; pasting to My Syncs.
+  - *Report sections that are gone:* MBTI nickname; digital footprint and its four facets (post, active,
+    changed, take in), footprint after At work, the three behaviour-grid checks; confidence as the last
+    section and above the buttons; interest/value trajectory chips (six checks) and tiles; the two career
+    sections being different (they are one How you work); career action horizons (on the plan now);
+    attachment as its own card, its Read from / In practice / points / caveat (it is inside In
+    relationships, with evidence chips); the housekeeping-actions list (pinned by the structured
+    Back|Report|Add data check); the Instagram-and-Google hint (Signal strength gives no advice).
+  - *Paid sections:* the consolidated block's position, badge, badge wrapping, two-by-two and one-column
+    layout, single price; the roast's Bonus badge (three checks); the four unlocked cards' Premium badges
+    and their wrapping; the wellness caveat disclaiming a diagnosis (the sub-line and GP note are checked).
+  - *Main PDF:* the Values, Beliefs, Strengths, Weaknesses, What could hold you back, Read from and What it
+    means in practice headings; the three franchise-placement checks (always its own line now); accent
+    name and no wedge on the cover, and "no headline" (the cover is the story card); first-match section
+    order (pinned by `structured PDF: the page's sections in the page's order`).
+  Rewritten checks that now assert something different are noted beside them in `tools/uitest.mjs`; the
+  notable ones: the glyph-uniqueness check lets the development plan share Wellbeing's 🌱 (an owner's call
+  which changes), and "one text size" measures only what is printed.
 
 ### Titles without "Your", each with its mark; no line over the card (October 2026)
 

@@ -11122,7 +11122,7 @@ try {
     const wpErrors = [];
     wp.on('pageerror', error => wpErrors.push(error.message));
     try {
-      await wp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
+      await wp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await wp.evaluate(() => localStorage.clear());
       await wp.reload({ waitUntil: 'load' });
       await wp.waitForSelector('#insight-card-open .psyche-card, #insight-card-preview > *', { timeout: 15000 });
@@ -11194,7 +11194,7 @@ try {
       const sampleReport = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'));
       const samplePremium = JSON.parse(readFileSync(join(root, 'tools', 'fixtures', 'sample-premium.json'), 'utf8'));
       delete samplePremium._comment;
-      await sp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
+      await sp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       const seed = async (explained) => {
         await sp.evaluate(([report, premium, explained]) => {
           localStorage.clear();
@@ -12577,7 +12577,7 @@ try {
         ['Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together'].every(title =>
           pages.some((pg, i) => i > 0 && pg.replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes(title))));
       // Unbought: the offer lists what the structured layout adds.
-      await sp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
+      await sp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await seed(false);
       const offer = await sp.locator('#profile-body .full-report-locked').innerText();
       check('structured: the unlock offer names the motivators and the development plan, not the Overview\'s patterns',
