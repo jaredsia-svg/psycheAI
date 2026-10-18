@@ -1379,17 +1379,20 @@ const letterDesc = key => String((letterProps[key] || {}).description || '');
 // natural way to regress is to re-add the field rather than to edit `why`.
 check('the axis is one passage, not an argument and a rebuttal in two fields',
   !('counterEvidence' in letterProps));
-check('and `why` is asked for at the depth a Big Five trait gets',
-  /depth a Big Five trait gets/i.test(letterDesc('why')) &&
-  /three or four sentences/i.test(letterDesc('why')));
-// Two, not three: three or four sentences cannot hold three counted pieces,
-// a counted tempering and the letter in their week.
-check('the case for a letter needs two separate pieces of evidence, not one read twice',
-  /at least two distinct pieces of evidence/i.test(letterDesc('why')) &&
-  /different parts of the digest/i.test(letterDesc('why')) &&
-  /not two readings of the same caption/i.test(letterDesc('why')));
-check('and each piece of it is counted',
-  /each with a count or a proportion on it/i.test(letterDesc('why')));
+// Since 18 Oct 2026 each letter carries its evidence as a list, three or four
+// behaviours written with the paragraph and printed under it, the way a Big
+// Five trait once carried a reading and its evidence; never restating it.
+check('each letter lists three or four behaviours, written with its paragraph and after it, from different parts of the digest',
+  Object.keys(letterProps).indexOf('evidence') === Object.keys(letterProps).indexOf('why') + 1 &&
+  /^Three or four specific behaviours/.test(letterDesc('evidence')) &&
+  /from a different part of the digest and none used for another letter/.test(letterDesc('evidence')) &&
+  /point at the behaviour, not the conclusion/.test(letterDesc('evidence')) &&
+  /Fewer only when the data is genuinely thin/.test(letterDesc('evidence')));
+check('and the list and the paragraph are short and never overlap',
+  /under about 15 words/.test(letterDesc('evidence')) &&
+  /The behaviour that runs the other way goes in `why`, not here/.test(letterDesc('evidence')) &&
+  /^Two or three sentences, one paragraph, written together with the `evidence` list that follows and printed above it, never repeating it/.test(letterDesc('why')) &&
+  /\*\*Each axis gets a real analysis in two parts, written together, that never overlap\*\*/.test(prompts.PROFILE_SYSTEM));
 // The tempering is the half that stops a letter being chosen on the first
 // thing that pointed at it, so it is required in the same paragraph and has to
 // carry its own count rather than being a hedge.
@@ -1470,8 +1473,14 @@ for (const field of ['topGoogleSearches', 'instagramTopics', 'mostEngagedWith', 
   check('the axis guidance points at the real digest field `' + field + '`',
     sys.includes(field), field);
 }
-check('J/P is read straight, being the least confounded of the four',
-  /J\/P is the least confounded/i.test(sys));
+// Posting in bursts is how nearly everyone posts, and a report that read it
+// as P pulled conscientiousness down with it (18 Oct 2026).
+check('J/P reads planning in their words and conduct, never posting rhythm',
+  /\*\*J\/P has the same problem: posting rhythm is the platform, not the person\.\*\*/.test(sys) &&
+  /never decide the letter on it/.test(sys) && /itineraries and bookings made well ahead/.test(sys) &&
+  /plans made on the day, trips booked at short notice/.test(sys) &&
+  /posting rhythm is the platform, not the person — bursty posting is how almost everyone posts/.test(prompts.FREE_SYSTEM) &&
+  !/J\/P is the least confounded/.test(sys + prompts.FREE_SYSTEM));
 check('the prompt orders the contrary behaviour found before strength is settled',
   /look for the contrary behaviour before you settle `strength`/i.test(sys));
 check('and calls out a report that found every axis clear',
@@ -6712,9 +6721,9 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       Object.keys(five).join() === 'openness,conscientiousness,extraversion,agreeableness,neuroticism' &&
       Object.values(five).every(t => Object.keys(t.properties).join() === 'reading,score,band' && /^One sentence: the specific behaviour from the data that sets this score/.test(t.properties.reading.description)) &&
       /55 or higher always means E and 45 or lower always means I/.test(choice) &&
-      /only place the extraversion evidence is laid out/.test(why) && !/depth a Big Five trait gets/.test(why) &&
+      /only place the extraversion evidence is laid out/.test(structured.properties.mbti.properties.letters.items.properties.evidence.description) && !/depth a Big Five trait gets/.test(why) &&
       /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
-      /cite a breadth number in the E\/I axis's `why`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /cite a breadth number in the E\/I axis's `evidence`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /Cite real evidence per trait/.test(prompts.CLASSIC_FULL_SYSTEM));
     check('structured interests: no evidence list, one line each, every one printed',
       !('evidence' in structured.properties.interests.items.properties) &&
@@ -6744,7 +6753,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const letterOrder = Object.keys(structured.properties.mbti.properties.letters.items.properties).join();
   check('MBTI and the Big Five are written first, MBTI leading, then the patterns, the character and the summary; the type after its letters, each letter after its case',
     order.slice(0, 7).join() === 'confidence,mbti,bigFive,patterns,essence,summary,cardHighlights' &&
-    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,choice,strength,inPractice' &&
+    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,evidence,choice,strength,inPractice' &&
     Object.keys(prompts.MERGED_SCHEMA.properties).slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
     /Decide them straight after MBTI and the Big Five/.test(prompts.STRUCTURED_ADDON) &&
     /\*\*MBTI comes before the Big Five\*\*, on the page and in the order you write/.test(prompts.STRUCTURED_ADDON) &&

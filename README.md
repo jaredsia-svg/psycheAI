@@ -2502,6 +2502,37 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### MBTI: an evidence list per letter, and J/P read from planning (18 Oct 2026)
+
+Three reports for one reader (14 Oct card-then-report ENTJ, 18 Oct before the E/I fix INTJ, after it ENTP)
+showed two weaknesses in the MBTI read beyond E/I.
+
+**J/P read posting rhythm.** The prompt called J/P "the least confounded of the four" and sent it to
+`rhythm.regularity` and the month-by-month series. People post when something happens, so bursts with long
+quiet stretches are how nearly everyone posts: the after-fix report called P off "zero regularity" against
+the itineraries, spreadsheets and property paperwork both earlier reports read as J, and, the score now
+following the letter, took conscientiousness from 74–78 to 58. J/P now has its own confound paragraph:
+posting rhythm is weak support at most and never decides the letter; J is bookings made ahead, lists,
+trackers, deadlines met, decisions closed; P is same-day plans, short-notice trips, options kept open,
+changing course, parallel projects; forward-planning searches support it; a planner in one area and loose in
+another is weighed by where their time and money go, and mixed is `slight`. The card prompt carries the
+short version. Evidence allocation gives how they plan to J/P and the posting rhythm to rhythm and activity.
+
+**Each letter's evidence is a list, as the Big Five's was.** The letter's case had to fit "at least two"
+counted pieces and a counted tempering into three or four sentences, and in practice most axes cited one or
+two. Each letter now writes `why` and `evidence` together, in that order, as a Big Five trait once wrote its
+reading and its evidence, and as the page prints them: `why` is two or three sentences, the case in plain
+words and then the behaviour that runs the other way with its own count, which belongs there and not in the
+list; `evidence` is three or four behaviours, a short clause each (under about 15 words), from different
+parts of the digest, none used for another letter and none restating the paragraph, fewer only when the
+data is thin (then said in `why`, and `slight`). Writing the list first was tried and dropped the same day:
+the paragraph opened on "Together that is…", pointing at a list the reader had not reached yet. On E/I the list is the breadth and, in the structured layout, the only place the extraversion
+evidence is laid out. The page prints the list as the evidence chips under each axis's paragraph
+(`mbtiSlidersHtml`, and the classic `mbtiAxesHtml`), the PDF as small pills under it (`axis`, `evidence`
+option). The paid report pinned to a card keeps writing it (only `choice` and `strength` are pinned).
+`docs/sample.json`'s four letters are rewritten in the new shape. `MERGED_FIXED_INPUT_TOKENS` 42,500 → 43,000
+(42,863 measured) and `MERGED_COST_CAP` $0.183 → $0.184 so the merged call still pays for the premium digest.
+
 ### Scores first, and E/I read the same way in both directions (18 Oct 2026)
 
 A reader's E/I came back "While you have spoken in 378 active direct message conversations over the years,
@@ -2532,7 +2563,7 @@ order the model commits in. Now:
   without a threshold; neuroticism has no axis and rests on its line. The E/I `why` names no score, and
   the old "say 'your extraversion score of N', not 'the score above'" note is gone: MBTI is first on the
   page and in the writing;
-- MBTI: `letters` (each `axis, why, choice, strength, inPractice`), then `type`, "the type the four letters
+- MBTI: `letters` (each `axis, why, evidence, choice, strength, inPractice`), then `type`, "the type the four letters
   spell"; each structured Big Five trait writes its `reading` (now "the behaviour that sets this score")
   before its `score`.
 Thinking models reason before they answer, so the order matters less than it would without thinking, but
@@ -5915,7 +5946,7 @@ lib/gemini.js).
   schema shapes it (completed by `withCard`) and the report as the Overview-pinned schema shapes it,
   so the browser's `overlayCard` and everything after it cannot tell the difference.
 - **Cost:** about 41,500 tokens of prompt and schema against 43,100 for the two calls, and the
-  premium digest read once. At worst $0.183 (`MERGED_COST_CAP`, 30,000 output tokens) against
+  premium digest read once. At worst $0.184 (`MERGED_COST_CAP`, $0.183 until the MBTI evidence lists of 18 Oct 2026, 30,000 output tokens) against
   $0.256; typically about 5–6 cents less, and a minute or so sooner.
 
 **Before switching it on**, `npm run compare:unlock -- <digest> --runs 3` (tools/compare-unlock.mjs)

@@ -7454,20 +7454,22 @@ try {
   // is to re-add the block rather than to shorten `why`.
   check('no separate "case against" block survives beside the analysis',
     (await page.locator('.axis-counter, .axis-counter-label').count()) === 0);
-  // The point of merging them was depth, not brevity, so the thing worth
-  // pinning is that each axis actually carries a substantial passage. Measured
-  // against the sample, which is the fixture written as real prose — the mock's
-  // axes are placeholder text and would pass a word count on filler.
-  check('each axis argues its letter at length rather than in a caption',
-    sampleFixture.mbti.letters.every(l => String(l.why || '').split(/\s+/).length >= 60),
-    sampleFixture.mbti.letters.map(l => String(l.why || '').split(/\s+/).length).join(', '));
+  // Since 18 Oct 2026 the depth is in two parts: three or four behaviours in
+  // `evidence`, and a short `why` that weighs them. Measured against the
+  // sample, which is the fixture written as real prose — the mock's axes are
+  // placeholder text and would pass a word count on filler.
+  check('each axis lists three or four behaviours and weighs them in a short paragraph, not a caption',
+    sampleFixture.mbti.letters.every(l => (l.evidence || []).length >= 3 && (l.evidence || []).length <= 4 &&
+      (l.evidence || []).every(e => String(e).split(/\s+/).length <= 15) &&
+      String(l.why || '').split(/\s+/).length >= 25 && String(l.why || '').split(/\s+/).length <= 75),
+    sampleFixture.mbti.letters.map(l => (l.evidence || []).length + '/' + String(l.why || '').split(/\s+/).length).join(', '));
   // And that the merge did not quietly drop the tempering along with the block
   // it used to live in: every axis whose strength is not `clear` should name
   // something running the other way.
   check('and the axes that are not clear still say what runs the other way',
     sampleFixture.mbti.letters
       .filter(l => l.strength !== 'clear')
-      .every(l => /against that|the tempering|what does count against|but |though/i.test(l.why)),
+      .every(l => /against it|against that|what counts against|but |though/i.test(l.why)),
     sampleFixture.mbti.letters.map(l => l.axis + ':' + l.strength).join(' '));
   check('every section carries a heading glyph',
     (await page.locator('#profile-body .card-icon').count()) ===
@@ -12651,6 +12653,7 @@ try {
           wellnessCols: (() => { const t = body.querySelector('.wellness-tiles'); return t ? getComputedStyle(t).gridTemplateColumns.split(' ').length : 0; })(),
           sliders: Array.from(q('.mbti-slider .slider-marker')).map(m => m.textContent + '@' + m.style.left),
           whys: q('.mbti-slider .trait-text .trait-reading').length,
+          letterEvidence: Array.from(q('.mbti-slider .trait-text')).map(t => t.querySelectorAll('.trait-reading + .trait-evidence .ev').length),
           faint: q('.mbti-slider .slider-ends .is-faint').length,
           rows: q('.reading-row > .trait-viz + .trait-text').length,
           wedges: q('.motive-rose .rose-wedge').length,
@@ -12682,6 +12685,8 @@ try {
       check('structured: MBTI and the Big Five as rows, the scale on the left and the reading beside it, in full',
         visuals.rows === 9 && visuals.whys === 4, JSON.stringify([visuals.rows, visuals.whys]));
       check('structured: the MBTI letter not chosen is faint', visuals.faint === 4, String(visuals.faint));
+      check('structured: each MBTI letter lists its evidence under the paragraph that weighs it',
+        visuals.letterEvidence.length === 4 && visuals.letterEvidence.every(n => n >= 3 && n <= 4), visuals.letterEvidence.join());
       check('structured: the plan reads as one row per step', visuals.planRows === 3, String(visuals.planRows));
       check('structured: the Big Five flags the highest and lowest trait',
         visuals.flags.join() === 'Highest,Lowest', visuals.flags.join());

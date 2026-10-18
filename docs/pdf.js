@@ -959,6 +959,13 @@
       this.body(counterEvidence,
         { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
     }
+    // The behaviours that put the letter here, under the paragraph that
+    // weighs them, as the page sets them.
+    const evidence = ((options && options.evidence) || []).filter(Boolean);
+    if (evidence.length) {
+      this.space(3);
+      this.tags(evidence, { small: true, x: textLeft, width: textWidth, fill: structured ? mix(WASH, WHITE, 0.35) : undefined });
+    }
     if (inPractice && structured) {
       // What the letter looks like in their week, set off as a quote: a bar
       // down its side, a size up from an aside and in the letter's colour.
@@ -1704,7 +1711,7 @@
           TEXT.mbtiConfidence + (mbti.confidence || ''));
         for (const letter of mbti.letters || []) {
           out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
-            letter.strength, letter.why, letter.inPractice, letter.counterEvidence);
+            letter.strength, letter.why, letter.inPractice, letter.counterEvidence, { evidence: letter.evidence });
         }
         out.fineprint(mbti.caveat);
       }
@@ -2803,7 +2810,7 @@
     if (mbti) {
       const axes = (mbti.letters || []).filter(Boolean);
       const axisCard = letter => out.boxed(() =>
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice, null, { structured: true }),
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice, null, { structured: true, evidence: letter.evidence }),
       { padTop: 6 });
       out.keep(() => {
         out.sectionTitle('MBTI', def('mbti'));

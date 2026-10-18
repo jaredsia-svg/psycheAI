@@ -7035,6 +7035,7 @@
         // append it rather than dropping a paragraph of real analysis on the
         // floor. New reports never take this branch.
         (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') +
+        evidence(letter.evidence) +
         (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
         '</div></div>';
     }).join('') + '</div>';
@@ -7342,6 +7343,9 @@
           esc(letter.strength) + '</span></p>' : '') + '</div>' +
         '<div class="trait-text">' +
         (letter.why ? '<p class="trait-reading">' + esc(letter.why) + '</p>' : '') +
+        // The behaviours that put the letter here (October 2026), as the
+        // Big Five's evidence once was: the paragraph above weighs them.
+        evidence(letter.evidence) +
         (letter.inPractice ? '<p class="slider-practice">' + esc(letter.inPractice) + '</p>' : '') +
         '</div></div>';
     }).join('') + '</div>';

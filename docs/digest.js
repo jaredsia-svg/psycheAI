@@ -1005,14 +1005,14 @@
   // card's lines and the roast:
   //
   //   both         30,000 out  × $3.75/M = $0.1125
-  //                 42,500 prompt + 51,143 digest × $0.75/M = $0.0702
-  //                 at most $0.1827                    → MERGED_COST_CAP $0.183
+  //                 43,000 prompt + 51,143 digest × $0.75/M = $0.0706
+  //                 at most $0.1831                    → MERGED_COST_CAP $0.184
   //
   // against $0.257 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 42500;
+  const MERGED_FIXED_INPUT_TOKENS = 43000;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
-  const MERGED_COST_CAP = 0.183;
+  const MERGED_COST_CAP = 0.184;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
