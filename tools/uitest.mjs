@@ -7283,11 +7283,11 @@ try {
   // "Data sources" subsection now, not this row — see the checks further down
   // for that path.
   check('the report closes on exactly the four housekeeping actions, with the rerun button moved elsewhere',
-    (await page.locator('#view-profile .cta-row button').allInnerTexts())
+    (await page.locator('#view-profile .cta-row button:not(#report-rerun)').allInnerTexts())
       .map(t => t.trim()).join(' | ') === 'Back to card | Download Report | Psyche Sync | Save a backup | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
-    (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
+    (await page.locator('#view-profile .cta-row button:not(#report-rerun)').allInnerTexts()).map(t => t.trim()).join(' | '));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
   // The page ends: report, then the three actions, then the "analysed by"
@@ -11760,6 +11760,25 @@ try {
       check('structured: My Report is Parts 00-05 only — no link card, no card, a Back button',
         (await sp.locator('#profile-body .referral-card').count()) === 0 && await sp.locator('#profile-top').isHidden() &&
           await sp.locator('#report-back').isVisible());
+      {
+        // Back, Report, Add data on a laptop's side menu and a phone's bottom
+        // row alike; no Backup, and no button in the header.
+        const wide = sp.viewportSize();
+        const rows = [];
+        for (const [width, height] of [[1280, 900], [390, 844]]) {
+          await sp.setViewportSize({ width, height });
+          await sp.waitForTimeout(200);
+          rows.push(await sp.evaluate(() => [...document.querySelectorAll('#view-profile .cta-row .btn')]
+            .filter(b => !b.hidden && getComputedStyle(b).display !== 'none')
+            .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
+            .map(b => b.querySelector('.cta-label').textContent).join('|')));
+        }
+        if (wide) await sp.setViewportSize(wide);
+        const heroButtons = await sp.locator('#profile-body .report-hero button').count();
+        check('structured: My Report\'s actions are Back, Report, Add data on a laptop and a phone, the header has no button, and its foot says who wrote it',
+          rows.every(row => row === 'Back|Report|Add data') && heroButtons === 0 && await sp.locator('#analysed-by').isVisible(),
+          JSON.stringify({ rows, heroButtons }));
+      }
       // My Psyche, unlocked: the card, then the hub (October 2026), which
       // opens Evidence and method and the link's credits in popouts.
       await sp.click('#report-back');
@@ -11782,12 +11801,35 @@ try {
         hubFoot.download && hubFoot.footBackup && hubFoot.footDelete && hubFoot.hubBackup && hubFoot.hubDelete, JSON.stringify(hubFoot));
       await sp.click('.hub-card [data-hub-go="method"]');
       await sp.waitForSelector('#hub-method-dialog[open] .method-card', { timeout: 10000 });
-      check('structured: paid, Signal Strength and its score open Signal strength, whose note says what adding data and re-running costs',
+      check('structured: paid, Your Data and its score open Signal strength, whose note says what adding data and re-running costs',
         await sp.evaluate(() => (document.querySelector('#hub-method-dialog .sources-read-note') || {}).textContent ===
           'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.' &&
           document.querySelector('#hub-method-dialog .hub-dialog-title').textContent === 'Signal strength' &&
-          document.querySelector('.hub-card .hub-datahead .hub-rl').textContent === 'Signal Strength' &&
+          document.querySelector('.hub-card .hub-datahead .hub-rl').textContent === 'Your Data' &&
           document.querySelector('.hub-card .hub-conf').textContent === document.querySelector('.hub-card .hub-ring').textContent));
+      await sp.keyboard.press('Escape');
+      await sp.waitForSelector('#hub-method-dialog[open]', { state: 'detached', timeout: 5000 }).catch(() => {});
+      // October 2026: the ticks carry who made each part and when; the line
+      // under the hub is gone from My Psyche; Your Data has its own button.
+      const stamps = await sp.evaluate(() => ({
+        dates: [...document.querySelectorAll('.hub-card .hub-stamp small')].map(n => n.textContent.trim()).filter(Boolean).length,
+        shut: [...document.querySelectorAll('.hub-card .hub-stamp-pop')].every(n => n.hidden),
+        foot: document.querySelector('#analysed-by').hidden,
+        change: (document.querySelector('.hub-card .hub-data [data-hub-change]:not([data-nudge])') || {}).textContent,
+        // The tip under Your Data shows only below 80 with a source still to add.
+        nudgeRight: Boolean(document.querySelector('.hub-card .hub-nudge')) ===
+          (Number(document.querySelector('.hub-card .hub-ring b').textContent) < 80 && document.querySelectorAll('.hub-card .hub-chip.is-add').length > 0),
+      }));
+      await sp.click('.hub-tile[data-hub="psyche"] .hub-stamp');
+      const popText = await sp.evaluate(() => { const pop = document.querySelector('.hub-tile[data-hub="psyche"] .hub-stamp-pop'); return pop.hidden ? '' : pop.textContent; });
+      await sp.keyboard.press('Escape');
+      const popShut = await sp.evaluate(() => document.querySelector('.hub-tile[data-hub="psyche"] .hub-stamp-pop').hidden);
+      check('structured: paid, the Card and Report ticks show their day, a tap opens "Psyche Card generated by … on …" and Escape shuts it; no line under the hub; Your Data has Add / change data',
+        stamps.dates === 2 && stamps.shut && stamps.foot && stamps.change === 'Add / change data' && stamps.nudgeRight &&
+          /^Psyche Card generated by \S+ on .+\.$/.test(popText) && popShut, JSON.stringify({ ...stamps, popText, popShut }));
+      // Back to Signal strength, open, for the checks that follow.
+      await sp.click('.hub-card [data-hub-go="method"]');
+      await sp.waitForSelector('#hub-method-dialog[open] .method-card', { timeout: 10000 });
       check('Signal strength: every source open, no Change or Add on the rows and no WhatsApp advice, one Add / change data link by YOUR DATA',
         await sp.evaluate(() => {
           const body = document.querySelector('#hub-method-dialog .hub-dialog-body');
@@ -12749,10 +12791,10 @@ try {
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone My Report\'s three actions sit side by side — Back, Report, Backup — and no Delete everything',
+        check('structured: on a phone My Report\'s three actions sit side by side — Back, Report, Add data — and no Delete everything',
           phoneActions.three && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.noDelete &&
             phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Back|Report|Backup' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+            phoneActions.labels === 'Back|Report|Add data' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -12808,7 +12850,7 @@ try {
         const row = document.querySelector('#view-profile .cta-row');
         const r = row.getBoundingClientRect();
         const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
-        const buttons = [...row.querySelectorAll('.btn')].filter(b => !b.hidden);
+        const buttons = [...row.querySelectorAll('.btn')].filter(b => !b.hidden && getComputedStyle(b).display !== 'none');
         return { fixed: getComputedStyle(row).position === 'fixed', below: r.top >= nav.bottom - 1 && r.top - nav.bottom < 24,
           column: Math.abs(r.left - nav.left) < 2, onScreen: r.bottom <= innerHeight,
           // Each icon with its label under it, inside the box.
@@ -12824,7 +12866,7 @@ try {
       });
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons, each labelled under it, and no Delete everything',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.labels === 'Back|Report|Backup', JSON.stringify(actions));
+          actions.labels === 'Back|Report|Add data', JSON.stringify(actions));
       check('structured: My Report\'s one-word actions still read out their full names',
         await sp.evaluate(() => ['#report-back', '#export-pdf-bottom', '#save-backup'].map(id =>
           document.querySelector(id).getAttribute('aria-label')).join('|')) === 'Back to card|Download Report|Save a backup');

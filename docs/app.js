@@ -185,6 +185,9 @@
     firstUsed: 'psycheai_first_used',
     // When a backup was last saved, for the hub.
     lastBackup: 'psycheai_last_backup',
+    // The reading whose "add more data" tip under Your Data was tapped or
+    // closed (its premiumAt or createdAt), so the tip shows once per reading.
+    dataNudge: 'psycheai_data_nudge',
     // No longer written (the hub's Ask count once kept a high-water mark here);
     // listed so Delete everything still clears what an earlier visit left.
     askOf: 'psycheai_ask_of',
@@ -2297,6 +2300,7 @@
     gift: '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M12 9v11M3 9h18M12 9c-1.5-3-5-4-5-1.5S12 9 12 9zM12 9c1.5-3 5-4 5-1.5S12 9 12 9z"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     history: '<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5M12 8v4.5l3 2"/>',
+    redo: '<path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 15.5"/><path d="M4 20v-4.5h4.5"/>',
   };
   const hubIcon = key => '<svg class="hub-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + HUB_ICONS[key] + '</svg>';
@@ -2338,6 +2342,42 @@
       '</div>') + '</div>';
   }
 
+  // A ready tile's green tick, with the day it was made under it. A tap opens
+  // who wrote it and when (the line My Psyche used to print under the hub;
+  // My Report still prints it at its foot). With no date on record (a profile
+  // from before one was kept), the plain tick.
+  function hubStamp(key, lead, model, at, label) {
+    const day = at ? new Date(at) : null;
+    if (!day || !Number.isFinite(day.getTime())) {
+      return '<span class="hub-ok" role="img" aria-label="' + esc(label) + '">' + hubIcon('tick') + '</span>';
+    }
+    const line = lead + ' ' + (model || 'the model') + ' on ' + provenanceWhen(at) + '.';
+    return '<button type="button" class="hub-ok hub-stamp" data-hub-go="stamp" aria-expanded="false" aria-label="' + esc(label + '. ' + line) + '">' +
+      hubIcon('tick') + '<small>' + esc(day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })) + '</small></button>' +
+      '<span class="hub-stamp-pop" role="tooltip" hidden>' + esc(lead) + ' <b>' + esc(model || 'the model') + '</b> on ' + esc(provenanceWhen(at)) + '.</span>';
+  }
+  // "15 Oct 2026, 18:51" in the reader's own order.
+  const provenanceWhen = at => new Date(at).toLocaleString(undefined,
+    { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  // Under Your Data while the score is below 80: one line naming the sources
+  // not yet added. Gone once tapped or closed, until the next reading.
+  function dataNudgeHtml(score, sources, flow) {
+    const H = Copy.STRUCTURED.hub;
+    const missing = sources.filter(([key, , loaded]) => key !== 'instagram' && !loaded).map(([key]) => H.sourceNames[key]);
+    const made = state.profile && String(state.profile.premiumAt || state.profile.createdAt || '');
+    if (score >= 80 || !missing.length || store.read(KEYS.dataNudge, '') === made) return '';
+    const names = missing.length > 1 ? missing.slice(0, -1).join(', ') + ' ' + H.nudgeOr + ' ' + missing[missing.length - 1] : missing[0];
+    return '<p class="hub-nudge"><button type="button" class="hub-nudge-go" data-hub-change data-nudge data-flow="' + flow + '">' +
+      hubIcon('spark') + '<span>' + esc(H.nudge(names)) + '</span></button>' +
+      '<button type="button" class="hub-nudge-x" data-nudge-x aria-label="' + esc(H.nudgeClose) + '" title="' + esc(H.nudgeClose) + '">×</button></p>';
+  }
+  const hideDataNudge = () => {
+    const made = state.profile && String(state.profile.premiumAt || state.profile.createdAt || '');
+    store.write(KEYS.dataNudge, made);
+    document.querySelectorAll('.hub-nudge').forEach(node => node.remove());
+  };
+
   function hubHtml(report, explained) {
     const H = Copy.STRUCTURED.hub;
     const history = store.read(KEYS.history, []);
@@ -2346,11 +2386,11 @@
     const asked = (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string').length;
     const tiles = [
       hubTile('psyche', { icon: 'report', mark: 'card', name: H.card, tip: 'card',
-        state: '<span class="hub-ok" role="img" aria-label="' + esc(H.ready) + '">' + hubIcon('tick') + '</span>',
+        state: hubStamp('card', H.madeCard, state.profile && state.profile.model, state.profile && state.profile.createdAt, H.ready),
         buttons: [['card', H.read, 'open'], ['card-download', H.download, 'down']] }),
       explained
         ? hubTile('report', { icon: 'report', mark: 'open', name: H.report,
-            state: '<span class="hub-ok" role="img" aria-label="' + esc(H.unlocked) + '">' + hubIcon('tick') + '</span>',
+            state: hubStamp('report', H.madeReport, state.profile && state.profile.premiumModel, state.profile && state.profile.premiumAt, H.unlocked),
             buttons: [['report', H.read, 'open'], ['pdf', H.download, 'down']] })
         : hubTile('report', { icon: 'lock', mark: 'open', name: H.report, cta: true,
             state: '<span class="hub-lockmark" role="img" aria-label="' + esc(H.locked) + '">' + hubIcon('lock') + '</span>', tip: firstFreeOffered() ? 'reportLocked' : 'reportBuy',
@@ -2393,6 +2433,9 @@
             '<button type="button" class="hub-chip' + (loaded ? '' : ' is-add') + '" data-hub-source="' + key + '" data-flow="' + flow + '"' +
             ' aria-label="' + esc(loaded ? H.sourceLoaded(label) : H.sourceAdd(label)) + '">' +
             (loaded ? esc(label) + hubIcon('tick') : hubIcon('plus') + esc(label)) + '</button>').join('') + '</span>' +
+          // The one plain way to add a source or change what was read.
+          '<button type="button" class="hub-change" data-hub-change data-flow="' + flow + '">' + hubIcon('redo') + '<span>' + esc(H.changeData) + '</span></button>' +
+          dataNudgeHtml(score, sources, flow) +
         '</div>' +
         '<div class="hub-row hub-keep" aria-label="' + esc(H.keep) + '">' +
           '<span class="hub-keephead">' + hubTip('keep', H.keep, 'hub-rl') + '</span>' +
@@ -2480,6 +2523,14 @@
       else startRerun();
       return;
     }
+    if (event.target.closest('[data-nudge-x]')) { hideDataNudge(); return; }
+    const change = event.target.closest('[data-hub-change]');
+    if (change) {
+      if (change.hasAttribute('data-nudge')) hideDataNudge();
+      if (change.dataset.flow === 'unlock') openPremiumDialog(change, 'unlock');
+      else startRerun();
+      return;
+    }
     const button = event.target.closest('[data-hub-go]');
     if (!button || !button.closest('.hub-card')) return;
     const H = Copy.STRUCTURED.hub;
@@ -2487,6 +2538,13 @@
     switch (button.dataset.hubGo) {
       case 'report': leaveHub(); go('full'); break;
       case 'pdf': exportPdf(); break;
+      case 'stamp': {
+        const pop = button.nextElementSibling;
+        const open = Boolean(pop && pop.hidden);
+        closeHubStamps();
+        if (pop && open) { pop.hidden = false; button.setAttribute('aria-expanded', 'true'); }
+        break;
+      }
       case 'card': openPsycheCard(); break;
       case 'share': shareMyLink(button); break;
       case 'card-download': downloadCardImage({ currentTarget: button }); break;
@@ -2531,7 +2589,15 @@
     tip.classList.toggle('is-open', open);
     tip.setAttribute('aria-expanded', String(open));
   });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeHubTips(null); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') { closeHubTips(null); closeHubStamps(); } });
+  // A tick's "made by" bubble shuts on a tap anywhere but its own tick.
+  function closeHubStamps() {
+    document.querySelectorAll('.hub-stamp-pop:not([hidden])').forEach(pop => {
+      pop.hidden = true;
+      if (pop.previousElementSibling) pop.previousElementSibling.setAttribute('aria-expanded', 'false');
+    });
+  }
+  document.addEventListener('click', event => { if (!event.target.closest('.hub-stamp')) closeHubStamps(); });
 
   // Signal strength: the method card in a popout, cut down to what the hub
   // needs. Every source open, one "Add / change data" link instead of one per
@@ -7099,6 +7165,8 @@
       '<h2 class="report-hero-title">' + esc(R.pageTitle) + '</h2>' +
       '<p class="scan-lede">' + esc(R.lede) + '</p></header>';
   }
+  // My Report's actions: Add data in Save a backup's place (the hub keeps Save Backup).
+  document.getElementById('report-rerun').addEventListener('click', () => startRerun());
   // The PDF's page count, for the pill: built once per report when the page
   // is idle, and kept for as long as the report is the same one.
   let reportPagesFor = '';
@@ -8572,8 +8640,7 @@
    */
   function renderAnalysedBy(profile) {
     // A quiet pill per line, the model in the ink colour and the date short.
-    const when = at => new Date(at).toLocaleString(undefined,
-      { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const when = provenanceWhen;
     // One quiet box, a line per thing that was written.
     const line = (icon, lead, model, at) => '<span class="provenance-item"><span class="provenance-icon" aria-hidden="true">' +
       icon + '</span><span>' + esc(lead) + ' <b>' + esc(model) + '</b> on ' + esc(when(at)) + '.</span></span>';
@@ -8708,6 +8775,8 @@
     // it stays true no matter what gets added between the report and the
     // buttons above it.
     renderAnalysedBy(profile);
+    // Under the hub the green ticks carry it (hubStamp); My Report keeps it.
+    $('#analysed-by').hidden = Boolean(document.querySelector('#profile-body .hub-card'));
     refreshSyncInvite();
     refreshGiftBanner();
   }

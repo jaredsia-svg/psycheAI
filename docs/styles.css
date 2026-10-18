@@ -4266,6 +4266,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 /* Who wrote the report and when: a quiet pill per line, closing the page. */
 .provenance { display: flex; justify-content: center; margin: 1.4rem 0 .4rem; }
+.provenance[hidden] { display: none; }
 .provenance-box {
   display: grid; gap: .35rem; padding: .6rem 1rem; border-radius: 14px;
   border: 1px solid var(--line); background: var(--bg-alt);
@@ -5137,4 +5138,54 @@ details.more[open] > summary::after { content: ' ▴'; }
    container). A phone's is left as it is. */
 @media (min-width: 760px) {
   .hub-card { zoom: 1.1; }
+}
+
+/* The green ticks with their day under them; a tap opens who wrote it and
+   when, in a bubble across the tile (hubStamp). It replaces the line that sat
+   under the hub. */
+.hub-stamp { position: static; margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 0; border: 0; background: none; font: inherit; color: var(--good); cursor: pointer; }
+.hub-l1 > .hub-badge[hidden] + .hub-stamp { margin-left: auto; }
+.hub-stamp .hub-svg { width: 18px; height: 18px; stroke-width: 2.6; }
+.hub-stamp small { font-size: .62rem; font-weight: 600; line-height: 1; color: var(--ink-soft); white-space: nowrap; }
+.hub-stamp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.hub-stamp-pop { position: absolute; z-index: 6; top: 2.7rem; left: .5rem; right: .5rem; padding: .55rem .7rem; border-radius: 10px;
+  background: #2a1838; color: #fff; font-size: .74rem; font-weight: 500; line-height: 1.45; text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
+.hub-stamp-pop[hidden] { display: none; }
+.hub-stamp-pop b { color: #fff; }
+.hub-stamp-pop::before { content: ""; position: absolute; top: -5px; right: 1.3rem; width: 10px; height: 10px; background: #2a1838; transform: rotate(45deg); }
+@media (max-width: 759px) {
+  .hub-stamp-pop { top: calc(100% - .4rem); }
+  .hub-stamp-pop::before { right: calc(50% + 1.3rem); }
+}
+
+/* Your Data's one plain way in: Add / change data, filled, after the chips. */
+.hub-change { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; padding: .4rem .8rem;
+  border: 0; border-radius: 999px; font: inherit; font-size: .78rem; font-weight: 700; color: #fff; cursor: pointer; white-space: nowrap;
+  background: linear-gradient(90deg, #7b3fa0, #d1477a); box-shadow: 0 4px 10px rgba(209, 71, 122, .25); }
+.hub-change .hub-svg { width: 13px; height: 13px; stroke-width: 2.2; }
+.hub-change:hover { filter: brightness(1.06); }
+/* Below 80, a one-line tip under the row naming the sources not yet added. */
+.hub-nudge { flex-basis: 100%; display: flex; align-items: center; gap: .3rem; margin: 0; }
+.hub-nudge-go { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .6rem; border-radius: 10px;
+  font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); text-align: left; cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt)); border: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent); }
+.hub-nudge-go .hub-svg { width: 14px; height: 14px; }
+.hub-nudge-x { flex: none; width: 28px; height: 28px; border: 0; background: none; font: inherit; font-size: 1.1rem; line-height: 1;
+  color: var(--ink-soft); cursor: pointer; border-radius: 8px; }
+.hub-nudge-x:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.hub-data { flex-wrap: wrap; }
+@media (max-width: 759px) {
+  .hub-change { flex-basis: 100%; min-height: 40px; font-size: .84rem; }
+}
+
+/* My Report's actions, on a laptop's side menu and a phone's bottom row
+   alike: Back, Report, Add data. Add data takes Save a backup's place (the
+   hub keeps Save Backup); everywhere else it does not show. */
+#report-rerun { display: none !important; }
+#view-profile.profile-paid .cta-row #report-rerun { display: inline-flex !important; order: 2; }
+#view-profile.profile-paid .cta-row #save-backup { display: none !important; }
+@media (min-width: 1000px) and (min-height: 520px) {
+  #view-profile.profile-paid .cta-row #report-rerun { display: grid !important; }
 }
