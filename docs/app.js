@@ -6467,7 +6467,7 @@
       if (first) body.product = 'first';
       const result = await LLM.analyseProfile(sent, body,
         { onJob: key => rememberJob(key, 'analysis', auth) });
-      if (bundle || withCard(result)) await adoptBundle(result, undefined, { landOnHub: first });
+      if (bundle || withCard(result)) await adoptBundle(result);
       else {
         if (first) store.remove(KEYS.reportDigestNext);
         await adoptProfile(result);
@@ -6513,16 +6513,15 @@
    * laid under it as an unlock's is. The classic layout writes both in one
    * report and sends no `freeCard`, so that report is the card's too.
    */
-  async function adoptBundle(result, savedName, options) {
+  async function adoptBundle(result, savedName) {
     const card = (result.data && result.data.freeCard) || result.data;
     await adoptProfile(Object.assign({}, result, { data: card }), savedName);
     await adoptFullReport(result, false, savedName);
     keepReportDigest();
-    // A first free read lands on My Psyche's hub, scrolled past the card,
-    // with the card and its report each a tap away.
-    if (options && options.landOnHub) { leaveHub(); go('profile'); }
-    else if (fullReportPage()) go('full');
-    else { renderProfile(); show('profile'); }
+    // Every read that writes a card lands on My Psyche, at the card (October
+    // 2026): a first free read and a card bought with its report alike. Only
+    // an unlock of a card already held lands on the report.
+    go('profile');
     openPaidSections();
     refreshAskCredits().catch(() => {});
   }
@@ -6657,11 +6656,12 @@
         // record a page from the previous deploy wrote for the same thing.)
         await adoptFullReport(result, Boolean(job.replaceCard), job.ownName);
         keepReportDigest();
-        renderProfile();
-        show('profile');
+        // An unlock picked up after a reload lands where a live one does: the report.
+        if (fullReportPage()) go('full');
+        else { renderProfile(); show('profile'); }
         openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
-      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName, { landOnHub: !job.auth });
+      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName);
       else await adoptProfile(result, job.ownName);
       return true;
     } catch (error) {
@@ -10211,8 +10211,9 @@
       // Every section changed, so the whole report is redrawn rather than
       // having bodies spliced into a page still showing the locked block.
       // renderProfile calls renderAnalysedBy and redraws the re-run price
-      // note, which says US$5 from this point on. Where the report has a page
-      // of its own, that page is where the reader lands.
+      // note, which says US$5 from this point on. An unlock of a card the
+      // reader already had lands on the report it bought; every read that
+      // writes a card lands on My Psyche, at the card (adoptBundle).
       if (fullReportPage()) {
         // The keep note at the report's head says it is ready, and where it is
         // kept (showKeepNote); there is no separate "ready" note any more.

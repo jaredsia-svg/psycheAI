@@ -1412,7 +1412,7 @@ check('`why` names no strength word and no score, since the code sets them',
   /It names no strength word and no score: the code sets those/.test(prompts.PROFILE_SYSTEM));
 check('choice and strength are what the ledger adds up to, and the code checks them',
   /The code checks the sum/.test(letterDesc('choice')) && /The code checks it/.test(letterDesc('strength')) &&
-  /`clear` from two-thirds with at least 10 in play, `moderate` from a third with at least 6/.test(letterDesc('strength')));
+  /`clear` from two-thirds with at least 14 in play, `moderate` from a third with at least 10/.test(letterDesc('strength')));
 check('the card schema scores its letters from the same ledger and strength rule',
   (() => {
     const free = prompts.CLASSIC_FREE_SCHEMA.properties.mbti.properties.letters.items.properties;
@@ -1470,6 +1470,12 @@ check('base rates: most people sit near the middle',
 check('the old prose sections are gone, not kept beside the ledger',
   !/Reading extraversion fairly —/.test(sys) && !/N\/S and T\/F have the same problem/.test(sys) &&
   !/Start at 50\. Go above about 60/.test(prompts.FREE_SYSTEM));
+check('every field reads breadth off sustained conversations, never a lifetime count of conversations',
+  ['STRUCTURED_FREE_SYSTEM', 'STRUCTURED_FULL_SYSTEM', 'CLASSIC_FULL_SYSTEM'].every(k => prompts[k].split(prompts.CONVERSATIONS_RULE).length === 2) &&
+  prompts.MERGED_SYSTEM.split(prompts.CONVERSATIONS_RULE).length === 2 &&
+  /not in a pattern, a section, the card or a ledger/.test(prompts.CONVERSATIONS_RULE) &&
+  /never a count of conversations they ever wrote in as breadth/i.test(JSON.stringify(prompts.STRUCTURED_FREE_SCHEMA.properties.patterns)) &&
+  /never a count of conversations they ever wrote in as breadth/.test(JSON.stringify(prompts.STRUCTURED_FULL_SCHEMA.properties.patterns)));
 check('the Big Five extraversion bullet follows the ledger and bans volume and group chats',
   /For \*\*extraversion\*\*, the score follows the E\/I ledger/.test(sys) &&
   /Message volume and group chats, busy or empty, are evidence for it in neither direction/.test(sys));
@@ -1549,12 +1555,20 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
     cleaned.map(p => p.row + ':' + p.to).join() === 'setting:I,reach-out:E', JSON.stringify(cleaned));
   const piece = (to, weight) => ({ row: 'x', to, weight });
   const axis = list => S.scoreAxis('E/I', list, '');
-  check('ledger: the side with more points wins; a third\'s margin over 6 points is moderate, two-thirds over 10 clear',
+  check('ledger: the side with more points wins; a third\'s margin over 10 points is moderate, two-thirds over 14 clear',
     axis([piece('E', 'strong'), piece('I', 'medium')]).strength === 'slight' &&
-    axis([piece('E', 'strong'), piece('E', 'medium'), piece('I', 'medium'), piece('I', 'weak')]).strength === 'slight' &&
-    axis([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]).strength === 'moderate' &&
-    axis([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('I', 'weak')]).strength === 'clear' &&
+    axis([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]).strength === 'slight' &&
+    axis([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]).strength === 'moderate' &&
+    axis([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('I', 'weak')]).strength === 'clear' &&
     axis([piece('I', 'strong')]).strength === 'slight' && axis([piece('I', 'strong')]).choice === 'I');
+  // Their own words on both sides (mixed, an ambivert) keep the axis slight
+  // whatever the rest builds (October 2026).
+  const own = to => ({ row: 'own-words', to, weight: 'strong' });
+  check('ledger: own words entered under both letters keep the axis slight, whatever the lead',
+    axis([own('E'), own('I'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'medium')]).strength === 'slight' &&
+    axis([own('E'), own('I'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'medium')]).choice === 'E' &&
+    /enter it under both letters, and the axis stays slight/.test(S.RUBRIC['E/I']['own-words'].text) &&
+    S.RUBRIC['E/I'].pursuits.weight === 'weak' && /Seeing several groups of friends they already have is not this row/.test(S.RUBRIC['E/I'].setting.text));
   check('ledger: a tie goes to the strongest single piece, then to the model\'s pick',
     axis([piece('E', 'medium'), piece('E', 'weak'), piece('I', 'strong')]).choice === 'I' &&
     S.scoreAxis('E/I', [], 'I').choice === 'I' && S.scoreAxis('E/I', [piece('E', 'weak'), piece('I', 'weak')], 'E').choice === 'E');
@@ -1562,9 +1576,9 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
   check('ledger: extraversion is 51 to 59 at slight, 60 to 69 moderate, 70 to 85 clear, mirrored for I',
     ext([piece('E', 'weak'), piece('I', 'weak')]) === 51 &&
     ext([piece('I', 'strong')]) >= 41 && ext([piece('I', 'strong')]) <= 49 &&
-    ext([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]) >= 60 &&
-    ext([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]) <= 69 &&
-    ext([piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong')]) === 15);
+    ext([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]) >= 60 &&
+    ext([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]) <= 69 &&
+    ext([piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong'), piece('I', 'strong')]) === 15);
   check('ledger: one piece alone sits nearer the middle than a slight lead over a full ledger',
     ext([piece('E', 'weak')]) < ext([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'strong'), piece('I', 'weak')]));
   // A whole answer: the letters, the type, its nickname, the score and the card's copies.
@@ -1585,7 +1599,7 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
   });
   const scored = S.scoreMbti(answer(), dm(10, 300));
   check('ledger: the code sets the letters and strength from the ledger, the computed rows included',
-    scored.mbti.letters[0].choice === 'I' && scored.mbti.letters[0].strength === 'moderate' &&
+    scored.mbti.letters[0].choice === 'I' && scored.mbti.letters[0].strength === 'slight' &&
     scored.mbti.letters[1].strength === 'slight' &&
     scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'I' && /^10 Instagram conversations/.test(p.note)) &&
     !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'E'),
@@ -1595,7 +1609,7 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
     scored.summary === 'As an INTJ, The Architect plans.',
     JSON.stringify([scored.mbti.type, scored.summary]));
   check('ledger: the extraversion score and band follow the E/I result, and the card\'s copy with them',
-    scored.bigFive.extraversion.score < 41 && scored.bigFive.extraversion.score > 30 && scored.bigFive.extraversion.band === 'low' &&
+    scored.bigFive.extraversion.score < 50 && scored.bigFive.extraversion.score >= 41 && scored.bigFive.extraversion.band === 'moderate' &&
     scored.card.bigFive.extraversion === scored.bigFive.extraversion.score, String(scored.bigFive.extraversion.score));
   check('ledger: scoring twice changes nothing',
     JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(scored)), dm(10, 300))) === JSON.stringify(scored));
@@ -5291,8 +5305,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 179000 && DIG === 179000 && Digest.DEEP_DIGEST_CHARS === 179000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card, its Overview and its roast cost at most 8.6 cents',
-    Digest.FREE_COST_CAP === 0.086 && freeWorst <= 0.086 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card, its Overview and its roast cost at most 8.7 cents',
+    Digest.FREE_COST_CAP === 0.087 && freeWorst <= 0.087 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most 17.2 cents',
     Digest.COST_CAP === 0.172 && fullWorst <= 0.172 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
@@ -5726,7 +5740,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('the premium read\'s two calls each fit their own cost cap at its 179,000-character line',
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS &&
-        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.086,
+        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.087,
       Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
     check('and together cost no more than twenty-six cents',
@@ -5950,7 +5964,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // card's own rules.
   const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '')
     .replace(prompts.CONDUCT_RULE, '').replace(prompts.DATA_WORDS, '')
-    .replace(prompts.CONFIDENCE_SCORING, '').replace(prompts.MBTI_LEDGER_RULES, '')
+    .replace(prompts.CONFIDENCE_SCORING, '').replace(prompts.MBTI_LEDGER_RULES, '').replace(prompts.CONVERSATIONS_RULE, '')
     .split(prompts.NEUTRAL_PEOPLE_RULE).join('');
   // A quarter now the full report's prompt has lost the roast to this one.
   check('the card prompt is its own and short: its rules under a quarter of the full report\'s',

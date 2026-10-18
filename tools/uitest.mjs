@@ -3651,10 +3651,13 @@ try {
   check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
     premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
     premiumTier.careerChips.join('|'));
-  check('and Psyche Sync is offered as free, in a green pill',
+  check('and Psyche Sync is offered as free, and Ask PsycheAI\'s price, both in the card tier\'s faint green "Free" design',
     await page.evaluate(() => { const c = document.querySelector('#view-welcome .insight-compat'), pill = c && c.querySelector('h3 .insight-free-pill');
-      return Boolean(pill) && pill.textContent === 'Free' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
-        getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)'; }));
+      const price = document.querySelector('#view-welcome .insight-ask .insight-price');
+      const badge = document.querySelector('#view-welcome .tier-badge-free');
+      const look = el => el && [getComputedStyle(el).backgroundColor, getComputedStyle(el).color].join();
+      return Boolean(pill && price && badge) && pill.textContent === 'Free' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
+        getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)' && look(pill) === look(badge) && look(price) === look(badge); }));
   check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
@@ -12684,7 +12687,7 @@ try {
         visuals.partWords === 0 && visuals.innerBars === 0, JSON.stringify([visuals.partWords, visuals.innerBars]));
       check('structured: wellbeing as two tiles across, three down', visuals.wellnessCols === 2, String(visuals.wellnessCols));
       check('structured: MBTI as four sliders, each marker pushed towards its letter by its strength',
-        visuals.sliders.join() === 'E@34%,N@20%,F@80%,J@6%', visuals.sliders.join());
+        visuals.sliders.join() === 'E@34%,N@34%,F@66%,J@20%', visuals.sliders.join());
       check('structured: MBTI and the Big Five as rows, the scale on the left and the reading beside it, in full',
         visuals.rows === 9 && visuals.whys === 4, JSON.stringify([visuals.rows, visuals.whys]));
       check('structured: the MBTI letter not chosen is faint', visuals.faint === 4, String(visuals.faint));
@@ -14362,11 +14365,12 @@ try {
           const landed = await bp.evaluate(() => {
             const p = JSON.parse(localStorage.getItem('psycheai_profile'));
             return { name: p.card && p.card.name, roast: Boolean(p.report && p.report.bonus), kept: Boolean(localStorage.getItem('psycheai_report_digest')),
-              report: document.querySelectorAll('#profile-body .part-card').length > 0 };
+              // A card bought with its report lands on My Psyche, at the card (October 2026).
+              myPsyche: Boolean(document.querySelector('#profile-body .hub-card')) && document.querySelectorAll('#profile-body .part-card').length === 0 };
           });
-          check('on a new device past the free card, paying writes the card and its Psyche Report together, at the unlock\'s price',
+          check('on a new device past the free card, paying writes the card and its Psyche Report together, at the unlock\'s price, and lands on My Psyche',
             paidRun.product === 'unlock' && !paidRun.anchor && sent.filter(body => !body.paymentIntentId).length === 1 &&
-              Boolean(landed.name) && landed.roast && landed.kept && landed.report, JSON.stringify({ landed, product: paidRun.product }));
+              Boolean(landed.name) && landed.roast && landed.kept && landed.myPsyche, JSON.stringify({ landed, product: paidRun.product }));
         } finally {
           await bp.close();
         }

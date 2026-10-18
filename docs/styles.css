@@ -3694,11 +3694,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 .insight-compat-icon { font-size: 1.5rem; }
 .insight-compat h3 { margin: 0; font-size: .98rem; }
 .insight-compat p { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
-/* Psyche Sync's price as a green pill; Ask PsycheAI's as a quiet one, under it. */
+/* Psyche Sync's "Free" and Ask PsycheAI's price in the card tier's "Free"
+   design: faint green behind green text. */
 .insight-free-pill, .insight-price { display: inline-block; margin-left: .35rem; padding: .08rem .55rem; border-radius: 999px;
-  vertical-align: .1em; font-size: .72rem; font-weight: 800; letter-spacing: .02em; }
-.insight-free-pill { color: #fff; background: var(--good); }
-.insight-price { color: var(--accent); background: var(--accent-soft); }
+  vertical-align: .1em; font-size: .72rem; font-weight: 800; letter-spacing: .02em;
+  color: var(--good); background: var(--good-soft); }
 .insight-ask { margin-top: .6rem; }
 .insight-ask .ask-mark { display: block; width: 1.9rem; height: 1.9rem; border-radius: 9px; }
 

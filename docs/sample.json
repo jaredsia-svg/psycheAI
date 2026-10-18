@@ -91,7 +91,7 @@
       ]
     },
     "extraversion": {
-      "score": 57,
+      "score": 55,
       "band": "moderate",
       "reading": "Social in bursts and solitary in between: you enjoy people, then appear to need recovering from them.",
       "evidence": [
@@ -199,7 +199,7 @@
           "Comparisons with earlier years come up unprompted"
         ],
         "choice": "N",
-        "strength": "moderate",
+        "strength": "slight",
         "inPractice": "You are quick to see where something is going, and occasionally ahead of the evidence."
       },
       {
@@ -238,7 +238,7 @@
           "Logistical choices settled by who they suit, not what is quickest"
         ],
         "choice": "F",
-        "strength": "moderate",
+        "strength": "slight",
         "inPractice": "You will pick the option that keeps everyone comfortable over the one that is simply correct."
       },
       {
@@ -282,7 +282,7 @@
           "Saved posts get returned to rather than piling up"
         ],
         "choice": "J",
-        "strength": "clear",
+        "strength": "moderate",
         "inPractice": "Uncertainty costs you more energy than work does."
       }
     ],
@@ -501,7 +501,7 @@
     "bigFive": {
       "openness": 61,
       "conscientiousness": 84,
-      "extraversion": 57,
+      "extraversion": 55,
       "agreeableness": 79,
       "neuroticism": 44
     },

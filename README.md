@@ -2502,6 +2502,50 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### Mixed in their own words stays slight; thin ledgers stay slight (October 2026)
+
+A read with the five-year rows working (33 sustained conversations, neither way; 9% sustained, a weak I)
+still came back a moderate E at 69. The model's ledger was E 8 vs I 1. Two causes:
+- **Own words were lost.** The digest held the reader's own words from 2018: "I think I am quite mixed… a
+  lot of times I feel extroverted… many instances I feel introverted". `own-words` let the model pick only
+  one letter, so "mixed" had nowhere to go.
+- **The E rows were inflated.** Dinners, tennis and trips with old friends went in as `pursuits` and
+  `setting`.
+
+The changes:
+- **Mixed counts both ways, and caps the axis.** Calling themselves mixed, both or an ambivert is entered
+  under both letters, and the axis is then `slight` whatever the rest of the ledger builds (`scoreAxis`).
+  What someone says of themselves outweighs a lead built from behaviour.
+- **Thin ledgers stay slight.** `moderate` needs 10 points in play (was 6) and `clear` 14 (was 10). The
+  slight score scales by points in play over 10.
+- **`pursuits` is weak.** A sport or hobby with friends is common to everyone.
+- **`setting` E is strangers and big events only.** That means parties, mixers, conferences and meeting
+  new people. Seeing several groups of friends they already have is not this row.
+- **Cost:** the free card's prompt reserve is 13,600 (13,547 measured). `FREE_COST_CAP` and
+  `DEEP_FREE_COST_CAP` are 8.7¢.
+- **The sample** now adds up to E, N and F slight and J moderate, with extraversion 55.
+
+**Landing.** Every read that writes a card now lands on My Psyche at the card: a first free read, and a
+card bought with its report (`adoptBundle`). An unlock of a card the reader already held lands on the
+report, live or picked up after a reload.
+
+**The front page's pills.** Psyche Sync's "Free" and Ask PsycheAI's "1 question free, then … for 5" take
+the card tier's "Free" design: faint green (`--good-soft`) behind green text.
+
+### Breadth is sustained conversations in every field, not only the ledger (October 2026)
+
+A signature pattern, "The generous networker", cited "378 active direct message conversations over the
+lifetime of your account". The MBTI ledger's never-counted list already kept `activeThreads` out of the
+letters, but it bound only the ledger. `CONVERSATIONS_RULE` now says it once for everything: patterns,
+sections, the card and the ledger.
+- **The rule:** how many conversations someone ever wrote in, or any lifetime total of contacts, friends
+  or followers, is never evidence of how many people they keep up with. The number that measures that is
+  `engagedThreads.last5Years.atLeast50`.
+- **Where it sits:** in the report prompt's numbers rules and the card prompt's "Reading it"; once in the
+  merged prompt.
+- **Schemas:** the patterns' `evidence` descriptions say it too.
+- **Cost:** `FREE_FIXED_INPUT_TOKENS` 13,450 (13,441 measured), still inside the 8.6-cent cap.
+
 ### A slight extravert read as moderate, and S off search counts (October 2026)
 
 The first report built on the ledger still called one reader a moderate E (extraversion 68), and gave them
