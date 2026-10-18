@@ -3854,8 +3854,8 @@ details.more[open] > summary::after { content: ' ▴'; }
      not by .section-card::before: the box must not clip (the card's popouts
      spill out of it), so a strip of its own ran square past the rounded
      corners, while a background follows them. */
+  /* No purple line along its top (October 2026), nor over the card beside it. */
   background:
-    linear-gradient(90deg, var(--accent), var(--accent-2)) top / 100% 3px no-repeat,
     radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .14), transparent 55%),
     radial-gradient(90% 80% at 0% 100%, rgba(123, 63, 160, .12), transparent 60%),
     var(--bg-alt);
@@ -3870,9 +3870,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The card fills its box, edge to edge, on a free report and in the left
    column of a full one: no padding round it, and no shadow of its own. */
 #view-profile.profile-structured #psyche-card-section { padding: 0; overflow: hidden; }
-/* The same gradient line along its top that every other section carries —
-   drawn over the card, which fills the box edge to edge and hid it. */
-#view-profile.profile-structured #psyche-card-section::before { z-index: 2; }
+/* No gradient line along its top (October 2026): the card is its own frame. */
+#view-profile.profile-structured #psyche-card-section::before { display: none; }
 #view-profile.profile-structured .psyche-card-slot { margin: 0; }
 #view-profile.profile-structured #psyche-card { box-shadow: none; }
 /* The panel beside the card says how to use it, so the card itself says nothing.
@@ -4027,6 +4026,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-home { transition: opacity .25s ease; }
 .cx.is-explaining .cx-home { opacity: .12; }
 .cx-home-title { margin: 0 0 .7rem; font-size: 1.2rem; line-height: 1.25; }
+/* A title's mark on its left (titleMark in app.js), as the hub's: sized to the title. */
+.title-mark { display: inline-block; width: .95em; height: .95em; vertical-align: -.12em; margin-right: .4rem; }
 .cx-home-intro { margin: .85rem 0 .6rem; font-size: .9rem; line-height: 1.55; color: var(--ink-soft); }
 .cx-home-hint {
   display: flex; gap: .55rem; align-items: flex-start; margin: 0; padding: .65rem .75rem; border-radius: 12px;

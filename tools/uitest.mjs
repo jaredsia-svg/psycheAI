@@ -8158,7 +8158,7 @@ try {
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
     'Where you align', 'Where you differ', 'How to relate better',
-    'Your Psyche Syncs']);
+    'Psyche Sync']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 13, JSON.stringify(sharing));
   check('the page does not re-type any section title',
@@ -10954,10 +10954,10 @@ try {
 
   // ---- the compatibility page reads as its own page ----
   const scanText = await page.locator('#view-scan').innerText();
-  check('the sync page is titled Your Psyche Syncs',
-    (await page.locator('#scan-title').innerText()) === 'Your Psyche Syncs',
+  check('the sync page is titled Psyche Sync, with its mark on the left',
+    (await page.locator('#scan-title').innerText()) === 'Psyche Sync' && (await page.locator('#scan-title svg.title-mark').count()) === 1,
     await page.locator('#scan-title').innerText());
-  check('the Your Psyche Syncs title is the same size as My Report\'s',
+  check('the Psyche Sync title is the same size as My Report\'s',
     await page.evaluate(() => {
       const probe = document.createElement('h2');
       probe.className = 'report-hero-title';
@@ -11001,7 +11001,7 @@ try {
     return Boolean(history.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
   check('and are rendered, not just positioned',
-    /Your Psyche Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
+    /Psyche Sync/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
     scanText.slice(0, 400));
   check('past results still sit above the paste box on screen', await page.evaluate(() => {
     const history = document.querySelector('#scan-history').getBoundingClientRect();
@@ -11751,11 +11751,11 @@ try {
           !/Mock work style|Mock read of where they appear/.test(document.querySelector('#profile-body').textContent)));
       check('structured: the keep-the-PDF note has a ✕ in its corner; closing it leaves the left column level with the report\'s header',
         keepClosed.corner && keepClosed.gone && keepClosed.level, JSON.stringify(keepClosed));
-      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "6 parts" in the pill; the left menu has no title and no purple line on top',
+      check('structured: My Report opens with a header like My Syncs\': "Psyche Report", a line on what it is, "6 parts" in the pill; the left menu has no title and no purple line on top',
         await sp.evaluate(() => {
           const hero = document.querySelector('#profile-body .report-hero');
           const nav = document.querySelector('#profile-body .part-nav');
-          return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Your Psyche Report' &&
+          return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Psyche Report' && Boolean(hero.querySelector('.report-hero-title svg.title-mark')) &&
             /^6 parts/.test(hero.querySelector('.scan-eyebrow').textContent) && /Psyche Card/.test(hero.querySelector('.scan-lede').textContent) &&
             !nav.querySelector('.part-nav-title') && !/Your Psyche Report/.test(nav.textContent) &&
             !/linear-gradient/.test(getComputedStyle(nav).backgroundImage) && getComputedStyle(nav, '::before').content === 'none';
@@ -11927,7 +11927,7 @@ try {
           keep: [...hub.querySelectorAll('.hub-keep [data-hub-go]')].map(b => b.dataset.hubGo).join() };
       });
       check('Psyche Hub: four lavender tiles — Psyche Card and Psyche Report (Read, Download; the report a green tick), Psyche Sync (See list, Share), Ask PsycheAI (Ask; History and ? once asked) — then Your Link, Signal Strength and Save Profile',
-        hubTiles.title === 'Your Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Psyche Sync|Ask PsycheAI' && hubTiles.tick &&
+        hubTiles.title === 'Psyche Hub' && hubTiles.names === 'Psyche Card|Psyche Report|Psyche Sync|Ask PsycheAI' && hubTiles.tick &&
           hubTiles.card === 'Read,Download' && hubTiles.report === 'Read,Download' && hubTiles.syncs === 'See list,Share' && hubTiles.ask === 'Ask' &&
           hubTiles.link === 'opens,friends,credits' && hubTiles.linkButtons === 'Copy your link' &&
           hubTiles.rowOrder === 'hub-linkrow,hub-data,hub-keep' && hubTiles.cta === 0 && hubTiles.shades === 1 && hubTiles.ok && hubTiles.chips === 4 &&
@@ -12886,12 +12886,14 @@ try {
           title: side.querySelector('.cx-home-title') && side.querySelector('.cx-home-title').textContent };
       });
       check('structured: My Psyche, unlocked, opens on the Psyche Card and what it means, above everything else',
-        Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
-      check('the card panel\'s purple top line is its own background, so it follows the rounded corners',
+        Object.values(paidTop).every(Boolean) && paidTop.title === 'Psyche Card', JSON.stringify(paidTop));
+      // No purple line along the top of the card or its panel (October 2026).
+      check('neither the card nor its panel carries a purple line along its top',
         await sp.evaluate(() => {
           const side = document.querySelector('#profile-side');
           return getComputedStyle(side, '::before').display === 'none' &&
-            /^linear-gradient/.test(getComputedStyle(side).backgroundImage) && getComputedStyle(side).overflow === 'visible';
+            getComputedStyle(document.querySelector('#psyche-card-section'), '::before').display === 'none' &&
+            !/^linear-gradient/.test(getComputedStyle(side).backgroundImage) && getComputedStyle(side).overflow === 'visible';
         }));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
@@ -13154,7 +13156,7 @@ try {
             const tools = [...side.querySelectorAll('.cx-tool')];
             const row = side.querySelector('.cx-tools').getBoundingClientRect();
             const span = tools.length === 3 ? tools[2].getBoundingClientRect().right - tools[0].getBoundingClientRect().left : 0;
-            return side.querySelector('.cx-pop').hidden && /^Your Psyche Card/.test(side.innerText.trim()) &&
+            return side.querySelector('.cx-pop').hidden && /^Psyche Card/.test(side.innerText.trim()) && Boolean(side.querySelector('.cx-home-title svg.title-mark')) &&
               Math.abs(span - row.width) <= 2 && row.width >= side.clientWidth - 40 &&
               /Hover over any part of your card/.test(side.innerText) && side.querySelector('.cx-home-intro').textContent.length > 40;
           })(),

@@ -2309,6 +2309,12 @@
   };
   const hubIcon = key => '<svg class="hub-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + HUB_ICONS[key] + '</svg>';
+  // A page or panel title's mark, on its left in the title's gradient: the
+  // hub's grid, the card, the report, a sync. `id` names its gradient, one per mark.
+  const titleMark = (key, id) => '<svg class="hub-svg title-mark" viewBox="0 0 24 24" fill="none" stroke="url(#' + id + ')" ' +
+    'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><defs>' +
+    '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3fa0"/>' +
+    '<stop offset="1" stop-color="#d1477a"/></linearGradient></defs>' + HUB_ICONS[key] + '</svg>';
   const hubDots = (n, on) => n > 0 && n <= 6 ? '<span class="hub-dots" aria-hidden="true">' +
     Array.from({ length: n }, (_, i) => '<i' + (i < on ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
 
@@ -2429,10 +2435,7 @@
     const flow = explained ? 'rerun' : 'unlock';
     return '<section class="card section-card hub-card screen-only" aria-labelledby="hub-title">' +
       // The hub's own mark beside its name, in the title's gradient.
-      '<div class="hub-bar"><h2 id="hub-title"><svg class="hub-svg hub-title-mark" viewBox="0 0 24 24" fill="none" stroke="url(#hub-title-grad)" ' +
-        'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><defs>' +
-        '<linearGradient id="hub-title-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3fa0"/>' +
-        '<stop offset="1" stop-color="#d1477a"/></linearGradient></defs>' + HUB_ICONS.grid + '</svg>' + esc(H.title) + '</h2></div>' +
+      '<div class="hub-bar"><h2 id="hub-title">' + titleMark('grid', 'hub-title-grad').replace('title-mark', 'hub-title-mark') + esc(H.title) + '</h2></div>' +
       '<div class="hub-in">' +
       '<div class="hub-tiles">' + tiles.join('') + '</div>' +
       '<div class="hub-rows">' + hubLinkRowHtml(explained) +
@@ -7199,7 +7202,7 @@
       // the hub's ring, opening Signal strength.
       '<div class="report-hero-meta"><p class="scan-eyebrow" id="report-hero-pill">' + esc(R.pill(parts, reportPdfPages())) + '</p>' +
         reportSignalHtml(report) + '</div>' +
-      '<h2 class="report-hero-title">' + esc(R.pageTitle) + '</h2>' +
+      '<h2 class="report-hero-title">' + titleMark('report', 'report-title-grad') + esc(R.pageTitle) + '</h2>' +
       '<p class="scan-lede">' + esc(R.lede) + '</p></header>';
   }
   // My Report's actions: Add data in Save a backup's place (the hub keeps Save Backup).
@@ -8274,7 +8277,7 @@
       svg + '</svg><span>' + esc(G.tools[act]) + '</span></button>';
     return '<div class="cx" aria-label="' + esc(G.title) + '">' +
       '<div class="cx-home">' +
-        '<h2 class="cx-home-title">' + esc(G.home.title) + '</h2>' +
+        '<h2 class="cx-home-title">' + titleMark('card', 'card-title-grad') + esc(G.home.title) + '</h2>' +
         '<div class="cx-tools">' +
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
@@ -11475,7 +11478,7 @@
     // There may be no profile yet on a device that was sent a link, so the
     // generic title in the markup stays the fallback.
     const who = state.profile && state.profile.card && state.profile.card.name;
-    $('#scan-title').textContent = TEXT.scanHistory;
+    $('#scan-title').innerHTML = titleMark('sync', 'sync-title-grad') + esc(TEXT.scanHistory);
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
     // One list, Psyche Sync: friends waiting to sync at the top, each with a

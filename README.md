@@ -2502,6 +2502,25 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### Titles without "Your", each with its mark; no line over the card (October 2026)
+
+- **Titles:** My Psyche's card panel is "Psyche Card" and its hub "Psyche Hub". My Report's header is
+  "Psyche Report". My Syncs is "Psyche Sync", and its pill says only "Free, every time".
+- **Marks:** each title carries its mark on the left, in the hub's purple-to-pink gradient (`titleMark` in
+  app.js, from `HUB_ICONS`: card, grid, report, sync).
+- **No gradient line:** the line along the top of the Psyche Card and of its panel on My Psyche is gone.
+
+### Who starts conversations is a weak E/I row; no unsupported group chats (October 2026)
+
+- **`initiates` row.** Who starts the conversations, across their chats, is a weak row: they open most
+  (E), or the other side usually does (I). It is entered once for all chats, never per chat. The
+  never-counted list keeps reply speed and message counts inside one chat, and WhatsApp's volume.
+- **Group chats.** A report claimed "active ties across multiple group chats" and "WhatsApp group chats"
+  against `activeGroupThreads: 0` and three one-to-one WhatsApp chats. `CONVERSATIONS_RULE` now says no
+  field may claim group chats unless the counts show one: `activeGroupThreads` above 0, or a WhatsApp chat
+  whose `kind` is `group`.
+- **Cost:** `FREE_FIXED_INPUT_TOKENS` is 13,700 (13,663 measured), inside the 8.7¢ cap.
+
 ### Mixed in their own words stays slight; thin ledgers stay slight (October 2026)
 
 A read with the five-year rows working (33 sustained conversations, neither way; 9% sustained, a weak I)

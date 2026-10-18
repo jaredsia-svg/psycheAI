@@ -1445,6 +1445,15 @@ check('totals that include what they never joined are not reach, and activeThrea
 check('what happens inside one chat is about the tie; WhatsApp is hand-picked and never E/I evidence',
   /\*\*What happens inside one chat\*\*/.test(ledgerRules) &&
   /WhatsApp chats are the up to three the reader hand-picked, their closest: their volume is never evidence on E\/I/.test(ledgerRules));
+// Who starts the conversations is a weak signal (October 2026): once, across
+// their chats, and never their volume.
+check('who starts the conversations counts weakly, once across their chats',
+  mbtiScore.RUBRIC['E/I'].initiates && mbtiScore.RUBRIC['E/I'].initiates.weight === 'weak' &&
+  mbtiScore.RUBRIC['E/I'].initiates.to.join() === 'E,I' && /Once for all their chats/.test(mbtiScore.RUBRIC['E/I'].initiates.text) &&
+  /Who starts the conversations is the one exception, and only as the weak `initiates` row/.test(ledgerRules) &&
+  !/how many messages\. That is about the tie[^.]*who starts it/.test(ledgerRules) && !/: who starts it, how fast/.test(ledgerRules));
+check('no field claims group chats the counts do not show',
+  /never say they take part in group chats unless the counts show one: `activeGroupThreads` above 0, or a WhatsApp chat whose `kind` is a group/.test(prompts.CONVERSATIONS_RULE));
 check('how and when they write is not evidence, posting bursts included',
   /\*\*How and when they write\*\*: message or caption length, a late-night rhythm, liking far more than posting, posting in bursts/.test(ledgerRules) &&
   /bursts are not P and steady posting is not J/.test(ledgerRules));

@@ -984,7 +984,7 @@
   // every field read breadth off sustained conversations (CONVERSATIONS_RULE,
   // 13,441 measured). 13,600 once a reader's own words on both sides kept an
   // axis slight (13,547 measured), with the cap at 8.7 cents.
-  const FREE_FIXED_INPUT_TOKENS = 13600;
+  const FREE_FIXED_INPUT_TOKENS = 13700;
 
   // ---------- what the premium read can cost, at most ----------
   //
