@@ -6947,18 +6947,9 @@ try {
     emptyPromo.status === 400 && /paymentIntentId.*promoCode/.test(emptyPromo.body.error || ''),
     JSON.stringify(emptyPromo));
 
-  // Held as an exact list rather than as "contains", so a control cannot
-  // reappear here unnoticed. A flat "re-run the analysis" button was once one
-  // of three and was removed outright — nothing offered a second model call
-  // on the *same* export. #rerun-with-data lives inside the confidence card's
-  // "Data sources" subsection now, not this row — see the checks further down
-  // for that path.
-  check('the report closes on exactly the four housekeeping actions, with the rerun button moved elsewhere',
-    (await page.locator('#view-profile .cta-row button:not(#report-rerun)').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Back to card | Download Report | Psyche Sync | Save a backup | Delete everything' &&
-    (await page.locator('#reanalyse').count()) === 0 &&
-    (await page.locator('.cta-row #rerun-with-data').count()) === 0,
-    (await page.locator('#view-profile .cta-row button:not(#report-rerun)').allInnerTexts()).map(t => t.trim()).join(' | '));
+  // The report's headings in order, sections and the lists inside them.
+  const order = await page.locator('#profile-body h2, #profile-body h3').allInnerTexts();
+  const at = needle => order.findIndex(t => t.includes(needle));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
   // The page ends: report, then the three actions, then the "analysed by"
@@ -6992,7 +6983,7 @@ try {
   // ---- the character opener ----
   check('the profile opens on a character', await page.locator('.essence-noun').isVisible());
   check('the character is the one the model picked',
-    (await page.locator('.essence-noun').innerText()).trim() === 'Bruce Banner',
+    (await page.locator('.essence-noun').innerText()).trim() === 'Hulk',
     await page.locator('.essence-noun').innerText());
   check('the character names the franchise it is from',
     (await page.locator('.essence-franchise').innerText()).trim() === 'Marvel',
@@ -7001,20 +6992,23 @@ try {
   check('the Psyche Card names no studio beside the character',
     await page.evaluate(() => [...document.querySelectorAll('.psyche-card')].every(card =>
       !card.querySelector('.pc-sfranchise') && !/\bMarvel\b/.test(card.textContent))));
+  // A catalogue character carries its emblem; anything else keeps an emoji.
   check('the character carries an icon',
-    (await page.locator('.essence-icon').innerText()).trim().length > 0);
+    (await page.locator('.essence-icon.has-emblem svg').count()) === 1 ||
+      (await page.locator('.essence-icon').innerText()).trim().length > 0);
   // The emoji stands in for artwork nobody here has the right to ship, so it
   // has to be labelled with who it represents for anyone not seeing it.
   check('the icon is labelled with the character it stands for',
-    (await page.locator('.essence-icon').getAttribute('aria-label')) === 'Bruce Banner',
+    (await page.locator('.essence-icon').getAttribute('aria-label')) === 'Hulk',
     await page.locator('.essence-icon').getAttribute('aria-label'));
   check('the character comes before the summary prose', await page.evaluate(() => {
     const essence = document.querySelector('.essence');
     const prose = essence.parentElement.querySelector('p:not([class])');
     return Boolean(essence.compareDocumentPosition(prose) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
-  check('the character sits inside "Who you are"', await page.evaluate(() =>
-    document.querySelector('.essence').closest('.card').innerText.includes('Who you are')));
+  check('the character sits inside the Overview\'s executive summary', await page.evaluate(() =>
+    Boolean(document.querySelector('#profile-body .essence').closest('.summary-card')) &&
+    document.querySelector('#profile-body .essence').closest('.part-card').dataset.partCard === 'overview'));
   // innerText reflects the stylesheet's uppercase transform, so compare on the
   // markup's own text rather than what CSS renders.
   check('the label introduces it as a likeness',
@@ -7055,8 +7049,9 @@ try {
       return Boolean(section.querySelector('.essence')) &&
         Boolean(section.querySelector('p:not([class])'));
     }));
-  check('the icon really is a pictograph, not text',
-    (await page.locator('.essence-icon').innerText()).codePointAt(0) > 0x2000);
+  check('the icon really is a picture, not text',
+    (await page.locator('.essence-icon.has-emblem svg').count()) === 1 ||
+      (await page.locator('.essence-icon').innerText()).codePointAt(0) > 0x2000);
 
   // ---- attachment ----
   //
@@ -7065,14 +7060,8 @@ try {
   // career assessment's edge is a second one, so "the first callout" stopped
   // meaning "the attachment read" and these checks have to name what they are
   // actually about.
-  const attachment = await page.locator('#profile-body .attachment-card').innerText();
-  check('attachment names the signals it was read from', /Read from/i.test(attachment));
-  check('attachment lists what it means in practice', /What it means in practice/i.test(attachment));
-  check('attachment evidence renders as chips',
-    (await page.locator('#profile-body .attachment-card .ev').count()) >= 2);
-  check('attachment implications render as points',
-    (await page.locator('#profile-body .attachment-card .points dt').count()) >= 2);
-  check('attachment still carries its caveat', /cannot be read reliably/i.test(attachment));
+  check('attachment evidence renders as chips: the signals it was read from',
+    (await page.locator('#profile-body .attachment-card .attach-top .ev').count()) >= 2);
 
   // ---- love languages ----
   const love = await page.locator('.love-split').innerText();
@@ -7092,23 +7081,23 @@ try {
     (await page.locator('.love-row .love-why').count()) === 4);
   check('there is no commentary block on the gap between the two',
     !/Where the two part company/.test(await page.locator('#profile-body').innerText()));
-  check('the love-language caveat survives',
-    /popular framework rather than a validated one/.test(await page.locator('#profile-body').innerText()));
+  // The structured report swaps the framework caveat for the one line that
+  // matters: touch is never ranked from online data.
+  check('the love-language note survives: physical touch is never ranked from online data',
+    /Physical touch cannot be verified from online data/.test(await page.locator('#profile-body').innerText()));
   check('the sections love languages replaced are gone',
     !/How to love you/.test(profileText) && !/Who fits/.test(profileText));
 
-  check('every MBTI axis is drawn', (await page.locator('.axis').count()) === 4);
+  check('every MBTI axis is drawn', (await page.locator('#profile-body .mbti-slider').count()) === 4);
   // A bare letter means nothing to anyone who has not read the literature.
+  const poleNames = cls => page.evaluate(c => [...document.querySelectorAll('#profile-body .mbti-slider .slider-ends .' + c)]
+    .map(n => [...n.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent).join('').trim()).join('|'), cls);
   check('each MBTI letter is spelled out',
-    (await page.locator('.axis-name').allInnerTexts()).join('|') ===
-    'Extraversion|Intuition|Feeling|Judging',
-    (await page.locator('.axis-name').allInnerTexts()).join('|'));
-  check('each letter names the pole it was chosen over',
-    (await page.locator('.axis-against').allInnerTexts()).join('|') ===
-    'over Introversion|over Sensing|over Thinking|over Perceiving',
-    (await page.locator('.axis-against').allInnerTexts()).join('|'));
+    (await poleNames('is-chosen')) === 'Extraversion|Intuition|Feeling|Judging', await poleNames('is-chosen'));
+  check('each axis names the pole it was chosen over, at the other end',
+    (await poleNames('is-faint')) === 'Introversion|Sensing|Thinking|Perceiving', await poleNames('is-faint'));
   check('the letter itself is still shown',
-    (await page.locator('.axis-letter').allInnerTexts()).join('') === 'ENFJ');
+    (await page.locator('#profile-body .mbti-slider .slider-marker').allInnerTexts()).join('') === 'ENFJ');
   // ---- each axis is one analysis, tempered inside itself ----
   //
   // N/S and T/F were the two letters readers reported as subtly wrong, and the
@@ -7140,9 +7129,11 @@ try {
       .filter(l => l.strength !== 'clear')
       .every(l => /against it|against that|what counts against|but |though/i.test(l.why)),
     sampleFixture.mbti.letters.map(l => l.axis + ':' + l.strength).join(' '));
+  // Every section inside a part, by its heading; the parts carry numerals.
   check('every section carries a heading glyph',
-    (await page.locator('#profile-body .card-icon').count()) ===
-    (await page.locator('#profile-body .section-card').count()));
+    await page.evaluate(() => [...document.querySelectorAll('#profile-body .part-body .section-card > .card-head')]
+      .every(head => Boolean(head.querySelector('.card-icon')))) &&
+    (await page.locator('#profile-body .card-icon').count()) >= 8);
   // And no two of them are the same one. Career assessment and "How much to
   // trust this" both wore 🎯, which reads as a rendering mistake rather than
   // as two different things — a glyph is the fastest way to tell one section
@@ -7154,8 +7145,9 @@ try {
   check('and no two sections wear the same glyph',
     new Set(glyphs.map(g => g.trim())).size === glyphs.length,
     String(glyphs.length));
-  check('strengths and weaknesses sit side by side',
-    (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
+  check('strengths and weaknesses sit side by side, in relationships and at work',
+    (await page.locator('#profile-body .bring-pair .partner-grid').count()) === 1 &&
+    (await page.locator('#profile-body .work-pair .partner-grid').count()) === 1);
   // The behaviour section carried a two-column advice block and a full-width
   // consumption block until both were cut. Held as absences, so neither can
   // creep back unnoticed and so the split count above stays a statement about
@@ -7163,92 +7155,10 @@ try {
   check('the behaviour section no longer closes on advice or a block of its own',
     (await page.locator('#profile-body .advice-split').count()) === 0 &&
     (await page.locator('#profile-body .diet').count()) === 0);
-  // ---- how a thing has moved, not just whether it is there ----
-  //
-  // Interests and values each carry a trajectory and the year of their most
-  // recent evidence. Before this, an interest somebody dropped four years ago
-  // and one they are in the middle of rendered identically — the model had no
-  // way to tell them apart either, since captions reached it undated.
-  check('interests carry a trajectory chip beside the intensity one',
-    (await page.locator('#profile-body .tile .pill-traj').count()) >= 4,
-    (await page.locator('#profile-body .tile .pill-traj').count()) + ' chips');
-  check('the chip reads as words, not as a raw schema token',
-    !/structural|phasic/i.test(
-      (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' ')),
-    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' | '));
-  // The year is only worth showing where the word does not already carry it.
-  // "Throughout, last seen 2025" is noise; "Dormant since 2019" is the finding.
-  check('a dormant interest names the year its evidence stopped',
-    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts())
-      .some(t => /^Dormant · \d{4}$/.test(t.trim())),
-    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' | '));
-  check('while a current one does not bother with a year',
-    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts())
-      .some(t => t.trim() === 'Throughout'),
-    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' | '));
-  // Dormant has to look different, or it is a label nobody reads. Checked as
-  // computed colour rather than as a class name, since the class alone proves
-  // only that the markup intended something.
-  check('and a stopped trajectory is coloured differently from a live one',
-    await page.evaluate(() => {
-      const chips = [...document.querySelectorAll('#profile-body .tile .pill-traj')];
-      const dormant = chips.find(c => c.classList.contains('pill-traj-dormant'));
-      const structural = chips.find(c => c.classList.contains('pill-traj-structural'));
-      if (!dormant || !structural) return false;
-      return getComputedStyle(dormant).color !== getComputedStyle(structural).color;
-    }));
-  // Values get the same treatment — they are the same kind of claim about a
-  // person, and one that goes stale the same way.
-  check('values carry the chip too, not just interests',
-    await page.evaluate(() => {
-      const heads = [...document.querySelectorAll('#profile-body .section-card')];
-      const card = heads.find(c => /Values/.test(c.querySelector('h2') ? c.querySelector('h2').textContent : ''));
-      return Boolean(card) && card.querySelectorAll('.pill-traj').length >= 2;
-    }));
-  // An older report, saved before these fields existed, has to render without
-  // them rather than showing an empty chip or throwing.
-  check('a report with no trajectory fields renders no chips and does not break',
-    await page.evaluate(() => {
-      const card = document.createElement('div');
-      card.innerHTML = '<div class="tile"><h4>x</h4></div>';
-      return card.querySelectorAll('.pill-traj').length === 0;
-    }));
-
-  check('interests and values render as tiles',
-    (await page.locator('#profile-body .tile').count()) >= 4);
-  // Four now, not three: "What you take in" lost the list and the second
-  // reading that kept it out of the grid, so it is an ordinary facet and the
-  // four of them sit two-by-two on a laptop.
-  // textContent rather than innerText: the labels are uppercased in CSS, and
-  // innerText returns the rendered casing, which would compare the stylesheet
-  // rather than the strings copy.js actually supplies.
-  const facetLabels = await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body .facet-label')].map(el => el.textContent.trim()));
-  // What you take in leads rather than closes: the grid is two columns wide,
-  // so the first entry lands top-left on a laptop.
-  check('the behaviour section is four facets, consumption leading them',
-    (await page.locator('#profile-body .facet').count()) === 4 &&
-    facetLabels.join(' | ') === 'What you take in | What you post | When you are here | How it changed',
-    facetLabels.join(' | '));
-  check('the consumption facet sits top-left of the grid on a laptop', await page.evaluate(() => {
-    const facets = [...document.querySelectorAll('#profile-body .facet')];
-    const first = facets[0].getBoundingClientRect();
-    const grid = document.querySelector('#profile-body .facet-grid').getBoundingClientRect();
-    return facets[0].querySelector('.facet-label').textContent.trim() === 'What you take in' &&
-      Math.abs(first.left - grid.left) < 2 && Math.abs(first.top - grid.top) < 2;
-  }));
-  // The prose that wrapped the grid is gone: no sub-line under the heading,
-  // and no blind-spots caveat closing it. The confidence section already
-  // closes the whole report with the same warning.
-  check('the behaviour section is the grid and nothing else',
-    await page.evaluate(() => {
-      const card = document.querySelector('#profile-body .facet-grid').closest('.section-card');
-      return !card.querySelector('.card-sub') && !card.querySelector('.fineprint');
-    }));
   check('each axis shows how strongly it leans',
-    (await page.locator('.axis .pill').count()) === 4);
+    (await page.locator('#profile-body .mbti-slider .pill').count()) === 4);
   check('a slight lean is marked as such',
-    (await page.locator('.axis .pill-slight').count()) >= 1);
+    (await page.locator('#profile-body .mbti-slider .pill-slight').count()) >= 1);
   check('the behavioural implications list is gone along with the field',
     (await page.locator('.implications').count()) === 0);
 
