@@ -1303,6 +1303,9 @@
       character: (card.essence || {}).character || (out.essence || {}).character,
       franchise: (card.essence || {}).franchise || (out.essence || {}).franchise,
       icon: (card.essence || {}).icon || (out.essence || {}).icon,
+      // The character line, when the card wrote it: the first of the three
+      // the card settles (with the summary and the write-up).
+      why: (card.essence || {}).why || (out.essence || {}).why,
     });
     if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
     // The Overview the reader read free under their card: kept whole.
@@ -6424,7 +6427,7 @@
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
       'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
-      'analysis. It usually takes up to a minute for the personality analysis to be ' +
+      'analysis. It usually takes a few minutes for the personality analysis to be ' +
       'completed. Please be patient.';
     startElapsed('Analysing');
     show('working');

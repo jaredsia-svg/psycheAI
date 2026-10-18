@@ -623,6 +623,22 @@
     return bestCount >= Math.max(2, signals.counts.threads * 0.6) ? best : '';
   }
 
+  /**
+   * How many conversations carry real, repeated exchange: of the threads the
+   * reader wrote in, how many hold at least 10, 50 and 200 of their own
+   * messages. "Spoke in" counts a single reply the same as years of talk, so
+   * on its own it says how far they have reached over the whole span of the
+   * data, not how many people they keep up with. Counts only, never who.
+   */
+  function engagedCounts(ownPerThread) {
+    const list = ownPerThread || [];
+    return {
+      atLeast10: list.filter(n => n >= 10).length,
+      atLeast50: list.filter(n => n >= 50).length,
+      atLeast200: list.filter(n => n >= 200).length,
+    };
+  }
+
   function summariseMessages(signals) {
     const owner = resolveOwner(signals);
     const sent = [];
@@ -659,14 +675,19 @@
     // one. Nothing downstream may treat the two the same.
     let activeThreads = null;
     let activeGroupThreads = null;
+    let engagedThreads = null;
     if (owner) {
       activeThreads = 0;
       activeGroupThreads = 0;
+      const own = [];
       for (const thread of signals.threadSenders) {
-        if (!thread.bySender.get(owner)) continue;
+        const mine = thread.bySender.get(owner) || 0;
+        if (!mine) continue;
         activeThreads++;
         if (thread.group) activeGroupThreads++;
+        own.push(mine);
       }
+      engagedThreads = engagedCounts(own);
     }
 
     // Drop the raw transcript now that the aggregates exist. threadSenders
@@ -681,6 +702,7 @@
       groupThreads: signals.counts.groupThreads,
       activeThreads,
       activeGroupThreads,
+      engagedThreads,
       total: signals.counts.messages,
       sent: sentCount,
       received: receivedCount,
@@ -806,5 +828,5 @@
     return start.trimEnd() + ' … ' + end.trimStart();
   }
 
-  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide, keepEnds };
+  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide, keepEnds, engagedCounts };
 })(typeof window !== 'undefined' ? window : globalThis);

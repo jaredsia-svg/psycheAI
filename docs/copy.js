@@ -806,7 +806,7 @@
     // nothing to pay at all.
     reviewProceed: 'Proceed',
     reviewSend: 'Send this',
-    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. A new Psyche Card now comes with your full Psyche Report: US$5 for both.',
+    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',
     // The sheet for a paid run past the free card: never a card alone since
     // late October 2026, always the card and its report (authoriseAnalysis).
     bundleDialogTitle: 'Your Psyche Card and Psyche Report',

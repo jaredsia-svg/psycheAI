@@ -2357,10 +2357,17 @@ for (const [label, needle] of [
   ['says volume is evidence for neither letter', /\*\*Message volume is not evidence for either letter\.\*\*/],
   ['names the error as running both ways', /The error has run both ways/],
   ['says breadth decides', /\*\*Breadth decides\*\*/],
-  ['reads activeThreads as the breadth number and depth as neutral',
-    /is the breadth number, and depth is neutral/],
-  ['counts a few hundred active conversations as wide reach', /a few hundred is wide reach and a real point towards \*\*E\*\*/],
-  ['refuses to argue a wide count away with a few deep chats', /Never set a few deep chats against a wide count/],
+  // A count of conversations ever written in grows for anyone over years and
+  // counts one reply as a conversation: the breadth number is how many carry
+  // real exchange (engagedThreads), 18 Oct 2026, after a report read 378 such
+  // conversations as "sustained contact across hundreds of contacts".
+  ['reads a count of conversations spoken in as reach over the span, not people kept up with',
+    /\*\*A count of conversations spoken in measures reach over the whole span of the data, not the people they keep up with\.\*\*/],
+  ['and never as how many people they stay in touch with', /it never supports a claim about how many people they stay in touch with/],
+  ['makes the conversations with real, repeated exchange the breadth number', /The breadth number is how many of those conversations carry real, repeated exchange: `directMessages\.engagedThreads`/],
+  ['keeps depth neutral', /Depth is neutral: almost everyone's messages sit mostly in a few conversations/],
+  ['reads totals that include what they never joined as an inbox, not reach', /\*\*A total that includes what they never took part in is an inbox or a list, not reach\.\*\*/],
+  ['gives behaviour inside one conversation to attachment, not breadth', /\*\*How they behave inside one conversation is about that relationship\.\*\*/],
   ['counts plans, gathering people and several circles towards E', /Proposing plans, gathering people, coordinating group outings/],
   ['counts a stated need for time alone towards I', /A stated need for time alone to recharge/],
   ['counts group participation, not group membership, as the stronger evidence',
@@ -2442,7 +2449,10 @@ for (const [label, needle] of [
   ['gives the model a mechanical test for whose handle is whose',
     /any other .?@handle.? is somebody else/],
   ['carries the worked example of a misattributed job',
-    /@mokkzy is the finance professional, the guru and the founder/],
+    /\[P1\] is the ex-banker, the coach and the founder/],
+  // Worked examples use invented markers and figures, never a real reader's
+  // handles or counts, which went out with every request (18 Oct 2026).
+  ['carries no real handle or real reader\'s figure in its examples', /^(?![\s\S]*(?:@mokkzy|@yuhanchong|378 Instagram|64,000|86,000))/],
   ['carries the worked example of a misattributed possession',
     /The reader does not own it and is not a collector/],
   ['refuses to let the correction become "ignore those captions"',
@@ -2460,7 +2470,7 @@ for (const [label, needle] of [
   ['stops the essence pick borrowing somebody else\'s biography',
     /picking a character off a borrowed biography/],
   ['carries the same two-way bar onto the MBTI axis',
-    /\*\*E\*\* is earned with breadth — wide reach, many distinct people, plans proposed and people gathered — and \*\*I\*\* with a narrow circle together with signs of seeking quiet/],
+    /\*\*E\*\* is earned with breadth — many conversations with real exchange, many distinct people, plans proposed and people gathered — and \*\*I\*\* with a narrow circle together with signs of seeking quiet/],
   // Opting out of DMs deletes directMessages outright, taking every breadth
   // ratio with it and leaving publishing volume — the most misleading
   // evidence there is for this trait — as the only social signal left.
@@ -4309,6 +4319,21 @@ check('threads counts the whole inbox, active threads only what was answered',
   withDms.directMessages.activeThreads === 3 &&
   withDms.directMessages.activeThreads < withDms.directMessages.threads,
   withDms.directMessages.activeThreads + ' active of ' + withDms.directMessages.threads);
+// The breadth number since 18 Oct 2026: of the conversations they spoke in,
+// how many hold 10, 50 and 200 of their own messages. Three integers, and
+// the whitelist sends nothing else in their place.
+{
+  const engaged = withDms.directMessages.engagedThreads || {};
+  const sentEngaged = Digest.forModel(Object.assign({}, withDms, { directMessages: Object.assign({}, withDms.directMessages,
+    { engagedThreads: { atLeast10: '4', atLeast50: 2, atLeast200: 0, who: 'a name' } }) })).directMessages.engagedThreads;
+  check('the digest counts conversations with real exchange, never more than the ones spoken in',
+    Number.isInteger(engaged.atLeast10) && engaged.atLeast10 <= withDms.directMessages.activeThreads &&
+      engaged.atLeast50 <= engaged.atLeast10 && engaged.atLeast200 <= engaged.atLeast50 &&
+      IG.engagedCounts([1, 9, 10, 49, 50, 200, 500]).atLeast10 === 5 &&
+      IG.engagedCounts([1, 9, 10, 49, 50, 200, 500]).atLeast200 === 2 &&
+      JSON.stringify(sentEngaged) === JSON.stringify({ atLeast10: 4, atLeast50: 2, atLeast200: 0 }),
+    JSON.stringify({ engaged, sentEngaged }));
+}
 check('a group they were added to but never spoke in does not count as participation',
   withDms.directMessages.groupThreads === 1 && withDms.directMessages.activeGroupThreads === 0,
   withDms.directMessages.groupThreads + ' groups, ' +
@@ -5984,9 +6009,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     prompts.profileBlocks(heavyWithDms, null)[0].text.includes(rendered));
 
   const card = (await mock.analyseCard(digest)).data;
-  check('the mock card is shaped like the schema, with no writing in it',
+  // No explanations, beyond the character line it writes first (18 Oct 2026).
+  check('the mock card is shaped like the schema, with no writing in it but the character line',
     Object.keys(card).sort().join(',') === Object.keys(prompts.FREE_SCHEMA.properties).sort().join(',') &&
-    !JSON.stringify(card).includes('"why"') && !JSON.stringify(card).includes('"reading"'),
+    !JSON.stringify(Object.assign({}, card, { essence: null })).includes('"why"') && !JSON.stringify(card).includes('"reading"'),
     Object.keys(card).join(','));
 
   const anchor = prompts.anchorFrom(card);
@@ -6304,7 +6330,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('structured, one call: the unlock that adds data comes back shaped as the two calls return it, field for field the real schemas ask for',
       one.status === 200 && missing(shape(fresh.freeCard), shape(oneData.freeCard)).length === 0 && missing(fullTwo, fullOne).length === 0 &&
         cardGap.every(k => !inSchema(prompts.STRUCTURED_FREE_SCHEMA, k)) &&
-        fullGap.every(k => !inSchema(prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA, k)),
+        fullGap.every(k => !inSchema(prompts.STRUCTURED_LINE_PINNED_SCHEMA, k)),
       JSON.stringify(one.status) + ' ' + (one.crashed || '') + ' ' + JSON.stringify({ cardGap, fullGap }));
     check('and its values are put back to their allowed spelling (an upper-cased letter strength)',
       oneData.freeCard && oneData.freeCard.mbti.letters.every(l => ['slight', 'moderate', 'clear'].includes(l.strength)));
@@ -6867,14 +6893,25 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const overviewText = prompts.profileBlocks({}, overviewAnchor).map(b => b.text).join('\n');
   check('a card with its Overview anchors its summary, cleaned, and the paid call is told both are settled',
     overviewAnchor.summary === 'You are  steady .  Second paragraph.' &&
-      /Both are settled and your schema has no field for either/.test(overviewText) &&
+      /All are settled and your schema has no field for them/.test(overviewText) &&
       !/keep their ids, names and order exactly/.test(overviewText), JSON.stringify(overviewAnchor.summary));
-  check('and its schema leaves out the summary and the patterns, and nothing else',
+  check('and its schema leaves out the summary, the patterns and the card\'s write-up, and nothing else',
     prompts.REPORT_LAYOUT === 'classic' ||
       (prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
         Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
-          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'patterns,summary' &&
+          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'cardHighlights,patterns,summary' &&
         !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary')));
+  // A card that also wrote its character line (18 Oct 2026) settles the whole
+  // chain: the paid call writes no essence either, and is told so.
+  {
+    const lineAnchor = prompts.anchorFrom(Object.assign({}, overviewCard, { essence: Object.assign({}, overviewCard.essence, { why: 'The same <steady> temper.' }) }));
+    const lineText = prompts.profileBlocks({}, lineAnchor).map(b => b.text).join('\n');
+    check('a card with its character line settles that too: no essence in the paid schema, and the call is told',
+      prompts.REPORT_LAYOUT === 'classic' ||
+        (lineAnchor.essenceWhy === 'The same  steady  temper.' && prompts.fullSchemaFor(lineAnchor) === prompts.STRUCTURED_LINE_PINNED_SCHEMA &&
+          !('essence' in prompts.STRUCTURED_LINE_PINNED_SCHEMA.properties) && /the character line \(`essenceWhy` below\)/.test(lineText)),
+      JSON.stringify(lineAnchor.essenceWhy));
+  }
   check('a pattern without its evidence keeps the old anchor, summary or not',
     !('summary' in prompts.anchorFrom(Object.assign({}, freeCard, { summary: 'Text.' }))));
   const classicAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
@@ -7004,9 +7041,14 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   }
   {
     const order = Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties);
-    check('the structured write-up is written after the patterns it sits above, and told not to repeat them',
-      order.indexOf('cardHighlights') > order.indexOf('patterns') &&
-      /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
+    // One chain since 18 Oct 2026: the character line, the summary, then the
+    // write-up condensed from the two.
+    check('the card writes its character line, then the summary, then the write-up condensed from both',
+      order.indexOf('essence') < order.indexOf('summary') && order.indexOf('summary') < order.indexOf('cardHighlights') &&
+      'why' in prompts.STRUCTURED_FREE_SCHEMA.properties.essence.properties &&
+      /condensed from the character line \(`essence\.why`\) and the executive summary \(`summary`\)/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
+      /Written second, after the character line/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.summary.description) &&
+      /drawn from the character line and the executive summary/.test(prompts.CARD_SCHEMA.properties.headline.description), order.join(','));
     check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
       /one list of exactly three in all/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /under 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&

@@ -2502,6 +2502,68 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### One chain: character line, executive summary, card write-up (18 Oct 2026)
+
+Three short pieces of writing say who the reader is: the character line (`essence.why`, beside the
+character at the top of the Overview), the executive summary (`summary`, the Overview) and the card's
+write-up (`cardHighlights`, its two sentences on the cover, under the `card.headline` one-liner). Each was
+written on its own, held apart by "don't repeat" cross-references, and the paths disagreed on order: the card
+call wrote no character line, the report written to a card wrote a character line told to avoid the card's
+lines and a write-up the page then threw away, and the merged call wrote the character line before the
+write-up it was told to avoid.
+
+Now one chain, the same everywhere, in this order: the **character line** first; the **summary** second,
+building on it rather than retelling the comparison; then the **write-up** and the **headline**, condensed
+from the two. The card call writes all three (`STRUCTURED_FREE_ESSENCE` gains `why`, one `ESSENCE_WHY` for
+both schemas), so the card settles them: a report written to a card that carries its summary leaves out the
+write-up (`STRUCTURED_OVERVIEW_PINNED_SCHEMA`), and to a card that also has its character line, the essence
+too (`STRUCTURED_LINE_PINNED_SCHEMA`, chosen by `anchor.essenceWhy`); `overlayCard` keeps the card's line,
+summary and write-up. The merged call writes the chain in the same order and splits along the line-pinned
+schema. The only cross-references left are between pieces printed side by side: the summary does not retell
+the comparison the line above it makes, and the write-up does not open by naming the character printed
+above it.
+
+### No real reader's figures or handles in the prompts (18 Oct 2026)
+
+A sweep of every prompt for anything tied to one reader's data found three worked examples in the report
+prompt (and so the merged one) built from real reports: "378 Instagram conversations" quoted under three
+sections, "over 64,000 Google searches" against "86,000+", and two real-looking @handles in the
+misattributed-caption examples. Each went out with every request, for every reader: an anchor for the
+model to reach for the same figures, and a third party's handle in a prompt whose whole promise is
+de-identification. The lessons stay; the specifics are gone: "the same count of conversations" under three
+sections, "one figure for their searches … and a different one in another", invented figures (12,000
+searches, 9,000 distinct terms) for naming what a figure counts, and the caption examples rewritten with the
+digest's own `[P1]`/`[P2]` markers. A selftest refuses the old handles and figures in the prompt.
+
+### Breadth is conversations with real exchange, not conversations ever spoken in (18 Oct 2026)
+
+After the symmetric E/I rules a reader who calls himself a slight extravert at best came back a moderate E
+(64), the case resting on "378 active Instagram message threads" — quoted four times — and the Big Five
+line "you sustain contact across hundreds of contacts". `activeThreads` counts every conversation the
+reader ever wrote in, over the whole span of the export: one reply to a story counts the same as years of
+talk, and over fourteen years the number grows for anyone. The morning's rule had called "a few hundred" wide
+reach and a real point towards E; that was this project's own over-correction. The other two E points were
+"initiated 850 conversations in your closest WhatsApp thread" (one person, in a chat the reader picked) and
+"nearly 1,000 Messenger conversations" (Facebook's raw thread count, requests included).
+
+- **A new breadth number.** The browser already tallied each conversation's messages by sender to tell
+  spoken-in threads from the inbox, and threw the tallies away. It now keeps three integers,
+  `directMessages.engagedThreads` = `{ atLeast10, atLeast50, atLeast200 }`: how many of the conversations
+  they wrote in hold at least 10, 50 and 200 of their own messages (`engagedCounts` in `docs/instagram.js`).
+  Messenger gets the same in `facebook.counts.engagedThreads` (`docs/supplement.js`), its `threads` being
+  every conversation file, requests and filtered ones included. Counts only; `forModel` passes exactly the
+  three integers.
+- **The rules, written generally.** A count of conversations spoken in measures reach over the whole span,
+  not the people they keep up with: weak on its own, and never a claim about how many people they stay in
+  touch with; the breadth number is the conversations with real, repeated exchange. Any total that includes
+  what they never took part in — requests, unjoined conversations, Messenger's thread count, friend and
+  follower lists — is an inbox or a list, not reach. Who starts and how fast they reply inside one
+  conversation is attachment's evidence about that tie, never breadth. Depth stays neutral. The "few
+  hundred is wide reach" line is gone; the E bar, the E/I axis and the letter's evidence list now name
+  "conversations with real, repeated exchange". The card prompt carries the short version.
+- `FREE_FIXED_INPUT_TOKENS` 11,400 → 11,600 (11,459 measured), `MERGED_FIXED_INPUT_TOKENS` 43,000 → 43,500
+  (43,322 measured); the merged cap stays $0.184 ($0.1835 at most).
+
 ### The report's character rule matches the card's (18 Oct 2026)
 
 A review of the merged prompt against the card-then-report pair found the report still carrying the base

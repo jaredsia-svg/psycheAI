@@ -540,6 +540,8 @@
       if (!out.threadIndex) Object.defineProperty(out, 'threadIndex', { value: new Map(), enumerable: false, writable: true });
       if (!out.threadIndex.has(key)) out.threadIndex.set(key, out.threadIndex.size);
       const thread = out.threadIndex.get(key);
+      // The reader's own messages per conversation, for engagedThreads below.
+      if (!out.ownByThread) Object.defineProperty(out, 'ownByThread', { value: new Map(), enumerable: false, writable: true });
       out.counts.threads++;
       const list = [];
       for (const msg of messages) {
@@ -549,6 +551,7 @@
         const ts = raw > 1e11 ? Math.round(raw / 1000) : raw;
         noteSpan(out.span, ts);
         if (!(out.owner && sender === out.owner)) out.counts.received++;
+        else out.ownByThread.set(thread, (out.ownByThread.get(thread) || 0) + 1);
         const text = String(fixText((msg && msg.content) || '')).replace(/\s+/g, ' ').trim();
         if (text) list.push({ sender, text, ts });
       }
@@ -625,6 +628,11 @@
     }
 
     out.span = finishSpan(out.span);
+    // `threads` counts every conversation file in the archive, requests and
+    // filtered ones included; this counts the ones with real exchange.
+    if (out.owner && out.ownByThread) {
+      out.counts.engagedThreads = root.PsycheInstagram.engagedCounts([...out.ownByThread.values()]);
+    }
     report({ phase: 'done', done: seen.files, total: seen.files, label: 'Finished reading' });
     return out;
   }

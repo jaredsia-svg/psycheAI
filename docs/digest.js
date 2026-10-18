@@ -976,7 +976,7 @@
   // three free caps still pay for their digests at it.
   // 11,300 once it said who the captions were written for
   // (ACCOUNT_AUDIENCE_RULE, 11,223 measured).
-  const FREE_FIXED_INPUT_TOKENS = 11400;
+  const FREE_FIXED_INPUT_TOKENS = 11600;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -1005,12 +1005,12 @@
   // card's lines and the roast:
   //
   //   both         30,000 out  × $3.75/M = $0.1125
-  //                 43,000 prompt + 51,143 digest × $0.75/M = $0.0706
-  //                 at most $0.1831                    → MERGED_COST_CAP $0.184
+  //                 43,500 prompt + 51,143 digest × $0.75/M = $0.0710
+  //                 at most $0.1835                    → MERGED_COST_CAP $0.184
   //
   // against $0.257 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 43000;
+  const MERGED_FIXED_INPUT_TOKENS = 43500;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
   const MERGED_COST_CAP = 0.184;
 
@@ -1928,6 +1928,10 @@
         // not identify its own owner, which is not the same as zero.
         activeThreads: messages.activeThreads,
         activeGroupThreads: messages.activeGroupThreads,
+        // Of those, how many hold at least 10, 50 and 200 of their own
+        // messages: real, repeated exchange, which a single reply does not
+        // make. Counts only.
+        engagedThreads: messages.engagedThreads,
         totalMessages: messages.total,
         sentByUser: messages.sent,
         receivedByUser: messages.received,
@@ -2960,11 +2964,19 @@
         if (typeof out.rhythm[key] === 'string') out.rhythm[key] = out.rhythm[key].slice(0, 7);
       }
     }
+    // Three small integers or nothing: what engagedCounts writes, and no more.
+    const engagedOf = value => {
+      const e = plain(value);
+      if (!e) return undefined;
+      const n = v => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0);
+      return { atLeast10: n(e.atLeast10), atLeast50: n(e.atLeast50), atLeast200: n(e.atLeast200) };
+    };
     const dm = plain(d.directMessages);
     if (dm) {
       out.directMessages = {
         threads: dm.threads, groupThreads: dm.groupThreads,
         activeThreads: dm.activeThreads, activeGroupThreads: dm.activeGroupThreads,
+        engagedThreads: engagedOf(dm.engagedThreads),
         totalMessages: dm.totalMessages, sentByUser: dm.sentByUser,
         receivedByUser: dm.receivedByUser, averageSentLength: dm.averageSentLength,
         note: dm.note,

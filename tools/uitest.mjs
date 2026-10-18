@@ -14187,7 +14187,7 @@ try {
       await answerReview(rp, { untickTopics: true });
       await rp.waitForSelector('#premium-dialog[open]', { timeout: 60000 });
       check('a second free card for the same Instagram account is refused, and only the card and report together are offered, with why',
-        /already had its free Psyche Card\. A new Psyche Card now comes with your full Psyche Report: US\$5 for both/.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
+        /already had its free Psyche Card\. Unlock your Psyche Card and Psyche Report for US\$5\./.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
           (await rp.locator('#premium-dialog-title').innerText()) === 'Your Psyche Card and Psyche Report' &&
           !/Run your Psyche Card again/.test(await rp.locator('#premium-dialog').innerText()),
         await rp.locator('#premium-dialog').innerText());
