@@ -3017,7 +3017,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
   font-weight: 800; font-size: .85rem; border: 2px solid var(--bg-alt); box-shadow: 0 1px 4px rgba(36, 26, 46, .3);
 }
-.slider-practice { margin: .3rem 0 0; font-size: .92rem; }
 
 /* Motivators: Schwartz's circle beside the reading. */
 .motive-top-grid { display: grid; gap: 1rem; align-items: center; }

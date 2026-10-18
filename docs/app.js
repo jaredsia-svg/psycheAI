@@ -7346,7 +7346,6 @@
         // The behaviours that put the letter here (October 2026), as the
         // Big Five's evidence once was: the paragraph above weighs them.
         evidence(letter.evidence) +
-        (letter.inPractice ? '<p class="slider-practice">' + esc(letter.inPractice) + '</p>' : '') +
         '</div></div>';
     }).join('') + '</div>';
   }

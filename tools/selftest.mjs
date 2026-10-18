@@ -6068,7 +6068,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))
         .replace('# Confidence\n\n' + prompts.CONFIDENCE_SCORING + '\n\n', '')
         .replace('Decide them last, from everything above.', 'Decide them straight after MBTI and the Big Five, from the evidence and those scores.')
-        .replace('Write it last but one, after everything it sums up.', 'Write it after MBTI, the Big Five, the patterns and the character, from those.')) &&
+        .replace('Write it last but one, after everything it sums up.', 'Write it after every section above it in your schema — the type, the scores, the patterns, what drives them, how they connect and how they work — and after the character, from all of those.')) &&
       (prompts.MERGED_SYSTEM.match(/Start from the sources loaded/g) || []).length === 1 &&
       /where they and the rules above differ about one of those fields, these win/.test(prompts.MERGED_SYSTEM) &&
       /# The roast/.test(prompts.MERGED_SYSTEM) && /# Overview/.test(prompts.MERGED_SYSTEM));
@@ -6752,8 +6752,12 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const mbtiOrder = Object.keys(structured.properties.mbti.properties).join();
   const letterOrder = Object.keys(structured.properties.mbti.properties.letters.items.properties).join();
   check('MBTI and the Big Five are written first, MBTI leading, then the patterns, the character and the summary; the type after its letters, each letter after its case',
-    order.slice(0, 7).join() === 'confidence,mbti,bigFive,patterns,essence,summary,cardHighlights' &&
-    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,evidence,choice,strength,inPractice' &&
+    order.slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
+    // The character, summary and write-up after What drives you and How you connect / work.
+    order.slice(order.indexOf('career') + 1, order.indexOf('career') + 4).join() === 'essence,summary,cardHighlights' &&
+    ['interests', 'values', 'beliefs', 'motivators', 'relationship'].every(key => order.indexOf(key) < order.indexOf('essence')) &&
+    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,evidence,choice,strength' &&
+    'inPractice' in prompts.PROFILE_SCHEMA.properties.mbti.properties.letters.items.properties &&
     Object.keys(prompts.MERGED_SCHEMA.properties).slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
     /Decide them straight after MBTI and the Big Five/.test(prompts.STRUCTURED_ADDON) &&
     /\*\*MBTI comes before the Big Five\*\*, on the page and in the order you write/.test(prompts.STRUCTURED_ADDON) &&
@@ -6928,7 +6932,11 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     /never state, hint at or explain it anywhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
       /Gender only decides which characters to choose among, and is never written/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /privately choosing the character's side \(see \*\*essence\*\*\), never written/.test(prompts.FULL_SYSTEM) &&
-      prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
+      // The report's character rule is the card's side rule since 18 Oct 2026.
+      prompts.FULL_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) && !prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
+      !/pick the character before you write anything else/.test(prompts.FULL_SYSTEM + prompts.MERGED_SYSTEM) &&
+      /When the card has already named the character, it is settled/.test(prompts.FULL_SYSTEM) &&
+      /Exactly three behaviours that explain the most/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/never on their gender|never on looks, gender/.test(prompts.FULL_SYSTEM + prompts.STRUCTURED_FREE_SYSTEM + prompts.CLASSIC_FREE_SYSTEM));
   check('the catalogue is balanced: as many women as men, and a retired character is no longer offered',
     ['Mulan', 'Elsa', 'Moana', 'Rapunzel', 'Judy Hopps', 'Joy', 'Wonder Woman', 'Hermione Granger', 'Kuromi',

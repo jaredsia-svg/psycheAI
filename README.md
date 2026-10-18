@@ -2502,6 +2502,30 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### The report's character rule matches the card's (18 Oct 2026)
+
+A review of the merged prompt against the card-then-report pair found the report still carrying the base
+prompt's free-form character rule: "pick the character before you write anything else, then let the rest
+of the profile agree with it", "someone globally famous", examples outside the catalogue (Kevin Flynn,
+Superman) and Elsa, who is in it, as a bad pick, and the old same-sex rule. In the merged call it sat beside
+the card's catalogue rule, and against the scores-first order; in the report written to a card it told the
+model to bend the whole report towards a character already settled. A structured splice replaces it: the
+character comes from the catalogue, after MBTI, the Big Five and the patterns, on the card's own side rule
+(`CHARACTER_SIDE_RULE`: a woman one of the twelve women or the five who are neither, a man likewise), and
+once the card has named it, `essence.why` explains it and nothing else bends to it.
+
+The same day the full and merged schemas moved the character, the summary and the card's write-up to after
+"What drives you" and "How you connect / How you work": `confidence, mbti, bigFive, patterns, interests,
+beliefs, values, (topMotivators,) motivators, relationship, career, essence, summary, cardHighlights`, then
+the premium sections. The character is matched on temperament, drive and how they treat people, and drive
+(the motivators) and how they treat people (the relationships) had been written after it; the summary is
+"the whole report in miniature", closeness and work included. The patterns stay straight after the scores,
+since the sections point back at them. The merged call's copy of the card's summary rule says to write it
+after every section above it and after the character. The card call already picked the character after its
+interests, motivators and values, so its order is unchanged. The card prompt's
+"Two or three" signature patterns now say "Exactly three", as its schema, the report and the merged schema
+already did.
+
 ### MBTI: an evidence list per letter, and J/P read from planning (18 Oct 2026)
 
 Three reports for one reader (14 Oct card-then-report ENTJ, 18 Oct before the E/I fix INTJ, after it ENTP)
@@ -2530,7 +2554,7 @@ the paragraph opened on "Together that is…", pointing at a list the reader had
 evidence is laid out. The page prints the list as the evidence chips under each axis's paragraph
 (`mbtiSlidersHtml`, and the classic `mbtiAxesHtml`), the PDF as small pills under it (`axis`, `evidence`
 option). The paid report pinned to a card keeps writing it (only `choice` and `strength` are pinned).
-`docs/sample.json`'s four letters are rewritten in the new shape. `MERGED_FIXED_INPUT_TOKENS` 42,500 → 43,000
+`docs/sample.json`'s four letters are rewritten in the new shape. The structured layout also drops each letter's `inPractice` line (`structuredMbti`; the page and PDF no longer print it): after the paragraph and its list it was a third telling of the same letter. The classic layout keeps it. `MERGED_FIXED_INPUT_TOKENS` 42,500 → 43,000
 (42,863 measured) and `MERGED_COST_CAP` $0.183 → $0.184 so the merged call still pays for the premium digest.
 
 ### Scores first, and E/I read the same way in both directions (18 Oct 2026)
@@ -2548,8 +2572,8 @@ patterns and `cardHighlights` before `bigFive` and `mbti`, and the prompt said t
 card call wrote the character before its scores too, and every schema wrote `mbti.type` before the letters
 and each letter's `choice` before its `why`. Gemini's `responseJsonSchema` keeps key order, so that is the
 order the model commits in. Now:
-- full and merged: `confidence, mbti, bigFive, patterns, essence, summary, cardHighlights`, then the
-  sections; the patterns are decided "straight after MBTI and the Big Five, from the evidence and those
+- full and merged: `confidence, mbti, bigFive, patterns`, then the sections, with `essence, summary,
+  cardHighlights` after `career` (moved there the same day, below); the patterns are decided "straight after MBTI and the Big Five, from the evidence and those
   scores"; the merged call's copy of the card rules says so in place of the card's "decide them last" and
   "write it last but one";
 - card: `confidence, mbti, bigFive, …, beliefs, essence, summary, …` — the character just before the
@@ -5276,7 +5300,7 @@ here is either this app's own or a published academic model.
 | | Sections |
 |---|---|
 | **Overview** | Executive summary (the character and why, the four facts, the summary; no *In one line* banner, which only repeated the card's headline from the cover) · **Your signature patterns** |
-| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
+| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). Since 18 Oct 2026 the model writes them in this order too, MBTI first, and the extraversion score follows the E/I letter (see Scores first, below) · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
 | **Part 3 – How you connect** | In relationships (love languages, attachment style and ideal partner in one section) |
 | **Part 4 – How you work** | The description and the coach's read as one section under the part's own title, opening on the edge: its two intro paragraphs, `career.workStyle` and `careerAssessment.situation`, said again what the edge and the careers list say, so the structured schema no longer asks for them |

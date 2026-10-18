@@ -2810,7 +2810,7 @@
     if (mbti) {
       const axes = (mbti.letters || []).filter(Boolean);
       const axisCard = letter => out.boxed(() =>
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice, null, { structured: true, evidence: letter.evidence }),
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, null, null, { structured: true, evidence: letter.evidence }),
       { padTop: 6 });
       out.keep(() => {
         out.sectionTitle('MBTI', def('mbti'));
