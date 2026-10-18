@@ -1157,7 +1157,6 @@
     // `noun` is what this field was called before it held a character, so a
     // profile saved before that change still prints a name here.
     const name = essence.character || essence.noun || '';
-    const franchise = essence.franchise || '';
     // The same four sentences the on-screen card shows. `cardBlurb()` in
     // app.js has two further fallbacks for reports written before
     // `cardHighlights` existed, but both of them stitch text out of fields
@@ -1193,7 +1192,6 @@
     // the eyebrow in the second brand colour — which is quieter and, on a page
     // that is otherwise all text, considerably better looking.
     const nameStyle = { size: 26, bold: true, color: ACCENT };
-    const franchiseStyle = { size: 9.8, color: SOFT };
     const blurbStyle = { size: 9.8, color: INK };
     const blurbLeading = 14.6;
     // Room kept clear on the right for the confidence pill, so a long character
@@ -1202,7 +1200,7 @@
     // Capped rather than trusted: `cardHighlights` is four sentences by schema,
     // but a model that ignored that must not push the card off the page.
     const blurbLines = wrap(toWinAnsi(blurb), innerW, blurbStyle).slice(0, 9);
-    const heroH = 30 + 14 + nameLines.length * 30 + (franchise ? 15 : 0) +
+    const heroH = 30 + 14 + nameLines.length * 30 +
       (blurbLines.length ? 10 + blurbLines.length * blurbLeading : 0) + 16;
 
     // ---- measure the three rows underneath it ----
@@ -1319,10 +1317,6 @@
     for (const line of nameLines) {
       doc.draw(line, x, cursor + 22, nameStyle);
       cursor += 30;
-    }
-    if (franchise) {
-      doc.draw(toWinAnsi(franchise), x, cursor + 18, franchiseStyle);
-      cursor += 15;
     }
     cursor += 10;
     for (const line of blurbLines) {
@@ -2413,7 +2407,6 @@
     const S = Copy.STRUCTURED;
     const essence = report.essence || {};
     const name = essence.character || essence.noun || '';
-    const franchise = essence.franchise || '';
     const fullBlurb = String(report.cardHighlights || card.summary || '').trim();
     const blurb = (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim();
     const headline = String((card && card.headline) || (report.card && report.card.headline) || '').trim();
@@ -2459,7 +2452,7 @@
     const headLines = headline ? wrap(toWinAnsi(headline), heroW, headStyle).slice(0, 2) : [];
     const blurbStyle = { size: 8.9, color: mix(WHITE, ACCENT, 0.06) };
     const blurbLines = blurb ? wrap(toWinAnsi(blurb), heroW, blurbStyle).slice(0, 5) : [];
-    const nameBlockH = Math.max(50, 20 + nameLines.length * 27 + (franchise ? 12 : 0));
+    const nameBlockH = Math.max(50, 20 + nameLines.length * 27);
     const heroH = heroPad + 12 + nameBlockH + (headLines.length ? 8 + headLines.length * 15 : 0) +
       (blurbLines.length ? 5 + blurbLines.length * 12.2 : 0) + heroPad;
 
@@ -2593,10 +2586,6 @@
     hy += 12;
     emblemDisc(doc, hx + 24, hy + 25, 24, name);
     nameLines.forEach((line, i) => doc.draw(line, hx + textX, hy + 26 + i * 27, nameStyle));
-    if (franchise) {
-      doc.draw(toWinAnsi(franchise.toUpperCase()), hx + textX, hy + 26 + (nameLines.length - 1) * 27 + 15,
-        { size: 7.4, bold: true, color: mix(WHITE, ACCENT, 0.2), tracking: 1.4 });
-    }
     hy += nameBlockH;
     if (headLines.length) {
       hy += 8;
@@ -2829,9 +2818,8 @@
       const trait = five[key];
       out.boxed(() => {
         out.bipolar(TRAIT_LABELS[key] + (trait.band ? ' · ' + trait.band : ''), trait.score, S.poles[key] || [], S.typicalBand);
-        if (trait.reading) out.body(trait.reading, { size: 9.6, leading: 14 });
-        out.space(5);
-        evidence(trait.evidence);
+        // One line a trait, as on the page.
+        if (trait.reading) out.body(Copy.leadSentence(trait.reading)[0], { size: 9.6, leading: 14 });
       });
     }));
     const wellness = unlocked.wellness;
@@ -2878,41 +2866,22 @@
         }, { top: colours[group], padTop: 13 });
       }));
     }
-    const trend = item => {
-      const trajectory = String((item && item.trajectory) || '').trim();
-      const year = String((item && item.lastSeen) || '').trim();
-      const label = trajectory ? ((TEXT.trajectoryLabels && TEXT.trajectoryLabels[trajectory]) || trajectory) : '';
-      const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
-      return label && stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
-    };
-    const interests = source.interests || [];
-    if (interests.length) {
-      interests.forEach((item, i) => out.keep(() => {
-        if (!i) out.sectionTitle(TEXT.interests, def('interests'));
-        out.tile(item.name, [item.intensity, trend(item)].filter(Boolean).join(' · '), item.detail, item.evidence);
-      }));
-    } else {
-      out.sectionTitle(TEXT.interests, def('interests'));
-      out.muted(TEXT.interestsEmpty);
-    }
-    // Values and beliefs as one list, drawn alike, as on the page: no
-    // subsections and no tag saying which list the model filed each under.
-    const values = (source.values || []).filter(item => item && item.value);
+    // What they stand for and every interest, a name and one line each,
+    // under the motivators in the same part: one section, as on the page.
     const words = text => String(text || '').toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3);
+    const values = (source.values || []).filter(item => item && item.value);
     const valueWords = new Set(values.flatMap(item => words(item.value)));
     const beliefs = (source.beliefs || []).filter(item => item && item.belief &&
       !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
-    // Four at most — three values and one belief — as on the page.
-    const standFor = values.slice(0, 3).map(item => [item.value, trend(item), item.detail, item.evidence])
-      .concat(beliefs.slice(0, 1).map(item => [item.belief, '', item.detail, item.evidence]));
-    if (standFor.length) {
-      standFor.forEach((args, i) => out.keep(() => {
-        if (!i) out.sectionTitle(TEXT.valuesBeliefs, def('values'));
-        out.tile(...args);
+    const standFor = values.slice(0, 3).map(item => [item.value, item.detail])
+      .concat(beliefs.slice(0, 1).map(item => [item.belief, item.detail]));
+    const interestLines = (source.interests || []).filter(item => item && item.name)
+      .map(item => [item.name, Copy.leadSentence(item.detail || '')[0]]);
+    for (const [title, rows] of [[S.drivesValues, standFor], [S.drivesInterests, interestLines]]) {
+      rows.forEach(([name, line], i) => out.keep(() => {
+        if (!i) out.h3(title);
+        out.tile(name, '', line, '');
       }));
-    } else {
-      out.sectionTitle(TEXT.valuesBeliefs, def('values'));
-      out.muted(TEXT.valuesEmpty);
     }
 
     // 03: how you connect.
@@ -2968,10 +2937,13 @@
       { text: item.title, style: T_TITLE, leading: 14, before: i ? 9 : 0 },
       item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
     ]).filter(Boolean);
-    out.space(10);
-    out.pairedPanels(
-      { title: S.whatYouBring, color: GOOD, fill: GOOD_WASH, rows: pointRows(relationship.strengths) },
-      { title: S.whereItGetsHard, color: WARN, fill: WARN_WASH, rows: pointRows(relationship.weaknesses) });
+    // Its own heading, as on the page, kept with the two panels under it.
+    out.keep(() => {
+      out.subhead(S.strengthsFriction);
+      out.pairedPanels(
+        { title: S.whatYouBring, color: GOOD, fill: GOOD_WASH, rows: pointRows(relationship.strengths) },
+        { title: S.whereItGetsHard, color: WARN, fill: WARN_WASH, rows: pointRows(relationship.weaknesses) });
+    });
     if (idealPartner) {
       out.keep(() => {
         out.subhead(S.whoSuitsYou);
@@ -3056,12 +3028,15 @@
       develop.forEach((item, i) => devCard(item, i, develop, S.titles.develop, WARN, WARN_WASH));
       // Every action in the report on one plan, a row per step: the develop
       // areas', the work coaching's and the wellbeing suggestions'.
-      const actions = develop.flatMap(item => (item.actions || []).filter(a => a && a.step)
-        .map(a => ({ horizon: a.horizon, step: a.step, from: item.title })))
-        .concat(((coaching && coaching.actions) || []).filter(a => a && a.title)
-          .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork })))
-        .concat(((wellness && wellness.suggestions) || []).filter(a => a && a.title)
-          .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing })));
+      // At most five, taken in turns across the three, as on the page.
+      const actions = Copy.planPick([
+        develop.flatMap(item => (item.actions || []).filter(a => a && a.step)
+          .map(a => ({ horizon: a.horizon, step: a.step, from: item.title }))),
+        ((coaching && coaching.actions) || []).filter(a => a && a.title)
+          .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork })),
+        ((wellness && wellness.suggestions) || []).filter(a => a && a.title)
+          .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing })),
+      ], Object.keys(TEXT.careerHorizons), Copy.PLAN_STEPS);
       const horizons = Object.keys(TEXT.careerHorizons);
       const groups = horizons.map((horizon, i) => ({ horizon,
         here: actions.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon))) }))

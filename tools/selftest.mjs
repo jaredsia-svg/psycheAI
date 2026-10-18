@@ -6684,14 +6684,36 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     !('enneagram' in structured.properties) &&
     Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
     Object.keys(classicSchema.properties).filter(key => !['activity', 'card', 'essence', 'cardHighlights', 'values', 'beliefs',
-      'summary', 'career', 'wellness', 'attachment', 'careerAssessment'].includes(key)).every(key =>
+      'summary', 'career', 'wellness', 'attachment', 'careerAssessment', 'bigFive', 'mbti', 'interests'].includes(key)).every(key =>
       structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)) &&
     // Reshaped rather than dropped: the same sections, leaner.
-    ['summary', 'career', 'wellness', 'attachment', 'careerAssessment'].every(key => structured.required.includes(key)) &&
+    ['summary', 'career', 'wellness', 'attachment', 'careerAssessment', 'bigFive', 'mbti', 'interests'].every(key => structured.required.includes(key)) &&
     // Values and beliefs keep their fields, capped at four between them.
     structured.properties.values.items === classicSchema.properties.values.items &&
     structured.properties.beliefs.items === classicSchema.properties.beliefs.items,
     Object.keys(structured.properties).join(','));
+  // The report cut down (October 2026): the Big Five keeps all five scores and
+  // bands, so the E/I letter still reads off extraversion, but each trait is
+  // one line with no evidence list; MBTI's E/I `why` carries the breadth
+  // evidence instead. Interests lose their evidence: three lines are printed.
+  {
+    const five = structured.properties.bigFive.properties;
+    const why = structured.properties.mbti.properties.letters.items.properties.why.description;
+    const choice = structured.properties.mbti.properties.letters.items.properties.choice.description;
+    check('structured Big Five: all five traits, each a score, a band and one line, no evidence list; MBTI carries the extraversion evidence',
+      Object.keys(five).join() === 'openness,conscientiousness,extraversion,agreeableness,neuroticism' &&
+      Object.values(five).every(t => Object.keys(t.properties).join() === 'score,band,reading' && /^One sentence/.test(t.properties.reading.description)) &&
+      /55 or higher takes E, 45 or lower takes I/.test(choice) &&
+      /only place the extraversion evidence is laid out/.test(why) && !/depth a Big Five trait gets/.test(why) &&
+      /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /cite a breadth number in the E\/I axis's `why`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /Cite real evidence per trait/.test(prompts.CLASSIC_FULL_SYSTEM));
+    check('structured interests: no evidence list, one line each, every one printed',
+      !('evidence' in structured.properties.interests.items.properties) &&
+      /^One sentence/.test(structured.properties.interests.items.properties.detail.description) &&
+      'evidence' in classicSchema.properties.interests.items.properties &&
+      /prints every one/.test(structured.properties.interests.description));
+  }
   check('its shareable card keeps the same fields, and none is the Enneagram',
     Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
     !('enneagram' in structured.properties.card.properties));

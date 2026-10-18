@@ -75,7 +75,7 @@
     "openness": {
       "score": 61,
       "band": "moderate",
-      "reading": "Curious inside familiar territory rather than restless for new. The same three trailheads for four years, but the books and routes within them keep changing.",
+      "reading": "Curious inside familiar territory: the same three trailheads for four years, with the books and routes within them always changing.",
       "evidence": [
         "Captions reference 14 distinct book titles across 2022–2025, none repeated",
         "Location tags cluster on three parks, 78% of all tagged posts"
@@ -84,7 +84,7 @@
     "conscientiousness": {
       "score": 84,
       "band": "very high",
-      "reading": "The strongest signal here. You post plans before they happen and follow through after, and the gap between the two is small.",
+      "reading": "Your strongest trait: you post plans before they happen, follow through after, and the gap between the two is small.",
       "evidence": [
         "47 posts naming a specific date or deadline, 41 followed by a completion post",
         "Weekly posting variance is low — a steady 2–3 per week for 30 of 48 months"
@@ -93,7 +93,7 @@
     "extraversion": {
       "score": 52,
       "band": "moderate",
-      "reading": "Social in bursts, solitary in between — not the same as being an extrovert. You enjoy people and appear to need recovering from them.",
+      "reading": "Social in bursts and solitary in between: you enjoy people, then appear to need recovering from them.",
       "evidence": [
         "Group posts cluster into 9 bursts of 3–5 days, each followed by a 10+ day gap",
         "You publish far less than you consume: 312 posts against 8,400 likes"
@@ -102,7 +102,7 @@
     "agreeableness": {
       "score": 79,
       "band": "high",
-      "reading": "Almost every comment you write is about somebody else's news. You disagree rarely, and soften it first when you do.",
+      "reading": "Almost every comment you write is about somebody else's news, and on the rare occasions you disagree, you soften it first.",
       "evidence": [
         "84% of your comments appear on other people's posts, not replies on your own",
         "Recurring openers: 'so proud of', 'this is so you', 'let me know if'"
@@ -111,7 +111,7 @@
     "neuroticism": {
       "score": 44,
       "band": "moderate",
-      "reading": "Steadier than most, with a tell: posting drops sharply for a week or two after your busiest stretches. A battery you deplete and refill on schedule.",
+      "reading": "Steadier than most, with one tell: your posting drops sharply for a week or two after your busiest stretches.",
       "evidence": [
         "Caption length drops ~40% during the quiet stretches after event clusters",
         "Two multi-week gaps follow the account's two busiest months"

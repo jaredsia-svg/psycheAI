@@ -3398,7 +3398,6 @@ details.more[open] > summary::after { content: ' ▴'; }
    write-up, a line under each pattern, and fuller panels. */
 .pc-smedal { color: var(--accent); }
 .pc-emblem { width: 66px; height: 66px; display: block; }
-.pc-sfranchise { margin: 6px 0 0; font-size: 24px; letter-spacing: .14em; text-transform: uppercase; opacity: .8; font-weight: 600; }
 .pc-shero {
   background:
     radial-gradient(circle at 92% 8%, rgba(255, 255, 255, .18) 0 120px, transparent 121px),
@@ -3516,7 +3515,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .pc-slab span:first-child { width: 42px; height: 42px; font-size: 23px; }
 .pc-sstrength { font-size: 21px; padding: 3px 13px; }
 .pc-skicker { font-size: 25.5px; }
-.pc-sfranchise { font-size: 25.5px; }
 .pc-spatterns .pc-snum, .pc-smotives .pc-snum { width: 44px; height: 44px; font-size: 23.5px; }
 .pc-sfoot { font-size: 21.5px; }
 .pc-ring-text { font-size: 21.5px; }
@@ -5140,25 +5138,24 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-card { zoom: 1.1; }
 }
 
-/* The green ticks with their day under them; a tap opens who wrote it and
-   when, in a bubble across the tile (hubStamp). It replaces the line that sat
-   under the hub. */
-.hub-stamp { position: static; margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 0; border: 0; background: none; font: inherit; color: var(--good); cursor: pointer; }
+/* The green ticks with their day under them (hubStamp). Who wrote it and
+   when is in the tile's tooltip; it replaces the line that sat under the hub. */
+.hub-stamp { position: static; margin-left: auto; cursor: help; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 0; border: 0; background: none; font: inherit; color: var(--good); }
 .hub-l1 > .hub-badge[hidden] + .hub-stamp { margin-left: auto; }
 .hub-stamp .hub-svg { width: 18px; height: 18px; stroke-width: 2.6; }
 .hub-stamp small { font-size: .62rem; font-weight: 600; line-height: 1; color: var(--ink-soft); white-space: nowrap; }
 .hub-stamp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-.hub-stamp-pop { position: absolute; z-index: 6; top: 2.7rem; left: .5rem; right: .5rem; padding: .55rem .7rem; border-radius: 10px;
-  background: #2a1838; color: #fff; font-size: .74rem; font-weight: 500; line-height: 1.45; text-align: left;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
-.hub-stamp-pop[hidden] { display: none; }
-.hub-stamp-pop b { color: #fff; }
-.hub-stamp-pop::before { content: ""; position: absolute; top: -5px; right: 1.3rem; width: 10px; height: 10px; background: #2a1838; transform: rotate(45deg); }
-@media (max-width: 759px) {
-  .hub-stamp-pop { top: calc(100% - .4rem); }
-  .hub-stamp-pop::before { right: calc(50% + 1.3rem); }
-}
+/* The tick and the numbers on Psyche Sync and Ask PsycheAI show their tile's
+   tooltip on hover, as the name does (a tap opens it on a phone: app.js). Who
+   made the card or report is its last line. */
+.hub-l1:has(.hub-stamp:hover) > .hub-tip-text, .hub-l1:has(.hub-stamp:focus-visible) > .hub-tip-text,
+.hub-l1:has(.hub-num:hover) > .hub-tip-text { display: block; }
+.hub-l1 .hub-num { cursor: help; }
+.hub-l1:has(.hub-num:hover) .hub-name { color: var(--accent); }
+.hub-tip-text { pointer-events: none; }
+.hub-tip-made { display: block; margin-top: .4rem; padding-top: .4rem; border-top: 1px solid rgba(255, 255, 255, .18); color: #e8dcf4; }
+.hub-tip-made b { color: #fff; font-weight: 700; }
 
 /* Your Data's one plain way in: Add / change data, filled, after the chips. */
 .hub-change { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; padding: .4rem .8rem;
@@ -5189,3 +5186,24 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (min-width: 1000px) and (min-height: 520px) {
   #view-profile.profile-paid .cta-row #report-rerun { display: grid !important; }
 }
+
+/* My Report's header: the parts-and-pages pill, then Signal strength, its
+   score in the hub's ring; a tap opens the Signal strength popout. */
+.report-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .6rem; margin-bottom: .7rem; }
+.report-hero-meta .scan-eyebrow { margin: 0; }
+.report-hero-signal { display: inline-flex; align-items: center; gap: .45rem; padding: .18rem .7rem .18rem .2rem; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-alt)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.report-hero-signal:hover { background: color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+.report-hero-signal .hub-ring { width: 28px; height: 28px; }
+.report-hero-signal .hub-ring b { width: 22px; height: 22px; font-size: .64rem; letter-spacing: 0; background: color-mix(in srgb, var(--accent) 8%, var(--bg-alt)); }
+@media print { .report-hero-signal { display: none; } }
+
+/* Part 02 as one box (October 2026): under the motivators, what they stand
+   for and three interests, a bold name and one line each. */
+.drive-lines { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .5rem; }
+.drive-lines li { padding: .55rem .8rem; border-radius: 12px; background: color-mix(in srgb, var(--accent) 5%, var(--bg-alt));
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent); line-height: 1.5; }
+.drive-lines b { display: block; color: var(--ink); }
+.drive-lines span { color: var(--ink-soft); font-size: .94rem; }
+@media (min-width: 720px) { .drive-lines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -79,6 +79,40 @@
 
   // A paragraph's first sentence and the rest, for a lead set in bold: split
   // at the first full stop, ! or ? followed by a capital, so "e.g. a" stays whole.
+  /**
+   * The plan's steps, at most `max`, chosen across its sources (the
+   * development areas', the work coaching's, the wellbeing suggestions'):
+   * each list is strongest first, so they are taken in turns, first of each,
+   * then second of each. One step per horizon is taken first where there is
+   * one, so the plan still runs from this week to this year. A step that
+   * repeats another's words is left out. Kept in that turn order.
+   */
+  function planPick(lists, horizons, max) {
+    const queue = [];
+    const seen = new Set();
+    const longest = Math.max(0, ...lists.map(list => list.length));
+    for (let i = 0; i < longest; i++) {
+      for (const list of lists) {
+        const item = list[i];
+        const key = item && String(item.step || item.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        queue.push(item);
+      }
+    }
+    const chosen = new Set();
+    for (const horizon of horizons) {
+      const first = queue.find(item => !chosen.has(item) && item.horizon === horizon);
+      if (first && chosen.size < max) chosen.add(first);
+    }
+    for (const item of queue) {
+      if (chosen.size >= max) break;
+      chosen.add(item);
+    }
+    return queue.filter(item => chosen.has(item));
+  }
+  const PLAN_STEPS = 5;
+
   const leadSentence = text => {
     const value = String(text || '').trim();
     const match = value.match(/^([\s\S]+?[.!?]["\u201d\u2019)]?)\s+(?=["\u201c\u2018(]?[A-Z])([\s\S]+)$/);
@@ -1392,9 +1426,9 @@
         // One paragraph naming the five features; each {name} is a small
         // button (the names in introLinks). On a phone each clause ends its
         // own line, so the buttons line up down the right.
-        introPaid: '{card} – your personality on one card, read from your own data. Go deeper in your {report}, ' +
+        introPaid: 'This is your {card} – your personality on one card, read from your own data. Go deeper in your {report}, ' +
           'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
-        introFree: '{card} – your personality on one card, read from your own data. Unlock the reasoning in your {report}, ' +
+        introFree: 'This is your {card} – your personality on one card, read from your own data. Unlock the reasoning in your {report}, ' +
           'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
         introLinks: { card: 'Psyche Card', report: 'Psyche Report', sync: 'Psyche Sync', ask: 'Ask PsycheAI', hub: 'Psyche Hub' },
         hover: 'Hover over any part of your card to learn more about your personality.',
@@ -1472,6 +1506,10 @@
     // How they handle disagreement: the card's conflict style, which the
     // attachment read explains (attachment.conflict). A chip and an unlock row.
     conflictStyle: 'Conflict style',
+    strengthsFriction: 'Strengths and friction',
+    // Part 02's one box: the motivators, then these two short lists.
+    drivesValues: 'Values & beliefs',
+    drivesInterests: 'Interests',
     whatYouBring: 'What you bring',
     whereItGetsHard: 'Where it gets hard',
     whoSuitsYou: 'Who suits you',
@@ -1636,6 +1674,10 @@
   let artDrawn = 0;
 
   /** The scene for a character, as SVG markup, or '' for any other name. */
+  // A round tile's square, where a scene's subject sits lower than the usual
+  // upper right: Woody's boot stands on the ground, and the usual square
+  // showed only its shaft.
+  const ART_CROPS = { Woody: '200 94 336 336' };
   function characterArt(character, className, crop) {
     // Own properties only: a name such as "toString" from someone else's card
     // must find nothing, not a function.
@@ -1646,7 +1688,7 @@
     const id = 'pc-art-' + (++artDrawn);
     // A crop is the subject alone, for a small round tile: the right of the
     // scene, where each drawing puts it, away from the fade on the left.
-    const box = crop ? '220 20 300 300" preserveAspectRatio="xMidYMid slice' : '0 0 520 440" preserveAspectRatio="xMaxYMax slice';
+    const box = crop ? (ART_CROPS[name] || '220 20 300 300') + '" preserveAspectRatio="xMidYMid slice' : '0 0 520 440" preserveAspectRatio="xMaxYMax slice';
     return '<svg class="' + (className || 'pc-art') + '" viewBox="' + box + '" ' +
       'aria-hidden="true" focusable="false">' + art.replace(/\{id\}/g, id) + '</svg>';
   }
@@ -1777,7 +1819,7 @@
   }
 
   root.PsycheCopy = {
-    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, leadSentence, CARD_ICONS,
+    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, leadSentence, planPick, PLAN_STEPS, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
     CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, CHARACTER_SYNCS, syncsOf, LINE_ICONS, lineIcon, iconHtml, gentleAttachment,
   };
