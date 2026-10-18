@@ -2518,12 +2518,14 @@ The changes:
   five years up to the export's latest message, and send `engagedThreads.last5Years`: how many
   conversations they wrote in then, and how many hold 10, 50 and 200 of their own messages (`instagram.js`
   `recentPerThread`, Messenger in `supplement.js`; `forModel` passes the five integers). The scorer reads
-  those where present, and takes the larger of Instagram and Messenger, never their sum: the same friends
-  are on both. The share is read inside that window.
+  only those, Instagram's and Messenger's added together; a source without them (a digest built before
+  this) adds nothing. The share is the five-year sustained count over the five-year conversations written
+  in.
 - **A count weighs less than words.** Over 100 sustained conversations is now a medium E; 50–100 a weak
   E; under 20 a weak I.
-- **Group chats are computed.** The row comes from `activeGroupThreads`: weak E from 3, medium from 10,
-  nothing at 0. The model may no longer enter it.
+- **Group chats count for neither letter**, busy or empty. Whether someone group-chats on these apps is a
+  habit of the app, not of the person. The row is gone from the rubric, a ledger that names it is
+  dropped, and the never-counted list says so.
 - **`reach-out` means beyond the usual circle.** Plans for the same friends, however often, are
   `convenes-known-circle`, which counts neither way.
 - **Strength is stricter.** `moderate` needs a margin of a third with 6 points in play (was a quarter with

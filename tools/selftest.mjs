@@ -1435,7 +1435,7 @@ check('the method: the model tags, the code adds up, both sides searched as hard
   /\*\*One entry per row and letter\*\*/.test(ledgerRules) &&
   /Add it up yourself before you write `choice`, `strength` or anything that names the type/.test(ledgerRules));
 check('the computed rows are the code\'s, never the model\'s',
-  /\*\*Never the computed rows\.\*\*/.test(ledgerRules) && /`engagedThreads`/.test(ledgerRules) && /`searchShapes`/.test(ledgerRules));
+  /\*\*Never the computed rows\.\*\*/.test(ledgerRules) && /`engagedThreads\.last5Years`, Instagram and Messenger together/.test(ledgerRules));
 check('volume is never in a ledger',
   /\*\*Volume\.\*\* Messages sent, comments written, posts published, accounts followed/.test(ledgerRules));
 check('totals that include what they never joined are not reach, and activeThreads is reach over years',
@@ -1454,7 +1454,7 @@ check('the platform\'s genre: a camera is not S, warmth is not F, a topic is not
   /a verdict made in public anyway counts towards T/.test(ledgerRules) &&
   /A topic is not a thinking style/.test(ledgerRules));
 check('a blank is never evidence',
-  /\*\*A blank\.\*\* No group chats, no close-friends list/.test(ledgerRules) &&
+  /\*\*A blank\.\*\* No close-friends list/.test(ledgerRules) &&
   /A missing behaviour is evidence only where you would have expected to see it/.test(ledgerRules));
 check('no direct messages means no conversation rows and E/I near the middle',
   /`coverage\.directMessagesIncluded` is false, or they barely use direct messages/.test(ledgerRules) &&
@@ -1470,14 +1470,15 @@ check('base rates: most people sit near the middle',
 check('the old prose sections are gone, not kept beside the ledger',
   !/Reading extraversion fairly —/.test(sys) && !/N\/S and T\/F have the same problem/.test(sys) &&
   !/Start at 50\. Go above about 60/.test(prompts.FREE_SYSTEM));
-check('the Big Five extraversion bullet follows the ledger and bans volume and the empty group life',
+check('the Big Five extraversion bullet follows the ledger and bans volume and group chats',
   /For \*\*extraversion\*\*, the score follows the E\/I ledger/.test(sys) &&
-  /Message volume and the absence of group chats are evidence for it in neither direction/.test(sys));
+  /Message volume and group chats, busy or empty, are evidence for it in neither direction/.test(sys));
 // ---------- the MBTI ledger, added up (lib/mbtiScore.js) ----------
 {
   const S = mbtiScore;
   const dm = (sustained, active, sent = 5000, spanDays = 2000) => ({
-    directMessages: { activeThreads: active, sentByUser: sent, engagedThreads: { atLeast10: sustained * 2, atLeast50: sustained, atLeast200: 0 } },
+    directMessages: { activeThreads: active, sentByUser: sent, engagedThreads: { atLeast10: sustained * 2, atLeast50: sustained, atLeast200: 0,
+      last5Years: { active, atLeast10: sustained * 2, atLeast50: sustained, atLeast200: 0 } } },
     rhythm: { spanDays },
   });
   const rowOf = (digest, row) => S.computedPieces(digest)['E/I'].find(p => p.row === row) || null;
@@ -1501,28 +1502,30 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
   check('ledger: barely using direct messages counts neither way',
     S.computedPieces(dm(2, 10, 300))['E/I'].length === 0 && S.computedPieces({})['E/I'].length === 0 &&
     S.computedPieces({ directMessages: { activeThreads: null, sentByUser: 9000 } })['E/I'].length === 0);
-  // The last five years where the digest gives them, and the larger of
-  // Instagram and Messenger, never their sum (a reader's 40 and 126 from 2007
-  // made 166, October 2026).
+  // Only the last five years, Instagram and Messenger together (a reader's
+  // lifetime 40 and 126, Messenger's from 2007, made 166: October 2026).
   const recentDm = (life, recent, recentActive) => {
     const out = dm(life, 378, 10143, 5098);
     out.directMessages.engagedThreads.last5Years = { active: recentActive, atLeast10: recent * 2, atLeast50: recent, atLeast200: 0 };
     return out;
   };
-  check('ledger: the last five years are read where the digest gives them, with their own share',
-    rowOf(recentDm(120, 30, 200), 'sustained').to === 'neutral' && /in the last five years, of 200 they wrote in/.test(rowOf(recentDm(120, 30, 200), 'sustained').note) &&
+  const withFb = (digest, engagedThreads) => Object.assign(digest, { facebook: { counts: { engagedThreads } } });
+  check('ledger: only the last five years count, with their own share',
+    rowOf(recentDm(120, 30, 200), 'sustained').to === 'neutral' &&
+    /^30 Instagram conversations with 50 or more of their own messages in the last five years, of 200 they wrote in/.test(rowOf(recentDm(120, 30, 200), 'sustained').note) &&
     (rowOf(recentDm(120, 40, 50), 'share') || {}).to === 'E');
-  check('ledger: Instagram and Messenger are never added: the larger counts',
-    rowOf(Object.assign(dm(40, 378), { facebook: { counts: { engagedThreads: { atLeast50: 126 } } } }), 'sustained').weight === 'medium' &&
-    /^126 Messenger conversations/.test(rowOf(Object.assign(dm(40, 378), { facebook: { counts: { engagedThreads: { atLeast50: 126 } } } }), 'sustained').note) &&
-    rowOf(Object.assign(dm(40, 378), { facebook: { counts: { engagedThreads: { atLeast50: 30 } } } }), 'sustained').to === 'neutral' &&
-    rowOf(Object.assign(recentDm(40, 25, 150), { facebook: { counts: { engagedThreads: { atLeast50: 126, last5Years: { active: 60, atLeast50: 12 } } } } }), 'sustained').note.startsWith('25 Instagram'));
-  // Group chats from the count, never from the model.
-  const groups = n => Object.assign(dm(30, 400), { directMessages: Object.assign(dm(30, 400).directMessages, { activeGroupThreads: n }) });
-  check('ledger: group chats are computed from activeGroupThreads, weak from 3, medium from 10, nothing at 0',
-    rowOf(groups(0), 'group-chats') === null && rowOf(groups(2), 'group-chats') === null &&
-    rowOf(groups(4), 'group-chats').weight === 'weak' && rowOf(groups(12), 'group-chats').weight === 'medium' &&
-    !('group-chats' in S.RUBRIC['E/I']) && S.COMPUTED.includes('group-chats'));
+  check('ledger: Instagram and Messenger are added together, over the last five years only',
+    /^60 Instagram and Messenger conversations/.test(rowOf(withFb(recentDm(40, 25, 150), { atLeast50: 126, last5Years: { active: 80, atLeast50: 35 } }), 'sustained').note) &&
+    rowOf(withFb(recentDm(40, 25, 150), { atLeast50: 126, last5Years: { active: 80, atLeast50: 35 } }), 'sustained').weight === 'weak' &&
+    rowOf(withFb(recentDm(40, 25, 150), { atLeast50: 126 }), 'sustained').note.startsWith('25 Instagram conversations'));
+  check('ledger: without five-year counts, conversations count neither way',
+    S.computedPieces({ directMessages: { activeThreads: 378, sentByUser: 10143, engagedThreads: { atLeast50: 166 } } })['E/I'].length === 0);
+  check('ledger: group chats count for neither letter, busy or empty',
+    !S.computedPieces(Object.assign(dm(30, 400), { directMessages: Object.assign(dm(30, 400).directMessages, { activeGroupThreads: 40 }) }))['E/I'].some(p => p.row === 'group-chats') &&
+    !('group-chats' in S.RUBRIC['E/I']) && !S.COMPUTED.includes('group-chats') &&
+    S.cleanLedger('E/I', [{ row: 'group-chats', pointsTo: 'E', note: 'busy groups' }]).length === 0 &&
+    /\*\*Group chats\*\*, busy or empty/.test(prompts.MBTI_LEDGER_RULES) &&
+    /Message volume and group chats, busy or empty, are evidence for it in neither direction/.test(prompts.PROFILE_SYSTEM));
   check('ledger: search shapes are no longer a row: a search box is mostly practical for everyone',
     S.computedPieces({ google: { counts: { searchShapes: { conceptual: 509, practical: 7330 } } } })['N/S'].length === 0 &&
     !S.COMPUTED.includes('search-shapes') &&
@@ -5959,7 +5962,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const RULES = [
     ['activeThreads is reach over years, not people kept up with', /`activeThreads` counts every conversation they ever wrote in/],
     ['the extraversion score follows the E/I ledger', /The extraversion score is set by the code from the E\/I ledger/],
-    ['an empty group-chat list is no evidence', /\*\*A blank\.\*\* No group chats/],
+    ['group chats are no evidence, busy or empty', /\*\*Group chats\*\*, busy or empty/],
     ['liked captions are other people\'s words', /likedPostCaptions[\s\S]{0,80}other people/i],
     ['the redaction markers are blanks', /PsycheUser[\s\S]{0,800}as (?:a )?blanks?\b/],
     ['the author is not the subject', /author is not (?:automatically )?the subject/i],
