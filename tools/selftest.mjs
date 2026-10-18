@@ -1412,7 +1412,7 @@ check('`why` names no strength word and no score, since the code sets them',
   /It names no strength word and no score: the code sets those/.test(prompts.PROFILE_SYSTEM));
 check('choice and strength are what the ledger adds up to, and the code checks them',
   /The code checks the sum/.test(letterDesc('choice')) && /The code checks it/.test(letterDesc('strength')) &&
-  /`clear` from three-fifths with at least 10 in play, `moderate` from a quarter with at least 5/.test(letterDesc('strength')));
+  /`clear` from two-thirds with at least 10 in play, `moderate` from a third with at least 6/.test(letterDesc('strength')));
 check('the card schema scores its letters from the same ledger and strength rule',
   (() => {
     const free = prompts.CLASSIC_FREE_SCHEMA.properties.mbti.properties.letters.items.properties;
@@ -1481,15 +1481,16 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
     rhythm: { spanDays },
   });
   const rowOf = (digest, row) => S.computedPieces(digest)['E/I'].find(p => p.row === row) || null;
-  // The bands on conversations with 50 or more of their own messages.
-  check('ledger: over 100 sustained conversations is a strong E, computed from the digest',
-    (rowOf(dm(120, 400), 'sustained') || {}).weight === 'strong' && rowOf(dm(120, 400), 'sustained').to === 'E');
-  check('ledger: 50 to 100 is a medium E, 20 to 50 neither way, under 20 a medium I',
-    rowOf(dm(60, 400), 'sustained').weight === 'medium' && rowOf(dm(60, 400), 'sustained').to === 'E' &&
+  // The bands on conversations with 50 or more of their own messages: a
+  // count weighs medium at most, below a reader's own words.
+  check('ledger: over 100 sustained conversations is a medium E, computed from the digest',
+    (rowOf(dm(120, 400), 'sustained') || {}).weight === 'medium' && rowOf(dm(120, 400), 'sustained').to === 'E');
+  check('ledger: 50 to 100 is a weak E, 20 to 50 neither way, under 20 a weak I',
+    rowOf(dm(60, 400), 'sustained').weight === 'weak' && rowOf(dm(60, 400), 'sustained').to === 'E' &&
     rowOf(dm(30, 400), 'sustained').to === 'neutral' &&
-    rowOf(dm(10, 400), 'sustained').to === 'I' && rowOf(dm(10, 400), 'sustained').weight === 'medium');
+    rowOf(dm(10, 400), 'sustained').to === 'I' && rowOf(dm(10, 400), 'sustained').weight === 'weak');
   check('ledger: under three years of data halves the bands',
-    rowOf(dm(60, 400, 5000, 700), 'sustained').weight === 'strong' && rowOf(dm(12, 400, 5000, 700), 'sustained').to === 'neutral');
+    rowOf(dm(60, 400, 5000, 700), 'sustained').weight === 'medium' && rowOf(dm(12, 400, 5000, 700), 'sustained').to === 'neutral');
   // The share: over 60% sustained with at least 30 of them, or under 10% around a modest core.
   check('ledger: a high share sustained is a weak E only above a floor of 30',
     (rowOf(dm(40, 50), 'share') || {}).to === 'E' && rowOf(dm(40, 50), 'share').weight === 'weak' &&
@@ -1500,11 +1501,37 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
   check('ledger: barely using direct messages counts neither way',
     S.computedPieces(dm(2, 10, 300))['E/I'].length === 0 && S.computedPieces({})['E/I'].length === 0 &&
     S.computedPieces({ directMessages: { activeThreads: null, sentByUser: 9000 } })['E/I'].length === 0);
-  check('ledger: Messenger\'s sustained conversations add to Instagram\'s',
-    rowOf(Object.assign(dm(30, 400), { facebook: { counts: { engagedThreads: { atLeast50: 30 } } } }), 'sustained').weight === 'medium');
-  const shapes = (conceptual, practical) => S.computedPieces({ google: { counts: { searchShapes: { conceptual, practical } } } })['N/S'];
-  check('ledger: search shapes lean N or S only at two to one over at least 30',
-    shapes(40, 10)[0].to === 'N' && shapes(10, 40)[0].to === 'S' && shapes(20, 15).length === 0 && shapes(20, 5).length === 0);
+  // The last five years where the digest gives them, and the larger of
+  // Instagram and Messenger, never their sum (a reader's 40 and 126 from 2007
+  // made 166, October 2026).
+  const recentDm = (life, recent, recentActive) => {
+    const out = dm(life, 378, 10143, 5098);
+    out.directMessages.engagedThreads.last5Years = { active: recentActive, atLeast10: recent * 2, atLeast50: recent, atLeast200: 0 };
+    return out;
+  };
+  check('ledger: the last five years are read where the digest gives them, with their own share',
+    rowOf(recentDm(120, 30, 200), 'sustained').to === 'neutral' && /in the last five years, of 200 they wrote in/.test(rowOf(recentDm(120, 30, 200), 'sustained').note) &&
+    (rowOf(recentDm(120, 40, 50), 'share') || {}).to === 'E');
+  check('ledger: Instagram and Messenger are never added: the larger counts',
+    rowOf(Object.assign(dm(40, 378), { facebook: { counts: { engagedThreads: { atLeast50: 126 } } } }), 'sustained').weight === 'medium' &&
+    /^126 Messenger conversations/.test(rowOf(Object.assign(dm(40, 378), { facebook: { counts: { engagedThreads: { atLeast50: 126 } } } }), 'sustained').note) &&
+    rowOf(Object.assign(dm(40, 378), { facebook: { counts: { engagedThreads: { atLeast50: 30 } } } }), 'sustained').to === 'neutral' &&
+    rowOf(Object.assign(recentDm(40, 25, 150), { facebook: { counts: { engagedThreads: { atLeast50: 126, last5Years: { active: 60, atLeast50: 12 } } } } }), 'sustained').note.startsWith('25 Instagram'));
+  // Group chats from the count, never from the model.
+  const groups = n => Object.assign(dm(30, 400), { directMessages: Object.assign(dm(30, 400).directMessages, { activeGroupThreads: n }) });
+  check('ledger: group chats are computed from activeGroupThreads, weak from 3, medium from 10, nothing at 0',
+    rowOf(groups(0), 'group-chats') === null && rowOf(groups(2), 'group-chats') === null &&
+    rowOf(groups(4), 'group-chats').weight === 'weak' && rowOf(groups(12), 'group-chats').weight === 'medium' &&
+    !('group-chats' in S.RUBRIC['E/I']) && S.COMPUTED.includes('group-chats'));
+  check('ledger: search shapes are no longer a row: a search box is mostly practical for everyone',
+    S.computedPieces({ google: { counts: { searchShapes: { conceptual: 509, practical: 7330 } } } })['N/S'].length === 0 &&
+    !S.COMPUTED.includes('search-shapes') &&
+    /a search history that is mostly practical \(Google's `searchShapes`\) is everyone's too, not S/.test(prompts.MBTI_LEDGER_RULES));
+  check('ledger: the S rows for comparing figures and practical craft are weak, and leave out work and sport',
+    S.RUBRIC['N/S']['compares-tracks'].weight === 'weak' && /outside their job/.test(S.RUBRIC['N/S']['compares-tracks'].text) &&
+    S.RUBRIC['N/S']['practical-craft'].weight === 'weak' && /A sport's technique does not count/.test(S.RUBRIC['N/S']['practical-craft'].text));
+  check('ledger: reaching out means beyond the usual circle; plans for the same friends lean neither way',
+    /beyond their usual circle/.test(S.RUBRIC['E/I']['reach-out'].text) && S.RUBRIC['E/I']['convenes-known-circle'].weight === 'none');
   // The model's ledger, held to the rubric.
   const cleaned = S.cleanLedger('E/I', [
     { row: 'setting', pointsTo: 'I', note: 'avoids mixers' },
@@ -1519,9 +1546,9 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
     cleaned.map(p => p.row + ':' + p.to).join() === 'setting:I,reach-out:E', JSON.stringify(cleaned));
   const piece = (to, weight) => ({ row: 'x', to, weight });
   const axis = list => S.scoreAxis('E/I', list, '');
-  check('ledger: the side with more points wins; a quarter\'s margin over 5 points is moderate, three-fifths over 10 clear',
+  check('ledger: the side with more points wins; a third\'s margin over 6 points is moderate, two-thirds over 10 clear',
     axis([piece('E', 'strong'), piece('I', 'medium')]).strength === 'slight' &&
-    axis([piece('E', 'strong'), piece('E', 'medium'), piece('I', 'medium'), piece('I', 'weak')]).strength === 'moderate' &&
+    axis([piece('E', 'strong'), piece('E', 'medium'), piece('I', 'medium'), piece('I', 'weak')]).strength === 'slight' &&
     axis([piece('E', 'strong'), piece('E', 'medium'), piece('E', 'weak'), piece('I', 'medium')]).strength === 'moderate' &&
     axis([piece('E', 'strong'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('I', 'weak')]).strength === 'clear' &&
     axis([piece('I', 'strong')]).strength === 'slight' && axis([piece('I', 'strong')]).choice === 'I');
@@ -1557,7 +1584,7 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
   check('ledger: the code sets the letters and strength from the ledger, the computed rows included',
     scored.mbti.letters[0].choice === 'I' && scored.mbti.letters[0].strength === 'moderate' &&
     scored.mbti.letters[1].strength === 'slight' &&
-    scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'I' && /10 conversations/.test(p.note)) &&
+    scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'I' && /^10 Instagram conversations/.test(p.note)) &&
     !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'E'),
     JSON.stringify(scored.mbti.letters[0]));
   check('ledger: the type, its nickname, the card\'s copies and the lines that named the old type follow',
@@ -1588,7 +1615,7 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
   // the code's, and a sum that still overturns the model's letter is counted.
   const note = S.computedText(dm(15, 300));
   check('ledger: the computed rows are handed to the model, with their points, after the evidence',
-    /Already in your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 conversations[^\n]*→ I \(medium, 2\)/.test(note) &&
+    /Already in your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 Instagram conversations[^\n]*→ I \(weak, 1\)/.test(note) &&
     /E\/I, `share`: 5%[^\n]*→ I \(weak, 1\)/.test(note) && S.computedText({}) === '', note);
   const noteDigest = Object.assign(dm(15, 300), { coverage: { sources: ['instagram'] } });
   const blockText = blocks => blocks.map(b => b.text || '').join('\n');
@@ -2822,6 +2849,11 @@ check('the other side of a Facebook conversation never reaches the fragment',
 // is why profile_information is read in a first pass.
 check('the account owner is resolved from profile_information', facebook.owner === 'Alec',
   JSON.stringify(facebook.owner));
+check('Messenger counts its conversations with real exchange over the last five years of its data too',
+  facebook.counts.engagedThreads && facebook.counts.engagedThreads.last5Years &&
+    Number.isInteger(facebook.counts.engagedThreads.last5Years.active) &&
+    facebook.counts.engagedThreads.last5Years.active >= 1,
+  JSON.stringify(facebook.counts.engagedThreads));
 
 // The likeliest mistake at this step is picking the Instagram zip a second
 // time. Meta's two exports overlap enough that it would partly parse — the
@@ -4389,6 +4421,20 @@ check('threads counts the whole inbox, active threads only what was answered',
       IG.engagedCounts([1, 9, 10, 49, 50, 200, 500]).atLeast200 === 2 &&
       JSON.stringify(sentEngaged) === JSON.stringify({ atLeast10: 4, atLeast50: 2, atLeast200: 0 }),
     JSON.stringify({ engaged, sentEngaged }));
+  // The same counts over the last five years of the data (October 2026),
+  // up to the export's own latest message, never today.
+  const year = 365.25 * 86400;
+  const recent = IG.recentPerThread([[0, 100 * year], [0, 96 * year], [1, 94 * year], [1, 99 * year], [2, 90 * year]]);
+  const counted = IG.engagedCounts([60, 12, 3], [55, 0, 3]);
+  const sentRecent = Digest.forModel(Object.assign({}, withDms, { directMessages: Object.assign({}, withDms.directMessages,
+    { engagedThreads: { atLeast10: 4, atLeast50: 2, atLeast200: 0, last5Years: { active: '3', atLeast10: 2, atLeast50: 1, atLeast200: 0, who: 'x' } } }) })).directMessages.engagedThreads;
+  check('the digest counts the last five years of the data too, how many conversations were written in then included',
+    recent.get(0) === 2 && recent.get(1) === 1 && !recent.has(2) &&
+      JSON.stringify(counted.last5Years) === JSON.stringify({ active: 2, atLeast10: 1, atLeast50: 1, atLeast200: 0 }) &&
+      !('last5Years' in IG.engagedCounts([60])) &&
+      engaged.last5Years && Number.isInteger(engaged.last5Years.active) && engaged.last5Years.active <= withDms.directMessages.activeThreads &&
+      JSON.stringify(sentRecent.last5Years) === JSON.stringify({ active: 3, atLeast10: 2, atLeast50: 1, atLeast200: 0 }),
+    JSON.stringify({ recent: [...recent], counted, engaged, sentRecent }));
 }
 check('a group they were added to but never spoke in does not count as participation',
   withDms.directMessages.groupThreads === 1 && withDms.directMessages.activeGroupThreads === 0,

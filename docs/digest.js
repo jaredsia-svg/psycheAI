@@ -2978,7 +2978,9 @@
       const e = plain(value);
       if (!e) return undefined;
       const n = v => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0);
-      return { atLeast10: n(e.atLeast10), atLeast50: n(e.atLeast50), atLeast200: n(e.atLeast200) };
+      const r = plain(e.last5Years);
+      return Object.assign({ atLeast10: n(e.atLeast10), atLeast50: n(e.atLeast50), atLeast200: n(e.atLeast200) },
+        r ? { last5Years: { active: n(r.active), atLeast10: n(r.atLeast10), atLeast50: n(r.atLeast50), atLeast200: n(r.atLeast200) } } : {});
     };
     const dm = plain(d.directMessages);
     if (dm) {

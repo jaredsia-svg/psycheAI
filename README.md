@@ -2502,6 +2502,39 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### A slight extravert read as moderate, and S off search counts (October 2026)
+
+The first report built on the ledger still called one reader a moderate E (extraversion 68), and gave them
+an S they are not. Two of the code's own rows did most of it:
+- **E/I:** the sustained row added Instagram's 40 to Messenger's 126 (a history from 2007) and entered
+  166 as a strong E. That weighed as much as the reader's own words.
+- **N/S:** the search-shape row read 7,330 practical searches against 509 conceptual as a medium S. But
+  "how to", "near me", prices and bookings are what anyone's search box is for.
+- **Model rows:** the model also cited group chats against `activeGroupThreads: 0`, and counted dinners
+  and trips with old friends as reaching out.
+
+The changes:
+- **Five years, and never a sum.** The browser readers count each conversation's own messages over the
+  five years up to the export's latest message, and send `engagedThreads.last5Years`: how many
+  conversations they wrote in then, and how many hold 10, 50 and 200 of their own messages (`instagram.js`
+  `recentPerThread`, Messenger in `supplement.js`; `forModel` passes the five integers). The scorer reads
+  those where present, and takes the larger of Instagram and Messenger, never their sum: the same friends
+  are on both. The share is read inside that window.
+- **A count weighs less than words.** Over 100 sustained conversations is now a medium E; 50–100 a weak
+  E; under 20 a weak I.
+- **Group chats are computed.** The row comes from `activeGroupThreads`: weak E from 3, medium from 10,
+  nothing at 0. The model may no longer enter it.
+- **`reach-out` means beyond the usual circle.** Plans for the same friends, however often, are
+  `convenes-known-circle`, which counts neither way.
+- **Strength is stricter.** `moderate` needs a margin of a third with 6 points in play (was a quarter with
+  5); `clear` needs two-thirds with 10 (was three-fifths). The extraversion bands are unchanged in their
+  ranges.
+- **N/S unwound.** `search-shapes` is no longer a row, and the never-counted list says a mostly practical
+  search history is everyone's. `compares-tracks` and `practical-craft` are weak, and leave out the
+  numbers a reader's job runs on and a sport's technique.
+
+The sample's extraversion moved from 58 to 57 with the new slight formula.
+
 ### MBTI scored from a ledger, not an impression (October 2026)
 
 One reader's J/P came back J, J and P in a day. The digest was the same each time (its sampling is
@@ -2522,7 +2555,8 @@ Now the model judges each piece of evidence, and code does the adding up (`lib/m
   (`computedPieces`):
   - *Sustained conversations* (Instagram's `engagedThreads.atLeast50`, plus Messenger's): over 100 is a
     strong E; 50 or more a medium E; under 20 a medium I; anything between leans neither way. The bands
-    halve for under three years of data.
+    halve for under three years of data. (Since revised: five years, the larger source, weaker weights;
+    see "A slight extravert read as moderate" above.)
   - *Share:* over 60% of conversations spoken in being sustained, with at least 30 of them, is a weak E.
     Under 10%, around fewer than 50, is a weak I. A high share needs the floor because six kept up out of
     eight is a small circle, not reach.

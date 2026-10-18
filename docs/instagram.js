@@ -487,7 +487,7 @@
         out.counts.messages++;
         out.messageSenders.set(sender, (out.messageSenders.get(sender) || 0) + 1);
         bySender.set(sender, (bySender.get(sender) || 0) + 1);
-        out.messageEvents.push({ sender, ts, len: content.length });
+        out.messageEvents.push({ sender, ts, len: content.length, thread: threadIndex });
         // The timestamp goes with the text, not only into the event tally
         // beside it. It was computed on the line above and dropped here, and
         // the cost was larger than it looks: every message reached the digest
@@ -630,13 +630,40 @@
    * on its own it says how far they have reached over the whole span of the
    * data, not how many people they keep up with. Counts only, never who.
    */
-  function engagedCounts(ownPerThread) {
-    const list = ownPerThread || [];
-    return {
+  // The window `last5Years` counts over: the five years up to the export's
+  // own latest message, not up to today, so an export downloaded years ago
+  // is read over its own recent past.
+  const RECENT_SECONDS = Math.round(5 * 365.25 * 86400);
+
+  /**
+   * How many conversations hold at least 10, 50 and 200 of the reader's own
+   * messages. With `recentPerThread` (their own messages per conversation in
+   * the last five years of the data), the same counts over that window too,
+   * with how many conversations they wrote in at all in it (October 2026: a
+   * Messenger history from 2007 counted school chats as today's breadth).
+   */
+  function engagedCounts(ownPerThread, recentPerThread) {
+    const tally = list => ({
       atLeast10: list.filter(n => n >= 10).length,
       atLeast50: list.filter(n => n >= 50).length,
       atLeast200: list.filter(n => n >= 200).length,
-    };
+    });
+    const out = tally(ownPerThread || []);
+    if (Array.isArray(recentPerThread)) {
+      const recent = recentPerThread.filter(n => n > 0);
+      out.last5Years = Object.assign({ active: recent.length }, tally(recent));
+    }
+    return out;
+  }
+
+  /** Own messages per conversation in the five years up to the latest of `times`, from [thread, ts] pairs. */
+  function recentPerThread(pairs) {
+    let latest = 0;
+    for (const [, ts] of pairs) if (ts > latest) latest = ts;
+    const from = latest - RECENT_SECONDS;
+    const counts = new Map();
+    for (const [thread, ts] of pairs) if (ts >= from) counts.set(thread, (counts.get(thread) || 0) + 1);
+    return counts;
   }
 
   function summariseMessages(signals) {
@@ -680,14 +707,18 @@
       activeThreads = 0;
       activeGroupThreads = 0;
       const own = [];
-      for (const thread of signals.threadSenders) {
+      const recent = recentPerThread(signals.messageEvents
+        .filter(ev => ev.sender === owner && ev.ts && ev.thread !== undefined).map(ev => [ev.thread, ev.ts]));
+      const ownRecent = [];
+      signals.threadSenders.forEach((thread, index) => {
         const mine = thread.bySender.get(owner) || 0;
-        if (!mine) continue;
+        if (!mine) return;
         activeThreads++;
         if (thread.group) activeGroupThreads++;
         own.push(mine);
-      }
-      engagedThreads = engagedCounts(own);
+        ownRecent.push(recent.get(index) || 0);
+      });
+      engagedThreads = engagedCounts(own, ownRecent);
     }
 
     // Drop the raw transcript now that the aggregates exist. threadSenders
@@ -828,5 +859,5 @@
     return start.trimEnd() + ' … ' + end.trimStart();
   }
 
-  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide, keepEnds, engagedCounts };
+  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide, keepEnds, engagedCounts, recentPerThread };
 })(typeof window !== 'undefined' ? window : globalThis);
