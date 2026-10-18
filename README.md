@@ -2563,6 +2563,16 @@ from 11,900 to 13,300, and `FREE_COST_CAP` and `DEEP_FREE_COST_CAP` from 8.5¢ t
 MBTI now comes before the Big Five, so the merged prompt's card rules (sliced from `# Big Five`) do not
 carry the section twice.
 
+**The model sees the computed rows.** The computed rows are added after the evidence, as a short note
+(`computedText`, sent by `freeBlocks`, `profileBlocks` and `mergedBlocks`). For example: "E/I, `sustained`:
+15 conversations … → I (medium, 2)". The model adds those points into its own sum before it writes `why`.
+Without the note, it couldn't foresee them. A close E/I could then flip in the code under a paragraph
+arguing the other letter. A report pinned to its card gets no note, because it writes no letters.
+
+**Flips are counted.** If the code's sum still overturns the letter the model picked, the server logs it
+(`[mbti]`) and counts `mbti_flip` plus `mbti_flip:<axis>`. If that rate climbs, the prompt needs
+tightening.
+
 `why` names no strength word and no score, because the code may move either after the model has written.
 The sample report carries ledgers that add up to its own letters (the extraversion score went from 52 to
 58 to match). A selftest re-scores the sample and checks that it agrees.

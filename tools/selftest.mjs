@@ -1584,13 +1584,34 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and t
     rescored.mbti.letters.every((l, i) => l.choice === sampleCopy.mbti.letters[i].choice && l.strength === sampleCopy.mbti.letters[i].strength) &&
     rescored.mbti.type === sampleCopy.mbti.type && rescored.bigFive.extraversion.score === sampleCopy.bigFive.extraversion.score,
     JSON.stringify(rescored.mbti.letters.map(l => l.choice + ' ' + l.strength)) + ' ' + rescored.bigFive.extraversion.score);
+  // The computed rows go to the model after the evidence, so its own sum is
+  // the code's, and a sum that still overturns the model's letter is counted.
+  const note = S.computedText(dm(15, 300));
+  check('ledger: the computed rows are handed to the model, with their points, after the evidence',
+    /Already in your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 conversations[^\n]*→ I \(medium, 2\)/.test(note) &&
+    /E\/I, `share`: 5%[^\n]*→ I \(weak, 1\)/.test(note) && S.computedText({}) === '', note);
+  const noteDigest = Object.assign(dm(15, 300), { coverage: { sources: ['instagram'] } });
+  const blockText = blocks => blocks.map(b => b.text || '').join('\n');
+  check('ledger: the card, the report and the one-call unlock all carry the note; a report pinned to its card does not',
+    [prompts.freeBlocks(noteDigest), prompts.profileBlocks(noteDigest), prompts.mergedBlocks(noteDigest)]
+      .every(b => blockText(b).indexOf(note) > blockText(b).indexOf('</evidence>')) &&
+    !blockText(prompts.profileBlocks(noteDigest, prompts.anchorFrom(answer()))).includes('Already in your MBTI ledgers') &&
+    /a note after the evidence lists them with their points: add those into each sum/.test(prompts.MBTI_LEDGER_RULES));
+  const flips = [];
+  S.scoreMbti(answer(), dm(10, 300), flips);
+  const kept = [];
+  S.scoreMbti(S.scoreMbti(answer(), dm(10, 300)), dm(10, 300), kept);
+  check('ledger: an axis whose sum overturned the model\'s own letter is reported, and rescoring reports nothing',
+    flips.join() === 'E/I E→I' && kept.length === 0, flips.join());
   // The server scores every answer before it is served, and the card before a report is anchored to it.
   const serverSource = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   check('ledger: the server scores every answer, and a card before its report is anchored to it',
-    /mbtiScore\.scoreMbti\(result\.data, digest\)/.test(serverSource) &&
-    /mbtiScore\.scoreMbti\(result\.data\.freeCard, digest\)/.test(serverSource) &&
-    serverSource.indexOf('mbtiScore.scoreMbti(card.data, sent)') > 0 &&
-    serverSource.indexOf('mbtiScore.scoreMbti(card.data, sent)') < serverSource.indexOf('const anchor = prompts.anchorFrom(card.data);'));
+    /mbtiScore\.scoreMbti\(result\.data\.freeCard, digest, flips\)/.test(serverSource) &&
+    serverSource.indexOf('mbtiScore.scoreMbti(card.data, sent, flips)') > 0 &&
+    serverSource.indexOf('mbtiScore.scoreMbti(card.data, sent, flips)') < serverSource.indexOf('const anchor = prompts.anchorFrom(card.data);'));
+  check('ledger: the server logs and counts every overturned letter',
+    /stats\.count\('mbti_flip'\)/.test(serverSource) && /mbtiScore\.scoreMbti\(result\.data, digest, flips\)/.test(serverSource) &&
+    /countFlips\(flips, 'card'\)/.test(serverSource));
 }
 // Named digest fields, so the guidance points at things that exist rather than
 // at a general idea of evidence — which is also why `geminiPrompts` came off

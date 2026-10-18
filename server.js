@@ -484,13 +484,25 @@ function requirePremiumEngine(response) {
 // spent — and the full report is never produced without one.
 // A report with the private names its digest supplied taken out. Logs how
 // often it happens, never what was removed.
+// Where the code's sum overturned the letter the model picked, its `why`
+// may argue the other one: logged and counted (`mbti_flip`, and per axis),
+// so the rate shows and the prompt can be tightened if it climbs.
+function countFlips(flips, kind) {
+  if (!flips.length) return;
+  console.warn('[mbti] ' + kind + ': the ledger overturned the model\'s letter: ' + flips.join(', '));
+  stats.count('mbti_flip');
+  for (const flip of flips) stats.count('mbti_flip:' + flip.slice(0, 3));
+}
+
 function scrubbed(result, digest, kind) {
   // The MBTI letters scored from their ledgers (lib/mbtiScore.js): the model
   // judged each piece of evidence, the code adds them up, so the same ledger
   // always gives the same letters. A card sent back beside its report too.
   if (result && result.data && typeof result.data === 'object') {
-    mbtiScore.scoreMbti(result.data, digest);
-    if (result.data.freeCard) mbtiScore.scoreMbti(result.data.freeCard, digest);
+    const flips = [];
+    mbtiScore.scoreMbti(result.data, digest, flips);
+    if (result.data.freeCard) mbtiScore.scoreMbti(result.data.freeCard, digest, flips);
+    countFlips(flips, kind);
   }
   const cleaned = privacy.scrubResult(result, digest);
   if (cleaned !== result) console.log('privacy: removed private names from a ' + kind + ' report');
@@ -914,7 +926,11 @@ async function cardThenFull(engine, sent) {
   const card = await engine.analyseCard(sent);
   // Scored before the report is anchored to it, so the report explains the
   // letters the card will print (lib/mbtiScore.js; scoring it again later is a no-op).
-  if (card && card.data && typeof card.data === 'object') mbtiScore.scoreMbti(card.data, sent);
+  if (card && card.data && typeof card.data === 'object') {
+    const flips = [];
+    mbtiScore.scoreMbti(card.data, sent, flips);
+    countFlips(flips, 'card');
+  }
   const anchor = prompts.anchorFrom(card.data);
   let full;
   try {
