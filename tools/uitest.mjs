@@ -10792,14 +10792,18 @@ try {
   // ---- a backup, saved before deleting everything ----
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.click('[data-nav="profile"]');
-  await page.waitForSelector('#view-profile:not([hidden]) #save-backup', { timeout: 10000 });
+  await page.waitForSelector('#profile-body .hub-card [data-hub-go="backup"]', { timeout: 10000 });
   const before = await page.evaluate(() => ({
     profile: localStorage.getItem('psycheai_profile'), history: localStorage.getItem('psycheai_history'),
     digest: localStorage.getItem('psycheai_digest'), link: localStorage.getItem('psycheai_link'),
     referral: localStorage.getItem('psycheai_referral') }));
+  // The hub's Save Backup says what the file is for first, then downloads it.
+  await clickClear(page, '#profile-body .hub-card [data-hub-go="backup"]');
+  await page.waitForSelector('#hub-confirm-dialog[open]', { timeout: 5000 });
+  const backupConfirm = await page.locator('#hub-confirm-dialog').innerText();
   const [backupDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 15000 }).catch(() => null),
-    page.click('#save-backup'),
+    page.click('#hub-confirm-dialog [data-hub-confirm="backup"]'),
   ]);
   const backupPath = backupDownload ? await backupDownload.path() : '';
   const backupText = backupPath ? readFileSync(backupPath, 'utf8') : '';
@@ -10814,13 +10818,10 @@ try {
     backupText.slice(0, 200));
   check('and nothing mid-purchase or mid-run goes into it',
     Boolean(backup) && !('unlock' in backup.data) && !('pending' in backup.data) && !('job' in backup.data));
-  await page.waitForSelector('#backup-dialog[open]', { timeout: 5000 });
-  check('then a popout says what the file is for: bringing your Psyche back in another browser or device',
-    await page.evaluate(() => { const t = document.querySelector('#backup-dialog').innerText;
-      return /Your backup is saved/.test(t) && /Restore from a backup/.test(t) && /Keep it private/.test(t); }) &&
-      /another browser or on another device/.test(await page.getAttribute('#save-backup', 'title')));
-  await page.click('#backup-dialog-ok');
-  await page.waitForTimeout(150);
+  check('and the popout before it says what the file is for: bringing your Psyche back, and keeping it private',
+    /brings your profile back/.test(backupConfirm) && /Restore from a backup/.test(backupConfirm) &&
+      /Keep it private/.test(backupConfirm) && !(await page.evaluate(() => document.querySelector('#hub-confirm-dialog').open)),
+    backupConfirm.slice(0, 200));
 
   // ---- deleting everything puts the links away again ----
   // The unlock receipt is proof of purchase, so it has to go with everything
@@ -10836,7 +10837,7 @@ try {
   check('there is a receipt to delete before Delete everything runs',
     (await page.evaluate(() => localStorage.getItem('psycheai_unlock'))) !== null);
   // It asks first, in a sheet of its own: Cancel keeps everything.
-  await page.click('#delete-profile');
+  await clickClear(page, '#profile-body .hub-card [data-hub-go="delete"]');
   await page.waitForSelector('#delete-dialog[open]', { timeout: 5000 });
   check('Delete everything asks first, in a warning sheet of its own',
     /Delete everything\?/.test(await page.locator('#delete-dialog').innerText()) &&
@@ -10864,7 +10865,7 @@ try {
     !(await page.evaluate(() => document.querySelector('#delete-dialog').open)) &&
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) !== null &&
     (await page.locator('#view-profile').isVisible()));
-  await page.click('#delete-profile');
+  await clickClear(page, '#profile-body .hub-card [data-hub-go="delete"]');
   await page.waitForSelector('#delete-dialog[open]', { timeout: 5000 });
   await page.click('#delete-confirm');
   await page.waitForSelector('#view-welcome:not([hidden])');
