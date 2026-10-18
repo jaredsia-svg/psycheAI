@@ -29,7 +29,7 @@ npm run promo         # rebuild the promo videos (needs promo/.cache: Python ven
 - **The suites have no test filter.** Both are single scripts of sequential `check(label, ok, detail)` calls. Run the whole file and grep the summary: `npm run test:ui 2>&1 | grep -E "✗|passed|failed"`.
 - **Tracing a throw:** `UITEST_STACK=1` prints the stack for a thrown error.
 - **Screenshots:** `node tools/uitest.mjs --shots` writes them to `tools/screenshots/`.
-- **Ports:** the UI suite spawns its own mock servers on ports 4173–4176. If it fails with `ERR_CONNECTION_REFUSED`, look for a stray `node server.js` holding one of them.
+- **Ports:** the UI suite spawns its own mock servers on ports 4173–4177. If it fails with `ERR_CONNECTION_REFUSED`, look for a stray `node server.js` holding one of them.
 - **Playwright:** Chromium is preinstalled. Do not run `playwright install`.
 - **Running both:** run both suites after any change. They pin exact copy, layout and behaviour, so a wording change usually needs a matching check update.
 
@@ -56,7 +56,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.
 - **Results cache:** finished reports are held in memory only (`lib/results.js`, about 4h) so a dropped connection is not charged twice.
-- **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `shortLinks`, `reportLayout` and `build.version`. A selftest pins the exact key set.
+- **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `shortLinks`, `reportLayout`, `firstRun` and `build.version`. A selftest pins the exact key set.
 
 **Client (`docs/`).** No framework. Scripts are plain `<script>` tags that communicate through `window.*` globals. Load order is in `docs/index.html`, and `app.js` is last.
 - **Reading exports:** `zip.js` → `instagram.js` / `supplement.js` (Google, Facebook) / `whatsapp.js` read the exports in the browser.

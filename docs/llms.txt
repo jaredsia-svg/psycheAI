@@ -1,6 +1,6 @@
 # PsycheAI
 
-> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. A Psyche Report is US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 ## Start here
 - [PsycheAI](https://psycheai.io/): make your free Psyche Card

@@ -2502,6 +2502,36 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### A new reader's first run: the card and the report together, free (October 2026)
+
+A new reader's first free run now writes the Psyche Card and the Psyche Report together, the way the
+US$5 bundle does (`mergedOrTwoCalls`: one call with `PSYCHEAI_MERGED_UNLOCK` on, the card then the report
+without it), and lands on the card with the report unlocked in the hub. It is free once per Instagram
+account: the same per-account record as the free card (`PSYCHEAI_FREE_PER_ACCOUNT`), so the same account
+on a new device, or after Delete everything, is offered the card and report together at US$5, as before.
+A run with no account to hold it to gets the card alone.
+
+- **The switch.** `PSYCHEAI_FIRST_RUN` on the server: `merged` (the default) or `card`, the path before
+  (the free card, then the report unlocked by a link open, a guess, a gift or US$5). Setting it to `card`
+  is the whole revert: the page asks every free run for `product: 'first'` only when `/api/status` says
+  `firstRun: 'merged'`, and the server decides what that buys; what came back is read off the result (a
+  report carries its card as `freeCard`). The classic layout is always `card`.
+- **Cost.** A first read costs about a card and a report (`MERGED_COST_CAP` against `FREE_COST_CAP`, roughly
+  twice), so it counts twice against the day's free ceiling (`PSYCHEAI_DAILY_FREE_LIMIT`), which was sized in
+  cards: the same daily spend ceiling buys half as many first reads. Raise the limit when traffic justifies it.
+- **The guessing game stays, with a credit as its prize, on both paths.** With the report free on the first
+  read, a report would be a second copy, so a right guess adds one credit to the reader's link
+  (`ref:<code>:bonus`, added to `credits` in `referral.status`): a question to PsycheAI or a Psyche Report to
+  gift. The card-first path pays the same credit, so the game is one game whichever way the switch is set
+  (judgeGuess still mints a report grant when called without `creditTo`; the server no longer does). The cast
+  says "win a free credit"; the popout says the credit is on their link. Counted as `guess_won_credit`; the
+  first read itself as `first_full`.
+- **The price wording** (the FAQ, the guides, the search pages, llms.txt and the re-run sheet) now says the
+  first Psyche Card and Psyche Report are free and a re-run is US$5. That is true only while the switch is
+  `merged`: going back to `card` should take the wording back too (the re-run sheet follows the switch on its
+  own; the static pages do not).
+- The free-report-for-one-open panel still serves readers on the card path.
+
 ### Share-first: the first Psyche Report free for one connection opening the link (October 2026)
 
 The free card's unlock offer used to lead with *Unlock your Psyche Report – US$5*, with *or get 2

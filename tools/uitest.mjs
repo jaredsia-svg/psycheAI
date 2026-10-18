@@ -4095,7 +4095,7 @@ try {
       };
     });
     check('the cast shows all 29 characters, each in its scene with its name, under the guessing game\'s title',
-      cast.head === 'Guess which character you are and win a Psyche Report for free' && cast.shown.length === 29 &&
+      cast.head === 'Guess which character you are and win a free credit' && cast.shown.length === 29 &&
         cast.shown.every(([, art]) => art) && JSON.stringify(cast.shown.map(([n]) => n).sort()) === JSON.stringify(cast.expected.slice().sort()),
       JSON.stringify(cast).slice(0, 300));
     check('laid out five times over for its loop, each tile a slice of one image, no live drawings',
@@ -7217,7 +7217,7 @@ try {
     const limitedPort = PORT + 1;
     const limited = spawn(process.execPath, [join(root, 'server.js')], {
       env: {
-        ...process.env, PORT: String(limitedPort), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0',
+        ...process.env, PORT: String(limitedPort), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0', PSYCHEAI_FIRST_RUN: 'card',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-ratelimit.jsonl'),
         PSYCHEAI_DAILY_FREE_LIMIT: '100000',
         PSYCHEAI_RATE_PREMIUM: '2',
@@ -10839,9 +10839,10 @@ try {
     !/secret bonus/i.test(about));
   check('the FAQ gives a contact address',
     /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
-  check('the prices are named, once, with what each buys — and Psyche Sync is free',
-    /a new Psyche\s+Card comes with your Psyche Report, (<span[^>]*>)?US\$5(<\/span>)? for both/.test(about) && !/US\$2\b/.test(about) &&
-      /every Psyche Sync/i.test(about));
+  check('the prices are named, once, with what each buys — the first card and report free, re-runs US$5, Psyche Sync free',
+    /Your first Psyche Card and Psyche Report are free, together, and so is every Psyche Sync/.test(about) &&
+      /a re-run – a new Psyche Card\s+with its Psyche Report – is (<span[^>]*>)?US\$5(<\/span>)?/.test(about) && !/US\$2\b/.test(about) &&
+      !/once 1 connection opens your/.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
   check('the question about a thin account is gone, not half-removed',
@@ -13537,6 +13538,9 @@ try {
         PSYCHEAI_RATE_PAYMENT_INTENT: '100000',
         PSYCHEAI_PROMO_CODE: UITEST_PROMO,
         PSYCHEAI_REPORT_LAYOUT: 'structured',
+        // These checks follow the card-first path; the merged first read is
+        // checked on its own server further down.
+        PSYCHEAI_FIRST_RUN: 'card',
       },
       stdio: 'ignore',
     });
@@ -13628,26 +13632,30 @@ try {
         check('the guess goes with the first free card, beside the digest and never inside it',
           sentGuess && sentGuess.guess === 'Hulk' && !JSON.stringify(sentGuess.digest || {}).includes('Hulk'),
           JSON.stringify(sentGuess && { guess: sentGuess.guess, keys: Object.keys(sentGuess) }));
-        // Told in a popout: the guess and that it is right, with the way to the free report.
+        // Told in a popout: the guess and that it is right, and the credit it won.
         await gp.waitForSelector('#guess-dialog[open]', { timeout: 15000 });
         const told = await gp.evaluate(() => ({
           text: document.querySelector('#guess-dialog').innerText,
           faces: document.querySelectorAll('#guess-faces .guess-face').length,
           later: getComputedStyle(document.querySelector('#guess-later-row')).display !== 'none',
         }));
-        check('a right guess is announced in a popout, with the guessed character and Unlock it free',
-          /You guessed right!/.test(told.text) && /You said Hulk/.test(told.text) && /Unlock it free/.test(told.text) &&
-            told.faces === 1 && told.later, JSON.stringify(told));
-        await gp.click('#guess-later');
+        check('a right guess is announced in a popout, with the guessed character and the credit on the link',
+          /You guessed right!/.test(told.text) && /You said Hulk/.test(told.text) && /1 credit is on your link/.test(told.text) &&
+            !/Unlock it free/.test(told.text) && told.faces === 1 && !told.later, JSON.stringify(told));
+        await gp.click('#guess-go');
         await gp.waitForTimeout(300);
         const won = await gp.evaluate(() => ({
           gift: JSON.parse(localStorage.getItem('psycheai_gift') || 'null'),
           banner: document.querySelector('#view-profile .gift-banner').hidden,
           promo: document.querySelector('#report-promo').hidden,
         }));
-        check('the win is kept as a free report waiting to be unlocked, with no banner repeating the popout',
-          won.gift && won.gift.won === true && /^[0-9a-f]{48}$/.test(won.gift.token) && won.banner, JSON.stringify(won));
-        check('and the slim Psyche Report bar is the way back to it once the popout is closed',
+        // The prize is a credit on the link, on the card-first path too: no
+        // free report kept waiting, and no banner repeating the popout.
+        const linkCredits = await gp.evaluate(() => fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json()).catch(() => ({})));
+        check('the win is one credit on the link, not a free report, with no banner repeating the popout',
+          !won.gift && won.banner && linkCredits.available === 1, JSON.stringify({ won, linkCredits }));
+        check('and the slim Psyche Report bar still offers the report, unlocked as before',
           won.promo === false, JSON.stringify(won));
         await gp.click('.brand[data-nav="main"]');
         await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
@@ -13714,6 +13722,7 @@ try {
         PSYCHEAI_DAILY_FREE_LIMIT: '100000',
         PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_PREMIUM: '100000', PSYCHEAI_RATE_NONCE: '100000',
         PSYCHEAI_RATE_PAYMENT_INTENT: '100000', PSYCHEAI_STATS_TOKEN: 'uitest-stats', PSYCHEAI_SHORT_LINKS: '1',
+        PSYCHEAI_FIRST_RUN: 'card',
       },
       stdio: 'ignore',
     });
@@ -14401,6 +14410,91 @@ try {
     } finally {
       await rp.close();
       refServer.kill();
+    }
+  }
+
+  // A new reader's first free run writes the card and its report together
+  // (PSYCHEAI_FIRST_RUN, merged by default), once per Instagram account; a
+  // right guess at the character wins a credit rather than a report.
+  {
+    const firstPort = PORT + 4;
+    const firstServer = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(firstPort), PSYCHEAI_MOCK: '1',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-first-budget.jsonl'),
+        PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-first-usage.jsonl'),
+        PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+        PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_PREMIUM: '100000', PSYCHEAI_RATE_NONCE: '100000',
+        PSYCHEAI_RATE_PAYMENT_INTENT: '100000', PSYCHEAI_STATS_TOKEN: 'uitest-stats',
+      },
+      stdio: 'ignore',
+    });
+    const fp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const fpErrors = [];
+    fp.on('pageerror', error => fpErrors.push(error.message));
+    const sent = [];
+    fp.on('request', request => {
+      if (request.method() === 'POST' && /\/api\/analyse$/.test(request.url())) sent.push(request.postDataJSON());
+    });
+    try {
+      await waitForServer(firstPort);
+      const base = 'http://localhost:' + firstPort + '/';
+      await fp.goto(base, { waitUntil: 'load' });
+      await fp.evaluate(() => localStorage.clear());
+      await fp.goto(base, { waitUntil: 'load' });
+      const status = await fp.evaluate(() => fetch('api/status').then(r => r.json()));
+      const castTitle = await fp.locator('#cast-title').innerText();
+      // A guess at the character the mock names.
+      await fp.click('#cast-track .cast-tile[data-name="Hulk"]');
+      await fp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await chooseDepth(fp);
+      await answerReview(fp);
+      await fp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 90000 });
+      const body = sent[sent.length - 1] || {};
+      const first = await fp.evaluate(() => {
+        const profile = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+        return {
+          paid: Boolean(profile && profile.premiumAnalysis && Object.keys(profile.premiumAnalysis).length),
+          card: Boolean(profile && profile.card && profile.card.mbti && profile.report && profile.report.essence &&
+            profile.report.essence.character === 'Hulk'),
+          unlocked: Boolean(document.querySelector('#profile-body .hub-tile[data-hub="report"] .hub-stamp, #profile-body .hub-tile[data-hub="report"] .hub-ok')),
+          locked: Boolean(document.querySelector('#profile-body .hub-tile[data-hub="report"] .hub-lockmark')),
+          onCard: !document.querySelector('#profile-top').hidden,
+        };
+      });
+      check('first run merged: the server says so, the cast offers a credit, and one free run brings the card and its report',
+        status.firstRun === 'merged' && /win a free credit/.test(castTitle) && body.product === 'first' && !body.paymentIntentId &&
+          first.paid && first.card && first.unlocked && !first.locked && first.onCard,
+        JSON.stringify({ firstRun: status.firstRun, castTitle, product: body.product, first }));
+      await fp.waitForSelector('#guess-dialog[open]', { timeout: 10000 });
+      const won = await fp.evaluate(() => ({ title: document.querySelector('#guess-title').textContent,
+        text: document.querySelector('#guess-text').textContent, later: document.querySelector('#guess-later-row').hidden }));
+      await fp.click('#guess-go');
+      const credits = await fp.evaluate(() => fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json()).catch(() => ({})));
+      check('a right guess wins one credit on the link, not a report',
+        won.title === 'You guessed right!' && /1 credit is on your link/.test(won.text) && won.later &&
+          credits.credits === 1 && credits.available === 1,
+        JSON.stringify({ won, credits }));
+      // The same account on a fresh device: its free first read is spent, so
+      // the card and report are offered together at US$5, as before.
+      await fp.evaluate(() => localStorage.clear());
+      await fp.goto(base, { waitUntil: 'load' });
+      await fp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await chooseDepth(fp);
+      await answerReview(fp, { untickTopics: true });
+      await fp.waitForSelector('#premium-dialog[open]', { timeout: 60000 });
+      check('first run merged: once per Instagram account; the same account again is offered the card and report together',
+        /already had its free Psyche Card/.test(await fp.locator('#premium-dialog-blurb').innerText()), await fp.locator('#premium-dialog-blurb').innerText());
+      await leavePayment(fp);
+      const totals = await fp.evaluate(() => fetch('api/stats?token=uitest-stats').then(r => r.json()));
+      const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
+      check('the first free read is counted, as a full report, and its credit as a guess won',
+        day.first_full === 1 && day.full_report === 1 && day.guess_won_credit === 1, JSON.stringify(day));
+      check('the merged first read runs with no page errors', fpErrors.length === 0, fpErrors.join(' | '));
+    } finally {
+      await fp.close();
+      firstServer.kill();
     }
   }
 

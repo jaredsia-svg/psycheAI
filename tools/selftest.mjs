@@ -6175,7 +6175,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the status route gives the release number and nothing about what runs behind it',
     Boolean(routes.status && routes.status.build) && /^\d+\.\d+\.\d+$/.test(routes.status.build.version) &&
       Object.keys(routes.status.build).join() === 'version' &&
-      Object.keys(routes.status).sort().join() === 'build,freeAnalyses,mock,ready,reportLayout,shortLinks' &&
+      Object.keys(routes.status).sort().join() === 'build,firstRun,freeAnalyses,mock,ready,reportLayout,shortLinks' &&
       !/gemini|claude|anthropic|grok|render|commit|branch|stripe|pk_|sk_|_KEY/i.test(JSON.stringify(routes.status)),
     JSON.stringify(routes.status));
   check('a free request gets the card: conclusions, the roast, and no other writing',
@@ -8463,10 +8463,19 @@ check('the schema requires evidence on where they align and differ',
     // The model never sees the guess: the server reads body.guess only to
     // judge it, after the card is written.
     const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
+    // A new reader's first free run (October 2026): the card and its report
+    // together unless PSYCHEAI_FIRST_RUN=card, which is the way back; free
+    // only, and only with an account to hold it to once.
+    check('the first free run is merged by default, PSYCHEAI_FIRST_RUN=card goes back to the card alone, and it needs an account and no payment',
+      /process\.env\.PSYCHEAI_FIRST_RUN \|\| 'merged'/.test(serverSource) && /=== 'card'/.test(serverSource) &&
+        /const firstFull = !paying && body\.product === 'first' && FIRST_RUN\(\) === 'merged' &&\s*Boolean\(referral\.cleanAccount\(body\.account\)\);/.test(serverSource) &&
+        /if \(full && !paying && !firstFull\)/.test(serverSource) && /if \(firstFull\) budget\.record\(kind\);/.test(serverSource) &&
+        /firstRun: FIRST_RUN\(\)/.test(serverSource));
     check('the server reads the guess only to judge it, against the card just written',
       (serverSource.match(/body\.guess/g) || []).length === 6 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource) &&
         (serverSource.match(/await judgeFor\(/g) || []).length === 1 &&
-        /const guess = made === 'card' && body\.guess \? await judgeFor\(body, result, request\) : null;/.test(serverSource));
+        /const guess = \(made === 'card' \|\| firstFull\) && body\.guess \? await judgeFor\(body, result, request\) : null;/.test(serverSource) &&
+        /creditTo: String\(body\.myRef \|\| ''\),/.test(serverSource));
     // A card already made has been seen: a guess sent with it again is not
     // judged (it was a free report on demand, with a fresh account each time),
     // and the card's first judgement (its token included) is never handed out again.

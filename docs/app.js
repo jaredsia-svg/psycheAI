@@ -3237,6 +3237,10 @@
   // (runCount survives Delete everything) makes paid runs, which never
   // carry a guess, so it is not offered one to lose.
   const canGuess = () => !state.profile && runCount() < freeAnalyses;
+  // A new reader's first free run writes the card and its report together
+  // (PSYCHEAI_FIRST_RUN on the server, served as firstRun). 'card' is the
+  // path before: the card alone, the report unlocked after.
+  const firstRunMerged = () => Boolean(state.server && state.server.firstRun === 'merged');
   function refreshCast() {
     const title = $('#cast-title');
     const track = $('#cast-track');
@@ -3244,8 +3248,9 @@
     const open = canGuess();
     const spent = !open && !state.profile;
     const guess = open ? guessMade() : null;
+    const credit = firstRunMerged();
     title.textContent = open ? TEXT.castTitle : spent ? TEXT.castUsedTitle : TEXT.castFriendsTitle;
-    $('#cast-note').textContent = open ? (guess ? TEXT.castPicked(guess.name) : TEXT.castPick)
+    $('#cast-note').textContent = open ? (guess ? (credit ? TEXT.castPickedCredit : TEXT.castPicked)(guess.name) : TEXT.castPick)
       : spent ? TEXT.castUsedNote : TEXT.castFriendsNote;
     $('#cast').classList.toggle('is-guessing', open);
     for (const tile of track.querySelectorAll('.cast-tile')) {
@@ -3255,8 +3260,9 @@
       tile.setAttribute('aria-disabled', String(!open));
     }
   }
-  // The outcome the server sent with a first card: kept with the guess, a win
-  // kept as a gift the unlock's sheet offers, and told once, in a popout
+  // The outcome the server sent with a first card: kept with the guess (a win
+  // is a credit on the link; a token from an older server, a gift the unlock's
+  // sheet offers), and told once, in a popout
   // (sayGuessOutcome). A guess that comes back with no answer (a paid
   // re-run, which never carries one) is told it did not count, rather than
   // left to wonder.
@@ -3267,7 +3273,8 @@
     const token = /^[0-9a-f]{48}$/.test(String(answer.token || '')) ? answer.token : '';
     const counted = answer.counted !== false;
     store.write(KEYS.guess, { name: answer.guess, at: Date.now(), outcome: counted
-      ? { character: String(answer.character || ''), won: Boolean(answer.won), limited: Boolean(answer.limited), told: false }
+      ? { character: String(answer.character || ''), won: Boolean(answer.won), limited: Boolean(answer.limited),
+        credit: Boolean(answer.credit) || (Boolean(answer.won) && answer.credit === false), told: false }
       : { counted: false, reason: String(answer.reason || 'firstCard'), told: false } });
     if (token && !giftWaiting()) store.write(KEYS.gift, { token, at: Date.now(), won: true });
   }
@@ -3298,16 +3305,19 @@
     });
     $('#guess-title').textContent = notCounted ? TEXT.guessNotCountedTitle : outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle;
     $('#guess-text').textContent = notCounted ? (TEXT.guessNotCounted[outcome.reason] || TEXT.guessNotCounted.firstCard)
+      : outcome.credit ? (won ? TEXT.guessWonCredit : TEXT.guessWonCreditLimited)(guess.name)
       : won ? TEXT.guessWonText(guess.name) : outcome.won ? TEXT.guessWonLimited(guess.name) : TEXT.guessMissed(guess.name, outcome.character);
     dialog.classList.toggle('is-won', won);
+    // A credit won needs nothing doing: the hub's link row already counts it.
+    const unlocks = won && !outcome.credit;
     const go = $('#guess-go');
-    go.textContent = won ? TEXT.guessWonUse : TEXT.guessOk;
+    go.textContent = unlocks ? TEXT.guessWonUse : TEXT.guessOk;
     $('#guess-later').textContent = TEXT.guessLater;
-    $('#guess-later-row').hidden = !won;
+    $('#guess-later-row').hidden = !unlocks;
     go.onclick = () => {
       dialog.close();
       // A win goes straight to the unlock, which offers the free report.
-      if (won) {
+      if (unlocks) {
         const target = document.querySelector('#profile-body .premium-unlock') || $('#rerun-with-data');
         if (target) target.click();
       }
@@ -6435,12 +6445,22 @@
     // A code kept from before (a pending card-only promo run) goes the same
     // way: the server no longer writes a card alone for a code.
     const bundle = Boolean(auth && (auth.bundle || (auth.promoCode && !auth.paymentIntentId)));
-    if (bundle) store.write(KEYS.reportDigestNext, sent);
+    // A free run asks for the first read; the server decides whether that is
+    // the card alone or the card with its report (firstRun). Which one came
+    // back is read off the result: a report carries the card as `freeCard`.
+    const first = !auth && firstRunMerged();
+    if (first) $('#working-note').textContent = TEXT.workingFirstFull;
+    if (bundle || first) store.write(KEYS.reportDigestNext, sent);
     try {
-      const result = await LLM.analyseProfile(sent, await withAttribution(bundle ? bundledAuth(auth) : auth),
+      const body = await withAttribution(bundle ? bundledAuth(auth) : auth);
+      if (first) body.product = 'first';
+      const result = await LLM.analyseProfile(sent, body,
         { onJob: key => rememberJob(key, 'analysis', auth) });
-      if (bundle) await adoptBundle(result);
-      else await adoptProfile(result);
+      if (bundle || withCard(result)) await adoptBundle(result, undefined, { landOnCard: first });
+      else {
+        if (first) store.remove(KEYS.reportDigestNext);
+        await adoptProfile(result);
+      }
     } catch (error) {
       // Terminal: whatever the job was, it is not coming. Cleared so a later
       // visit does not sit polling for something the server has already given
@@ -6471,6 +6491,8 @@
   }
   // Said on the US$5 sheet when it opens because the account's free card is spent.
   let analysisNote = '';
+  /** A result that carries its card beside a report: a bundle, or a first free read. */
+  const withCard = result => Boolean(result && result.data && result.data.freeCard);
 
   /**
    * A new card and its Psyche Report, bought together (authoriseAnalysis).
@@ -6480,12 +6502,14 @@
    * laid under it as an unlock's is. The classic layout writes both in one
    * report and sends no `freeCard`, so that report is the card's too.
    */
-  async function adoptBundle(result, savedName) {
+  async function adoptBundle(result, savedName, options) {
     const card = (result.data && result.data.freeCard) || result.data;
     await adoptProfile(Object.assign({}, result, { data: card }), savedName);
     await adoptFullReport(result, false, savedName);
     keepReportDigest();
-    if (fullReportPage()) go('full');
+    // A first free read lands on the card, its report a tap away in the hub.
+    if (options && options.landOnCard) { renderProfile(); show('profile'); }
+    else if (fullReportPage()) go('full');
     else { renderProfile(); show('profile'); }
     openPaidSections();
     refreshAskCredits().catch(() => {});
@@ -6625,7 +6649,7 @@
         show('profile');
         openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
-      else if (job.auth && job.auth.bundle) await adoptBundle(result, job.ownName);
+      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName, { landOnCard: !job.auth });
       else await adoptProfile(result, job.ownName);
       return true;
     } catch (error) {
@@ -10400,7 +10424,7 @@
     const blurb = kind === 'analysis' ? (analysisNote || TEXT.analysisDialogBlurb)
       : kind === 'ask' ? TEXT.askDialogBlurb
       : rerunAll ? TEXT.premiumRerunDialogBlurb
-      : bundle ? (analysisNote || TEXT.bundleDialogBlurb) : '';
+      : bundle ? (analysisNote || (firstRunMerged() ? TEXT.bundleDialogBlurbFirst : TEXT.bundleDialogBlurb)) : '';
     $('#premium-dialog-blurb').textContent = blurb;
     $('#premium-dialog-blurb').hidden = !blurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;

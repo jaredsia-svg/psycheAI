@@ -254,10 +254,12 @@
     inviteStart: 'Get my free Psyche Card',
     // The strip of every character above the request steps: before a first
     // card, a guess at which one it will name; a right one wins the report.
-    castTitle: 'Guess which character you are and win a Psyche Report for free',
+    // The prize is a credit on the reader's link, on either first-run path.
+    castTitle: 'Guess which character you are and win a free credit',
     castLabel: 'All 29 characters a Psyche Card can name. Drag to spin, hold to pause, tap one to guess.',
     castPick: 'Tap the character you think you are.',
     castPicked: (name) => 'Your guess: ' + name + '. Make your free Psyche Card to find out. One guess, locked in when your card is made.',
+    castPickedCredit: (name) => 'Your guess: ' + name + '. Make your free Psyche Card and Report to find out. One guess, locked in when your card is made.',
     // A device whose free card is spent (its next run is paid, which never
     // counts a guess), with no card on it now: nothing to win, so said.
     castUsedTitle: 'Which one are you?',
@@ -269,6 +271,10 @@
     guessWonTitle: 'You guessed right!',
     guessWonText: (name) => 'You said ' + name + ', and your Psyche Card agrees. Your Psyche Report is free.',
     guessWonUse: 'Unlock it free',
+    guessWonCredit: (name) => 'You said ' + name + ', and your Psyche Card agrees. 1 credit is on your link: use it for a question to PsycheAI or a Psyche Report to gift.',
+    guessWonCreditLimited: (name) => 'You guessed right: ' + name + '! Today\u2019s free credits have all been given out, so this one could not be added.',
+    // The waiting screen when the first free read writes the report too.
+    workingFirstFull: 'Your Psyche Card and Psyche Report are being written together. It usually takes two to three minutes. Please be patient.',
     guessWonLimited: (name) => 'You guessed right: ' + name + '! Today\u2019s free Psyche Reports have all been given out, so this one could not be added.',
     guessMissed: (guess, name) => 'You guessed ' + guess + ', and your card says ' + name + '. Nice try!',
     guessMissedTitle: 'Not this time',
@@ -805,6 +811,8 @@
     // late October 2026, always the card and its report (authoriseAnalysis).
     bundleDialogTitle: 'Your Psyche Card and Psyche Report',
     bundleDialogBlurb: 'Your first Psyche Card is free. After that, a new card comes with your full Psyche Report: US$5 for both.',
+    // The same sheet when a first run brings the report too (firstRun 'merged').
+    bundleDialogBlurbFirst: 'Your first Psyche Card and Psyche Report are free. After that, a re-run brings a new card and its full Psyche Report: US$5 for both.',
     // Your link's numbers and credits (lib/referral.js): every connection's
     // card earns a credit, for a question or a gift.
     referral: {

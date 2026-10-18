@@ -254,7 +254,7 @@ for (const t of TOPICS) {
       section(`MBTI: ${esc((s.mbti || {}).type || '')}`, `<ul class="ticks">${letters}</ul>`) +
       section('Values and interests', `<p><strong>Values:</strong> ${list(s.values, 'value')}</p><p><strong>Interests:</strong> ${list(s.interests, 'name')}</p>`) +
       section('Love languages', `<p><strong>Receives care as:</strong> ${list(love.receiving, 'language')}</p><p><strong>Shows care as:</strong> ${list(love.giving, 'language')}</p>`) +
-      section('The Psyche Report goes further', '<p>The Psyche Report (US$5) explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. <a href="/">Start with your free card</a>.</p>'),
+      section('The Psyche Report goes further', '<p>The Psyche Report, free with your first Psyche Card (re-runs US$5), explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. <a href="/">Start with your free card</a>.</p>'),
   }));
 }
 
@@ -271,7 +271,7 @@ ${LEGAL.map(s => `  <url><loc>${SITE}/${s}</loc><changefreq>yearly</changefreq><
 `;
 const llms = `# PsycheAI
 
-> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. A Psyche Report is US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 ## Start here
 - [PsycheAI](${SITE}/): make your free Psyche Card

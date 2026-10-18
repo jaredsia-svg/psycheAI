@@ -83,6 +83,14 @@ const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
 // One free card per Instagram account (lib/referral.js). On unless set to 0 —
 // for a test server, or an operator checking their own account repeatedly.
 const ONE_FREE_PER_ACCOUNT = String(process.env.PSYCHEAI_FREE_PER_ACCOUNT || '1').trim() !== '0';
+// A new reader's first, free run (October 2026). `merged`, the default: the
+// card and the Psyche Report together, one free read per Instagram account,
+// written the way a paid bundle is (mergedOrTwoCalls). `card`: the card alone,
+// with the report unlocked after — the path before. Set PSYCHEAI_FIRST_RUN=card
+// to go back; nothing else changes. Structured layout only: the classic one
+// has no card-then-report split to hand back.
+const FIRST_RUN = () => String(process.env.PSYCHEAI_FIRST_RUN || 'merged').trim().toLowerCase() === 'card'
+  || prompts.REPORT_LAYOUT !== 'structured' ? 'card' : 'merged';
 
 // A single backdoor around the whole payment flow, for the people who should
 // not need to pay — friends, reviewers, whoever this server's operator wants
@@ -398,6 +406,9 @@ async function handleStatus(response) {
     // Which report layout the unlock writes and the page draws — structured
     // or classic. PSYCHEAI_REPORT_LAYOUT; see lib/prompts.js.
     reportLayout: prompts.REPORT_LAYOUT,
+    // A new reader's first free run: 'merged' (the card and its report
+    // together) or 'card' (the card alone). PSYCHEAI_FIRST_RUN; see FIRST_RUN.
+    firstRun: FIRST_RUN(),
     // The release number for the footer, and nothing finer.
     build: { version: BUILD.version },
   });
@@ -528,12 +539,18 @@ async function handleAnalyse(request, response) {
   // retries.
   const product = body.product === 'unlock' ? 'unlock' : 'analysis';
   const ledgerKind = product === 'unlock' ? 'bundled' : 'analysis';
-  const full = product === 'unlock';
+  // A new reader's free first read (FIRST_RUN): the page asks for 'first' on
+  // every free run, and the server decides whether that is the card alone or
+  // the card and its report together. Only with an Instagram account to hold
+  // it to, since the account is what makes it once each.
+  const firstFull = !paying && body.product === 'first' && FIRST_RUN() === 'merged' &&
+    Boolean(referral.cleanAccount(body.account));
+  const full = product === 'unlock' || firstFull;
 
   // The paywall itself. Before this, 'unlock' with no payment fell through to
   // the free path, which was harmless while both produced the same report. Now
   // it would hand the paid half of the product to anyone who typed the word.
-  if (full && !paying) {
+  if (full && !paying && !firstFull) {
     sendJson(response, 402, { error: 'The Psyche Report is part of the premium unlock.' });
     return;
   }
@@ -758,10 +775,15 @@ async function handleAnalyse(request, response) {
         if (paidRun) discountRedeemed(paidIntent, body.digest);
       } else {
         budget.record(kind);
+        // A free first read is a card and a report: about twice a card's
+        // cost (FREE_COST_CAP against MERGED_COST_CAP), so it is counted
+        // twice against the day's free ceiling, which was sized in cards.
+        if (firstFull) budget.record(kind);
       }
       // The day's totals, counted once per report actually written.
       const made = full ? 'full_report' : paying ? 'card_paid' : 'card';
       stats.count(made);
+      if (firstFull) stats.count('first_full');
       if (via) stats.count('via:' + via + (made === 'card' ? '' : ':' + made));
       if (fromInvite && made === 'card') stats.count('card_from_invite');
       if (promoCode) promoRedeemed(promoCode, body.digest);
@@ -789,7 +811,7 @@ async function handleAnalyse(request, response) {
       // were never credited ("the referrer has to have made a card").
       if (made === 'card' || (full && !body.anchor)) {
         referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
-          guessed: made === 'card' ? Boolean(body.guess) : false })
+          guessed: made === 'card' || firstFull ? Boolean(body.guess) : false })
           .then(outcome => {
             if (outcome && outcome.credited) {
               stats.count('referral_friend');
@@ -802,7 +824,9 @@ async function handleAnalyse(request, response) {
       // A guess at the character, made before this first free card: judged
       // against the card just written (lib/referral.js, judgeGuess). It came
       // beside the digest, never inside it, so the model never saw it.
-      const guess = made === 'card' && body.guess ? await judgeFor(body, result, request) : null;
+      // A free first read with its report judges it too, against the card it
+      // wrote. A right guess is one credit on the reader's link, on either path.
+      const guess = (made === 'card' || firstFull) && body.guess ? await judgeFor(body, result, request) : null;
 
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
@@ -815,11 +839,16 @@ async function handleAnalyse(request, response) {
 
 /** A guess judged against the card it came with (lib/referral.js, judgeGuess), and counted. */
 async function judgeFor(body, result, request) {
+  const data = result && result.data;
+  const card = (data && data.freeCard) || data;
   const guess = await referral.judgeGuess({
-    guess: body.guess, character: result && result.data && result.data.essence && result.data.essence.character,
+    guess: body.guess, character: card && card.essence && card.essence.character,
     account: referral.cleanAccount(body.account), client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
+    // The prize is a credit (October 2026), on the card path too: one way to
+    // win, said the same way, whichever path PSYCHEAI_FIRST_RUN takes.
+    creditTo: String(body.myRef || ''),
   }).catch(() => null);
-  if (guess) stats.count(guess.counted === false ? 'guess_not_counted' : guess.won ? (guess.token ? 'guess_won' : 'guess_won_limited') : 'guess_missed');
+  if (guess) stats.count(guess.counted === false ? 'guess_not_counted' : guess.won ? (guess.token ? 'guess_won' : guess.credit ? 'guess_won_credit' : 'guess_won_limited') : 'guess_missed');
   return guess;
 }
 
