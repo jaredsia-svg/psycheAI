@@ -152,10 +152,6 @@ async function main() {
     console.log('\n  compare:unlock skipped — set GEMINI_API_KEY to run real calls, or pass --mock.\n');
     process.exit(0);
   }
-  if (prompts.REPORT_LAYOUT !== 'structured') {
-    console.log('\n  The one call is for the structured layout only (PSYCHEAI_REPORT_LAYOUT).\n');
-    process.exit(1);
-  }
   const runs = Math.max(1, Math.min(5, Number(option('runs', 3)) || 3));
   const out = option('out', 'compare-unlock-out');
   const digest = await digestFrom(path);

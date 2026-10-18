@@ -87,10 +87,9 @@ const ONE_FREE_PER_ACCOUNT = String(process.env.PSYCHEAI_FREE_PER_ACCOUNT || '1'
 // card and the Psyche Report together, one free read per Instagram account,
 // written the way a paid bundle is (mergedOrTwoCalls). `card`: the card alone,
 // with the report unlocked after — the path before. Set PSYCHEAI_FIRST_RUN=card
-// to go back; nothing else changes. Structured layout only: the classic one
-// has no card-then-report split to hand back.
+// to go back; nothing else changes.
 const FIRST_RUN = () => String(process.env.PSYCHEAI_FIRST_RUN || 'merged').trim().toLowerCase() === 'card'
-  || prompts.REPORT_LAYOUT !== 'structured' ? 'card' : 'merged';
+  ? 'card' : 'merged';
 
 // A single backdoor around the whole payment flow, for the people who should
 // not need to pay — friends, reviewers, whoever this server's operator wants
@@ -403,9 +402,6 @@ async function handleStatus(response) {
     // than hard-coded in docs/app.js so the page and the server cannot drift.
     freeAnalyses: FREE_ANALYSES,
     shortLinks: SHORT_LINKS(),
-    // Which report layout the unlock writes and the page draws — structured
-    // or classic. PSYCHEAI_REPORT_LAYOUT; see lib/prompts.js.
-    reportLayout: prompts.REPORT_LAYOUT,
     // A new reader's first free run: 'merged' (the card and its report
     // together) or 'card' (the card alone). PSYCHEAI_FIRST_RUN; see FIRST_RUN.
     firstRun: FIRST_RUN(),
@@ -634,7 +630,7 @@ async function handleAnalyse(request, response) {
     // four premium sections in a single response (FULL_SCHEMA).
     kind = 'full';
     key = anchor ? Object.assign({}, sent, { anchor }) : sent;
-    call = anchor || prompts.REPORT_LAYOUT === 'classic'
+    call = anchor
       ? engine => engine.analyseFull(sent, anchor)
       : engine => mergedOrTwoCalls(engine, sent);
   } else {

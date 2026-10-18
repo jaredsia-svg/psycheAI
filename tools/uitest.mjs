@@ -117,11 +117,23 @@ async function openAllSections(page, scope) {
   }, scope || '#profile-body');
 }
 
-// #rerun-with-data — "Add / change data & re-run analysis" — opens the
-// data-sources popout every time now (see askDataSources() in app.js), never
-// the review dialog directly. Every caller below opens it through this.
+// The sample with its report sections taken off: a card whose report is
+// still to buy, so the page shows the unlock offer. The free first report is
+// marked used by the caller, so the offer is the unlock button rather than
+// the share-first panel.
+function cardOnlySample(full) {
+  const report = JSON.parse(JSON.stringify(full));
+  delete report.career;
+  report.relationship = { loveLanguages: full.relationship.loveLanguages };
+  return report;
+}
+
+// The hub's "Add / change data" opens the data-sources popout every time
+// (see askDataSources() in app.js), never the review dialog directly. Every
+// caller below opens it through this.
+const CHANGE_DATA = '#profile-body .hub-change';
 async function openDataSourcesPopout(page) {
-  await clickClear(page, '#rerun-with-data');
+  await clickClear(page, CHANGE_DATA);
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
 }
 
@@ -357,10 +369,9 @@ const server = spawn(process.execPath, [join(root, 'server.js')], {
     PSYCHEAI_PROMO_CODE: UITEST_PROMO,
     // A half-price code, for the payment sheet's discount path.
     PSYCHEAI_PROMO_CODES: 'UIHALF:50::50',
-    // This suite checks the classic layout section by section, so it pins it.
-    // The structured layout is checked on its own further down, against a
-    // page told to draw that layout with ?layout=structured.
-    PSYCHEAI_REPORT_LAYOUT: 'classic',
+    // The card first, then the report unlocked after: the path most of this
+    // suite walks. The merged first run has its own server further down.
+    PSYCHEAI_FIRST_RUN: 'card',
   },
   stdio: 'ignore',
 });
@@ -692,8 +703,8 @@ try {
       await coldPage.reload();
       await coldPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
 
-      await coldPage.locator('#rerun-with-data').scrollIntoViewIfNeeded();
-      await coldPage.click('#rerun-with-data');
+      await coldPage.locator(CHANGE_DATA).scrollIntoViewIfNeeded();
+      await coldPage.click(CHANGE_DATA);
       await coldPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       await coldPage.waitForTimeout(300);
       const googleRow = '#datasources-dialog .mode-option[data-datasource="google"]';
@@ -761,9 +772,15 @@ try {
       await payPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await payPage.waitForTimeout(300);
       const sample = await payPage.evaluate(() => fetch('sample.json').then(r => r.json()));
-      await payPage.evaluate(report => {
+      await payPage.evaluate(full => {
+        // A card with the report still to buy: the sample without its
+        // sections, and its free first report already used, so the offer is
+        // the unlock button rather than the share-first panel.
+        const report = Object.assign({}, full, { relationship: { loveLanguages: full.relationship.loveLanguages } });
+        delete report.career;
+        localStorage.setItem('psycheai_first_used', 'true');
         localStorage.setItem('psycheai_profile', JSON.stringify({
-          report, card: report.card, payload: 'x', model: 'mock',
+          report, card: full.card, payload: 'x', model: 'mock',
           createdAt: new Date().toISOString(),
         }));
         // A digest of the shape the page stores, small: the unlock's review
@@ -832,7 +849,8 @@ try {
     try {
       await halfPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await halfPage.waitForTimeout(300);
-      const sample = await halfPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      const sample = cardOnlySample(await halfPage.evaluate(() => fetch('sample.json').then(r => r.json())));
+      await halfPage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       await halfPage.evaluate(report => {
         localStorage.setItem('psycheai_profile', JSON.stringify({
           report, card: report.card, payload: 'x', model: 'mock',
@@ -1175,7 +1193,8 @@ try {
         !/promo=/.test(linkPage.url()) &&
           await linkPage.evaluate(() => (JSON.parse(localStorage.getItem('psycheai_link_promo') || '{}').code) === 'UIHALF'),
         linkPage.url());
-      const sample = await linkPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      const sample = cardOnlySample(await linkPage.evaluate(() => fetch('sample.json').then(r => r.json())));
+      await linkPage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       await linkPage.evaluate(report => {
         localStorage.setItem('psycheai_profile', JSON.stringify({
           report, card: report.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString(),
@@ -1241,7 +1260,8 @@ try {
     try {
       await sgPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await sgPage.waitForTimeout(300);
-      const sample = await sgPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      const sample = cardOnlySample(await sgPage.evaluate(() => fetch('sample.json').then(r => r.json())));
+      await sgPage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       await sgPage.evaluate(report => {
         localStorage.setItem('psycheai_profile', JSON.stringify({
           report, card: report.card, payload: 'x', model: 'mock',
@@ -1986,7 +2006,8 @@ try {
     try {
       await resumePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await resumePage.waitForTimeout(300);
-      const sample = await resumePage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      const sample = cardOnlySample(await resumePage.evaluate(() => fetch('sample.json').then(r => r.json())));
+      await resumePage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       const seed = async (pending, withDigest = true) => {
         await resumePage.evaluate(([report, pend, keepDigest]) => {
           localStorage.setItem('psycheai_profile', JSON.stringify({
@@ -11480,9 +11501,7 @@ try {
 
   // ---- the structured layout ----
   //
-  // Everything above runs against a classic server. The structured layout is
-  // drawn by the same page when asked with ?layout=structured, from a fully
-  // unlocked profile: the hand-written sample plus its premium fixture, so
+  // The report drawn from a fully unlocked profile: the hand-written sample plus its premium fixture, so
   // every block has real content to lay out.
   // ---- the premium read, end to end ----
   //
@@ -12989,7 +13008,6 @@ try {
       const prose = text => (text.match(/\((?:\\.|[^()\\])*\)\s*Tj/g) || [])
         .map(token => token.replace(/\)\s*Tj$/, '').slice(1)).join(' ').replace(/\s+/g, ' ');
       const structuredPdf = prose(await pdfOf('structured'));
-      const classicPdf = prose(await pdfOf('classic'));
       // The PDF follows the page: same order, same words, nothing the page dropped.
       // The last match of each: the cover's contents list, written into page
       // one, names the parts first. MBTI and wellbeing by their definitions,
@@ -13057,18 +13075,6 @@ try {
         // pattern), so look for the page that opens with each, not the first naming it.
         ['Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together'].every(title =>
           pages.some((pg, i) => i > 0 && pg.replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes(title))));
-      check('the classic PDF of the same report is unchanged by any of it',
-        !classicPdf.includes('Your signature patterns') && !classicPdf.includes('About this report') &&
-        classicPdf.includes('How much to trust this'));
-
-      // The same stored report, drawn classic: nothing structured on the page.
-      await sp.goto('http://localhost:' + PORT + '/?layout=classic', { waitUntil: 'load' });
-      await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
-      check('?layout=classic draws the same report in the classic layout',
-        (await sp.locator('#profile-body .report-part').count()) === 0 &&
-        (await sp.locator('#profile-body .pattern-chip').count()) === 0 &&
-        (await sp.locator('#profile-body .confidence-card').count()) === 1);
-
       // Unbought: the offer lists what the structured layout adds.
       await sp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
       await seed(false);

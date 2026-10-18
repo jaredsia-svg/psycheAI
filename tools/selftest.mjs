@@ -1727,10 +1727,10 @@ check('no report schema asks for an Enneagram',
   !('enneagram' in prompts.PROFILE_SCHEMA.properties) && !('enneagram' in prompts.FULL_SCHEMA.properties) &&
   !('enneagram' in prompts.FREE_SCHEMA.properties) && !('enneagram' in prompts.CARD_SCHEMA.properties) &&
   !/enneagram/i.test(JSON.stringify([prompts.PROFILE_SCHEMA, prompts.FULL_SCHEMA, prompts.FREE_SCHEMA,
-    prompts.CLASSIC_FULL_SCHEMA, prompts.CLASSIC_FREE_SCHEMA, prompts.PREMIUM_SCHEMA])));
+    prompts.BASE_FULL_SCHEMA, prompts.CARD_BASE_SCHEMA, prompts.PREMIUM_SCHEMA])));
 check('and no prompt mentions one',
-  ![prompts.PROFILE_SYSTEM, prompts.FULL_SYSTEM, prompts.FREE_SYSTEM, prompts.CLASSIC_FULL_SYSTEM,
-    prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM,
+  ![prompts.PROFILE_SYSTEM, prompts.FULL_SYSTEM, prompts.FREE_SYSTEM, prompts.FULL_SYSTEM_BASE,
+    prompts.CARD_BASE_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM,
     prompts.PREMIUM_SYSTEM, prompts.COMPATIBILITY_SYSTEM].some(text => /enneagram/i.test(text)));
 
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
@@ -2141,12 +2141,12 @@ check('premiumBlocks resends the same digest shape profileBlocks does, not a sum
 const bonusProps = prompts.FREE_SCHEMA.properties.bonus.properties;
 check('the roast is in the free card schema, and in no paid one',
   ['harsh', 'advice'].every(k => k in bonusProps) &&
-  prompts.CLASSIC_FREE_SCHEMA.properties.bonus === prompts.STRUCTURED_FREE_SCHEMA.properties.bonus &&
+  prompts.CARD_BASE_SCHEMA.properties.bonus === prompts.STRUCTURED_FREE_SCHEMA.properties.bonus &&
   !('harsh' in premiumProps) && !('advice' in premiumProps) && !('bonus' in premiumProps) &&
-  ['PROFILE_SCHEMA', 'FULL_SCHEMA', 'CLASSIC_FULL_SCHEMA', 'STRUCTURED_FULL_SCHEMA']
+  ['PROFILE_SCHEMA', 'FULL_SCHEMA', 'BASE_FULL_SCHEMA', 'STRUCTURED_FULL_SCHEMA']
     .every(key => !('bonus' in prompts[key].properties)));
 check('and no paid prompt asks for a roast or mentions one',
-  ['PROFILE_SYSTEM', 'FULL_SYSTEM', 'CLASSIC_FULL_SYSTEM', 'STRUCTURED_FULL_SYSTEM']
+  ['PROFILE_SYSTEM', 'FULL_SYSTEM', 'FULL_SYSTEM_BASE', 'STRUCTURED_FULL_SYSTEM']
     .every(key => !/roast|`bonus`/i.test(prompts[key])));
 
 // The register is stated outright rather than left implied by "accurate
@@ -5844,8 +5844,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const missing = RULES.filter(([, re]) => !re.test(free) || !re.test(prompts.PROFILE_SYSTEM)).map(([label]) => label);
   check('every load-bearing rule is in both the card prompt and the full report\'s',
     missing.length === 0, missing.join('; '));
-  // The classic card, which the structured one is built from.
-  const props = prompts.CLASSIC_FREE_SCHEMA.properties;
+  // The base card, which the card schema is built from.
+  const props = prompts.CARD_BASE_SCHEMA.properties;
   check('the card schema asks for no writing but the roast: no summary, no readings, no reasons',
     !props.summary && Boolean(props.bonus && props.bonus.properties.harsh) && !props.activity && !props.career &&
     !props.bigFive.properties.openness.properties.reading &&
@@ -5855,7 +5855,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and everything the card face shows',
     ['confidence', 'essence', 'cardHighlights', 'bigFive', 'mbti', 'interests',
       'values', 'beliefs', 'relationship', 'card'].every(key => key in props) &&
-    (prompts.CLASSIC_FREE_SCHEMA.required || []).length === Object.keys(props).length,
+    (prompts.CARD_BASE_SCHEMA.required || []).length === Object.keys(props).length,
     Object.keys(props).join(','));
   // The structured card: the signature patterns named.
   const sprops = prompts.STRUCTURED_FREE_SCHEMA.properties;
@@ -5875,10 +5875,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       Object.keys(sprops).indexOf('summary') < Object.keys(sprops).indexOf('cardHighlights') &&
       /# Overview\n/.test(prompts.STRUCTURED_FREE_SYSTEM), Object.keys(sprops).join());
   check('the structured card prompt asks for the patterns',
-    /# Signature patterns/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/# Signature patterns/.test(prompts.CLASSIC_FREE_SYSTEM));
-  check('and is otherwise the classic card prompt, so the rules that decide a letter or a score are the same',
-    prompts.STRUCTURED_FREE_SYSTEM.length > prompts.CLASSIC_FREE_SYSTEM.length - 400 &&
-    prompts.CLASSIC_FREE_SYSTEM.split('# ')
+    /# Signature patterns/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/# Signature patterns/.test(prompts.CARD_BASE_SYSTEM));
+  check('and is otherwise the base card prompt, so the rules that decide a letter or a score are the same',
+    prompts.STRUCTURED_FREE_SYSTEM.length > prompts.CARD_BASE_SYSTEM.length - 400 &&
+    prompts.CARD_BASE_SYSTEM.split('# ')
       .every(part => prompts.STRUCTURED_FREE_SYSTEM.includes(part.split('\n')[0])));
   // Roast aside on both sides: it moved from the full schema to this one.
   const roastChars = JSON.stringify(prompts.FREE_SCHEMA.properties.bonus).length;
@@ -6034,9 +6034,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and no longer tells either half that the other is a separate call it never sees',
     !/separate paid pass/.test(full) && !/free half is already written/.test(full) &&
     !/never sees this text/.test(full));
-  // Every field of both, except anything the active layout deliberately drops
-  // (none now).
-  const dropped = prompts.REPORT_LAYOUT === 'structured' ? prompts.STRUCTURED_DROPS : [];
+  // Every field of both, except anything the report deliberately drops.
+  const dropped = prompts.STRUCTURED_DROPS;
   check('the merged schema asks for every field of both, and all of them are required',
     Object.keys(prompts.PROFILE_SCHEMA.properties).concat(prompts.PREMIUM_KEYS)
       .filter(key => !dropped.includes(key))
@@ -6077,7 +6076,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties.development.properties.develop.minItems === undefined &&
       prompts.FULL_PINNED_SCHEMA.properties.development.properties.develop.minItems === undefined);
   check('every prompt says how to write about a partner without gender, and the one call keeps two develop areas',
-    [prompts.STRUCTURED_FULL_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM, prompts.CLASSIC_FREE_SYSTEM, prompts.CLASSIC_FULL_SYSTEM]
+    [prompts.STRUCTURED_FULL_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM, prompts.CARD_BASE_SYSTEM, prompts.FULL_SYSTEM_BASE]
       .every(t => /never he or she, him or her, himself or herself, guy, girl, man or woman/.test(t) && /address the reader only as "you"/.test(t)) &&
       /`development\.develop` has exactly two areas/.test(prompts.MERGED_SYSTEM));
   const answer = { mbti: { type: 'infj', letters: [{ axis: 'E/I', choice: 'I', strength: 'Moderate' }] },
@@ -6192,13 +6191,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the status route gives the release number and nothing about what runs behind it',
     Boolean(routes.status && routes.status.build) && /^\d+\.\d+\.\d+$/.test(routes.status.build.version) &&
       Object.keys(routes.status.build).join() === 'version' &&
-      Object.keys(routes.status).sort().join() === 'build,firstRun,freeAnalyses,mock,ready,reportLayout,shortLinks' &&
+      Object.keys(routes.status).sort().join() === 'build,firstRun,freeAnalyses,mock,ready,shortLinks' &&
       !/gemini|claude|anthropic|grok|render|commit|branch|stripe|pk_|sk_|_KEY/i.test(JSON.stringify(routes.status)),
     JSON.stringify(routes.status));
   check('a free request gets the card: conclusions, the roast, and no other writing',
     Boolean(routes.free) && routes.free.status === 200 && Boolean(data(routes.free).mbti) &&
-    (prompts.REPORT_LAYOUT === 'classic' ? data(routes.free).summary === undefined
-      : typeof data(routes.free).summary === 'string' && data(routes.free).summary.length > 0) &&
+    typeof data(routes.free).summary === 'string' && data(routes.free).summary.length > 0 &&
     Boolean(data(routes.free).bonus && data(routes.free).bonus.harsh) &&
     !(data(routes.free).mbti.letters || []).some(letter => letter.why),
     JSON.stringify(routes.free && Object.keys(data(routes.free))));
@@ -6225,16 +6223,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Boolean(routes.full) && routes.full.status === 200 && typeof data(routes.full).summary === 'string' &&
     data(routes.full).bonus === undefined && prompts.PREMIUM_KEYS.every(key => Boolean(data(routes.full)[key])),
     JSON.stringify(routes.full && Object.keys(data(routes.full))));
-  // Classic writes the card's conclusions back out; structured is sent the
-  // pinned schema and leaves them to the card — which it only does when it
-  // was handed one.
+  // The report is sent the pinned schema and leaves the conclusions to the
+  // card — which it only does when it was handed one.
   check('written to the card it was handed, not to a card of its own',
-    prompts.REPORT_LAYOUT === 'classic'
-      ? data(routes.full).mbti && data(routes.full).mbti.type === 'ISTP' && data(routes.full).bigFive.openness.score === 12
-      : data(routes.full).mbti && !('type' in data(routes.full).mbti) && !('score' in data(routes.full).bigFive.openness) &&
-        !('card' in data(routes.full)) && !('freeCard' in data(routes.full)),
+    data(routes.full).mbti && !('type' in data(routes.full).mbti) && !('score' in data(routes.full).bigFive.openness) &&
+      !('card' in data(routes.full)) && !('freeCard' in data(routes.full)),
     JSON.stringify(data(routes.full).mbti && data(routes.full).mbti.type));
-  if (prompts.REPORT_LAYOUT === 'structured') {
+  {
     // No card to anchor to: the card is decided first and comes back with it.
     const fresh = data(routes.fullFresh) || {};
     check('structured: an unlock with no card decides the card first and sends it back beside the report',
@@ -6339,7 +6334,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
 // generous loyalty to the few people who pass your screening", which reads
 // as someone who filters and excludes.
 check('the card\'s headline and write-up never write closeness as screening or a gate; the paid report still may',
-  [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>
+  [prompts.CARD_BASE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>
     text.includes('**In the headline and the write-up, closeness is never framed as a gate**') && text.includes('"the few who pass your screening"') &&
       text.includes('may still be named in the weaknesses below and in the paid report') &&
     text.includes('"deep loyalty to the people you are closest to"')));
@@ -6347,7 +6342,7 @@ check('the card\'s headline and write-up never write closeness as screening or a
 // The reader's data is "your data" in anything they read, never "the export".
 check('every prompt that writes for the reader calls their data "your data", never "the export"',
   /never call their data "the export"/.test(prompts.DATA_WORDS) && /"your data"/.test(prompts.DATA_WORDS) &&
-    [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM, prompts.CLASSIC_FULL_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM,
+    [prompts.CARD_BASE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM, prompts.FULL_SYSTEM_BASE, prompts.STRUCTURED_FULL_SYSTEM,
       prompts.PREMIUM_SYSTEM].every(text => text.includes(prompts.DATA_WORDS)));
 check('and the server rewrites any that still come back',
   /function readerText/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
@@ -6356,8 +6351,8 @@ check('and the server rewrites any that still come back',
 // Nothing sexual or about infidelity, no accusations, no quoted threats, and
 // harm to others never a joke: in the card and roast, and in the paid report.
 check('every prompt rules out sexual and infidelity content, accusations and quoted threats',
-  [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text => text.includes(prompts.CONDUCT_RULE)) &&
-    [prompts.CLASSIC_FULL_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM, prompts.PREMIUM_SYSTEM].every(text => text.includes(prompts.CONDUCT_RULE_REPORT)) &&
+  [prompts.CARD_BASE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text => text.includes(prompts.CONDUCT_RULE)) &&
+    [prompts.FULL_SYSTEM_BASE, prompts.STRUCTURED_FULL_SYSTEM, prompts.PREMIUM_SYSTEM].every(text => text.includes(prompts.CONDUCT_RULE_REPORT)) &&
     [prompts.CONDUCT_RULE, prompts.CONDUCT_RULE_REPORT].every(rule => /Nothing sexual and nothing about infidelity/.test(rule) &&
       /"cheater", "abuser", "predator", "harasser"/.test(rule) && /Never quote a message that threatens or pressures someone/.test(rule)) &&
     /Harm to others is never a joke/.test(prompts.CONDUCT_RULE) && !/roast/i.test(prompts.CONDUCT_RULE_REPORT));
@@ -6372,7 +6367,7 @@ check('a gap between posts and private activity is named neutrally, as one readi
 
 // The roast goes gentle when the evidence shows the reader struggling.
 check('the roast goes gentle, teasing only harmless habits, when the evidence shows someone struggling',
-  [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>
+  [prompts.CARD_BASE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>
     text.includes('**When the evidence shows someone struggling, the roast goes gentle.**') &&
       text.includes('do not roast the struggle and do not roast hard at all') && text.includes('Never name or hint at a condition.')) &&
     /unless the evidence clearly shows them struggling/.test(JSON.stringify(prompts.FREE_SCHEMA)));
@@ -6399,7 +6394,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   try {
     printed = execFileSync(process.execPath, [join(root, 'tools', 'compare-unlock.mjs'), preview, '--runs', '2', '--mock',
       '--out', join(tmpdir(), 'psycheai-compare-unlock-out-' + process.pid)],
-      { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PSYCHEAI_REPORT_LAYOUT: 'structured' }) });
+      { encoding: 'utf8', timeout: 60000 });
   } catch (error) {
     printed = String(error.stdout || '') + String(error.message || '');
   }
@@ -6666,48 +6661,39 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
 
 // ---------- the structured report layout ----------
 //
-// Four parts with one thread through them: signature patterns, motivators,
-// a development plan and pressure points, added to the classic report rather
-// than replacing any of it, and switched by one environment variable so the
-// classic layout is always one setting away.
+// Five parts with one thread through them: signature patterns, motivators and
+// a development plan, built on the base report. The only layout since the
+// classic one was retired (18 Oct 2026), so the unlock always sends it.
 {
-  const layoutOf = env => JSON.parse(execFileSync(process.execPath, ['-e',
+  const sent = JSON.parse(execFileSync(process.execPath, ['-e',
     'const p = require("./lib/prompts");' +
     'const m = require("./lib/mock");' +
     'm.analyseFull({ samples: { captions: [] } }, null).then(r => console.log(JSON.stringify({' +
-    '  layout: p.REPORT_LAYOUT, structured: p.FULL_SCHEMA === p.STRUCTURED_FULL_SCHEMA,' +
-    '  classic: p.FULL_SCHEMA === p.CLASSIC_FULL_SCHEMA && p.FULL_SYSTEM === p.CLASSIC_FULL_SYSTEM,' +
+    '  structured: p.FULL_SCHEMA === p.STRUCTURED_FULL_SCHEMA && p.FULL_SYSTEM === p.STRUCTURED_FULL_SYSTEM,' +
+    '  layout: "REPORT_LAYOUT" in p || "REPORT_LAYOUTS" in p,' +
     '  keys: Object.keys(r.data) })));'],
-  { cwd: root, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] }).toString());
-  const unset = layoutOf({ PSYCHEAI_REPORT_LAYOUT: '' });
-  const classic = layoutOf({ PSYCHEAI_REPORT_LAYOUT: 'classic' });
-  const typo = layoutOf({ PSYCHEAI_REPORT_LAYOUT: 'clasic' });
-  check('the structured layout is the default, and the unlock sends its prompt and schema',
-    unset.layout === 'structured' && unset.structured, JSON.stringify(unset));
-  check('PSYCHEAI_REPORT_LAYOUT=classic sends exactly the classic prompt and schema',
-    classic.layout === 'classic' && classic.classic, JSON.stringify(classic));
-  check('an unrecognised value falls back to structured rather than failing a paid call',
-    typo.layout === 'structured' && typo.structured, JSON.stringify(typo));
-  check('the mock writes the four structured fields only in the structured layout',
-    prompts.STRUCTURED_KEYS.every(key => unset.keys.includes(key)) &&
-    prompts.STRUCTURED_KEYS.every(key => !classic.keys.includes(key)), JSON.stringify(classic.keys));
+  { cwd: root, env: Object.assign({}, process.env, { PSYCHEAI_REPORT_LAYOUT: 'classic' }), stdio: ['ignore', 'pipe', 'pipe'] }).toString());
+  check('the unlock always sends the structured prompt and schema, whatever an old PSYCHEAI_REPORT_LAYOUT says',
+    sent.structured && !sent.layout, JSON.stringify(sent));
+  check('and the mock writes the three thread fields',
+    prompts.STRUCTURED_KEYS.every(key => sent.keys.includes(key)), JSON.stringify(sent.keys));
 
   const structured = prompts.STRUCTURED_FULL_SCHEMA;
-  const classicSchema = prompts.CLASSIC_FULL_SCHEMA;
+  const baseSchema = prompts.BASE_FULL_SCHEMA;
   // The digital footprint is the one drop: the structured page and PDF have
   // no section for it, so the paid call no longer writes it.
-  check('the structured schema drops only the digital footprint; every other classic field is written unchanged',
+  check('the structured schema drops only the digital footprint; every other base field is written unchanged',
     prompts.STRUCTURED_DROPS.join() === 'activity' && !('activity' in structured.properties) &&
     !('enneagram' in structured.properties) &&
     Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
-    Object.keys(classicSchema.properties).filter(key => !['activity', 'card', 'essence', 'cardHighlights', 'values', 'beliefs',
+    Object.keys(baseSchema.properties).filter(key => !['activity', 'card', 'essence', 'cardHighlights', 'values', 'beliefs',
       'summary', 'career', 'wellness', 'attachment', 'careerAssessment', 'bigFive', 'mbti', 'interests'].includes(key)).every(key =>
-      structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)) &&
+      structured.properties[key] === baseSchema.properties[key] && structured.required.includes(key)) &&
     // Reshaped rather than dropped: the same sections, leaner.
     ['summary', 'career', 'wellness', 'attachment', 'careerAssessment', 'bigFive', 'mbti', 'interests'].every(key => structured.required.includes(key)) &&
     // Values and beliefs keep their fields, capped at four between them.
-    structured.properties.values.items === classicSchema.properties.values.items &&
-    structured.properties.beliefs.items === classicSchema.properties.beliefs.items,
+    structured.properties.values.items === baseSchema.properties.values.items &&
+    structured.properties.beliefs.items === baseSchema.properties.beliefs.items,
     Object.keys(structured.properties).join(','));
   // The report cut down (October 2026): the Big Five keeps all five scores and
   // bands, so the E/I letter still reads off extraversion, but each trait is
@@ -6724,11 +6710,11 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       /only place the extraversion evidence is laid out/.test(structured.properties.mbti.properties.letters.items.properties.evidence.description) && !/depth a Big Five trait gets/.test(why) &&
       /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /cite a breadth number in the E\/I axis's `evidence`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
-      /Cite real evidence per trait/.test(prompts.CLASSIC_FULL_SYSTEM));
+      /Cite real evidence per trait/.test(prompts.FULL_SYSTEM_BASE));
     check('structured interests: no evidence list, one line each, every one printed',
       !('evidence' in structured.properties.interests.items.properties) &&
       /^One sentence/.test(structured.properties.interests.items.properties.detail.description) &&
-      'evidence' in classicSchema.properties.interests.items.properties &&
+      'evidence' in baseSchema.properties.interests.items.properties &&
       /prints every one/.test(structured.properties.interests.description));
   }
   // WhatsApp chats are the reader's own pick of up to three, usually their
@@ -6736,14 +6722,14 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   // social life (a moderate-introvert read citing "35,000 messages in two
   // chats" against 378 Instagram threads, October 2026).
   check('every prompt that scores extraversion says WhatsApp chats are hand-picked and never count towards I',
-    ['STRUCTURED_FREE_SYSTEM', 'MERGED_SYSTEM', 'STRUCTURED_FULL_SYSTEM', 'CLASSIC_FULL_SYSTEM'].every(k =>
+    ['STRUCTURED_FREE_SYSTEM', 'MERGED_SYSTEM', 'STRUCTURED_FULL_SYSTEM', 'FULL_SYSTEM_BASE'].every(k =>
       /WhatsApp chats are hand-picked/.test(prompts[k]) && /never depth leaning introvert|never count it towards \*\*I\*\*/.test(prompts[k])));
   check('its shareable card keeps the same fields, and none is the Enneagram',
-    Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
+    Object.keys(structured.properties.card.properties).join() === Object.keys(baseSchema.properties.card.properties).join() &&
     !('enneagram' in structured.properties.card.properties));
   check('and adds exactly the three thread fields, all required',
     prompts.STRUCTURED_KEYS.join() === 'patterns,motivators,development' &&
-    prompts.STRUCTURED_KEYS.every(key => structured.required.includes(key) && !(key in classicSchema.properties)));
+    prompts.STRUCTURED_KEYS.every(key => structured.required.includes(key) && !(key in baseSchema.properties)));
   const order = Object.keys(structured.properties);
   // Scores first (18 Oct 2026): the Big Five and MBTI open the response, then
   // the patterns, the character and the summary, which follow the scores
@@ -6753,7 +6739,8 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const letterOrder = Object.keys(structured.properties.mbti.properties.letters.items.properties).join();
   check('MBTI and the Big Five are written first, MBTI leading, then the patterns, the character and the summary; the type after its letters, each letter after its case',
     order.slice(0, 7).join() === 'confidence,mbti,bigFive,patterns,essence,summary,cardHighlights' &&
-    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,evidence,choice,strength,inPractice' &&
+    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,evidence,choice,strength' &&
+    'inPractice' in prompts.PROFILE_SCHEMA.properties.mbti.properties.letters.items.properties &&
     Object.keys(prompts.MERGED_SCHEMA.properties).slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
     /Decide them straight after MBTI and the Big Five/.test(prompts.STRUCTURED_ADDON) &&
     /\*\*MBTI comes before the Big Five\*\*, on the page and in the order you write/.test(prompts.STRUCTURED_ADDON) &&
@@ -6774,20 +6761,20 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     !('implications' in structured.properties.attachment.properties) &&
     !('pressurePoints' in structured.properties) &&
     ['earlySigns', 'counterMove'].every(key => key in structured.properties.development.properties.develop.items.properties) &&
-    'watchOuts' in classicSchema.properties.career.properties && 'implications' in classicSchema.properties.attachment.properties);
+    'watchOuts' in baseSchema.properties.career.properties && 'implications' in baseSchema.properties.attachment.properties);
   check('the executive summary is about 120 words with no scores',
     /About 120 words/.test(structured.properties.summary.description) &&
     /No numbers or scores of any kind/.test(structured.properties.summary.description));
-  // The classic prompt and the thread, with only the listed splices and cuts:
+  // The base prompt and the thread, with only the listed splices and cuts:
   // each one a field the structured schema leaves out or a page it lacks.
   {
-    let expected = prompts.CLASSIC_FULL_SYSTEM + '\n\n' + prompts.STRUCTURED_ADDON;
+    let expected = prompts.FULL_SYSTEM_BASE + '\n\n' + prompts.STRUCTURED_ADDON;
     for (const [from, to] of prompts.STRUCTURED_SPLICES) expected = expected.replace(from, to);
     for (const [from, to] of prompts.STRUCTURED_CUTS) {
       const at = expected.indexOf(from);
       expected = expected.slice(0, at) + expected.slice(expected.indexOf(to, at));
     }
-    check('the structured prompt is the classic one plus the thread',
+    check('the structured prompt is the base one plus the thread',
       prompts.STRUCTURED_FULL_SYSTEM === expected && !/Enneagram/.test(prompts.STRUCTURED_FULL_SYSTEM));
     // Nothing in it asks for a field the paid call does not write, or
     // describes a section the page does not have.
@@ -6799,9 +6786,9 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     check('the paid call is told the pinned card is the decision wherever the prompt says to pick one',
       /this card is that decision/.test(prompts.profileBlocks({ coverage: { sources: ['instagram'] } }, { mbtiType: 'INTJ', bigFive: {} })[1].text));
   }
-  check('the prompt that ties them in is in the structured prompt and nowhere in the classic one',
+  check('the prompt that ties them in is in the structured prompt and nowhere in the base one',
     prompts.STRUCTURED_FULL_SYSTEM.includes(prompts.STRUCTURED_ADDON) &&
-    !prompts.CLASSIC_FULL_SYSTEM.includes('# The thread that ties this report together'));
+    !prompts.FULL_SYSTEM_BASE.includes('# The thread that ties this report together'));
   check('patterns are decided first and each must show up in at least three sections',
     /Decide them straight after MBTI and the Big Five, from the evidence and those scores, and before any other section/.test(prompts.STRUCTURED_ADDON) &&
     /fewer than three sections is a finding, not a pattern/.test(prompts.STRUCTURED_ADDON));
@@ -6813,12 +6800,12 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('the plan holds about five actions and forbids the same step on a different deadline',
     /about five in all/.test(prompts.STRUCTURED_ADDON) && /different deadline/.test(prompts.STRUCTURED_ADDON));
   check('the full prompt keeps plumbing out of the report and writes plainly',
-    /Never write a tag, a thread number/.test(prompts.CLASSIC_FULL_SYSTEM) &&
-    /always "emotional sensitivity"/.test(prompts.CLASSIC_FULL_SYSTEM) &&
-    /never about itself as "we"/.test(prompts.CLASSIC_FULL_SYSTEM) &&
-    /British spelling throughout/.test(prompts.CLASSIC_FULL_SYSTEM) &&
-    /Sentence case for every name/.test(prompts.CLASSIC_FULL_SYSTEM) &&
-    /Do not use these words at all/.test(prompts.CLASSIC_FULL_SYSTEM));
+    /Never write a tag, a thread number/.test(prompts.FULL_SYSTEM_BASE) &&
+    /always "emotional sensitivity"/.test(prompts.FULL_SYSTEM_BASE) &&
+    /never about itself as "we"/.test(prompts.FULL_SYSTEM_BASE) &&
+    /British spelling throughout/.test(prompts.FULL_SYSTEM_BASE) &&
+    /Sentence case for every name/.test(prompts.FULL_SYSTEM_BASE) &&
+    /Do not use these words at all/.test(prompts.FULL_SYSTEM_BASE));
 
   // The page and the PDF read their labels from copy.js; the model writes
   // keys from prompts.js. The two vocabularies have to be the same lists.
@@ -6866,18 +6853,17 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       /Both are settled and your schema has no field for either/.test(overviewText) &&
       !/keep their ids, names and order exactly/.test(overviewText), JSON.stringify(overviewAnchor.summary));
   check('and its schema leaves out the summary and the patterns, and nothing else',
-    prompts.REPORT_LAYOUT === 'classic' ||
-      (prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
-        Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
-          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'patterns,summary' &&
-        !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary')));
+    prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
+      Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
+        .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'patterns,summary' &&
+      !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary'));
   check('a pattern without its evidence keeps the old anchor, summary or not',
     !('summary' in prompts.anchorFrom(Object.assign({}, freeCard, { summary: 'Text.' }))));
-  const classicAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
+  const olderAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
     bigFive: { openness: { score: 60 } } });
-  const classicText = prompts.profileBlocks({}, classicAnchor).map(b => b.text).join('\n');
-  check('a classic card anchors no Enneagram even from an old report that had one, and says nothing about patterns',
-    !/enneagram/i.test(classicText) && !/signature patterns/.test(classicText) && !('patterns' in classicAnchor));
+  const olderText = prompts.profileBlocks({}, olderAnchor).map(b => b.text).join('\n');
+  check('an older card anchors no Enneagram even from an old report that had one, and says nothing about patterns',
+    !/enneagram/i.test(olderText) && !/signature patterns/.test(olderText) && !('patterns' in olderAnchor));
   // The lines shown under the card are anchored too, so the full report
   // explains them rather than contradicting them.
   const linesAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, bigFive: { openness: { score: 60 } },
@@ -6898,7 +6884,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     prompts.STRUCTURED_FREE_SCHEMA.properties.essence.properties.character.enum.join() === prompts.CHARACTER_NAMES.join() &&
     prompts.STRUCTURED_FULL_SCHEMA.properties.essence.properties.character.enum.join() === prompts.CHARACTER_NAMES.join() &&
     prompts.CHARACTER_NAMES.length >= 20 && prompts.CHARACTER_NAMES.length <= 30 &&
-    /closest honest fit/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/closest honest fit/.test(prompts.CLASSIC_FREE_SYSTEM),
+    /closest honest fit/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/closest honest fit/.test(prompts.CARD_BASE_SYSTEM),
     String(prompts.CHARACTER_NAMES.length));
   const emblems = globalThis.PsycheCopy.CHARACTER_EMBLEMS;
   check('every catalogue character has an emblem, and no emblem is drawn for anyone else',
@@ -6929,7 +6915,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       /Gender only decides which characters to choose among, and is never written/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /privately choosing the character's side \(see \*\*essence\*\*\), never written/.test(prompts.FULL_SYSTEM) &&
       prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
-      !/never on their gender|never on looks, gender/.test(prompts.FULL_SYSTEM + prompts.STRUCTURED_FREE_SYSTEM + prompts.CLASSIC_FREE_SYSTEM));
+      !/never on their gender|never on looks, gender/.test(prompts.FULL_SYSTEM + prompts.STRUCTURED_FREE_SYSTEM + prompts.CARD_BASE_SYSTEM));
   check('the catalogue is balanced: as many women as men, and a retired character is no longer offered',
     ['Mulan', 'Elsa', 'Moana', 'Rapunzel', 'Judy Hopps', 'Joy', 'Wonder Woman', 'Hermione Granger', 'Kuromi',
       'Sailor Moon', 'Princess Peach', 'Hello Kitty'].every(name => prompts.CHARACTER_NAMES.includes(name)) &&
@@ -6942,7 +6928,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('the structured card\'s write-up is two sentences on why they are like the character',
     /Exactly two sentences/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
     prompts.STRUCTURED_FULL_SCHEMA.properties.cardHighlights === prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights &&
-    /Exactly four sentences/.test(prompts.CLASSIC_FREE_SCHEMA.properties.cardHighlights.description));
+    /Exactly four sentences/.test(prompts.CARD_BASE_SCHEMA.properties.cardHighlights.description));
   {
     // Gemini answers a schema with an empty-string enum value with a bare 400
     // INVALID_ARGUMENT — this is what broke the first paid structured report.
@@ -6976,10 +6962,10 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       return { props, enums, integers, structure };
     };
     const pinned = measure(prompts.STRUCTURED_PINNED_FULL_SCHEMA);
-    const classic = measure(prompts.CLASSIC_FULL_SCHEMA);
-    check('the pinned structured schema is smaller than the classic one Gemini serves, on every count',
-      pinned.props < classic.props && pinned.enums < classic.enums && pinned.integers <= classic.integers &&
-      pinned.structure < classic.structure, JSON.stringify({ pinned, classic }));
+    const base = measure(prompts.BASE_FULL_SCHEMA);
+    check('the pinned structured schema is smaller than the base one Gemini serves, on every count',
+      pinned.props < base.props && pinned.enums < base.enums && pinned.integers <= base.integers &&
+      pinned.structure < base.structure, JSON.stringify({ pinned, base }));
     const P = prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties;
     check('and it asks for none of what the card pins, while keeping every section the report writes',
       !('card' in P) && !('character' in P.essence.properties) && !('score' in P.confidence.properties) &&
@@ -7003,7 +6989,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       /one list of exactly three in all/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /under 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
-      /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
+      /first three, three and two/.test(prompts.CARD_BASE_SYSTEM));
     check('values and beliefs are one list on the page, so both structured prompts forbid a belief restating a value',
       /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
@@ -7028,8 +7014,8 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   }
 
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
-  check('the status route tells the page which layout the unlock writes',
-    /reportLayout: prompts\.REPORT_LAYOUT/.test(serverSource));
+  check('the status route no longer names a layout: there is one',
+    !/reportLayout|REPORT_LAYOUT/.test(serverSource));
   check('the digest reserve covers the larger, structured prompt',
     Digest.FIXED_INPUT_TOKENS >= Math.round((prompts.STRUCTURED_FULL_SYSTEM.length +
       JSON.stringify(prompts.STRUCTURED_FULL_SCHEMA).length) / 3.5));

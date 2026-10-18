@@ -56,7 +56,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.
 - **Results cache:** finished reports are held in memory only (`lib/results.js`, about 4h) so a dropped connection is not charged twice.
-- **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `shortLinks`, `reportLayout`, `firstRun` and `build.version`. A selftest pins the exact key set.
+- **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `shortLinks`, `firstRun` and `build.version`. A selftest pins the exact key set.
 
 **Client (`docs/`).** No framework. Scripts are plain `<script>` tags that communicate through `window.*` globals. Load order is in `docs/index.html`, and `app.js` is last.
 - **Reading exports:** `zip.js` → `instagram.js` / `supplement.js` (Google, Facebook) / `whatsapp.js` read the exports in the browser.
@@ -78,7 +78,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 - **Character art:** `character-art.js`.
 - **Static pages:** `docs/*.html` (guides, privacy, terms, refunds, 404) are script-free pages sharing `styles.css`.
 
-**Report layouts.** `PSYCHEAI_REPORT_LAYOUT` is `structured` (production) or `classic`. The UI suite pins **classic** for most checks and tests structured on a second server, so a structured-only UI change can pass classic checks without being exercised.
+**One report layout.** The report is the structured one (five parts, one thread). The classic layout and its `PSYCHEAI_REPORT_LAYOUT` switch were retired on 18 Oct 2026; its prompt and schema survive only as the base the report is spliced from (`FULL_SYSTEM_BASE`, `PROFILE_SCHEMA`, `CARD_BASE_SYSTEM`, `CARD_BASE_SCHEMA`, and `BASE_FULL_SCHEMA` as the size yardstick for Gemini). The PDF keeps a short build for a card-only profile (`build` in `docs/pdf.js`); everything else is `buildStructured`.
 
 **Card image export.** `cardImageBlob` in `app.js` serialises the card into an SVG `foreignObject`.
 - Only CSS rules matching `:root`, `.psyche-card` or `.pc-*` (`CARD_RULE`) are copied into the image.

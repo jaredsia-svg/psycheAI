@@ -653,8 +653,7 @@
     // 18 — and the wordmark sits on the same baseline as the name opposite it.
     this.doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: MARGIN - 9, size: 13, color: ACCENT });
     this.doc.draw(toWinAnsi('PsycheAI'), MARGIN + 18, MARGIN, { size: 9, bold: true, color: ACCENT });
-    // The structured layout adds the date, so a loose page says when as well
-    // as whose. The classic report passes no date and prints as it always did.
+    // The date beside the name, so a loose page says when as well as whose.
     const who = toWinAnsi(this.meta.name + (this.meta.date ? '  ·  ' + this.meta.date : ''));
     const width = measure(who, 8, false);
     this.doc.draw(who, PAGE.width - MARGIN - width, MARGIN, { size: 8, color: SOFT });
@@ -795,22 +794,6 @@
     const values = (items || []).filter(Boolean);
     if (!values.length) return this.muted(TEXT.pointsEmpty);
     for (const item of values) this.point(item.title, item.detail);
-    return this;
-  };
-
-  /** A 0-100 bar with its label and number, as the trait rows are on screen. */
-  Report.prototype.bar = function (label, score) {
-    this.need(30);
-    const value = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
-    const readout = toWinAnsi(String(value));
-    const readoutWidth = measure(readout, 9.5, true);
-    this.doc.draw(toWinAnsi(label), MARGIN, this.doc.y + 8, { size: 10.5, bold: true, color: INK });
-    this.doc.draw(readout, PAGE.width - MARGIN - readoutWidth, this.doc.y + 8,
-      { size: 9.5, bold: true, color: ACCENT });
-    const track = this.doc.y + 14;
-    this.doc.roundRect(MARGIN, track, COLUMN, 5, 2.5, LINE);
-    if (value > 0) this.doc.roundRect(MARGIN, track, Math.max(5, COLUMN * value / 100), 5, 2.5, ACCENT);
-    this.doc.y += 26;
     return this;
   };
 
@@ -1159,7 +1142,7 @@
     return 20 + leadHeight + lines.length * leading;
   }
 
-  function psycheCard(doc, report, card, top, structured) {
+  function psycheCard(doc, report, card, top) {
     const essence = report.essence || {};
     // `noun` is what this field was called before it held a character, so a
     // profile saved before that change still prints a name here.
@@ -1170,12 +1153,10 @@
     // this file would have to re-derive; `card.summary` is the shaped card's
     // own line and is never empty, so it is the one fallback kept here.
     const fullBlurb = String(report.cardHighlights || card.summary || '').trim();
-    // The structured card's write-up is two sentences on why they are like the
+    // The card's write-up is two sentences on why they are like the
     // character; a report written before that keeps its first two, as the
     // story card on the page does.
-    const blurb = structured
-      ? (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim()
-      : fullBlurb;
+    const blurb = (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim();
     const mbti = report.mbti || {};
     const five = report.bigFive || {};
     const love = (report.relationship && report.relationship.loveLanguages) || {};
@@ -1211,24 +1192,19 @@
       (blurbLines.length ? 10 + blurbLines.length * blurbLeading : 0) + 16;
 
     // ---- measure the three rows underneath it ----
-    const letters = (mbti.letters || []).map(l => toWinAnsi(structured
-      ? String(l.choice || '') + '  ' + ((Copy.MBTI_POLES[l.choice] || {}).name || '') + (l.strength ? ' · ' + l.strength : '')
-      : String(l.choice || '') + '  ' + String(l.strength || '')));
-    // The structured layout's column holds the signature patterns, numbered as
-    // the report numbers them.
-    const patternLines = structured
-      ? (Array.isArray(report.patterns) ? report.patterns : [])
-        .filter(p => p && /^p[1-3]$/.test(p.id) && p.name)
-        .sort((a, b) => a.id.localeCompare(b.id))
-        .flatMap(p => wrap(toWinAnsi(p.id.replace('p', '') + '  ' + p.name), innerW / 2 - 12, { size: 9, bold: true }))
-      : [];
-    // Extraversion is the E of the type beside it, so the structured card
-    // leaves it out of the Big Five, as the story card does.
+    const letters = (mbti.letters || []).map(l => toWinAnsi(
+      String(l.choice || '') + '  ' + ((Copy.MBTI_POLES[l.choice] || {}).name || '') + (l.strength ? ' · ' + l.strength : '')));
+    // A column holds the signature patterns, numbered as the report numbers them.
+    const patternLines = (Array.isArray(report.patterns) ? report.patterns : [])
+      .filter(p => p && /^p[1-3]$/.test(p.id) && p.name)
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .flatMap(p => wrap(toWinAnsi(p.id.replace('p', '') + '  ' + p.name), innerW / 2 - 12, { size: 9, bold: true }));
+    // Extraversion is the E of the type beside it, so the card leaves it out
+    // of the Big Five, as the story card does.
     const fiveRows = Object.keys(TRAIT_LABELS)
-      .filter(key => five[key] && !(structured && key === 'extraversion'))
+      .filter(key => five[key] && key !== 'extraversion')
       .map(key => toWinAnsi(TRAIT_LABELS[key] + '  ' + Math.round(Number(five[key].score) || 0)));
 
-    const third = innerW / 3;
     const titles = (rows, limit) => (rows || []).slice(0, limit)
       .map(r => (r && (r.title || r.name || r.value || r.belief)) || '').filter(Boolean);
     const wrapCell = (text, width, style) =>
@@ -1240,10 +1216,10 @@
     // where the code is the finding and the strengths are how firmly each
     // letter was picked. Drawn as a `lead` rather than as another line, so the
     // two weights cannot be confused for one list.
-    const typeCell = { label: TEXT.cardType, lead: mbti.type && !structured ? toWinAnsi(mbti.type) : '',
-      lines: letters, style: { size: structured ? 9 : 9.2, color: INK }, leading: 12 };
-    const fiveCell = { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: structured ? 12 : 11.6 };
-    // Structured: the story card's rows — the patterns beside what motivates
+    const typeCell = { label: TEXT.cardType, lead: '',
+      lines: letters, style: { size: 9, color: INK }, leading: 12 };
+    const fiveCell = { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: 12 };
+    // The story card's rows — the patterns beside what motivates
     // them, then the type beside the Big Five.
     const motiveKeys = (() => {
       const known = Copy.STRUCTURED.motivators;
@@ -1254,23 +1230,15 @@
     })();
     const motiveLines = motiveKeys.flatMap((key, i) =>
       wrap(toWinAnsi((i + 1) + '  ' + Copy.STRUCTURED.motivators[key].label), innerW / 2 - 12, { size: 9, bold: true }));
-    const leadCells = structured
-      ? [{ label: TEXT.cardPatterns, lines: patternLines, style: { size: 9, bold: true, color: INK }, leading: 12 },
-        { label: Copy.STRUCTURED.titles.motivators, lines: motiveLines, style: { size: 9, bold: true, color: INK }, leading: 12 }]
-      : [];
+    const leadCells = [{ label: TEXT.cardPatterns, lines: patternLines, style: { size: 9, bold: true, color: INK }, leading: 12 },
+      { label: Copy.STRUCTURED.titles.motivators, lines: motiveLines, style: { size: 9, bold: true, color: INK }, leading: 12 }];
     const statCells = [typeCell, fiveCell];
-    // Structured: values and beliefs as one "what you stand for", beside what
-    // they are into — the story card's two panels.
-    const chipCells = structured
-      ? [{ label: Copy.STRUCTURED.cardStandFor, style: smallStyle,
-        lines: wrapCell(titles(report.values, 3).concat(titles(report.beliefs, 1)).slice(0, 4).join(' · '), innerW / 2, smallStyle) },
-      { label: Copy.STRUCTURED.cardInto, style: smallStyle,
-        lines: wrapCell(titles(report.interests, 3).join(' · '), innerW / 2, smallStyle) }]
-      : [
-        { label: TEXT.cardValues, lines: wrapCell(titles(report.values, 3).join(' · '), third, smallStyle), style: smallStyle },
-        { label: TEXT.cardBeliefs, lines: wrapCell(titles(report.beliefs, 2).join(' · '), third, smallStyle), style: smallStyle },
-        { label: TEXT.cardInterests, lines: wrapCell(titles(report.interests, 3).join(' · '), third, smallStyle), style: smallStyle },
-      ];
+    // Values and beliefs as one "what you stand for", beside what they are
+    // into — the story card's two panels.
+    const chipCells = [{ label: Copy.STRUCTURED.cardStandFor, style: smallStyle,
+      lines: wrapCell(titles(report.values, 3).concat(titles(report.beliefs, 1)).slice(0, 4).join(' · '), innerW / 2, smallStyle) },
+    { label: Copy.STRUCTURED.cardInto, style: smallStyle,
+      lines: wrapCell(titles(report.interests, 3).join(' · '), innerW / 2, smallStyle) }];
     const chipWidth = innerW / chipCells.length;
     const loveNames = side => (side || []).slice(0, 2).map(l => l && l.language).filter(Boolean).join(' · ');
     const half = innerW / 2;
@@ -1448,7 +1416,7 @@
       y += 31;
     }
 
-    const cardBottom = psycheCard(doc, report, card, bandHeight + 24, meta.layout === 'structured');
+    const cardBottom = psycheCard(doc, report, card, bandHeight + 24);
 
     // The provenance line sits at the foot of the cover rather than under the
     // band: it is what the page was printed from, which is a colophon, and it
@@ -1624,9 +1592,9 @@
 
   function build(report, card, meta) {
     bindCopy();
-    // The structured layout's own build, for a report that carries its
-    // writing. A card-only profile prints the same offer page either way.
-    if (meta && meta.layout === 'structured' && !meta.cardOnly) return buildStructured(report, card, meta);
+    // A report with its writing is the structured build; this one is left for
+    // a card-only profile: the card, what the report adds, and its confidence.
+    if (!(meta && meta.cardOnly)) return buildStructured(report, card, meta);
     const source = report || {};
     const who = card || {};
     const stamp = meta || {};
@@ -1639,208 +1607,9 @@
     const cardBottom = cover(doc, source, who, stamp);
     out.page();
 
-    // The written report, sections 1 to 9a. A free profile has the card and
-    // none of this — the explanations are what the unlock buys, and the server
-    // never wrote them — so its PDF says what the unlock adds instead of
-    // printing a run of empty headings.
-    const writeExplanations = () => {
-      // 1. Who you are — essence, the headline findings, then the summary.
-      out.sectionTitle(TEXT.whoYouAre);
-      const essence = source.essence || {};
-      // `noun` is the name this field had before it held a character, so a
-      // profile saved before that change still prints.
-      const essenceName = essence.character || essence.noun;
-      if (essenceName) {
-        out.eyebrow(TEXT.essenceLabel);
-        const nameStyle = { size: 23, bold: true, color: ACCENT };
-        const franchiseStyle = { size: 10, color: SOFT };
-        const franchise = essence.franchise ? toWinAnsi(essence.franchise) : '';
-        const lines = wrap(toWinAnsi(essenceName), COLUMN, nameStyle);
-
-        // The franchise trails the last line of the name, but only if it fits
-        // there. A name whose last line nearly fills the column would otherwise
-        // push it straight past the right margin — "Nick Wilde and Judy Hopps of
-        // Zootopia" runs 48pt over. When it will not fit, it takes its own line.
-        const lastWidth = measure(lines[lines.length - 1], nameStyle.size, true);
-        const franchiseWidth = franchise ? measure(franchise, franchiseStyle.size, false) : 0;
-        const franchiseFitsBeside = franchise && lastWidth + 9 + franchiseWidth <= COLUMN;
-
-        lines.forEach((line, index) => {
-          out.need(30);
-          doc.draw(line, MARGIN, doc.y + 18, nameStyle);
-          if (franchiseFitsBeside && index === lines.length - 1) {
-            doc.draw(franchise, MARGIN + lastWidth + 9, doc.y + 18, franchiseStyle);
-          }
-          doc.y += 28;
-        });
-        if (franchise && !franchiseFitsBeside) {
-          out.need(16);
-          doc.draw(franchise, MARGIN, doc.y + 8, franchiseStyle);
-          doc.y += 15;
-        }
-        out.space(2);
-        if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });
-        out.space(8);
-      }
-      // The glance strip — type, highest trait, lowest trait — used to
-      // sit here. It came off the profile page a while ago because the psyche
-      // card above it already carried them, and repeating them a few
-      // centimetres below was the same facts twice. The PDF kept its copy on the
-      // grounds that it had no card in front of it. It does now: page one is that
-      // card. So the same reasoning applies and the strip goes, leaving the
-      // essence to run straight into the summary.
-      if (source.summary) out.body(source.summary, { size: 10.6, leading: 16 });
-
-      // 2. Big Five.
-      const five = source.bigFive || {};
-      out.sectionTitle(TEXT.bigFive, TEXT.bigFiveSub);
-      for (const key of Object.keys(TRAIT_LABELS)) {
-        const trait = five[key];
-        if (!trait) continue;
-        out.need(84);
-        out.bar(TRAIT_LABELS[key] + ' · ' + (trait.band || ''), trait.score);
-        if (trait.reading) out.body(trait.reading, { size: 9.9, leading: 14.4 });
-        out.tags(trait.evidence);
-        out.space(4);
-      }
-
-      // 3. MBTI.
-      const mbti = source.mbti;
-      if (mbti) {
-        out.sectionTitle(TEXT.mbtiPrefix + (mbti.type || '') + (mbti.nickname ? '  ' + mbti.nickname : ''),
-          TEXT.mbtiConfidence + (mbti.confidence || ''));
-        for (const letter of mbti.letters || []) {
-          out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
-            letter.strength, letter.why, letter.inPractice, letter.counterEvidence, { evidence: letter.evidence });
-        }
-        out.fineprint(mbti.caveat);
-      }
-
-
-    // Page/PDF parity for the trajectory chip — see trajectoryPill in app.js.
-    // The PDF's tile takes one pill, so the two are joined rather than stacked:
-    // "core · Dormant since 2019". Falls back to the intensity alone on a report
-    // written before these fields existed.
-    const trajectoryTag = item => {
-      const trajectory = String((item && item.trajectory) || '').trim();
-      if (!trajectory) return '';
-      const year = String((item && item.lastSeen) || '').trim();
-      const label = (TEXT.trajectoryLabels && TEXT.trajectoryLabels[trajectory]) || trajectory;
-      const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
-      return stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
-    };
-    const tilePill = (item, intensity) => {
-      const tag = trajectoryTag(item);
-      if (!intensity) return tag;
-      return tag ? intensity + ' · ' + tag : intensity;
-    };
-
-      // 5. Interests.
-      out.sectionTitle(TEXT.interests);
-      const interests = source.interests || [];
-      if (interests.length) {
-        for (const item of interests) out.tile(item.name, tilePill(item, item.intensity), item.detail, item.evidence);
-      } else {
-        out.muted(TEXT.interestsEmpty);
-      }
-
-      // 6. Values and beliefs, together, as the page groups them.
-      out.sectionTitle(TEXT.valuesBeliefs, TEXT.valuesBeliefsSub);
-      out.h3(TEXT.values);
-      const values = source.values || [];
-      if (values.length) {
-        for (const item of values) out.tile(item.value, tilePill(item, ''), item.detail, item.evidence);
-      } else {
-        out.muted(TEXT.valuesEmpty);
-      }
-      out.h3(TEXT.beliefs);
-      const beliefs = source.beliefs || [];
-      if (beliefs.length) {
-        for (const item of beliefs) {
-          out.tile(item.belief, item.confidence ? item.confidence + TEXT.confidenceSuffix : '',
-            item.detail, item.evidence);
-        }
-      } else {
-        out.muted(TEXT.beliefsEmpty);
-      }
-
-      // 7. In relationships.
-      const relationship = source.relationship;
-      if (relationship) {
-        out.sectionTitle(TEXT.relationships);
-        out.h3(TEXT.strengths, GOOD);
-        out.points(relationship.strengths);
-        out.h3(TEXT.weaknesses, WARN);
-        out.points(relationship.weaknesses);
-
-        // The attachment read used to print here, inside "In relationships".
-        // It is its own section further down now, matching the page.
-        const love = relationship.loveLanguages;
-        if (love) {
-          const columns = [
-            [TEXT.loveReceiving, TEXT.loveReceivingBlurb, love.receiving],
-            [TEXT.loveGiving, TEXT.loveGivingBlurb, Copy.givingLove(love.giving)],
-          ].filter(entry => (entry[2] || []).some(item => item && item.language));
-          if (columns.length) {
-            out.h3(TEXT.loveHead);
-            for (const [title, blurb, list] of columns) {
-              out.h3(title);
-              out.muted(blurb);
-              for (const item of list.filter(entry => entry && entry.language)) {
-                out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''), item.inPractice);
-                if (item.why) {
-                  out.body(item.why, { x: MARGIN + 10, width: COLUMN - 10, size: 9.2, color: SOFT, leading: 13.2 });
-                  out.space(4);
-                }
-              }
-            }
-            out.fineprint(love.caveat);
-          }
-        }
-      }
-
-      // 8. At work.
-      const career = source.career;
-      if (career) {
-        out.sectionTitle(TEXT.work);
-        out.h3(TEXT.strengths, GOOD);
-        out.points(career.strengths);
-        out.h3(TEXT.weaknesses, WARN);
-        out.points(career.weaknesses);
-        out.h3(TEXT.howYouWork);
-        if (career.workStyle) out.body(career.workStyle, { size: 10, leading: 15 });
-        // "Where you would thrive" printed a list of ideal environments here.
-        // It was cut from both renderings together.
-        out.h3(TEXT.holdBack);
-        if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
-      }
-
-      // 9. Instagram behaviour. After the personality sections, because it is the
-      // evidence underneath them rather than another verdict.
-      const activity = source.activity;
-      if (activity) {
-        out.sectionTitle(TEXT.activity);
-        for (const [label, key] of Copy.ACTIVITY_FACETS) {
-          const part = activity[key];
-          if (!part) continue;
-          out.facet(label, part.headline, part.detail);
-        }
-      }
-
-      // 9a. The roast. Free, printed unconditionally, right after the digital
-      // footprint it draws on — matching the page, which puts it there for
-      // the same reason. Unlike the paid sections below, there is no gate to
-      // check: on screen it sits behind a cover the reader clicks through,
-      // and a PDF has no cover, so the print simply carries what the reader
-      // already has, the same way every other free section here does.
-      if (source.bonus) renderRoast(out, source.bonus);
-    };
-    if (stamp.cardOnly) {
-      out.sectionTitle(TEXT.fullReportTitle);
-      out.body(TEXT.fullReportPdf, { size: 10.4, leading: 15.4 });
-    } else {
-      writeExplanations();
-    }
+    // What the report adds, in place of sections this profile has not got.
+    out.sectionTitle(TEXT.fullReportTitle);
+    out.body(TEXT.fullReportPdf, { size: 10.4, leading: 15.4 });
 
     // 9b. Whatever was bought, in the position it holds on the page — after
     // the behaviour read, before matches and the confidence close. The list is
@@ -1897,7 +1666,8 @@
   // needs one, the Big Five on spectrums, the motivators chart, relationships
   // and work each as one section, the development plan with every action on
   // one plan, the pressure points, then the evidence page and the roast.
-  // Chosen by `meta.layout`; the classic build above is untouched.
+  // The only build for a report with its writing; `build` above keeps the
+  // card-only profile's short PDF.
 
   /** One Big Five trait on a spectrum, the page's .bipolar. */
   Report.prototype.bipolar = function (label, score, poles, band) {
@@ -2810,7 +2580,7 @@
     if (mbti) {
       const axes = (mbti.letters || []).filter(Boolean);
       const axisCard = letter => out.boxed(() =>
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice, null, { structured: true, evidence: letter.evidence }),
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, null, null, { structured: true, evidence: letter.evidence }),
       { padTop: 6 });
       out.keep(() => {
         out.sectionTitle('MBTI', def('mbti'));

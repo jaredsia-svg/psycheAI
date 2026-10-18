@@ -630,7 +630,7 @@ samples are fetched once.
 `/api/status` is public, and so is the repository, so it returns only what the page uses:
 
 ```json
-{"ready":true,"mock":false,"freeAnalyses":1,"shortLinks":true,"reportLayout":"structured","build":{"version":"3.0.0"}}
+{"ready":true,"mock":false,"freeAnalyses":1,"shortLinks":true,"firstRun":"merged","build":{"version":"3.0.0"}}
 ```
 
 It used to also return the provider and model, the premium engine, the exact commit and branch, the
@@ -1650,7 +1650,6 @@ the first.
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
 | `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` (default) or `HIGH`. Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which cut the answer off on 3.8 and is why the default is `MEDIUM` (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
 | `PSYCHEAI_COMPAT_THINKING` | Gemini's thinking level for the Psyche Sync call alone: `LOW`, `MEDIUM` or `HIGH`. Unset, it is `LOW`, whatever `PSYCHEAI_GEMINI_THINKING` says; the card and report stay at `MEDIUM`. The current model refuses `MINIMAL`. Takes effect on restart. See [What a compatibility costs](#what-a-compatibility-costs). |
-| `PSYCHEAI_REPORT_LAYOUT` | `structured` (default) or `classic`. Which report the unlock writes and the page and PDF draw — see [The structured report](#the-structured-report-four-parts-one-thread). Set `classic` to go back to the previous format with no deploy: the prompt, the schema, the page and the PDF all switch together. An unrecognised value is logged and treated as `structured`. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
@@ -2502,6 +2501,33 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### The classic layout retired (18 Oct 2026)
+
+The structured report had been the default for weeks, with the classic one kept as a no-deploy way back
+(`PSYCHEAI_REPORT_LAYOUT=classic`). By now it was a worse product to fall back to — the hub, the trimmed
+report and the MBTI changes were structured-only — and it cost twice: every report change had to decide
+what classic did, and the UI suite ran most of its checks on a classic server, so a structured-only
+change could pass without the live layout being exercised. Gone:
+
+- **The switch.** `REPORT_LAYOUT`/`REPORT_LAYOUTS` in `lib/prompts.js`, `reportLayout` in `/api/status`
+  (the pinned key set is now `build, firstRun, freeAnalyses, mock, ready, shortLinks`), the page's
+  `reportLayout()` and its `?layout=` override, and the env-var row. `FREE_*`, `FULL_*` and the pinned
+  schemas are the structured ones outright; an unlock with no card always goes through
+  `mergedOrTwoCalls`; `PSYCHEAI_FIRST_RUN` no longer checks the layout. An old
+  `PSYCHEAI_REPORT_LAYOUT` left set on Render is ignored.
+- **The classic page.** The classic card, report sections, axes, interest and value tiles, digital
+  footprint and confidence card in `docs/app.js` (`psycheCardHtml` is the story card only; `fitCard` always
+  fits the portrait canvas), the narrow-card constants, and the classic unlock list.
+- **The classic PDF.** `build` in `docs/pdf.js` now only prints a card-only profile (the cover, what the
+  report adds, confidence); any report with its writing is `buildStructured`. The PDF card is the story
+  card's layout always.
+- **Kept as the base.** The classic prompt and schemas are still what the report is spliced from, renamed
+  so the name says so: `CARD_BASE_SYSTEM`/`CARD_BASE_SCHEMA` (were `CLASSIC_FREE_*`), `FULL_SYSTEM_BASE`
+  (was also exported as `CLASSIC_FULL_SYSTEM`), and `BASE_FULL_SCHEMA` (was `CLASSIC_FULL_SCHEMA`), still
+  the yardstick `tools/probe-schema.mjs` and a selftest measure the pinned schema against.
+- **Tests.** The UI suite's main server runs the structured layout; checks that compared against classic
+  went, and the rest were moved onto structured markup.
+
 ### MBTI: an evidence list per letter, and J/P read from planning (18 Oct 2026)
 
 Three reports for one reader (14 Oct card-then-report ENTJ, 18 Oct before the E/I fix INTJ, after it ENTP)
@@ -2530,7 +2556,7 @@ the paragraph opened on "Together that is…", pointing at a list the reader had
 evidence is laid out. The page prints the list as the evidence chips under each axis's paragraph
 (`mbtiSlidersHtml`, and the classic `mbtiAxesHtml`), the PDF as small pills under it (`axis`, `evidence`
 option). The paid report pinned to a card keeps writing it (only `choice` and `strength` are pinned).
-`docs/sample.json`'s four letters are rewritten in the new shape. `MERGED_FIXED_INPUT_TOKENS` 42,500 → 43,000
+`docs/sample.json`'s four letters are rewritten in the new shape. The structured layout also drops each letter's `inPractice` line (`structuredMbti`; the page and PDF no longer print it): after the paragraph and its list it was a third telling of the same letter. The classic layout keeps it. `MERGED_FIXED_INPUT_TOKENS` 42,500 → 43,000
 (42,863 measured) and `MERGED_COST_CAP` $0.183 → $0.184 so the merged call still pays for the premium digest.
 
 ### Scores first, and E/I read the same way in both directions (18 Oct 2026)
@@ -5276,7 +5302,7 @@ here is either this app's own or a published academic model.
 | | Sections |
 |---|---|
 | **Overview** | Executive summary (the character and why, the four facts, the summary; no *In one line* banner, which only repeated the card's headline from the cover) · **Your signature patterns** |
-| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
+| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). Since 18 Oct 2026 the model writes them in this order too, MBTI first, and the extraversion score follows the E/I letter (see Scores first, below) · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
 | **Part 3 – How you connect** | In relationships (love languages, attachment style and ideal partner in one section) |
 | **Part 4 – How you work** | The description and the coach's read as one section under the part's own title, opening on the edge: its two intro paragraphs, `career.workStyle` and `careerAssessment.situation`, said again what the edge and the careers list say, so the structured schema no longer asks for them |
@@ -5646,11 +5672,11 @@ PDF draw no more than that from an older report.
 
 The model writes three more fields for it — `patterns`, `motivators` and `development`
 (`STRUCTURED_KEYS` in `lib/prompts.js`) — on top of the classic fields, so the
-change is additive: a report written in this layout still renders classic, and `?layout=classic` or
-`?layout=structured` on any page draws the same stored report either way for comparison. The extra
+change was additive (until the classic layout was retired, below, a report in this layout still rendered
+classic, and `?layout=` drew the same stored report either way). The extra
 prompt is about 2,800 input tokens, and the four fields are sized at roughly two ordinary sections of
 output; `FIXED_INPUT_TOKENS` rose to 37,600 and `COST_CAP` to $0.151 to keep the 80,000-character
-digest inside the cap. **To revert**, set `PSYCHEAI_REPORT_LAYOUT=classic`.
+digest inside the cap.
 
 **Less repetition, written into the schema rather than asked for.** A review of two real paid reports
 found the same point made three or four times — the character three times before page 3, MBTI letters

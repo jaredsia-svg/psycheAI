@@ -425,17 +425,10 @@
   // they do. That is exactly what the first version of this did.
   const CARD_W = 1000;
 
-  // A phone screen is much taller relative to its width than this card is, so a
-  // single layout scaled to fit leaves a third of the screen empty and shrinks
-  // the type for nothing. On a narrow viewport the paired rows stack, which
-  // makes the card taller and narrower — closer to the shape of the screen it
-  // has to land on, so the same content is drawn larger.
-  const CARD_W_NARROW = 700;
   // How much vertical room the inline preview may take on the page.
   const PREVIEW_MAX_H = 460;
   // Height set aside at the foot of the full-screen view for the download bar.
   const CARD_BAR_SPACE = 84;
-  const NARROW_ASPECT = 0.62;
 
   // Four of the five traits, in a fixed order rather than picked out by
   // score — extraversion is left off deliberately, since the MBTI block
@@ -449,15 +442,6 @@
   // to "Conscientious" here instead. TRAIT_LABELS itself is left alone, since
   // the full written report has room for the whole word.
   const CARD_LABEL_OVERRIDES = { conscientiousness: 'Conscientious' };
-  function bigFiveCardRows(bigFive) {
-    return BIG_FIVE_CARD_KEYS
-      .map(key => ({
-        key,
-        label: CARD_LABEL_OVERRIDES[key] || TRAIT_LABELS[key],
-        score: (bigFive && bigFive[key] && bigFive[key].score) || 0,
-      }))
-      .filter(row => row.score > 0);
-  }
 
   // The mark as inline SVG, from the same path data the nav, the PDF and the QR
   // label draw. `currentColor` so the one markup works on the card's light
@@ -476,24 +460,6 @@
   const cardLab = (icon, label) =>
     '<p class="pc-lab"><span class="pc-lab-icon" aria-hidden="true">' + esc(icon) + '</span>' +
     '<span class="pc-lab-text">' + esc(label) + '</span></p>';
-
-  function cardChipRow(icon, label, items) {
-    const list = (items || []).filter(Boolean);
-    if (!list.length) return '';
-    return '<div class="pc-col">' + cardLab(icon, label) + '<div class="pc-chips">' +
-      list.map(item => '<span class="pc-chip">' + esc(item) + '</span>').join('') + '</div></div>';
-  }
-
-  // Love languages are fixed vocabulary with a glyph each already mapped in
-  // copy.js, so the icon comes from the language rather than being chosen here.
-  function cardLoveBlock(icon, label, languages) {
-    const list = (languages || []).filter(Boolean);
-    if (!list.length) return '';
-    return '<div class="pc-half">' + cardLab(icon, label) + '<ul class="pc-list pc-love">' +
-      list.map(language => '<li><span class="pc-love-icon" aria-hidden="true">' +
-        esc(LOVE_LANGUAGE_ICONS[language] || '💗') + '</span>' + esc(language) + '</li>').join('') +
-      '</ul></div>';
-  }
 
   // Split on a sentence-ending mark followed by whitespace, keeping the mark
   // with the sentence it closes.
@@ -558,79 +524,7 @@
   function psycheCardHtml(report, options) {
     if (!report) return '';
     const own = Boolean(options && options.own);
-    if (reportLayout() === 'structured') return psycheStoryHtml(report, own);
-    const card = report.card || {};
-    const cardName = card.name || '';
-    const essence = report.essence || {};
-    const name = essenceName(essence);
-    const mbti = report.mbti || {};
-    const bigFiveRows = bigFiveCardRows(report.bigFive);
-    const love = (report.relationship && report.relationship.loveLanguages) || {};
-    const confidence = Number(card.confidence);
-    const hasConfidence = Number.isFinite(confidence) && confidence > 0;
-
-    const letters = (mbti.letters || []).map(letter =>
-      '<span class="pc-letter"><b>' + esc(letter.choice || '') + '</b>' +
-      '<i>' + esc(letter.strength || '') + '</i></span>').join('');
-
-
-    const blurb = cardBlurb(report);
-
-    return '' +
-      // Masthead. Three slots on fixed grid columns rather than DOM order, so
-      // each one is pinned to its own column and stays put whether or not the
-      // other two are present — the brand mark leads, the reader's own name
-      // sits centred under it, and the confidence score closes the row.
-      '<div class="pc-top">' +
-        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
-        (cardName ? '<span class="pc-owner">' + esc(cardName) + '</span>' : '') +
-        (hasConfidence ? '<span class="pc-confidence" title="' + esc(TEXT.cardConfidence) + '">' +
-          '<span class="pc-confidence-icon" aria-hidden="true">' + esc(CARD_ICONS.confidence) + '</span>' +
-          '<b>' + Math.round(confidence) + '</b><span class="pc-confidence-max">/100</span>' +
-          '</span>' : '') +
-      '</div>' +
-      '<div class="pc-hero">' +
-        (name ? '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
-        '<div class="pc-name"><span class="pc-icon" aria-hidden="true">' +
-          esc(safeIcon(essence.icon)) + '</span><h2>' + esc(name) + '</h2></div>' : '') +
-        (blurb ? '<p class="pc-blurb">' + esc(blurb) + '</p>' : '') +
-      '</div>' +
-
-      '<div class="pc-stats">' +
-        // The type letters carry their own strengths, so the four-letter code
-        // above them was the same information twice — the row below says ENFJ
-        // and says how firmly each letter was picked.
-        '<div class="pc-stat">' + cardLab(CARD_ICONS.type, TEXT.cardType) +
-          (letters ? '<div class="pc-letters">' + letters + '</div>' : '') +
-          '</div>' +
-        (bigFiveRows.length ? '<div class="pc-stat pc-stat-bigfive">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
-          '<div class="pc-trait-list">' +
-          bigFiveRows.map(row => '<p class="pc-trait"><span class="pc-trait-label">' + esc(row.label) +
-            '</span><b>' + row.score + '</b></p>').join('') +
-          '</div>' +
-          '</div>' : '') +
-      '</div>' +
-
-      // Values, beliefs and interests share one row: they are the same kind of
-      // claim about a person and read as a set rather than as three sections.
-      '<div class="pc-row">' +
-        cardChipRow(CARD_ICONS.values, TEXT.cardValues, titlesOf(report.values, 3)) +
-        cardChipRow(CARD_ICONS.beliefs, TEXT.cardBeliefs, titlesOf(report.beliefs, 2)) +
-        cardChipRow(CARD_ICONS.interests, TEXT.cardInterests, titlesOf(report.interests, 3)) +
-      '</div>' +
-
-      // Side by side on every screen, including a phone: giving and receiving
-      // are read against each other, and stacking them loses the comparison
-      // that makes the pair worth showing at all.
-      '<div class="pc-row pc-row-2 pc-love-row">' +
-        cardLoveBlock(CARD_ICONS.loveIn, TEXT.cardLoveIn,
-          (love.receiving || []).slice(0, 2).map(l => l && l.language)) +
-        cardLoveBlock(CARD_ICONS.loveOut, TEXT.cardLoveOut,
-          Copy.givingLove(love.giving).slice(0, 2).map(l => l && l.language)) +
-      '</div>' +
-      // The reader's own card only: the QR code for their link (fillCardQr).
-      (own ? '<div class="pc-qr-slot"></div>' : '') +
-      '';
+    return psycheStoryHtml(report, own);
   }
 
   // ---------- the structured layout's card: one portrait canvas ----------
@@ -869,18 +763,12 @@
 
   function fitCard(el, availableWidth, availableHeight, options) {
     if (!el) return;
-    // `narrow` is about the shape of the *screen*, not of the box the card is
-    // being fitted into, so the height-capped inline preview must not trip it.
-    // The structured layout's card is one fixed portrait canvas, the same on
-    // every screen and in the export, so it never switches to the narrow form.
-    const story = reportLayout() === 'structured';
-    el.classList.toggle('pc-story', story);
-    const narrow = !story && options === 'screen' &&
-      availableWidth / availableHeight < NARROW_ASPECT;
-    el.classList.toggle('pc-narrow', narrow);
-    const width = story ? STORY_W : narrow ? CARD_W_NARROW : CARD_W;
+    // The card is one fixed portrait canvas, the same on every screen and in
+    // the export, so it never switches to a narrow form.
+    el.classList.add('pc-story');
+    const width = STORY_W;
     el.style.width = width + 'px';
-    if (story) fitStoryContent(el);
+    fitStoryContent(el);
     // offsetHeight is a layout value and ignores the transform already on the
     // element, so this is the card's natural height at CARD_W whatever scale it
     // is currently drawn at — no need to reset the transform to measure.
@@ -900,9 +788,8 @@
     if (!name) return '';
     // The emoji stands in for the character rather than depicting them: the
     // actual artwork is somebody else's, and not ours to ship.
-    // The structured layout draws the catalogue character's emblem; anything
-    // else keeps its emoji.
-    const emblem = reportLayout() === 'structured' ? Copy.emblemSvg(name, 'essence-emblem') : '';
+    // The catalogue character's emblem; anything else keeps its emoji.
+    const emblem = Copy.emblemSvg(name, 'essence-emblem');
     return '<div class="essence">' +
       '<span class="essence-icon' + (emblem ? ' has-emblem' : '') + '" role="img" aria-label="' + esc(name) + '">' +
       (emblem || esc(safeIcon(essence.icon))) + '</span>' +
@@ -955,9 +842,8 @@
   // content). The whole row stays clickable anyway — the delegated handler
   // listens on `.card-head-toggle`, so a click on the button bubbles to the
   // same place a click on the title does, and toggles once either way.
-  // `result` is the structured layout's one-line takeaway, shown in the head
-  // so a shut section still says what it found. The classic layout never
-  // passes one, so its heads are unchanged.
+  // `result` is a one-line takeaway, shown in the head so a shut section
+  // still says what it found.
   function sectionHead(icon, title, sub, collapsible, result) {
     const chevron = '<span class="card-chevron" aria-hidden="true"></span>';
     return '<div class="card-head' + (collapsible ? ' card-head-toggle' : '') + '">' +
@@ -1772,7 +1658,6 @@
    * got. Each row carries its own blurb, so the paid ones need no second list.
    */
   function explainedSections() {
-    if (reportLayout() !== 'structured') return EXPLAINED_SECTIONS;
     const S = Copy.STRUCTURED;
     const paidRow = key => {
       const section = PAID_SECTIONS.find(row => row.key === key);
@@ -1838,15 +1723,6 @@
         '<ul class="unlock-chips">' + part.rows.map(row =>
           '<li class="premium-tier-item"><strong>' + esc(row.title()) + '</strong></li>').join('<li class="unlock-dot" aria-hidden="true">·</li>') + '</ul>' +
       '</li>').join('') + '</ol>';
-  }
-
-  function tierItemsHtml(rows, blurbOf) {
-    return rows.map(row =>
-      '<li class="premium-tier-item">' +
-      '<span class="premium-tier-icon" aria-hidden="true">' + Copy.iconHtml(row.icon) + '</span>' +
-      '<span class="premium-tier-text"><strong>' + esc(row.title()) + '</strong>' +
-      '<span>' + esc(blurbOf(row)) + '</span>' +
-      '</span></li>').join('');
   }
 
   /**
@@ -2837,9 +2713,7 @@
       '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
       // One list: the explanations and the four premium sections are one
       // purchase, and splitting them made the four read as an afterthought.
-      (reportLayout() === 'structured' ? unlockPartsHtml()
-        : '<ul class="premium-tier-list">' + tierItemsHtml(explainedSections(), row => row.blurb()) +
-          tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>') +
+      unlockPartsHtml() +
       // A first report: share the link first, paying second. Otherwise (a
       // purchase still to collect) the one button.
       (firstFreeOffered() ? unlockShareHtml()
@@ -3582,7 +3456,7 @@
   }
   /** Whether this reader's full report lives on a page of its own (My Report). */
   function fullReportPage() {
-    return Boolean(state.profile) && reportLayout() === 'structured' && hasExplanations(state.profile);
+    return Boolean(state.profile) && hasExplanations(state.profile);
   }
   /** Whether My Report, rather than My Psyche, is the page drawn. */
   function reportPageOn() {
@@ -6502,8 +6376,8 @@
    * The server wrote the card first and the report anchored to it, and sends
    * the card back beside the report as `freeCard` (cardThenFull in
    * server.js): the card is taken as a fresh card would be, then the report
-   * laid under it as an unlock's is. The classic layout writes both in one
-   * report and sends no `freeCard`, so that report is the card's too.
+   * laid under it as an unlock's is. A report with no `freeCard` is the card's
+   * too.
    */
   async function adoptBundle(result, savedName, options) {
     const card = (result.data && result.data.freeCard) || result.data;
@@ -6983,117 +6857,12 @@
       '</div>';
   }
 
-  // The trajectory chip beside an interest or a value: how the thing has moved
-  // across the span of the data, not whether it is there. Rendered as its own
-  // pill rather than folded into the intensity one — they answer different
-  // questions ("how much" against "still?") and a reader scanning for the
-  // second should not have to parse the first. Dormant and declining get their
-  // own colour, because those are the two the reader is most likely to want to
-  // argue with, and burying them would be the whole point missed.
-  //
-  // Silent when the model returns nothing, which is what an old report saved
-  // before these fields existed looks like — see TRAJECTORIES in prompts.js.
-  function trajectoryPill(item) {
-    const trajectory = String((item && item.trajectory) || '').trim();
-    if (!trajectory) return '';
-    const year = String((item && item.lastSeen) || '').trim();
-    const label = TEXT.trajectoryLabels[trajectory] || trajectory;
-    // The year is only worth showing where it adds something the word does
-    // not. "Structural, last seen 2025" is noise; "Dormant since 2019" is the
-    // finding.
-    const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
-    const dated = stale && /^\d{4}$/.test(year);
-    const text = dated ? label + ' · ' + year : label;
-    // The tooltip only where there is a year to explain — a bare "Throughout"
-    // needs no gloss, and a title on every chip would be noise on hover.
-    return '<span class="pill pill-traj pill-traj-' + esc(trajectory) + '"' +
-      (dated ? ' title="' + esc(TEXT.trajectoryNote) + '"' : '') + '>' + esc(text) + '</span>';
-  }
-
-  // ---------- section bodies shared by both report layouts ----------
-  //
-  // Lifted out of reportSectionsHtml so the classic and the structured layout
-  // draw these blocks with the same markup. Output is unchanged from when
-  // they were inline.
-
-  function mbtiAxesHtml(mbti) {
-    return '<div class="axes">' + (mbti.letters || []).map(letter => {
-      const pole = axisLabel(letter.choice, letter.axis);
-      return '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
-        '<div><span class="axis-name">' + esc(pole.name) + '</span>' +
-        (pole.against ? '<span class="axis-against">' + esc(TEXT.mbtiOver) + esc(pole.against) + '</span>' : '') +
-        '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
-        // One passage carrying both the case for the letter and the behaviour
-        // that tempers it. This was briefly two blocks — an argument and a
-        // labelled "case against" beneath it — which made every axis read as a
-        // debate transcript rather than as an analysis, and gave the contrary
-        // evidence the same visual weight as the finding whatever its actual
-        // weight. The tempering is a clause in the same paragraph now, the way
-        // a Big Five trait's reading carries its own qualifications.
-        '<p>' + esc(letter.why) + '</p>' +
-        // A report written before that merge still has the separate field;
-        // append it rather than dropping a paragraph of real analysis on the
-        // floor. New reports never take this branch.
-        (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') +
-        evidence(letter.evidence) +
-        (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
-        '</div></div>';
-    }).join('') + '</div>';
-  }
-
-  function interestsHtml(interests) {
-    if (!(interests || []).length) return '<p class="muted">' + esc(TEXT.interestsEmpty) + '</p>';
-    return '<div class="tile-grid">' + interests.map(item =>
-      '<div class="tile tile-' + esc(item.intensity) + '">' +
-      '<h4>' + esc(item.name) + '<span class="pill pill-' + esc(item.intensity) + '">' + esc(item.intensity) + '</span>' +
-      trajectoryPill(item) + '</h4>' +
-      '<p>' + esc(item.detail) + '</p>' +
-      '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>';
-  }
-
-  function valuesBeliefsHtml(report) {
-    let html = '<h3>' + esc(TEXT.values) + '</h3>';
-    html += (report.values || []).length
-      ? '<div class="tile-grid">' + report.values.map(item =>
-        '<div class="tile"><h4>' + esc(item.value) + trajectoryPill(item) + '</h4>' +
-        '<p>' + esc(item.detail) + '</p>' +
-        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
-      : '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
-    html += '<h3>' + esc(TEXT.beliefs) + '</h3>';
-    html += (report.beliefs || []).length
-      ? '<div class="tile-grid">' + report.beliefs.map(item =>
-        '<div class="tile"><h4>' + esc(item.belief) +
-        '<span class="pill">' + esc(item.confidence) + esc(TEXT.confidenceSuffix) + '</span></h4>' +
-        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
-      : '<p class="muted">' + esc(TEXT.beliefsEmpty) + '</p>';
-    return html;
-  }
-
-  function careerDescriptionHtml(career) {
-    return '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(career.strengths) + '</div>' +
-      '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(career.weaknesses) + '</div></div>' +
-      '<h3>' + esc(TEXT.howYouWork) + '</h3><p>' + esc(career.workStyle) + '</p>' +
-      '<h3>' + esc(TEXT.holdBack) + '</h3><p>' + esc(career.watchOuts) + '</p>';
-  }
-
-  function activityFacetsHtml(activity) {
-    let html = '<div class="facet-grid">';
-    for (const [label, key] of Copy.ACTIVITY_FACETS) {
-      const facet = activity[key];
-      if (!facet) continue;
-      html += '<div class="facet"><span class="facet-label">' + label + '</span>' +
-        '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p></div>';
-    }
-    return html + '</div>';
-  }
+  // ---------- section bodies ----------
 
   // ---------- the structured layout ----------
   //
-  // Four parts with one thread through them, set by the server's
-  // PSYCHEAI_REPORT_LAYOUT (see lib/prompts.js) and readable on any page with
-  // ?layout=classic or ?layout=structured, so the two can be compared side by
-  // side on the same report. The classic layout is reportSectionsHtml below,
-  // untouched; nothing here runs unless this layout is chosen.
+  // Five parts with one thread through them: the only report layout since the
+  // classic one was retired (18 Oct 2026).
   //
   // Every section here follows one template: what it measures (a fixed
   // definition line, shown while the section is open), what it found (a
@@ -7103,13 +6872,6 @@
   // that comes from it, so the thread is visible as well as written. Reports
   // written before the structured fields existed still render: each block is
   // drawn only when its field is there.
-
-  function reportLayout() {
-    let forced = '';
-    try { forced = new URLSearchParams(window.location.search).get('layout') || ''; } catch (error) { /* none */ }
-    if (forced === 'classic' || forced === 'structured') return forced;
-    return state.server && state.server.reportLayout === 'structured' ? 'structured' : 'classic';
-  }
 
   /** The patterns worth drawing: known ids, named, one each, in id order. */
   function signaturePatterns(report) {
@@ -7346,7 +7108,6 @@
         // The behaviours that put the letter here (October 2026), as the
         // Big Five's evidence once was: the paragraph above weighs them.
         evidence(letter.evidence) +
-        (letter.inPractice ? '<p class="slider-practice">' + esc(letter.inPractice) + '</p>' : '') +
         '</div></div>';
     }).join('') + '</div>';
   }
@@ -8081,7 +7842,6 @@
    * Nothing for a card made before, which has neither.
    */
   function freeOverviewHtml(report) {
-    if (reportLayout() !== 'structured') return '';
     const summary = String((report && report.summary) || '').trim();
     if (!summary) return '';
     const S = Copy.STRUCTURED;
@@ -8109,136 +7869,9 @@
       return freeOverviewHtml(report) + secretRoastHtml(report.bonus) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
-        (reportLayout() === 'structured' ? hubHtml(report, false) : confidenceCardHtml(report, false) + referralCardHtml(false));
+        hubHtml(report, false);
     }
-    if (reportLayout() === 'structured') return structuredSectionsHtml(report, options);
-    // Every section of the report body is a disclosure; sectionHead's other
-    // caller — the scan page's QR-contents block — is not, so the default
-    // stays off there and this local alias turns it on for the report only.
-    // The confidence card at the bottom deliberately calls sectionHead
-    // directly instead, and stays open: see its own comment.
-    const head = (icon, title, sub) => sectionHead(icon, title, sub, true);
-
-    let html = '';
-
-    // No glance row here any more: the psyche card above the report already
-    // shows the type and the highest and lowest traits, and
-    // saying them again three centimetres lower is just the same four facts
-    // twice. The PDF keeps its own — it has no card in front of it.
-    html += '<div class="card section-card">' + head('👤', esc(TEXT.whoYouAre)) +
-      essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
-
-    // Big Five.
-    html += '<div class="card section-card">' +
-      head('📊', esc(TEXT.bigFive), esc(TEXT.bigFiveSub));
-    for (const trait of Object.keys(TRAIT_LABELS)) {
-      const item = report.bigFive[trait];
-      if (!item) continue;
-      const evidence = (item.evidence || []).map(e => '<span class="ev">' + esc(e) + '</span>').join('');
-      html += bar(TRAIT_LABELS[trait] + ' · ' + item.band, item.score,
-        '<p class="trait-reading">' + esc(item.reading) + '</p>' +
-        (evidence ? '<p class="trait-evidence">' + evidence + '</p>' : ''));
-    }
-    html += '</div>';
-
-    // MBTI.
-    const mbti = report.mbti;
-    html += '<div class="card section-card">' +
-      head('🧭', esc(TEXT.mbtiPrefix) + esc(mbti.type) +
-        (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : ''),
-        esc(TEXT.mbtiConfidence) + esc(mbti.confidence));
-
-    html += mbtiAxesHtml(mbti);
-    html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
-
-    // Interests.
-    html += '<div class="card section-card">' + head('✨', esc(TEXT.interests)) +
-      interestsHtml(report.interests) + '</div>';
-
-    // Values and beliefs, together — they answer the same question from two
-    // directions, and splitting them left two thin cards.
-    html += '<div class="card section-card">' +
-      head('🧿', esc(TEXT.valuesBeliefs), esc(TEXT.valuesBeliefsSub)) +
-      valuesBeliefsHtml(report) + '</div>';
-
-    // Relationships. The attachment read used to sit here as a callout and is
-    // its own section further down now, below the wellness read.
-    const relationship = report.relationship;
-    html += '<div class="card section-card">' + head('💞', esc(TEXT.relationships)) +
-      '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(relationship.strengths) + '</div>' +
-      '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(relationship.weaknesses) + '</div></div>' +
-      loveLanguageBlock(relationship.loveLanguages) + '</div>';
-
-    // Career, describing rather than advising — the coach's read is its own
-    // section below. "Where you would thrive" was cut from here: it was a list
-    // of ideal environments inferred from an export that contains no job
-    // history, and it read as advice in a section that is meant to describe.
-    const career = report.career;
-    html += '<div class="card section-card">' + head('💼', esc(TEXT.work)) +
-      careerDescriptionHtml(career) + '</div>';
-
-    // Instagram behaviour: the part of the export nobody reads themselves.
-    // It sits after the personality sections because it is the evidence
-    // underneath them rather than another verdict.
-    const activity = report.activity;
-    if (activity) {
-      // No sub-line and no closing caveat: the summary said in prose what the
-      // four facets say with evidence attached, and the blind-spots note
-      // duplicated the confidence section that closes the whole report.
-      html += '<div class="card section-card">' + head('📱', esc(TEXT.activity)) +
-        activityFacetsHtml(activity) + '</div>';
-    }
-
-    // The roast. Free, behind a click-to-reveal cover rather than a payment,
-    // and placed right after the digital footprint it draws its evidence
-    // from — this used to sit after all four paid sections, back when it
-    // was one of them; now that it is not, it belongs with the free report
-    // it is actually part of, not stranded after the paywall.
-    // The sample keeps it back: the roast is the full report's secret bonus.
-    if (!sample) html += roastBlock(report.bonus);
-
-    // Everything from here to the confidence close is paid for. The four
-    // sections are rendered from `PAID_SECTIONS` rather than one `if` each,
-    // so a reader sees the same four sections in the same order whether or
-    // not they have bought anything.
-    //
-    // The sample forces every section locked (`unlocked = {}`) rather than
-    // reading the reader's own `paidAnalysis()` — this report belongs to
-    // nobody, so it must never show *their* unlock state, paid or not.
-    //
-    // While nothing at all has come back yet, one consolidated block explains
-    // all four sections with a single "Unlock" button — not four separate
-    // price tags for what is one purchase. The instant anything is unlocked
-    // (a full response, or a partial one from a call that only returned some
-    // fields), each section gets its own full card instead, so a reader who
-    // already paid is never shown the consolidated pitch again for the
-    // section still filling in behind it.
-    const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
-    if (Object.keys(unlocked).length === 0) {
-      html += paidSectionsLockedHtml({ sample });
-    } else {
-      for (const section of PAID_SECTIONS) html += paidCard(section, unlocked, { sample });
-    }
-
-
-    // Confidence closes the report rather than opening it: read after the
-    // whole thing, it says how much of what you just read to believe. The
-    // sources subsection and the re-run button that used to sit in the
-    // page's own action row now live here too — this is the one place a
-    // reader is already thinking about how much evidence stands behind the
-    // report, which is exactly what adding a source or running again changes.
-    // Neither belongs on the sample: it is nobody's report, has no digest of
-    // its own, and must never show a real reader's re-run price or upload
-    // state as if it were the sample's.
-    // `sectionHead` rather than `head`: this one card does not collapse. It is
-    // the only section that is not a piece of the reading — it holds the
-    // confidence score, the Data sources rows and the button that adds a
-    // source or runs again, which are the things a reader comes back to the
-    // bottom of the report to *do*. Shutting those behind a disclosure would
-    // hide the page's own controls, not tidy its prose.
-    html += confidenceCardHtml(report, sample);
-
-    return html;
+    return structuredSectionsHtml(report, options);
   }
 
   /**
@@ -8521,7 +8154,7 @@
   function guideSampleCard(report) {
     const card = $('#sample-psyche-card-full');
     const dialog = $('#sample-card-dialog');
-    sampleGuideState = report && reportLayout() === 'structured'
+    sampleGuideState = report
       ? cardGuideFor(report, Copy.STRUCTURED.cardGuide.labels.sample) : null;
     dialog.classList.toggle('is-explained', Boolean(sampleGuideState));
     const G = Copy.STRUCTURED.cardGuide;
@@ -8619,19 +8252,7 @@
     else explainCardPart(part.getAttribute('data-cx'));
   }, true);
 
-  // Confidence closes the report rather than opening it: read after the
-  // whole thing, it says how much of what you just read to believe. Shared by
-  // the full report and the card-only one, which both end on it.
-  function confidenceCardHtml(report, sample) {
-    return '<div class="card section-card confidence-card">' +
-      sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
-      (reportLayout() === 'structured' ? methodEvidenceHtml(report, sample)
-        : confidenceBodyHtml(report) + (sample ? '' : sourcesUsedHtml(false))) +
-      '</div>';
-  }
-
-  // The score, its rationale and what it was read off. Shared by the classic
-  // confidence card and the structured layout's method section.
+  // The score, its rationale and what it was read off, for the method section.
   function confidenceBodyHtml(report) {
     return '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + Math.round(report.confidence.score) + '"></div></div>' +
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
@@ -8724,18 +8345,17 @@
     // handled by a delegated listener (see the document click handler
     // below) rather than bound here, because this element is replaced every
     // time the report renders.
-    // Structured, a free report sets its card beside what it was read from
-    // and has no nav; a full one moves the card above the nav on a wide screen.
-    const structured = reportLayout() === 'structured';
+    // A free report sets its card beside what it was read from and has no
+    // nav; a full one moves the card above the nav on a wide screen.
     const explained = hasExplanations(profile);
     // Unlocked, the report is two pages: My Psyche (the hub: the card, the
     // link, what it carries, how it was read, and the way to the report) and
     // My Report (Parts 00-04 and the roast, the part nav down the left).
-    const reportPage = structured && explained && profilePage === 'report';
-    const hub = structured && explained && !reportPage;
+    const reportPage = explained && profilePage === 'report';
+    const hub = explained && !reportPage;
     const view = $('#view-profile');
-    view.classList.toggle('profile-structured', structured);
-    view.classList.toggle('profile-free', structured && !reportPage);
+    view.classList.add('profile-structured');
+    view.classList.toggle('profile-free', !reportPage);
     view.classList.toggle('profile-paid', reportPage);
     view.classList.toggle('profile-hub', hub);
     // My Report starts at Part 00: the card is on My Psyche, one tap back.
@@ -8745,7 +8365,7 @@
     $('#delete-profile').hidden = reportPage;
     // On My Psyche the hub carries Save a backup and Delete everything
     // (hubHtml); the row below keeps them only where there is no hub.
-    const hubHere = structured && !reportPage;
+    const hubHere = !reportPage;
     if (hubHere) { $('#delete-profile').hidden = true; $('#save-backup').hidden = true; }
     else $('#save-backup').hidden = false;
     // Under My Report's part nav the row is narrow: one word each, with the
@@ -8758,7 +8378,7 @@
     }
     // Both open on the card with what it means beside it.
     const side = $('#profile-side');
-    side.hidden = !structured || reportPage;
+    side.hidden = reportPage;
     setHtml(side, side.hidden ? '' : cardGuideHtml(report, explained));
     if (!side.hidden) {
       markCardParts();
@@ -8767,9 +8387,9 @@
     }
     // My Psyche has only the card, which has its own download: the full
     // report's is on My Report.
-    $('#export-pdf-bottom').hidden = structured && !reportPage;
-    // Either way its compatibility test is one of the card's tools.
-    $('#test-compat-open').hidden = structured;
+    $('#export-pdf-bottom').hidden = !reportPage;
+    // Its compatibility test is one of the card's tools.
+    $('#test-compat-open').hidden = true;
     layoutPsycheCard();
     setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
     if (explained && !hub) showKeepNote();
@@ -9013,9 +8633,6 @@
       unlocked: unlockedSections(profile),
       // A free profile prints its card and the offer, not empty sections.
       cardOnly: !hasExplanations(profile),
-      // The structured layout's PDF, its method page and its running head.
-      // Ignored by the classic build.
-      layout: reportLayout(),
       build: (() => {
         const b = state.server && state.server.build;
         return b && b.version ? 'v' + b.version : '';
@@ -10864,8 +10481,8 @@
   }
 
   // From the hub, its Save Backup popout has already said what the file is
-  // for, so no second popout after (quiet). Elsewhere (My Report's menu, the
-  // classic page's foot) the file still gets its few words after.
+  // for, so no second popout after (quiet). Elsewhere (My Report's menu) the
+  // file still gets its few words after.
   function saveBackup(options) {
     if (!state.profile) return;
     const blob = new Blob([JSON.stringify(backupFile())], { type: 'application/json' });
@@ -11004,7 +10621,7 @@
   // Since October 2026 a Psyche Card is enough: its first question is free
   // (lib/askcredits.js, gift), and the report brings one more.
   function askReady() {
-    return Boolean(state.profile) && (hasExplanations(state.profile) || reportLayout() === 'structured');
+    return Boolean(state.profile);
   }
 
   /** The report and card as the model sees them: the reader's own name back to PsycheUser. */

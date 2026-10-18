@@ -1011,10 +1011,9 @@
 
   // ---------- the structured report layout ----------
   //
-  // Everything the structured layout says that the classic one does not, kept
-  // in one object so the classic strings above are untouched and switching
-  // back (PSYCHEAI_REPORT_LAYOUT=classic) changes nothing a reader of the
-  // classic report sees. The page and the PDF both read from here.
+  // The report's own words, in one object the page and the PDF both read
+  // from. Some strings above it were the retired classic layout's and are
+  // still shared.
   //
   // The section definitions are this app's own wording. Professional
   // assessments open each section with a line saying what it measures; that
