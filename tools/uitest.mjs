@@ -5259,7 +5259,7 @@ try {
         (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     }));
   check('it carries the character and a summary, and no Enneagram',
-    /Bruce Banner/.test(cardText) && !/Enneagram|9w1/i.test(cardText) &&
+    /Hulk/.test(cardText) && !/Enneagram|9w1/i.test(cardText) &&
     /Mock card summary, sentence one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
@@ -5400,7 +5400,7 @@ try {
         (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     }));
   check('it carries the character and a summary, and no Enneagram',
-    /Bruce Banner/.test(cardText) && !/Enneagram|9w1/i.test(cardText) &&
+    /Hulk/.test(cardText) && !/Enneagram|9w1/i.test(cardText) &&
     /Mock card summary, sentence one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
@@ -5505,19 +5505,12 @@ try {
     !/Marvel|Pixar|Disney/i.test(cardText) && !/attachment/i.test(cardText) &&
     (await page.locator('#psyche-card canvas').count()) === 0,
     cardText.replace(/\s+/g, ' ').slice(0, 160));
-  check('the inline preview is capped so it does not push the report off screen',
-    await page.evaluate(() => {
-      const frame = document.querySelector('#psyche-card').parentElement;
-      return frame.getBoundingClientRect().height <= 470;
-    }), await page.evaluate(() =>
-      Math.round(document.querySelector('#psyche-card').parentElement.getBoundingClientRect().height) + 'px'));
-
   // Full screen, on the two shapes that matter. The card is laid out at a fixed
   // width and scaled, so "it fits" is a real measurement rather than a hope —
   // and the first build of this clipped its own last row.
   const fitAt = async (width, height) => {
     await page.setViewportSize({ width, height });
-    await page.click('#psyche-card-open');
+    await page.click('#psyche-card-open', { position: { x: 6, y: 6 } });
     await page.waitForTimeout(220);
     const out = await page.evaluate(() => {
       const card = document.querySelector('#psyche-card-full');
@@ -5528,13 +5521,17 @@ try {
       // where the frame's overflow:hidden swallowed it silently.
       const widest = Math.max(...[...card.querySelectorAll('*')]
         .map(el => el.getBoundingClientRect().right));
-      const bar = document.querySelector('#card-download').getBoundingClientRect();
+      // Full screen is the card alone: what is left of the bar (the close
+      // button, and on a phone the line saying to tap) sits under it.
+      const bar = ['#card-dialog-close', '#card-dialog-tip'].map(sel => document.querySelector(sel))
+        .filter(el => el.offsetParent).map(el => el.getBoundingClientRect()).filter(r => r.height > 0);
       return {
         open: document.querySelector('#card-dialog').open,
         // The bar is pinned to the viewport foot; the card must end above it.
-        barOverlaps: bar.top < box.bottom - 1,
+        barOverlaps: bar.some(r => r.top < box.bottom - 1 && r.left < box.right - 1 && r.right > box.left + 1),
         fits: box.width <= window.innerWidth + 1 && box.height <= window.innerHeight + 1,
         clipped: lowest > box.bottom + 1 || widest > box.right + 1,
+        box: [box.right, box.bottom].map(Math.round), lowest: Math.round(lowest), widest: Math.round(widest),
         scrolls: document.documentElement.scrollWidth > window.innerWidth,
       };
     });
@@ -5546,31 +5543,40 @@ try {
   // particular way — the image loads, the canvas paints, and what comes out is
   // blank — so checking the file exists proves nothing. These read the pixels
   // back and look for the card's own gradient.
-  await page.click('#psyche-card-open');
+  // Download and share sit beside the card on My Psyche, among the card's
+  // tools; full screen is the card alone.
+  const DL = '#profile-side .cx-tool[data-act="download"]';
+  const SH = '#profile-side .cx-tool[data-act="share"]';
+  await page.click('#psyche-card-open', { position: { x: 6, y: 6 } });
   await page.waitForTimeout(250);
-  check('the full-screen view offers a download and a share button',
-    (await page.locator('#card-download').isVisible()) &&
-    (await page.locator('#card-share').isVisible()));
-  check('each carries a small visible label beside its icon, plus a fuller aria-label',
-    (await page.locator('#card-download-label').innerText()).trim() === 'Download' &&
-    (await page.locator('#card-share-label').innerText()).trim() === 'Share Card' &&
-    (await page.locator('#card-download').getAttribute('aria-label')) === 'Download as image' &&
-    (await page.locator('#card-share').getAttribute('aria-label')) === 'Share Card');
+  check('full screen is the card alone, with no download or share',
+    await page.evaluate(() => document.querySelector('#card-dialog').open &&
+      document.querySelector('#card-dialog').classList.contains('no-tools')) &&
+    !(await page.locator('#card-download').isVisible()) && !(await page.locator('#card-share').isVisible()));
+  await page.click('#card-dialog-close');
+  await page.waitForTimeout(150);
+  check('beside the card, My Psyche offers a download and a share button',
+    (await page.locator(DL).isVisible()) && (await page.locator(SH).isVisible()));
+  check('each carries a small visible label beside its icon, plus a fuller tooltip',
+    (await page.locator(DL).innerText()).trim() === 'Download' &&
+    (await page.locator(SH).innerText()).trim() === 'Share Card' &&
+    (await page.locator(DL).getAttribute('title')) === 'Save your card as an image' &&
+    (await page.locator(SH).getAttribute('title')) === 'Share your card and your link');
   check('download sits to the left of share, with a visible gap between them',
-    await page.evaluate(() => {
-      const dl = document.querySelector('#card-download').getBoundingClientRect();
-      const sh = document.querySelector('#card-share').getBoundingClientRect();
-      return dl.left < sh.left && sh.left - dl.right >= 8;
-    }));
-  check('the shared status line under both buttons starts out hidden',
-    await page.evaluate(() => document.querySelector('#card-dialog-status').hidden));
+    await page.evaluate(([dlSel, shSel]) => {
+      const dl = document.querySelector(dlSel).getBoundingClientRect();
+      const sh = document.querySelector(shSel).getBoundingClientRect();
+      return dl.left < sh.left && sh.left - dl.right >= 4;
+    }, [DL, SH]));
+  check('the status line under the tools starts out hidden',
+    await page.evaluate(() => document.querySelector('#profile-side .cx-status').hidden));
   // This server keeps no short links, and a long link is too dense to scan,
   // so the card goes without a code rather than with an unreadable one.
   check('without a short link the card has no QR code',
     await page.evaluate(() => !document.querySelector('#psyche-card .pc-qr') && !document.querySelector('#psyche-card.pc-has-qr')));
   const [cardDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#card-download'),
+    page.click(DL),
   ]);
   const cardPngPath = join(shotDir, 'psyche-card.png');
   await cardDownload.saveAs(cardPngPath);
@@ -5580,7 +5586,7 @@ try {
   check('the file really is a PNG',
     cardPng.length > 5000 && cardPng.slice(1, 4).toString('latin1') === 'PNG',
     cardPng.length + ' bytes');
-  // Painted at 2x the card's own size, so it stands up to being posted.
+  // Painted at the card's own size: a story is already 1080 x 1920.
   const pngSize = await page.evaluate(async bytes => {
     const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
     const bitmap = await createImageBitmap(blob);
@@ -5602,12 +5608,12 @@ try {
       const r = px[i], g = px[i + 1], b = px[i + 2];
       if (r > 90 && r < 190 && g < 90 && b > 110) purple++;
     }
-    const card = document.querySelector('#psyche-card-full');
+    const card = document.querySelector('#psyche-card');
     return { w: bitmap.width, h: bitmap.height, colours: seen.size, purple,
       cardW: card.offsetWidth, cardH: card.offsetHeight };
   }, Array.from(cardPng));
-  check('the image is the card at twice its own size',
-    pngSize.w === pngSize.cardW * 2 && pngSize.h === pngSize.cardH * 2,
+  check('the image is the card at its own story size, 1080 x 1920',
+    pngSize.w === pngSize.cardW && pngSize.h === pngSize.cardH && pngSize.w === 1080 && pngSize.h === 1920,
     JSON.stringify(pngSize));
   check('and is actually drawn, not a blank canvas',
     pngSize.colours > 20 && pngSize.purple > 2000, JSON.stringify(pngSize));
@@ -5621,7 +5627,7 @@ try {
       typeof navigator.canShare === 'undefined'));
   const [cardShareFallback] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#card-share'),
+    page.click(SH),
   ]);
   check('without Web Share support, the share button falls back to downloading the same image',
     /^psycheai-card-.*\.png$/.test(cardShareFallback.suggestedFilename()),
@@ -5640,16 +5646,13 @@ try {
         fileType: file && file.type, fileName: file && file.name };
     };
   });
-  await page.click('#card-share');
+  await page.click(SH);
   await page.waitForFunction(() => window.__shareCaptured !== null, { timeout: 15000 });
   const shareCall = await page.evaluate(() => window.__shareCaptured);
   check('where Web Share is actually supported, it is handed a real PNG file rather than a link',
     Boolean(shareCall) && shareCall.fileCount === 1 && shareCall.fileType === 'image/png' &&
     /^psycheai-card-.*\.png$/.test(shareCall.fileName || ''),
     JSON.stringify(shareCall));
-
-  await page.click('#card-dialog-close');
-  await page.waitForFunction(() => !document.querySelector('#card-dialog').open, { timeout: 15000 });
 
   // ---- the close button sits in the bottom right ----
   //
@@ -5739,42 +5742,9 @@ try {
     (await page.locator('#profile-sub').count()) === 0);
   check('the shareable-card character count note is gone',
     (await page.locator('#payload-size').count()) === 0);
-  check('"Test compatibility" carries the same gradient as the other primary actions, not the ghost style',
-    await page.evaluate(() =>
-      /gradient/.test(getComputedStyle(document.querySelector('#test-compat-open')).backgroundImage)));
-
-  // The link panel is a popout, opened from beside the download button —
-  // everything below reads text or geometry from inside it, so the dialog has
-  // to actually be open first: a closed <dialog> is display:none, and
-  // innerText/getBoundingClientRect both read as empty/zero through that.
-  // Scrolled down first because the trigger sits at the foot of a long
-  // report — the case that actually exposed the scroll-jumps-to-top bug this
-  // covers (a dialog whose position was overridden off the UA stylesheet's
-  // `fixed`, so it rendered at its in-flow position instead of pinned to the
-  // viewport), which a page short enough to need no scrolling never would.
-  const scrollBeforeOpen = await page.evaluate(() => {
-    window.scrollTo(0, document.body.scrollHeight);
-    return window.scrollY;
-  });
-  check('the scroll position used for the close check is actually down the page',
-    scrollBeforeOpen > 200, scrollBeforeOpen);
-  await page.click('#test-compat-open');
-  check('the compatibility popout opens', await page.locator('#compat-dialog').isVisible());
-  await shot('2b-compat-dialog');
-  check('the share panel no longer explains the storage model',
-    !/There is no account and no database/.test(await page.locator('#compat-dialog').innerText()));
-  // Compatibility travels as a link only. The QR code it also used to be was
-  // dense enough to need a camera at close range and could not be read off a
-  // screenshot, and all it ever did was open this same link.
-  check('there is no QR code any more, only the link to send or copy',
-    (await page.locator('#compat-dialog canvas').count()) === 0 &&
-      (await page.locator('#download-qr, #qr-canvas').count()) === 0 &&
-      await page.locator('#share-link').isVisible() && await page.locator('#copy-link').isVisible());
-  check('the share panel is Psyche Sync',
-    (await page.locator('#compat-dialog .link-title').innerText()) === 'Psyche Sync',
-    await page.locator('#compat-dialog .link-title').innerText());
-  check('it says what the link is for',
-    /see how in sync you are/.test(await page.locator('#compat-dialog').innerText()));
+  // The link goes out from the hub on My Psyche: Share hands the one share
+  // message to the share sheet, and the copy button beside the link copies the
+  // same message.
   const myLink = await page.evaluate(() =>
     location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
@@ -5784,30 +5754,23 @@ try {
     window.__shared = null;
     navigator.share = data => { window.__shared = data; return Promise.resolve(); };
   });
-  await page.click('#share-link');
+  await clickClear(page, '#profile-body .hub-card [data-hub-go="share"]');
+  await page.waitForFunction(() => window.__shared !== null, null, { timeout: 5000 }).catch(() => {});
   const sharedData = await page.evaluate(() => window.__shared);
-  check('"Send my link" opens the share sheet with the one share message, carrying the link',
+  check('the hub\'s Share opens the share sheet with the one share message, carrying the link',
     Boolean(sharedData) && /^I got .+ for my Psyche Card\. Get yours now for free: /.test(sharedData.text) &&
       sharedData.text.endsWith(myLink) && !/compare/i.test(sharedData.text), JSON.stringify(sharedData).slice(0, 200));
-  // Without one, as on most desktops, the same message goes to the clipboard.
   await page.evaluate(() => {
     navigator.share = undefined;
     window.__copied = null;
     navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
   });
-  await page.click('#share-link');
-  check('and with no share sheet, the same message is copied and the page says so',
+  await clickClear(page, '#profile-body .hub-card [data-hub-go="copy"]');
+  await page.waitForFunction(() => window.__copied !== null, null, { timeout: 5000 }).catch(() => {});
+  check('and the copy button beside the link copies the same message, and says so',
     (await page.evaluate(() => window.__copied)) === sharedData.text &&
-      /copied/i.test(await page.locator('#share-link-status').innerText()),
-    await page.locator('#share-link-status').innerText());
-  await page.click('#copy-link');
-  check('"Copy link" copies the same share message as Share Card',
-    (await page.evaluate(() => window.__copied)) === sharedData.text);
-  await page.click('#compat-dialog-close');
-  check('the compatibility popout closes', !(await page.locator('#compat-dialog').isVisible()));
-  check('closing it leaves the reader where they were, not snapped back to the top',
-    Math.abs((await page.evaluate(() => window.scrollY)) - scrollBeforeOpen) < 5,
-    'before ' + scrollBeforeOpen + ', after ' + (await page.evaluate(() => window.scrollY)));
+      /copied/i.test(await page.locator('#profile-side .cx-status').innerText()),
+    await page.locator('#profile-side .cx-status').innerText());
 
   {
     const marked = async () => (await page.locator('.nav-links a.is-current').allInnerTexts()).map(t => t.trim()).join('|');
@@ -5817,7 +5780,6 @@ try {
       return Boolean(a) && Number(getComputedStyle(a).fontWeight) >= 700 && getComputedStyle(a, '::before').content === 'none' &&
         getComputedStyle(a).backgroundColor === 'rgba(0, 0, 0, 0)' && a.getAttribute('aria-current') === 'page';
     });
-    await page.click('#compat-dialog-close').catch(() => {});
     await page.click('[data-nav="scan"]');
     await page.waitForSelector('#view-scan:not([hidden])');
     const onSyncs = await marked();
@@ -5832,9 +5794,11 @@ try {
       onSyncs === 'My Syncs' && onFaq === 'FAQ' && onPsyche === 'My Psyche' && syncPill && await pill(),
       [onSyncs, onFaq, onPsyche, syncPill].join(' / '));
   }
+  // From here the written report is read on its own page, My Report.
+  await toReport(page);
   await openAllSections(page);
-  check('the personality and sync links appear once there is a profile',
-    (await visibleNav()).join('|') === 'My Psyche|My Syncs|FAQ',
+  check('the personality, report and sync links appear once there is a written report',
+    (await visibleNav()).join('|') === 'My Psyche|My Report|My Syncs|FAQ',
     (await visibleNav()).join('|'));
 
   // ---- the nav on a phone ----
@@ -5865,7 +5829,7 @@ try {
     check('report grids collapse to one column at ' + width + 'px',
       Object.values(columns).every(n => n === 1), JSON.stringify(columns));
 
-    check('all three links are up at ' + width + 'px', nav.count === 3, String(nav.count));
+    check('all four links are up at ' + width + 'px', nav.count === 4, String(nav.count));
     check('nav links stay on one row at ' + width + 'px', nav.rows === 1, nav.rows + ' rows');
     check('nav links stay legible at ' + width + 'px', nav.smallest >= 11, nav.smallest + 'px');
     check('the page does not scroll sideways at ' + width + 'px', nav.hScroll === 0, nav.hScroll + 'px');
@@ -5875,25 +5839,19 @@ try {
 
   const profileText = await page.locator('#profile-body').innerText();
   for (const [label, needle] of [
-    ['a signal strength figure', /Signal strength: \d+\/100/],
+    ['a signal strength figure', /\b\d{1,3}\s+Signal strength/i],
     ['the Big Five', /Big Five/],
-    ['an MBTI reading', /MBTI: [A-Z]{4}/],
+    ['an MBTI reading', /MBTI\s[\s\S]{0,40}\b[EI][NS][FT][JP]\b/],
     ['interests', /Interests/],
     ['values', /Values/],
-    ['beliefs', /Beliefs/],
+    ['beliefs', /beliefs/i],
     ['relationship strengths and weaknesses', /In relationships/],
     ['love languages', /Your love languages/],
     ['how they want to be loved', /How you want to be loved/],
     ['how they show love', /How you show love/],
-    ['career strengths and weaknesses', /At work/],
-    ['the MBTI nickname', /The Protagonist/],
-    ['values and beliefs as one section', /Values & Beliefs/],
-    ['the digital footprint section', /Your digital footprint/],
-    ['what they post', /What you post/i],
-    ['when they are active', /When you are here/i],
-    ['how their use changed', /How it changed/i],
-    ['what they take in', /What you take in/i],
-    ['the mental wellness section', /Mental wellness/],
+    ['how they work', /How you work/],
+    ['values and beliefs as one section', /Values & beliefs/i],
+    ['the wellbeing section', /Wellbeing/],
     ['all six wellness dimensions', /Sleep and rhythm/i],
     ['the attachment style section', /Attachment style/],
     ['the career assessment section', /Career assessment/],
@@ -5917,44 +5875,37 @@ try {
     check('profile no longer shows "' + gone + '"', !profileText.includes(gone));
   }
   check('MBTI has no closing write-up', (await page.locator('.portrait').count()) === 0);
-  check('MBTI is the axes and nothing else', await page.evaluate(() => {
-    const card = [...document.querySelectorAll('#profile-body .card')]
-      .find(c => /^MBTI:/.test(c.querySelector('h2').textContent));
-    // Head, the four axes, and the caveat line — no loose prose between.
-    return card.querySelectorAll(':scope > p').length === 1 &&
-      card.querySelector(':scope > p').classList.contains('fineprint');
+  check('MBTI is the type and its axes and nothing else', await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .mbti-card');
+    // Head, the type, the four axes — no loose prose between, no caveat line.
+    return Boolean(card) && card.querySelectorAll(':scope > p').length === 0 &&
+      [...card.children].map(c => c.className.split(' ')[0]).join() === 'card-head,type-hero,mbti-sliders';
   }));
-  check('values and beliefs are one card, not two',
-    (await page.locator('#profile-body h2').allInnerTexts())
-      .filter(t => /^Values|^Beliefs/.test(t)).length === 1);
+  check('values and beliefs are one list, not two',
+    (await page.locator('#profile-body h2, #profile-body h3').allInnerTexts())
+      .filter(t => /^Values|^Beliefs/i.test(t)).length === 1);
 
-  // Behaviour is evidence for the verdicts, so it reads after them.
-  const order = await page.locator('#profile-body h2').allInnerTexts();
-  const at = needle => order.findIndex(t => t.includes(needle));
-  check('digital footprint comes after At work', at('digital footprint') > at('At work'),
-    order.join(' | '));
-  // Confidence closes the report now instead of opening it.
-  check('confidence is the last section of the report',
-    at('How much to trust this') === order.length - 1, order.join(' | '));
-  check('confidence sits directly above the action buttons', await page.evaluate(() => {
-    const card = document.querySelector('.confidence-card');
-    const cta = document.querySelector('#view-profile .cta-row');
-    return Boolean(card.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING);
-  }));
-  check('the confidence meter came with it',
-    await page.locator('.confidence-card .confidence-fill').isVisible());
+  // The score and its meter are in Signal strength, on My Psyche.
+  await toHub(page);
+  await openMethod(page);
+  check('Signal strength carries the confidence meter',
+    await page.locator('#hub-method-dialog .confidence-fill').isVisible());
   // And is filled to the score it prints, for the same reason the trait bars
   // below are measured rather than counted.
   const meter = await page.evaluate(() => {
-    const fill = document.querySelector('.confidence-card .confidence-fill');
-    const track = document.querySelector('.confidence-card .confidence-meter');
-    const text = (document.querySelector('.confidence-card p strong') || {}).textContent || '';
+    const scope = document.querySelector('#hub-method-dialog');
+    const fill = scope.querySelector('.confidence-fill');
+    const track = scope.querySelector('.confidence-meter');
+    const text = (scope.querySelector('.method-card p strong') || {}).textContent || '';
     const shown = Number((/(\d+)\s*\/\s*100/.exec(text) || [])[1]);
     const width = track.getBoundingClientRect().width;
     return { shown, drawn: width ? Math.round(fill.getBoundingClientRect().width / width * 100) : 0 };
   });
   check('and the meter is filled to the confidence it prints',
     meter.shown > 0 && Math.abs(meter.drawn - meter.shown) <= 2, JSON.stringify(meter));
+  await closeMethod(page);
+  await toReport(page);
+  await openAllSections(page);
 
   // ---- mental wellness ----
   //
@@ -5963,24 +5914,26 @@ try {
   // guarantee is that it carries no number: a progress bar or a score under
   // "Emotional processing" would read as a measurement of something that was
   // never measured, which is the whole reason this section bands instead.
-  // All four are behind one unlock now, so before payment there is one
-  // consolidated block naming and explaining all four, not four separate
-  // covers — see paidSectionsLockedHtml. The DOM is what is checked, not the
-  // pixels: a CSS blur would look identical and protect nothing, since
-  // select-all copies it, a screen reader announces it and view-source hands
-  // it over.
-  check('all four paid sections are named in one consolidated block before anything is paid for, with no individual covers',
-    (await page.locator('#profile-body .paid-consolidated').count()) === 1 &&
-    (await page.locator('#profile-body .paid-card').count()) === 0 &&
+  // A written report saved without the four premium sections (one written
+  // before the unlock wrote everything in one call) shows each in its own
+  // part, under its own cover, every cover offering the same one US$5
+  // unlock. The DOM is what is checked, not the pixels: a CSS blur would
+  // look identical and protect nothing, since select-all copies it, a screen
+  // reader announces it and view-source hands it over.
+  check('all four paid sections sit in their parts under their own covers before anything is paid for',
+    (await page.locator('#profile-body .paid-consolidated').count()) === 0 &&
     await page.evaluate(() => {
-      const text = document.querySelector('#profile-body .paid-consolidated').textContent;
-      return ['Mental wellness', 'Attachment style', 'Ideal partner traits', 'Career assessment']
-        .every(name => text.includes(name));
+      const cards = [...document.querySelectorAll('#profile-body .paid-card')];
+      return cards.length === 4 && cards.every(card => !card.querySelector('.premium-cover').hidden &&
+        card.querySelector('.premium-body').hidden && card.closest('.part-card')) &&
+        JSON.stringify(cards.map(card => card.dataset.paid)) === JSON.stringify(['wellness', 'attachment', 'idealPartner', 'careerAssessment']);
     }));
-  check('and there is exactly one button asking for the US$5 unlock, not one per section',
-    (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$5'),
-    await page.locator('#profile-body .premium-unlock').innerText());
+  check('and every cover\'s button is the one US$5 unlock',
+    await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')].map(b => b.textContent.trim());
+      return buttons.length === 4 && buttons.every(text => text === buttons[0] && text.includes('US$5'));
+    }),
+    await page.locator('#profile-body .premium-unlock').first().innerText());
   // The specific thing a paywall — or a consent gate — must not do: ship
   // the writing and hide it. Checked against the mock's own wording, so it
   // fails if either call ever starts leaking its content early. The roast's
@@ -5995,37 +5948,20 @@ try {
         !/Mock edge headline/i.test(html) &&
         !/uncharitable reading/i.test(html);
     }));
-  // The whole tail of the report in one assertion, by heading, rather than a
-  // chain of pairwise position checks: digital footprint, then the roast
-  // (free, right after the evidence it draws on), then the four paid reads.
-  // Reading it off the rendered DOM means a section that silently moves
-  // fails here rather than in whichever pairwise check happened to cover
-  // that edge.
-  // Before anything is paid for, the four paid sections are list items inside
-  // the one consolidated block rather than their own <h2> cards — see
-  // paidSectionsLockedHtml — so what is checked here is the footprint card's
-  // and the roast's positions ahead of that block, and the list's own item
-  // order, rather than four separate headings. The consolidated block's
-  // position relative to confidence is covered separately below.
-  check('the report tail runs footprint → roast → consolidated block, listing wellness → attachment → ideal partner → career',
+  // The order, by the rendered DOM: wellbeing in Who you are, attachment and
+  // the ideal partner in How you connect, the career assessment in How you
+  // work, and the roast last, in the appendix.
+  check('the paid sections follow the parts — wellbeing, attachment, ideal partner, career — and the roast closes the report in the appendix',
     await page.evaluate(() => {
-      const footprint = [...document.querySelectorAll('#profile-body .card-head h2')]
-        .find(h => h.textContent.includes('digital footprint'));
+      const part = key => (document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]') || { closest: () => null })
+        .closest('.part-card');
+      const where = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'].map(key => (part(key) || {}).dataset);
       const roast = document.querySelector('#profile-body .bonus-card');
-      const consolidated = document.querySelector('#profile-body .paid-consolidated');
-      if (!footprint || !roast || !consolidated) return false;
-      const footprintBeforeRoast = Boolean(footprint.closest('.section-card')
-        .compareDocumentPosition(roast) & Node.DOCUMENT_POSITION_FOLLOWING);
-      const roastBeforeConsolidated = Boolean(roast.compareDocumentPosition(consolidated) &
-        Node.DOCUMENT_POSITION_FOLLOWING);
-      const T = window.PsycheCopy.TEXT;
-      const want = [T.wellness, T.attachment, T.idealPartner, T.careerAssessment];
-      const got = [...consolidated.querySelectorAll('.premium-tier-item strong')]
-        .map(node => node.textContent.trim());
-      return footprintBeforeRoast && roastBeforeConsolidated &&
-        want.length === got.length && want.every((title, i) => title === got[i]);
-    }),
-    (await page.locator('#profile-body .paid-consolidated .premium-tier-item strong').allInnerTexts()).join(' | '));
+      const last = [...document.querySelectorAll('#profile-body .paid-card')].pop();
+      return where.map(d => d && d.partCard).join() === 'who,connect,connect,career' &&
+        Boolean(roast && roast.closest('.part-card[data-part-card="appendix"]')) &&
+        Boolean(last.compareDocumentPosition(roast) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
   // ---- wellness, attachment, ideal partner and career, behind one US$5 unlock ----
   //
   // The roast used to be the fourth of these, generated by the same paid call
@@ -6052,69 +5988,17 @@ try {
   // before anything is paid for, there is one consolidated block, not four,
   // so what is checked is that block's position, its badge, and its own
   // single price and warning.
-  check('the consolidated premium block sits below the behaviour read and above confidence',
-    await page.evaluate(() => {
-      const consolidated = document.querySelector('#profile-body .paid-consolidated');
-      const grid = document.querySelector('#profile-body .facet-grid');
-      const behaviour = grid && grid.closest('.section-card');
-      const confidence = document.querySelector('#profile-body .confidence-card');
-      if (!consolidated || !behaviour || !confidence) return false;
-      return Boolean(behaviour.compareDocumentPosition(consolidated) & Node.DOCUMENT_POSITION_FOLLOWING) &&
-        Boolean(consolidated.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
-    }));
-  // The badge is a label for what the whole block is, not a second title — a
-  // small pill beside "Four more sections" rather than text competing with
-  // it as a sentence. One badge for one purchase now, not one per section.
-  check('the consolidated block carries a "Premium" badge beside its title',
-    await page.evaluate(() => {
-      const head = document.querySelector('#profile-body .paid-consolidated .premium-tier-head');
-      const badge = head && head.querySelector('.mode-badge');
-      return Boolean(badge) && badge.textContent.trim() === 'Premium';
-    }));
-  // A pill this narrow has room to break "Premium" mid-word on a phone-width
-  // title line that is already fighting the heading text for space. The
-  // badge as a whole may still drop to its own line; what it may not do is
-  // split internally. An inline element that wraps reports one ClientRect per
-  // visual line, so more than one means the word broke apart.
-  await page.setViewportSize({ width: 375, height: 800 });
-  const badgeLineFragments = await page.evaluate(() =>
-    document.querySelector('#profile-body .paid-consolidated .mode-badge').getClientRects().length);
-  await page.setViewportSize({ width: 1100, height: 900 });
-  check('the badge never breaks its own word across two lines, even at phone width',
-    badgeLineFragments === 1, badgeLineFragments + ' line fragment(s)');
-
-  // Two columns at a laptop width, never three — auto-fit would keep adding
-  // a column as the block gets wider, leaving a single thin row of four that
-  // is harder to scan than two rows of two. Read off each item's own top
-  // offset rather than the grid's column count directly, since that is what
-  // a reader actually sees: wellness and attachment share a row, then ideal
-  // partner and career share the next one.
-  const laptopRowTops = await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body .paid-consolidated .premium-tier-item')]
-      .map(item => Math.round(item.getBoundingClientRect().top)));
-  check('at a laptop width, the four sections sit two to a row: wellness+attachment, then ideal partner+career',
-    laptopRowTops.length === 4 &&
-    laptopRowTops[0] === laptopRowTops[1] && laptopRowTops[2] === laptopRowTops[3] &&
-    laptopRowTops[2] > laptopRowTops[0],
-    JSON.stringify(laptopRowTops));
-  // And back to one column on a phone, where two-across would cramp both.
-  await page.setViewportSize({ width: 375, height: 800 });
-  const phoneRowTops = await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body .paid-consolidated .premium-tier-item')]
-      .map(item => Math.round(item.getBoundingClientRect().top)));
-  await page.setViewportSize({ width: 1100, height: 900 });
-  check('and one column on a phone, all four stacked',
-    phoneRowTops.length === 4 && new Set(phoneRowTops).size === 4 &&
-    phoneRowTops.every((top, i) => i === 0 || top > phoneRowTops[i - 1]),
-    JSON.stringify(phoneRowTops));
-
-  check('the consolidated block names the price and offers a single unlock',
-    /US\$5/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
-    (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$5'));
+  // A section inside a part carries no Premium badge on its heading
+  // (paidCard's flat option): the cover says what it is.
+  check('a paid section inside a part has no Premium badge on its heading, only its cover',
+    await page.evaluate(() => [...document.querySelectorAll('#profile-body .paid-card')].every(card =>
+      !card.querySelector('.card-head .mode-badge') && card.querySelector('.premium-cover h3').textContent.trim().length > 0)));
+  check('each cover names the price and offers the unlock',
+    await page.evaluate(() => [...document.querySelectorAll('#profile-body .paid-card .premium-cover')].every(cover =>
+      /US\$5/.test(cover.innerText) && cover.querySelectorAll('.premium-unlock').length === 1)));
   const consolidatedBefore = await page.evaluate(() => {
-    const el = document.querySelector('#profile-body .paid-consolidated');
-    return { html: el.innerHTML, text: el.innerText };
+    const el = document.querySelector('#profile-body');
+    return { html: [...el.querySelectorAll('.paid-card')].map(c => c.innerHTML).join(''), text: '' };
   });
   // Against the mock's own wording, so this fails if the writing is present
   // in any form — rendered, hidden, or sitting in an attribute — before a
