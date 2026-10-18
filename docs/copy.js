@@ -1217,7 +1217,7 @@
       // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
       askTitle: 'Ask PsycheAI',
       askBlurb: 'Your personal coach that already knows you from your results. Ask it anything about yourself.',
-      askPrice: price => '1 question free with your card, 1 more with your report, then ' + price + ' for 5',
+      askPrice: price => '1 question free, then ' + price + ' for 5',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',

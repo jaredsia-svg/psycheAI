@@ -3658,7 +3658,7 @@ try {
   check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
-        /1 question free with your card, 1 more with your report, then US\$5 for 5/.test(a.textContent); }));
+        /1 question free, then US\$5 for 5/.test(a.textContent); }));
 
   // ---- the premium tier block ----
   //
@@ -14471,12 +14471,13 @@ try {
             profile.report.essence.character === 'Hulk'),
           unlocked: Boolean(document.querySelector('#profile-body .hub-tile[data-hub="report"] .hub-stamp, #profile-body .hub-tile[data-hub="report"] .hub-ok')),
           locked: Boolean(document.querySelector('#profile-body .hub-tile[data-hub="report"] .hub-lockmark')),
-          onCard: !document.querySelector('#profile-top').hidden,
+          onHub: (() => { const r = document.querySelector('#profile-body .hub-card').getBoundingClientRect();
+            return r.top >= -1 && r.top < innerHeight; })(),
         };
       });
-      check('first run merged: the server says so, the cast offers a credit, and one free run brings the card and its report',
+      check('first run merged: the server says so, the cast offers a credit, and one free run brings the card and its report, landing on the My Psyche hub',
         status.firstRun === 'merged' && /win a free credit/.test(castTitle) && body.product === 'first' && !body.paymentIntentId &&
-          first.paid && first.card && first.unlocked && !first.locked && first.onCard,
+          first.paid && first.card && first.unlocked && !first.locked && first.onHub,
         JSON.stringify({ firstRun: status.firstRun, castTitle, product: body.product, first }));
       await fp.waitForSelector('#guess-dialog[open]', { timeout: 10000 });
       const won = await fp.evaluate(() => ({ title: document.querySelector('#guess-title').textContent,

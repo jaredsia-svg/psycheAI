@@ -795,15 +795,10 @@ async function handleAnalyse(request, response) {
       // the free one from a friend's card is no longer theirs to use
       // (lib/referral.js, grantRefusal).
       if (full) referral.afterFullReport(account);
-      // One free Ask PsycheAI question with a Psyche Report, and one with a
-      // card, free or re-run: once each per link (lib/askcredits.js). Awaited,
-      // so it is counted before the reply goes: the page reads the balance as
-      // soon as the report arrives, and a gift still in flight to Redis read
-      // as the card's one question alone, where the reader had two.
-      await askCredits.gift(body.myRef, full ? 'report' : 'card').catch(() => {});
-      // A card and its report bought together (no card to anchor to): the
-      // card's question comes with it too.
-      if (full && !body.anchor) await askCredits.gift(body.myRef, 'card').catch(() => {});
+      // One free Ask PsycheAI question per link, with its card, however the
+      // report comes (lib/askcredits.js). Awaited, so it is counted before the
+      // reply goes: the page reads the balance as soon as the result arrives.
+      await askCredits.gift(body.myRef, 'card').catch(() => {});
       // The free card's account, and the friend who invited them. A card and
       // its report bought together (no card to anchor to: a new device, or
       // after Delete everything) is that link's card too, so its owner is

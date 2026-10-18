@@ -6459,7 +6459,7 @@
       if (first) body.product = 'first';
       const result = await LLM.analyseProfile(sent, body,
         { onJob: key => rememberJob(key, 'analysis', auth) });
-      if (bundle || withCard(result)) await adoptBundle(result, undefined, { landOnCard: first });
+      if (bundle || withCard(result)) await adoptBundle(result, undefined, { landOnHub: first });
       else {
         if (first) store.remove(KEYS.reportDigestNext);
         await adoptProfile(result);
@@ -6510,8 +6510,9 @@
     await adoptProfile(Object.assign({}, result, { data: card }), savedName);
     await adoptFullReport(result, false, savedName);
     keepReportDigest();
-    // A first free read lands on the card, its report a tap away in the hub.
-    if (options && options.landOnCard) { renderProfile(); show('profile'); }
+    // A first free read lands on My Psyche's hub, scrolled past the card,
+    // with the card and its report each a tap away.
+    if (options && options.landOnHub) { leaveHub(); go('profile'); }
     else if (fullReportPage()) go('full');
     else { renderProfile(); show('profile'); }
     openPaidSections();
@@ -6652,7 +6653,7 @@
         show('profile');
         openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
-      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName, { landOnCard: !job.auth });
+      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName, { landOnHub: !job.auth });
       else await adoptProfile(result, job.ownName);
       return true;
     } catch (error) {

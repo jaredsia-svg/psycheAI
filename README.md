@@ -2524,7 +2524,8 @@ the E/I `why`, which is told to name the breadth number behind the score.
 
 A new reader's first free run now writes the Psyche Card and the Psyche Report together, the way the
 US$5 bundle does (`mergedOrTwoCalls`: one call with `PSYCHEAI_MERGED_UNLOCK` on, the card then the report
-without it), and lands on the card with the report unlocked in the hub. It is free once per Instagram
+without it), and lands on My Psyche's hub, scrolled past the card, with the report unlocked there (18 Oct
+2026; it landed on the card at first). It is free once per Instagram
 account: the same per-account record as the free card (`PSYCHEAI_FREE_PER_ACCOUNT`), so the same account
 on a new device, or after Delete everything, is offered the card and report together at US$5, as before.
 A run with no account to hold it to gets the card alone.
@@ -2554,6 +2555,15 @@ A run with no account to hold it to gets the card alone.
   two; a reader with none at all reads 0. The total is still what is left plus what was asked, never a
   remembered high-water mark.
 - The free-report-for-one-open panel still serves readers on the card path.
+- **Landing on the hub (18 Oct 2026).** A first read that brings the card and its report together now opens
+  My Psyche at its hub (`landOnHub` in `adoptBundle`: `leaveHub()` then `go('profile')`, the same scroll
+  Back from My Report uses), so the reader meets both results at once instead of scrolling past the card to
+  find the report. A resumed job lands the same way. The bought bundle still opens My Report.
+- **One free question in all (18 Oct 2026).** Ask PsycheAI gives one free question per link, with its card,
+  however the report comes: the report no longer brings a second (`GIFTS = { card: 1 }` in
+  `lib/askcredits.js`; the server gifts `card` on every run, and `gift` is once per code). The front page's
+  Ask line reads "1 question free, then S$7 for 5", and the FAQ says one question free, then five for
+  US$5.
 
 ### Share-first: the first Psyche Report free for one connection opening the link (October 2026)
 
@@ -3056,8 +3066,8 @@ now each carry a lock (`unlockPartsHtml`). A free reader still has no My Report 
   stays under half the full profile schema's size (a selftest check), but only a live run proves
   Gemini accepts it.
 - **Ask PsycheAI from the card.** `askReady` no longer needs a report. Free questions go into the same
-  count a bought pack does (`lib/askcredits.js`, `gift`): one with the card, one more with the Psyche
-  Report, each once per referral code. The card's is given when any card is written for the link (free
+  count a bought pack does (`lib/askcredits.js`, `gift`): one with the card, once per referral code
+  (until 18 Oct 2026, one more with the Psyche Report). The card's is given when any card is written for the link (free
   or a re-run) and, for a link that already had a card, the first time its balance is read — at first
   it came only with an account's first free card, so a reader who had made one before never got it.
   The report's was two at first, then one. The gift is awaited before the run replies: it used to

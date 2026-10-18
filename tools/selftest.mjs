@@ -8406,16 +8406,15 @@ check('the schema requires evidence on where they align and differ',
     now = await askCredits.balance(askSecret);
     check('then the link\'s credit, and then none', now.total === 0 && (await askCredits.spend(askSecret)) === null, JSON.stringify(now));
     check('a code alone cannot see or spend questions', (await askCredits.balance(referral.codeOf(askSecret))) === null);
-    // Free questions: one with the card (given above), one with the report, once each per code.
+    // Free questions: one per code, with the card (given above). A Psyche Report brings none.
     const giftCode = referral.codeOf(askSecret);
     check('the card\'s question is not given twice',
       (await askCredits.gift(giftCode, 'card')) === false && (await askCredits.balance(askSecret)).total === 0);
-    check('a Psyche Report gives one more, once',
-      (await askCredits.gift(giftCode, 'report')) === true && (await askCredits.gift(giftCode, 'report')) === false &&
-        (await askCredits.balance(askSecret)).total === 1);
+    check('a Psyche Report gives no second free question',
+      (await askCredits.gift(giftCode, 'report')) === false && (await askCredits.balance(askSecret)).total === 0);
     check('and nothing for a bad code or an unknown kind',
       (await askCredits.gift('not a code', 'card')) === false && (await askCredits.gift(giftCode, 'bonus')) === false &&
-        askCredits.GIFTS.card === 1 && askCredits.GIFTS.report === 1);
+        askCredits.GIFTS.card === 1 && !('report' in askCredits.GIFTS));
     // A link with no card yet has nothing until it makes one.
     const noCard = sha('a reader with no card yet');
     check('a link with no card has no free question',
