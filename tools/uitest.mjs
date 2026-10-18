@@ -132,6 +132,49 @@ async function toHub(page) {
   await page.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
 }
 
+// After a run lands (a re-run, an unlock): the profile on screen, the job
+// collected, and the page on My Psyche, where the card and the hub are.
+async function settleProfile(page) {
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await page.waitForFunction(() => localStorage.getItem('psycheai_job') === null &&
+    Boolean(document.querySelector('#profile-body .hub-card, #profile-body .part-card')), null, { timeout: 60000 });
+  await toHub(page);
+}
+// Signal strength's "Your data" list: whether a source is ticked, and the note
+// under it (the price of a re-run once the report is unlocked).
+async function sourceTicked(page, key) {
+  await toHub(page);
+  await openMethod(page);
+  const ticked = await page.evaluate(k => {
+    const row = document.querySelector('#hub-method-dialog .source-read[data-source="' + k + '"]');
+    return Boolean(row && row.classList.contains('is-loaded') && row.querySelector('.source-tick.is-on'));
+  }, key);
+  await closeMethod(page);
+  return ticked;
+}
+// The paid sections as My Report shows them: written (attachment and the ideal
+// partner into In relationships, so three cards), on screen, no cover left.
+async function paidOnReport(page) {
+  await toReport(page);
+  return page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#profile-body .paid-card')];
+    return { cards: cards.length,
+      shown: cards.every(card => Boolean(card.offsetParent) && !card.closest('.part-card').classList.contains('is-collapsed')),
+      covers: [...document.querySelectorAll('#profile-body .premium-cover')].filter(c => !c.hidden).length,
+      written: Boolean(document.querySelector('#profile-body .wellness-tiles') && document.querySelector('#profile-body .attach-top') &&
+        document.querySelector('#profile-body .career-edge')) };
+  });
+}
+const paidAllShown = state => state.cards === 3 && state.shown && state.covers === 0 && state.written;
+
+async function sourcesNote(page) {
+  await toHub(page);
+  await openMethod(page);
+  const text = await page.locator('#hub-method-dialog .sources-read-note').innerText();
+  await closeMethod(page);
+  return text;
+}
+
 // The sample with its report sections taken off: a card whose report is
 // still to buy, so the page shows the unlock offer. The free first report is
 // marked used by the caller, so the offer is the unlock button rather than
@@ -9139,7 +9182,7 @@ try {
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeMergedSend + 1, 60000);
-  await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
+  await settleProfile(page);
   const mergedBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   check('the request carries a digest with both the Instagram evidence and the new Google block',
     Boolean(mergedBody.digest.google) && mergedBody.digest.samples.captions.length > 0 &&
@@ -9154,14 +9197,10 @@ try {
     mergedBody.digest.coverage.digestChars + ' chars');
   check('the stored digest now really carries the Google block, only after paying',
     await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).google)));
-  check('the Google row now ticks in the Data sources section',
-    await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
-      const google = rows.find(r => r.querySelector('.source-name').textContent.includes('Google'));
-      return Boolean(google.querySelector('.source-tick')) && !google.querySelector('.source-cross');
-    }));
+  check('the Google row now ticks in Signal strength\'s sources',
+    await sourceTicked(page, 'google'));
   check('the re-run button stays offered — it is a general action now, not spent by one use',
-    await page.locator('#rerun-with-data').isVisible());
+    await page.locator(CHANGE_DATA).isVisible());
 
   // Back to an Instagram-only session for the rest of this block, which
   // exercises the in-memory path (photographs and all).
@@ -9192,7 +9231,7 @@ try {
     (await page.locator('#view-profile').isVisible()) &&
     analyseBodies.length === analysesBeforeDecline0);
   check('the button is offered again after declining, rather than being spent by the attempt',
-    await page.locator('#rerun-with-data').isVisible());
+    await page.locator(CHANGE_DATA).isVisible());
 
   // ---- Back at the re-run's review steps upstream, it does not bail out ----
   //
@@ -9345,7 +9384,7 @@ try {
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
-  await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
+  await settleProfile(page);
   await page.waitForTimeout(500);
 
   await openDataSourcesPopout(page);
@@ -9396,7 +9435,7 @@ try {
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeReplaceSend + 1, 60000);
-  await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
+  await settleProfile(page);
   check('the report really was regenerated from the replaced Instagram export',
     analyseBodies.length === beforeReplaceSend + 1);
   // The real point of the popout carrying Google forward as a green tick:
@@ -9425,10 +9464,11 @@ try {
   // this reader still has free runs available (clearRunCount was never
   // called against them in this test), so the plain US$2 note would be
   // shown if this only checked mustPayForAnalysis() as before.
-  check('the confidence card now names the US$5 price, not the plain re-run price',
-    /US\$5/.test(await page.locator('#rerun-price-note').innerText()) &&
-    !/US\$2/.test(await page.locator('#rerun-price-note').innerText()),
-    await page.locator('#rerun-price-note').innerText());
+  {
+    const note = await sourcesNote(page);
+    check('Signal strength names the US$5 price, not the plain re-run price',
+      /US\$5/.test(note) && !/US\$2/.test(note), note);
+  }
 
   // Load Facebook, then actually follow the rerun through to a real
   // regeneration — a source this session had not touched yet, unlike the
@@ -9504,10 +9544,11 @@ try {
   check('a fresh receipt was written for the new charge',
     Boolean(afterRerun.unlockReceipt) && afterRerun.unlockReceipt !== receiptBeforeRerun,
     afterRerun.unlockReceipt);
-  check('the paid cards show the real, regenerated content — no resume prompt left behind',
-    (await page.evaluate(() =>
-      [...document.querySelectorAll('#profile-body .paid-card .premium-body')]
-        .filter(body => !body.hidden).length)) === 4);
+  {
+    const paid = await paidOnReport(page);
+    check('the paid cards show the real, regenerated content — no resume prompt left behind',
+      paidAllShown(paid), JSON.stringify(paid));
+  }
 
   // ---- adding data at the paid unlock actually enriches the paid call ----
   //
@@ -9670,34 +9711,23 @@ try {
       return Boolean(digest.google) && Boolean(profile.premiumAnalysis) &&
         digest.coverage.sources.join(',') === 'instagram,google';
     }));
+  const paidAfterBundle = await paidOnReport(page);
   check('every paid section is on screen alongside the rewritten free ones',
-    await page.evaluate(() =>
-      [...document.querySelectorAll('#profile-body .paid-card .premium-body')]
-        .filter(body => !body.hidden).length) === 4);
+    paidAfterBundle.written && paidAfterBundle.covers === 0, JSON.stringify(paidAfterBundle));
   // The one exception to "sections arrive shut" — and it has to be checked as
   // what a reader can actually *see*, not as an unset `hidden` attribute on a
   // body whose card is collapsed around it, which is what the check above
   // would still report on its own. Somebody who has just paid should be
   // reading what they bought, not looking at four more shut headings.
-  check('and the four they just paid for are open, not shut like the rest',
-    await page.evaluate(() => {
-      const cards = [...document.querySelectorAll('#profile-body .paid-card')];
-      return cards.length === 4 && cards.every(card =>
-        !card.classList.contains('is-collapsed') &&
-        card.querySelector('.card-toggle').getAttribute('aria-expanded') === 'true' &&
-        Boolean(card.querySelector('.premium-body').offsetParent));
-    }));
+  check('and the sections they just paid for are open, in open parts',
+    paidAllShown(paidAfterBundle), JSON.stringify(paidAfterBundle));
   // Coverage this path never had before, unlike the free-standing rerun's own
   // equivalent check above (the "Google row now ticks" one) — the data
   // sources subsection reads state.digest directly (see sourcesUsedHtml), so
   // the same renderProfile() call that redraws the paid cards above must also
   // leave this row correctly ticked, not just the stored digest.
-  check('the Google row also ticks in Data sources after the bundled unlock refresh',
-    await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
-      const google = rows.find(r => r.querySelector('.source-name').textContent.includes('Google'));
-      return Boolean(google && google.querySelector('.source-tick') && !google.querySelector('.source-cross'));
-    }));
+  check('the Google row also ticks in Signal strength after the bundled unlock refresh',
+    await sourceTicked(page, 'google'));
 
   // A paid unlock with nothing added changes no evidence, so it must not
   // spend a free-report generation on rewriting sections that would come
@@ -9815,10 +9845,11 @@ try {
     analyseBodies.length === beforeFirstFree + 1);
   check('and the browser records that the free run has been used',
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
-  check('the price of the next one is shown before anything is pressed: the card and report together, US$5',
-    (await page.locator('#rerun-price-note').isVisible()) &&
-    /Psyche Card and Psyche Report costs US\$5/.test(await page.locator('#rerun-price-note').innerText()),
-    await page.locator('#rerun-price-note').innerText());
+  {
+    const note = await sourcesNote(page);
+    check('the price of the next one is shown before anything is pressed: the card and report together, US$5',
+      /US\$5/.test(note), note);
+  }
 
   // Route one to a second analysis: re-running with additional data. The
   // popout, review and payment sheet are one combined action now — loadSource
