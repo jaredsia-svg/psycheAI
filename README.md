@@ -2502,6 +2502,68 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### Scores first, and E/I read the same way in both directions (18 Oct 2026)
+
+A reader's E/I came back "While you have spoken in 378 active direct message conversations over the years,
+your actual emotional investment is concentrated in two primary one-to-one chats carrying over 70,000 total
+messages": the WhatsApp mistake below again, and a wide count argued away by two deep chats. Earlier reads
+from the card-then-report path had argued the same person from breadth ("initiating plans, gathering
+groups… across dozens of circles… hundreds of contacts", tempered by "solitary weekends to recharge").
+Two causes, both fixed.
+
+**The write order.** The structured full report and the merged first run wrote `essence`, `summary`, the
+patterns and `cardHighlights` before `bigFive` and `mbti`, and the prompt said to decide the patterns
+"before you write any section": the portrait, type included, came first and the scores followed it. The
+card call wrote the character before its scores too, and every schema wrote `mbti.type` before the letters
+and each letter's `choice` before its `why`. Gemini's `responseJsonSchema` keeps key order, so that is the
+order the model commits in. Now:
+- full and merged: `confidence, mbti, bigFive, patterns, essence, summary, cardHighlights`, then the
+  sections; the patterns are decided "straight after MBTI and the Big Five, from the evidence and those
+  scores"; the merged call's copy of the card rules says so in place of the card's "decide them last" and
+  "write it last but one";
+- card: `confidence, mbti, bigFive, …, beliefs, essence, summary, …` — the character just before the
+  Overview;
+- **MBTI before the Big Five**, everywhere (classic schemas too). Since the report trim the letters carry
+  the paragraphs of evidence and each trait one line, so the score was being fixed on one line and E/I's
+  full case written after it, only able to explain it. Now the case comes first and the score follows the
+  letter and its strength: E `slight` 50–59, `moderate` about 60–69, `clear` 70+; I `slight` 41–50,
+  `moderate` about 31–40, `clear` 30 or below — so 55+ is still always E, 45 or below always I, 46–54
+  either at `slight`. Openness, agreeableness and conscientiousness read off N/S, T/F and J/P the same way,
+  without a threshold; neuroticism has no axis and rests on its line. The E/I `why` names no score, and
+  the old "say 'your extraversion score of N', not 'the score above'" note is gone: MBTI is first on the
+  page and in the writing;
+- MBTI: `letters` (each `axis, why, choice, strength, inPractice`), then `type`, "the type the four letters
+  spell"; each structured Big Five trait writes its `reading` (now "the behaviour that sets this score")
+  before its `score`.
+Thinking models reason before they answer, so the order matters less than it would without thinking, but
+nothing now asks for a conclusion ahead of what it rests on.
+
+**The rules leaned towards I.** The extraversion block began as a correction for introverts scored as
+extraverts off DM volume and had become one-sided: depth (messages ÷ active threads) read as "textbook
+introversion", long messages, late nights, solitary imagery and lurking were "weighted up", the default was
+"below 50" for volume with few people, and only **E** had a bar to clear. The block is now *Reading
+extraversion fairly*:
+- volume is evidence for neither letter, and the error is named as running both ways;
+- `activeThreads` is the breadth number: the low dozens a settled circle, a few hundred wide reach and a
+  real point towards E (a judgement, not a measured norm); depth is neutral, and a few deep chats are never
+  set against a wide count;
+- what they do with people counts both ways: plans proposed, people gathered, group outings, conversations
+  started with many people and several distinct circles lean E; a stated need for time alone, leaving
+  early, declined invitations and solitary pursuits chosen over group ones lean I;
+- long messages, a late-night rhythm, solitary imagery and liking far more than posting are no longer E/I
+  evidence;
+- start at 50: above ~60 needs breadth, below ~40 needs signs of seeking quiet; missing breadth is not I.
+The WhatsApp rule, the group-chat and close-friends one-way rules, the no-messages hedge and the 55/45
+letter-to-score tie (now read from the letter's side) are unchanged. The card prompt carries the short version. The E/I `why` is a full
+paragraph again (it was "deliberately shorter"): the breadth behind the letter and what tempers it, each
+counted. The evidence-allocation rule gives plans proposed and conversations started across many people
+to extraversion; who starts and how fast they reply inside close chats stays with attachment.
+
+The digest's own WhatsApp note now says the chats are hand-picked, usually the closest people, so their
+volume says nothing about how many people the reader seeks out: the model meets that beside the numbers,
+not only in the prompt. `FREE_FIXED_INPUT_TOKENS` 11,300 → 11,400 (11,310 measured). Not yet run against a
+real model: the first live report after this should be read for the E/I case.
+
 ### WhatsApp volume is not introversion (October 2026)
 
 A reader who had read as a slight extravert came back a moderate introvert, the E/I case citing "378 active

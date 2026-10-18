@@ -2339,18 +2339,21 @@ for (const [label, needle] of [
   ['looks for the gap rather than the totals', /Read the \*\*gaps\*\*/],
   ['refuses to invent time it cannot measure', /No source here carries timing data of any kind/],
   ['will not name a private individual', /a friend or a relative is described rather than named/],
-  // The extraversion correction. Readers who are plainly introverts were being
-  // scored as extraverts off DM volume, so each part of the fix is pinned
-  // separately: the diagnosis, the ratios that replace the raw counts, the
-  // instruction to weight the quiet evidence up, and the raised bar itself.
-  // One loose match over the whole block would let three of the four be
-  // deleted without a failure.
-  ['names the bias in its own evidence', /digest systematically overstates extraversion/],
-  ['explains why screen-based contact is not extraversion evidence',
-    /the mode of contact introverts specifically prefer/],
-  ['says plainly that volume is not the signal', /\*\*Volume is not the signal\. Breadth is\.\*\*/],
-  ['points at messages-per-thread rather than the total',
-    /Thousands of messages across a handful of conversations they actually joined is \*depth\*/],
+  // The extraversion correction, made symmetric (18 Oct 2026). It began as a
+  // fix for introverts scored as extraverts off DM volume, then leaned the other
+  // way: depth read as introversion, introvert signals weighted up, and E alone
+  // held to a bar. Each part of the fair version is pinned separately: volume
+  // settles neither letter, breadth decides, depth is neutral, both letters
+  // meet the same bar.
+  ['says volume is evidence for neither letter', /\*\*Message volume is not evidence for either letter\.\*\*/],
+  ['names the error as running both ways', /The error has run both ways/],
+  ['says breadth decides', /\*\*Breadth decides\*\*/],
+  ['reads activeThreads as the breadth number and depth as neutral',
+    /is the breadth number, and depth is neutral/],
+  ['counts a few hundred active conversations as wide reach', /a few hundred is wide reach and a real point towards \*\*E\*\*/],
+  ['refuses to argue a wide count away with a few deep chats', /Never set a few deep chats against a wide count/],
+  ['counts plans, gathering people and several circles towards E', /Proposing plans, gathering people, coordinating group outings/],
+  ['counts a stated need for time alone towards I', /A stated need for time alone to recharge/],
   ['counts group participation, not group membership, as the stronger evidence',
     /Sustained group-chat \*participation\* is genuine extraversion evidence/],
   // The correction to the correction: the first version of this block pointed
@@ -2382,11 +2385,11 @@ for (const [label, needle] of [
   ['refuses to score a trait on a blank', /Never build a trait score, a type letter or a line of the report on the absence/],
   ['prefers distinct people over comment volume',
     /Five hundred comments spread over six people is a small world/],
-  ['reads lurking as introvert evidence', /lurking is introvert evidence/],
-  ['weights the quieter introvert signals up', /Weight introvert-leaning evidence up/],
-  ['raises the bar with a number on it', /Do not score extraversion above roughly 60/],
-  ['puts a narrow-but-loud reader below the midpoint',
-    /that is an introvert with close friends, and it should score below 50/],
+  ['weighs both sides by the same standard', /\*\*Weigh both sides by the same standard\.\*\*/],
+  ['no longer reads long messages, late nights or lurking as I', /liking and saving far more than posting \(which nearly everyone does\) are not evidence for \*\*I\*\*/],
+  ['starts at 50 with the same bar both ways, with numbers on it', /Start at 50 and let the evidence move it, either way, by the same bar\.\*\* Score above roughly 60/],
+  ['needs signs of seeking quiet for a low score, not just missing breadth',
+    /The absence of breadth evidence is not evidence for \*\*I\*\*/],
   ['refuses message volume as trait evidence in the Big Five section',
     /"You send a lot of messages" is not evidence for this trait/],
   // The E/I letter and the extraversion score are two fields describing one
@@ -2396,13 +2399,16 @@ for (const [label, needle] of [
   // rather than a plea for consistency, so there is something to check.
   ['ties the E/I letter to the extraversion score',
     /The E\/I letter and the extraversion score are one finding/],
-  ['gives that tie an actual threshold', /extraversion \*\*55 or above\*\* → the letter is \*\*E\*\*/],
-  ['and the other side of it', /extraversion \*\*45 or below\*\* → the letter is \*\*I\*\*/],
-  ['makes the middle band hedge rather than pick', /either letter is defensible, but `strength` must be `slight`/],
+  // Since 18 Oct 2026 MBTI is written first, so the score follows the letter
+  // and its strength, with numbers on each.
+  ['writes the E/I case first and has the score follow the letter', /`mbti` is written before `bigFive`, so the E\/I case is made\nfirst/],
+  ['gives that tie actual thresholds', /- \*\*E\*\*: `slight` 50 to 59, `moderate` about 60 to 69, `clear` 70 or above\./],
+  ['and the other side of it', /- \*\*I\*\*: `slight` 41 to 50, `moderate` about 31 to 40, `clear` 30 or below\./],
+  ['makes the middle band hedge rather than pick', /\*\*46 to 54\*\*\nis either letter at `slight`/],
   ['forbids the axis reasoning contradicting the trait reading',
     /must not argue against the trait's `reading`/],
   ['restates the tie where the letter is actually chosen',
-    /It also has to match the extraversion score you have already written/],
+    /The extraversion score you write after it has to match/],
   // Absence of group threads. The prompt already explained why it means
   // nothing, twice, and reports kept citing it anyway — an explanation is not
   // a prohibition, so this is written as a ban on the phrasing itself, at the
@@ -2444,15 +2450,15 @@ for (const [label, needle] of [
     /it is a stranger's life offered to them as their own/],
   ['stops the essence pick borrowing somebody else\'s biography',
     /picking a character off a borrowed biography/],
-  ['carries the same raised bar onto the MBTI axis',
-    /\*\*E\*\* has to be earned with breadth/],
+  ['carries the same two-way bar onto the MBTI axis',
+    /\*\*E\*\* is earned with breadth — wide reach, many distinct people, plans proposed and people gathered — and \*\*I\*\* with a narrow circle together with signs of seeking quiet/],
   // Opting out of DMs deletes directMessages outright, taking every breadth
   // ratio with it and leaving publishing volume — the most misleading
   // evidence there is for this trait — as the only social signal left.
   ['handles the reader who opted out of messages',
     /coverage\.directMessagesIncluded.? is false/],
   ['treats a missing message block as more reason to hedge, not less',
-    /has given you less breadth evidence, not less reason to be careful/],
+    /has given you less breadth evidence: hedge and stay nearer the middle/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
@@ -6048,10 +6054,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Object.keys(strict.properties).slice(-2).join() === 'card,bonus' && 'topMotivators' in strict.properties &&
       Object.keys(strict.properties.card.properties).join() ===
         Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.card.properties).join());
-  check('its prompt is the full report\'s with the card\'s own rules kept word for word, those winning on the card',
+  check('its prompt is the full report\'s with the card\'s own rules kept word for word (but where the patterns and Overview fall), those winning on the card',
     prompts.MERGED_SYSTEM.startsWith(prompts.STRUCTURED_FULL_SYSTEM) &&
       prompts.MERGED_SYSTEM.includes(prompts.STRUCTURED_FREE_SYSTEM.slice(prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five'))
-        .replace('# Confidence\n\n' + prompts.CONFIDENCE_SCORING + '\n\n', '')) &&
+        .replace('# Confidence\n\n' + prompts.CONFIDENCE_SCORING + '\n\n', '')
+        .replace('Decide them last, from everything above.', 'Decide them straight after MBTI and the Big Five, from the evidence and those scores.')
+        .replace('Write it last but one, after everything it sums up.', 'Write it after MBTI, the Big Five, the patterns and the character, from those.')) &&
       (prompts.MERGED_SYSTEM.match(/Start from the sources loaded/g) || []).length === 1 &&
       /where they and the rules above differ about one of those fields, these win/.test(prompts.MERGED_SYSTEM) &&
       /# The roast/.test(prompts.MERGED_SYSTEM) && /# Overview/.test(prompts.MERGED_SYSTEM));
@@ -6702,8 +6710,8 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     const choice = structured.properties.mbti.properties.letters.items.properties.choice.description;
     check('structured Big Five: all five traits, each a score, a band and one line, no evidence list; MBTI carries the extraversion evidence',
       Object.keys(five).join() === 'openness,conscientiousness,extraversion,agreeableness,neuroticism' &&
-      Object.values(five).every(t => Object.keys(t.properties).join() === 'score,band,reading' && /^One sentence/.test(t.properties.reading.description)) &&
-      /55 or higher takes E, 45 or lower takes I/.test(choice) &&
+      Object.values(five).every(t => Object.keys(t.properties).join() === 'reading,score,band' && /^One sentence: the specific behaviour from the data that sets this score/.test(t.properties.reading.description)) &&
+      /55 or higher always means E and 45 or lower always means I/.test(choice) &&
       /only place the extraversion evidence is laid out/.test(why) && !/depth a Big Five trait gets/.test(why) &&
       /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /cite a breadth number in the E\/I axis's `why`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
@@ -6728,8 +6736,28 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     prompts.STRUCTURED_KEYS.join() === 'patterns,motivators,development' &&
     prompts.STRUCTURED_KEYS.every(key => structured.required.includes(key) && !(key in classicSchema.properties)));
   const order = Object.keys(structured.properties);
-  check('patterns are written straight after the summary, before any section that points back at them',
-    order.indexOf('patterns') === order.indexOf('summary') + 1 &&
+  // Scores first (18 Oct 2026): the Big Five and MBTI open the response, then
+  // the patterns, the character and the summary, which follow the scores
+  // rather than lead them; the type follows its four letters, each letter its
+  // case. Gemini's responseJsonSchema keeps this key order.
+  const mbtiOrder = Object.keys(structured.properties.mbti.properties).join();
+  const letterOrder = Object.keys(structured.properties.mbti.properties.letters.items.properties).join();
+  check('MBTI and the Big Five are written first, MBTI leading, then the patterns, the character and the summary; the type after its letters, each letter after its case',
+    order.slice(0, 7).join() === 'confidence,mbti,bigFive,patterns,essence,summary,cardHighlights' &&
+    mbtiOrder === 'letters,type,confidence,nickname,caveat' && letterOrder === 'axis,why,choice,strength,inPractice' &&
+    Object.keys(prompts.MERGED_SCHEMA.properties).slice(0, 4).join() === 'confidence,mbti,bigFive,patterns' &&
+    /Decide them straight after MBTI and the Big Five/.test(prompts.STRUCTURED_ADDON) &&
+    /\*\*MBTI comes before the Big Five\*\*, on the page and in the order you write/.test(prompts.STRUCTURED_ADDON) &&
+    /work axis by axis, then give the type the four letters spell/.test(prompts.STRUCTURED_FULL_SYSTEM),
+    [order.join(','), mbtiOrder, letterOrder].join(' | '));
+  check('the card call too: scores first, the character just before the Overview, the type after its letters',
+    Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).slice(0, 3).join() === 'confidence,mbti,bigFive' &&
+    /The extraversion score follows the E\/I letter, written before it/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('essence') === Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('summary') - 1 &&
+    Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.mbti.properties).join() === 'letters,type,confidence,nickname',
+    Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).join());
+  check('patterns come before any section that points back at them, and the plan closes the report',
+    order.indexOf('patterns') < order.indexOf('interests') &&
     order.indexOf('development') > order.indexOf('careerAssessment') &&
     order.indexOf('development') === order.length - 1, order.join(','));
   check('the structured report is leaner where sections shared a page: no watch-outs, no "In practice", no separate pressure points',
@@ -6766,7 +6794,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     prompts.STRUCTURED_FULL_SYSTEM.includes(prompts.STRUCTURED_ADDON) &&
     !prompts.CLASSIC_FULL_SYSTEM.includes('# The thread that ties this report together'));
   check('patterns are decided first and each must show up in at least three sections',
-    /Decide them before you write any section/.test(prompts.STRUCTURED_ADDON) &&
+    /Decide them straight after MBTI and the Big Five, from the evidence and those scores, and before any other section/.test(prompts.STRUCTURED_ADDON) &&
     /fewer than three sections is a finding, not a pattern/.test(prompts.STRUCTURED_ADDON));
   check('motivators are all ten of Schwartz\'s values, scored against each other',
     prompts.MOTIVATORS.length === 10 && /relative to their other nine/.test(prompts.STRUCTURED_ADDON) &&
@@ -6832,7 +6860,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     prompts.REPORT_LAYOUT === 'classic' ||
       (prompts.fullSchemaFor(overviewAnchor) === prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA &&
         Object.keys(prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties)
-          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).join() === 'summary,patterns' &&
+          .filter(key => !(key in prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.properties)).sort().join() === 'patterns,summary' &&
         !prompts.STRUCTURED_OVERVIEW_PINNED_SCHEMA.required.includes('summary')));
   check('a pattern without its evidence keeps the old anchor, summary or not',
     !('summary' in prompts.anchorFrom(Object.assign({}, freeCard, { summary: 'Text.' }))));
@@ -8931,14 +8959,14 @@ check('the schema requires evidence on where they align and differ',
   check('and that a back-reference alone does not make a case',
     /not a licence to assert/i.test(profile));
 
-  // E/I is settled by the Big Five extraversion score before MBTI is written,
-  // so arguing it again a page later is the same evidence twice for a
-  // conclusion that was never open.
-  check('E/I is told to read off the Big Five score rather than re-derive it',
-    /E\/I is the exception and is deliberately shorter/i.test(schema) &&
-    /never in doubt/i.test(schema));
-  check('and the other three axes keep the full paragraph',
-    /the ones the number does not settle/i.test(schema));
+  // E/I follows the Big Five extraversion score. Since 18 Oct 2026 its `why`
+  // is a full paragraph again: the score, the breadth behind it and what
+  // tempers it, each counted, never volume or depth.
+  check('E/I lays out the breadth behind the letter and what tempers it, never volume or depth, and the score follows',
+    /\*\*On E\/I\*\*, this paragraph decides the letter and, through it, the Big Five extraversion score written after it/.test(schema) &&
+    /plans proposed and people gathered/.test(schema) && /a stated need for time alone/.test(schema) &&
+    /Never argue it from message volume or from how deep a few chats run/.test(schema) &&
+    !/deliberately shorter/.test(schema));
 
   // inPractice sits under a paragraph that is already concrete about the
   // reader's week, which is exactly what makes it easy to write as a second

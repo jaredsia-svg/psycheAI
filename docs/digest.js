@@ -976,7 +976,7 @@
   // three free caps still pay for their digests at it.
   // 11,300 once it said who the captions were written for
   // (ACCOUNT_AUDIENCE_RULE, 11,223 measured).
-  const FREE_FIXED_INPUT_TOKENS = 11300;
+  const FREE_FIXED_INPUT_TOKENS = 11400;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -2461,7 +2461,7 @@
       const waStats = {};
       digest.coverage.sources.push('whatsapp');
       digest.whatsapp = {
-        note: 'From WhatsApp chats the user exported themselves, one chat at a time. Each chat is counts and ' +
+        note: 'From WhatsApp chats the user exported themselves, one chat at a time: up to three they hand-picked, usually with the people closest to them, so their volume shows how deep those ties run and nothing about how many people the user seeks out. Each chat is counts and ' +
           'timings; only the user\'s own messages are sampled, per chat, tagged [c1]–[c3]. Other people\'s messages ' +
           'were counted and timed, and nobody is named ("someone" stands in for a name). A line may open with «them: …»: the message it replied to, from the other person, shortened and de-identified — context for reading the reply, never the user\'s own words. A " / " joins lines the user sent in one quick burst. userHours and ' +
           'userWeekdays count the user\'s own messages by the phone\'s local hour and by day, Sunday first.',
