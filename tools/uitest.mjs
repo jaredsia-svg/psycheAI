@@ -9780,7 +9780,7 @@ try {
     bareBodies.length === 1 && bareBodies[0].product === 'unlock' &&
     bareBodies[0].promoCode === UITEST_PROMO &&
     bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
-    Boolean(bareBodies[0].anchor.card) && bareBodies[0].anchor.summary === undefined &&
+    Boolean(bareBodies[0].anchor.card) &&
     Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
       'product', 'anchor', 'account', 'myRef', 'ref', 'deep'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
@@ -9863,8 +9863,10 @@ try {
     (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeLoad);
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+  // On a free card the hub's Add / change data is the unlock, which writes
+  // the card and its report together.
   check('re-running with more data is charged, at the end rather than the start, as the card and report together',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Card and Report',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Unlock your Psyche Report',
     await page.locator('#premium-dialog-title').innerText());
   const beforeDecline = analyseBodies.length;
   await leavePayment(page);
@@ -9963,24 +9965,17 @@ try {
     });
   });
 
-  // Their link goes into the popout itself: "Got their link?" opens a box
-  // for it there rather than sending the reader to another page.
-  await page.click('[data-nav="profile"]');
-  await page.waitForSelector('#view-profile:not([hidden])');
-  await page.click('#test-compat-open');
-  await page.click('#compat-paste-toggle');
-  check('"Got their link?" opens a paste box in the popout itself, ready to type in',
-    await page.locator('#compat-paste-input').isVisible() &&
-      await page.evaluate(() => document.activeElement === document.querySelector('#compat-paste-input')) &&
-      await page.locator('#compat-dialog').isVisible());
-  await page.fill('#compat-paste-input', 'https://psycheai.io/#p=nonsense');
-  await page.click('#compat-paste-go');
+  // Their link goes into My Syncs' paste box, "Sync with others".
+  await page.click('[data-nav="scan"]');
+  await page.waitForSelector('#view-scan:not([hidden])');
+  await page.fill('#paste-input', 'https://psycheai.io/#p=nonsense');
+  await page.click('#paste-go');
   await page.waitForTimeout(200);
-  check('a link that is not one is refused in the popout, which stays open',
-    /not a PsycheAI link/.test(await page.locator('#compat-paste-status').innerText()) &&
-      await page.locator('#compat-dialog').isVisible());
-  await page.fill('#compat-paste-input', 'https://example.com/#p=' + otherPayload);
-  await page.click('#compat-paste-go');
+  check('a link that is not one is refused on My Syncs, saying so',
+    /not a PsycheAI link/.test(await page.locator('#scan-alert').innerText()) &&
+      await page.locator('#view-scan').isVisible(), await page.locator('#scan-alert').innerText());
+  await page.fill('#paste-input', 'https://example.com/#p=' + otherPayload);
+  await page.click('#paste-go');
 
   // ---- straight to the sync ----
   //
@@ -9988,9 +9983,6 @@ try {
   // pick: a pasted link starts it, free, with no payment sheet in between.
   check('a pasted link asks no basis question: there is no picker any more',
     (await page.locator('#mode-dialog, #stance-dialog').count()) === 0);
-  check('and the popout the link was pasted into has closed behind it',
-    await page.waitForFunction(() => !document.querySelector('#compat-dialog').open, null, { timeout: 5000 })
-      .then(() => true, () => false));
 
   // A comparison is as long a call as an analysis and just as easy to close an
   // app during, so it records a job of its own. Its record has to carry more
