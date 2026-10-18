@@ -6323,6 +6323,22 @@ by id, and the same card markup goes into the page and its full-screen copy, so 
 gets ids of its own (`freshArtIds`): a shared id can resolve to the copy in a closed dialog and draw
 the art blank. A check holds every gradient reference to an id that exists once.
 
+**Seven scenes redrawn to keep to that rule** (October 2026). A review found seven that drew the
+character itself or an emblem its owner protects as a mark, and those carry more risk than naming the
+character does. They now draw the story's things, in the character's own colours:
+
+| Character | Was | Now |
+|---|---|---|
+| Baymax | Baymax | A white pillow-heart with a red first-aid badge over the bridge and city. The cross is white on red: a red cross on white is the Red Cross's protected emblem. |
+| WALL-E | the robot | A seedling in an old boot on a pyramid of rust-yellow crushed cubes, under a cloud-swirled blue Earth with no land drawn, kept clear of the plant |
+| Iron Man | the suit | A glowing reactor ring in a gold rim with a pale-gold burst, red and gold trails rising from the city, and red and orange trails swooping round the ring. Rays were tried and dropped as too busy. |
+| Captain America | the shield | A white star through red-and-white stripes, red and blue sparks bursting from it |
+| Pikachu | a Poké Ball | A thunderbolt striking into a floodlit stadium on a meadow, a generic arena rather than any game's own building |
+| Totoro | Totoro | A rainy bus stop under a camphor tree, a red and a grey umbrella open, and a great leaf held up like a third, with acorns and fireflies |
+| Kuromi | her skull face | The same bat-winged black heart holding a pink heart with a crescent |
+
+The cast strip is redrawn with them (`node tools/cast-sprite.mjs`).
+
 ### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the
