@@ -940,7 +940,9 @@
   // $0.075 with the public pool at 50,000 (late October 2026); $0.076 once
   // the card's prompt said who the captions were written for (11,300).
   // $0.085 with one 179,000 line for every read (late October 2026).
-  const FREE_COST_CAP = 0.085;
+  // $0.086 once the card's prompt carried the MBTI ledger and its rubric
+  // (MBTI_LEDGER_RULES, about 1,800 tokens more; 13,084 measured).
+  const FREE_COST_CAP = 0.086;
   // Instagram alone, at its 100,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
@@ -976,7 +978,9 @@
   // three free caps still pay for their digests at it.
   // 11,300 once it said who the captions were written for
   // (ACCOUNT_AUDIENCE_RULE, 11,223 measured).
-  const FREE_FIXED_INPUT_TOKENS = 11900;
+  // 13,300 once it carried the MBTI ledger section and its rubric tables
+  // (13,084 measured), and its own E/I and N/S/T/F bullets went.
+  const FREE_FIXED_INPUT_TOKENS = 13300;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -985,17 +989,17 @@
   // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                 11,000 prompt + 51,143 digest × $0.75/M = $0.0466
-  //                 at most $0.0841                    → DEEP_FREE_COST_CAP $0.085
+  //                 13,300 prompt + 51,143 digest × $0.75/M = $0.0483
+  //                 at most $0.0858                    → DEEP_FREE_COST_CAP $0.086
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669
   //                 at most $0.1719                    → DEEP_COST_CAP $0.172
   //
-  // $0.257 for the whole unlock at most, against a US$5 payment; $0.172 when
+  // $0.258 for the whole unlock at most, against a US$5 payment; $0.172 when
   // nothing is added and the card stands. Held by the same selftest check as
   // the standard caps.
-  const DEEP_FREE_COST_CAP = 0.085;
+  const DEEP_FREE_COST_CAP = 0.086;
   const DEEP_COST_CAP = 0.172;
 
   // The unlock that adds data in one call (lib/prompts.js, MERGED_SYSTEM),
@@ -1005,12 +1009,15 @@
   // card's lines and the roast:
   //
   //   both         30,000 out  × $3.75/M = $0.1125
-  //                 45,000 prompt + 51,143 digest × $0.75/M = $0.0721
-  //                 at most $0.1846                    → MERGED_COST_CAP $0.185
+  //                 40,500 prompt + 51,143 digest × $0.75/M = $0.0687
+  //                 at most $0.1812                    → MERGED_COST_CAP $0.185
   //
-  // against $0.257 for the two calls it replaces. If its answer fails its
+  // (40,500 since the MBTI ledger replaced some 15,000 characters of the
+  // report's prompt, October 2026; 39,021 measured.)
+  //
+  // against $0.258 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 45000;
+  const MERGED_FIXED_INPUT_TOKENS = 40500;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
   const MERGED_COST_CAP = 0.185;
 

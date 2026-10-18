@@ -2502,6 +2502,71 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### MBTI scored from a ledger, not an impression (October 2026)
+
+One reader's J/P came back J, J and P in a day. The digest was the same each time (its sampling is
+seeded), and each run was "moderate". The data genuinely ran both ways: planning for money and work, loose
+plans with friends. A model that forms one view and then writes a paragraph defending it lands wherever its
+first impression did. E/I had been patched rule by rule, with nine thousand characters of bands, bans and
+corrections, and still swung.
+
+Now the model judges each piece of evidence, and code does the adding up (`lib/mbtiScore.js`):
+
+- **The ledger:** for each axis the model writes a `ledger` first. It lists every piece of evidence for
+  either letter, each tagged with a rubric row (`RUBRIC`), the letter it points to, and a short note with
+  its count. `why` and `evidence` then explain what it shows. The ledger is never printed.
+- **Weights:** each rubric row has a fixed weight: strong 3 (their own words; the setting they choose; the
+  T/F tie-break), medium 2, weak 1. One entry per row and letter, so repeating a row adds nothing. Rows the
+  model may not use, wrong letters and duplicates are dropped (`cleanLedger`).
+- **Computed rows:** some rows the code works out from the digest and never accepts from the model
+  (`computedPieces`):
+  - *Sustained conversations* (Instagram's `engagedThreads.atLeast50`, plus Messenger's): over 100 is a
+    strong E; 50 or more a medium E; under 20 a medium I; anything between leans neither way. The bands
+    halve for under three years of data.
+  - *Share:* over 60% of conversations spoken in being sustained, with at least 30 of them, is a weak E.
+    Under 10%, around fewer than 50, is a weak I. A high share needs the floor because six kept up out of
+    eight is a small circle, not reach.
+  - *Both:* neither row counts when direct messages are not a channel the reader uses (under 1,000 of
+    their own messages and under 50 conversations spoken in). Someone who barely uses DMs is not counted
+    as an introvert.
+  - *Search shapes:* Google's `searchShapes` give a medium N or S at two to one, over at least 30.
+
+  The model once read 378 conversations "ever spoken in" as breadth. A number nobody reads cannot be
+  misread.
+- **Letter and strength:** the side with more points wins. A tie goes to the side with the strongest
+  single piece, then to the model's pick. `moderate` needs a margin (difference ÷ points in play) of a
+  quarter, with at least 5 points in play. `clear` needs three-fifths, with at least 10.
+- **The extraversion score** comes from the same result: slight 51–59, moderate 60–69, clear 70–85,
+  mirrored for I. At slight it is scaled by how much was in play, so one piece alone sits nearer 50.
+  The letter and the score can no longer disagree.
+- **Where it runs:** on the server, on every answer before it is served (`scrubbed`). On the two-call
+  path the card is scored before the report is anchored to it. When the sum changes the type, the
+  nickname, `card.mbti` and any line that named the old type follow. A report pinned to its card has no
+  ledger and is left alone. Scoring twice changes nothing.
+
+**The prompts got shorter.** Both prompts now share one section, `MBTI_LEDGER_RULES`. It holds the method,
+the rubric tables (`rubricText()`, so the prompt and the code cannot drift) and a short "never in a
+ledger" list:
+- volume;
+- totals that include what the reader never joined;
+- what happens inside one chat, and WhatsApp's hand-picked chats;
+- how and when they write, posting bursts included;
+- the platform's genre: a camera is not S, warmth is not F, a topic is not a thinking style;
+- a blank.
+
+This replaced the report prompt's "Reading extraversion fairly" and "N/S and T/F have the same problem"
+sections, and the card prompt's E/I bullets. The report prompt is about 15,000 characters shorter and the
+merged prompt about 19,000 shorter (`MERGED_FIXED_INPUT_TOKENS` 45,000 → 40,500).
+
+The card prompt is about 4,000 longer, because it now carries the rubric. `FREE_FIXED_INPUT_TOKENS` went
+from 11,900 to 13,300, and `FREE_COST_CAP` and `DEEP_FREE_COST_CAP` from 8.5¢ to 8.6¢. In the card prompt
+MBTI now comes before the Big Five, so the merged prompt's card rules (sliced from `# Big Five`) do not
+carry the section twice.
+
+`why` names no strength word and no score, because the code may move either after the model has written.
+The sample report carries ledgers that add up to its own letters (the extraversion score went from 52 to
+58 to match). A selftest re-scores the sample and checks that it agrees.
+
 ### E/I bands and bans at the field; N/S read both ways (18 Oct 2026)
 
 The first report built with `engagedThreads` used it ("378 conversations joined with at least 40 sustained

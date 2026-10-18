@@ -91,7 +91,7 @@
       ]
     },
     "extraversion": {
-      "score": 52,
+      "score": 58,
       "band": "moderate",
       "reading": "Social in bursts and solitary in between: you enjoy people, then appear to need recovering from them.",
       "evidence": [
@@ -125,7 +125,39 @@
     "letters": [
       {
         "axis": "E/I",
-        "why": "You make the occasion rather than attend it, and for a genuinely wide circle. Against it, six accounts take most of your engagement and every cluster is followed by about a fortnight of quiet, a small core and a real need to recover, so this is as close as an axis gets.",
+        "ledger": [
+          {
+            "row": "reach-out",
+            "pointsTo": "E",
+            "note": "Named organiser in most of the forty-odd event clusters"
+          },
+          {
+            "row": "setting",
+            "pointsTo": "E",
+            "note": "Goes to the launches and mixers, not only nights with old friends"
+          },
+          {
+            "row": "pursuits",
+            "pointsTo": "E",
+            "note": "Weekends built around group events, four years running"
+          },
+          {
+            "row": "many-people",
+            "pointsTo": "E",
+            "note": "Thirty-one distinct people in your comments"
+          },
+          {
+            "row": "own-words",
+            "pointsTo": "I",
+            "note": "Twice calls yourself \"peopled out\" the day after"
+          },
+          {
+            "row": "reach-out",
+            "pointsTo": "I",
+            "note": "Captions say you left early from most of them"
+          }
+        ],
+        "why": "You make the occasion rather than attend it, for a genuinely wide circle, and you go looking for the big rooms as well as the familiar ones. Against it, you leave most of them early and twice call yourself \"peopled out\" the next day, which keeps this about as close as an axis gets.",
         "evidence": [
           "Named organiser in most of the forty-odd event clusters",
           "Posting spikes on the event dates, not after them",
@@ -138,6 +170,28 @@
       },
       {
         "axis": "N/S",
+        "ledger": [
+          {
+            "row": "captions-meaning",
+            "pointsTo": "N",
+            "note": "22 of 50 captions go past the event to what it meant"
+          },
+          {
+            "row": "theorises",
+            "pointsTo": "N",
+            "note": "Comparisons with earlier years come up unprompted"
+          },
+          {
+            "row": "abstract-topics",
+            "pointsTo": "N",
+            "note": "Topics spread across unrelated abstract subjects"
+          },
+          {
+            "row": "watches",
+            "pointsTo": "S",
+            "note": "A steady run of how-to videos in the last eighteen months"
+          }
+        ],
         "why": "Your captions reach for meaning well beyond what a caption needs to do. The other twenty-eight captions are precise description — places, dates, model names — and the last eighteen months carry a steady run of how-to searching, but Instagram rewards exactly that specificity, so it moderates the letter rather than overturning it.",
         "evidence": [
           "22 of 50 captions go past the event to what it meant",
@@ -150,7 +204,34 @@
       },
       {
         "axis": "T/F",
-        "why": "When the two pull apart, the person breaks the tie, not the principle. The warm comments are not counted, since every account looks kind in a comment box. What counts against it: your forty-seven deadline posts track delivery rather than who was affected, and your captions about other people's work assess it about as often as they celebrate it, enough to keep this off clear.",
+        "ledger": [
+          {
+            "row": "tie-break",
+            "pointsTo": "F",
+            "note": "In 9 caption decisions, the effect on someone settles almost all"
+          },
+          {
+            "row": "attention",
+            "pointsTo": "F",
+            "note": "Most-liked accounts are people over subjects, about three to one"
+          },
+          {
+            "row": "credit",
+            "pointsTo": "F",
+            "note": "Captions about friends praise who they are"
+          },
+          {
+            "row": "credit",
+            "pointsTo": "T",
+            "note": "Captions about others' work assess it as often as they celebrate it"
+          },
+          {
+            "row": "captions-to-nobody",
+            "pointsTo": "T",
+            "note": "Deadline posts track delivery, not who was affected"
+          }
+        ],
+        "why": "When the two pull apart, the person breaks the tie, not the principle. The warm comments are not counted, since every account looks kind in a comment box. What counts against it: your forty-seven deadline posts track delivery rather than who was affected, and your captions about other people's work assess it about as often as they celebrate it, and that is the real case against it.",
         "evidence": [
           "In 9 caption decisions, the effect on someone settles almost all",
           "Most-liked accounts are people over subjects, about three to one",
@@ -162,7 +243,39 @@
       },
       {
         "axis": "J/P",
-        "why": "You follow through on plans you set yourself, which is more than a posting habit. The nearest contrary reading is that your posting comes in bursts, but the bursts land on scheduled events, so they show planning rather than spontaneity; the data leaves little room to argue, so it is clear.",
+        "ledger": [
+          {
+            "row": "own-words",
+            "pointsTo": "J",
+            "note": "\"Locked in\" and \"booked in March\" recur in your captions"
+          },
+          {
+            "row": "plans-ahead",
+            "pointsTo": "J",
+            "note": "Event clusters land on dates fixed well ahead"
+          },
+          {
+            "row": "decisions",
+            "pointsTo": "J",
+            "note": "41 of 47 deadline posts close the deadline out"
+          },
+          {
+            "row": "search-horizon",
+            "pointsTo": "J",
+            "note": "Searches plan months ahead: flights, venues, dates"
+          },
+          {
+            "row": "saved-returned",
+            "pointsTo": "J",
+            "note": "Saved posts get returned to rather than piling up"
+          },
+          {
+            "row": "parallel-projects",
+            "pointsTo": "P",
+            "note": "Two side projects started and left open"
+          }
+        ],
+        "why": "You follow through on plans you set yourself, which is more than a posting habit. The nearest contrary reading is that your posting comes in bursts, but the bursts land on scheduled events, so they show planning rather than spontaneity, and the data leaves little room to argue.",
         "evidence": [
           "41 of 47 deadline posts close the deadline out",
           "Event clusters land on dates fixed well ahead",
@@ -388,7 +501,7 @@
     "bigFive": {
       "openness": 61,
       "conscientiousness": 84,
-      "extraversion": 52,
+      "extraversion": 58,
       "agreeableness": 79,
       "neuroticism": 44
     },

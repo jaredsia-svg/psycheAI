@@ -18,6 +18,7 @@ const budget = require('./lib/budget');
 const results = require('./lib/results');
 const usage = require('./lib/usage');
 const privacy = require('./lib/privacy');
+const mbtiScore = require('./lib/mbtiScore');
 const rateLimit = require('./lib/ratelimit');
 const nonces = require('./lib/nonce');
 const version = require('./lib/version');
@@ -484,6 +485,13 @@ function requirePremiumEngine(response) {
 // A report with the private names its digest supplied taken out. Logs how
 // often it happens, never what was removed.
 function scrubbed(result, digest, kind) {
+  // The MBTI letters scored from their ledgers (lib/mbtiScore.js): the model
+  // judged each piece of evidence, the code adds them up, so the same ledger
+  // always gives the same letters. A card sent back beside its report too.
+  if (result && result.data && typeof result.data === 'object') {
+    mbtiScore.scoreMbti(result.data, digest);
+    if (result.data.freeCard) mbtiScore.scoreMbti(result.data.freeCard, digest);
+  }
   const cleaned = privacy.scrubResult(result, digest);
   if (cleaned !== result) console.log('privacy: removed private names from a ' + kind + ' report');
   return readerText(cleaned);
@@ -904,6 +912,9 @@ async function mergedOrTwoCalls(engine, sent) {
 
 async function cardThenFull(engine, sent) {
   const card = await engine.analyseCard(sent);
+  // Scored before the report is anchored to it, so the report explains the
+  // letters the card will print (lib/mbtiScore.js; scoring it again later is a no-op).
+  if (card && card.data && typeof card.data === 'object') mbtiScore.scoreMbti(card.data, sent);
   const anchor = prompts.anchorFrom(card.data);
   let full;
   try {
