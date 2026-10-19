@@ -8142,7 +8142,7 @@ check('the schema requires evidence on where they align and differ',
     if (![love.receiving, love.giving].every(side => side && side.length && side.every(l => languages.includes(l.language)))) out.push(at + 'love languages');
     return out;
   });
-  check('the gallery\'s sample cards each have what a card reads', gallery.length === 4 && faults.length === 0, faults.join(', '));
+  check('the gallery\'s sample cards each have what a card reads', gallery.length === 5 && faults.length === 0, faults.join(', '));
   const names = [sample.card.name].concat(gallery.map(c => c.card && c.card.name));
   const characters = [sample.essence.character].concat(gallery.map(c => c.essence && c.essence.character));
   check('and no two in the gallery share a person or a character',

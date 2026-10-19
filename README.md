@@ -2805,8 +2805,8 @@ mutual, and every woman and man still has at least one of each side. `npm test` 
   four instead of five.
 - **Old cards:** Totoro moved to `RETIRED_CHARACTERS`, so a card already naming Totoro still draws its scene
   and emblem, in the older layout without the sync row.
-- **Front page:** the Totoro sample card (Kenji Nakamura) is gone from the gallery, which now shows the full
-  sample and four more.
+- **Front page:** the Totoro sample card (Kenji Nakamura) is gone from the gallery. A Hulk card (Marcus Lee,
+  INFP) took its place, so the gallery is again the full sample and five more.
 - **Search pages:** the Totoro page is deleted, and `/totoro-personality` now goes to `/baymax-personality`
   with a permanent redirect (`RETIRED_PAGES` in `server.js`). The other pages, the sitemap and the
   character tile image were regenerated.

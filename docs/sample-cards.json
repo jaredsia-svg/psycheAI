@@ -104,6 +104,32 @@
         "receiving": [{ "language": "Words of affirmation" }, { "language": "Receiving gifts" }],
         "giving": [{ "language": "Receiving gifts" }, { "language": "Quality time" }]
       } }
+    },
+    {
+      "card": { "name": "Marcus Lee", "confidence": 77, "headline": "Gentle thinker with a big engine for what matters" },
+      "confidence": { "score": 77, "level": "high" },
+      "essence": { "character": "Hulk", "franchise": "Marvel", "icon": "💪" },
+      "cardHighlights": "Like him, you are calm and considered most days, and then you care about something and the energy behind it is enormous: two years of weekend beach clean-ups, organised from one group chat. You read the deep dive before you form a view, and the gym is where you go to reset.",
+      "patterns": [
+        { "id": "p1", "name": "Calm with a big engine" },
+        { "id": "p2", "name": "Reads before reacting" },
+        { "id": "p3", "name": "Resets by moving" }
+      ],
+      "topMotivators": ["universalism", "self-direction", "benevolence"],
+      "mbti": { "type": "INFP", "letters": [
+        { "axis": "E/I", "choice": "I", "strength": "slight" },
+        { "axis": "N/S", "choice": "N", "strength": "moderate" },
+        { "axis": "T/F", "choice": "F", "strength": "slight" },
+        { "axis": "J/P", "choice": "P", "strength": "slight" }
+      ] },
+      "bigFive": { "openness": { "score": 78 }, "conscientiousness": { "score": 52 }, "extraversion": { "score": 44 }, "agreeableness": { "score": 74 }, "neuroticism": { "score": 61 } },
+      "values": [{ "value": "Fairness" }, { "value": "Curiosity" }, { "value": "Loyalty" }],
+      "beliefs": [{ "belief": "Strength is for protecting things" }],
+      "interests": [{ "name": "Strength training" }, { "name": "Science explainers" }, { "name": "Beach clean-ups" }],
+      "relationship": { "loveLanguages": {
+        "receiving": [{ "language": "Quality time" }, { "language": "Acts of service" }],
+        "giving": [{ "language": "Acts of service" }, { "language": "Words of affirmation" }]
+      } }
     }
   ]
 }
