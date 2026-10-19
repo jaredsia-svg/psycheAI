@@ -129,7 +129,16 @@
     const out = [];
     for (const entry of archive.entries) {
       if (!/\.txt$/i.test(entry.name) || entry.uncompressedSize > LIMITS.fileBytes) continue;
-      out.push({ name: entry.name, text: await archive.text(entry), zipName: file.name });
+      // Held to the same limit as it unpacks: the stated size can understate
+      // it. A chat that passes it is skipped, said in the console, as one
+      // that states it is.
+      let text;
+      try { text = await archive.text(entry, LIMITS.fileBytes); } catch (error) {
+        if (!(error && error.oversize)) throw error;
+        if (root.console && root.console.warn) root.console.warn(error.message);
+        continue;
+      }
+      out.push({ name: entry.name, text, zipName: file.name });
     }
     return out;
   }

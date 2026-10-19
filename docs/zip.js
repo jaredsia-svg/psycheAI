@@ -18,6 +18,18 @@
 
   class ZipError extends Error {}
 
+  // The most one entry may unpack to (October 2026). An entry's stated size
+  // is only what the archive says, and the inflater used to keep going for as
+  // long as the data did: a few kilobytes that unpack to gigabytes would take
+  // the tab down. Output is counted as it streams and the entry fails, with a
+  // reason, once it passes the limit. 150 MB, the same as the largest JSON
+  // file the Google and Facebook readers will try (supplement.js,
+  // LIMITS.fileBytes) and far above any real Instagram entry; a reader can
+  // pass a tighter one (WhatsApp's 60 MB chats).
+  const MAX_ENTRY_BYTES = 150 * 1024 * 1024;
+  const tooLarge = (name, limit) => Object.assign(
+    new ZipError(name + ' unpacks to more than ' + Math.round(limit / 1048576) + ' MB, so it was skipped.'), { oversize: true });
+
   // A Blob-backed random-access reader. Slices are read lazily so we never
   // hold the whole archive in memory.
   class BlobSource {
@@ -133,19 +145,38 @@
     return entries;
   }
 
-  async function inflateRaw(bytes) {
+  async function inflateRaw(bytes, limit, name) {
     if (typeof root.DecompressionStream !== 'function') {
       throw new ZipError('This browser cannot decompress ZIP files. Try Chrome, Edge, Safari 16.4+ or Firefox 113+.');
     }
-    const stream = new Blob([bytes]).stream().pipeThrough(new root.DecompressionStream('deflate-raw'));
-    const buf = await new Response(stream).arrayBuffer();
-    return new Uint8Array(buf);
+    const max = limit || MAX_ENTRY_BYTES;
+    const reader = new Blob([bytes]).stream().pipeThrough(new root.DecompressionStream('deflate-raw')).getReader();
+    const chunks = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > max) {
+        reader.cancel().catch(() => {});
+        throw tooLarge(name || 'An entry', max);
+      }
+      chunks.push(value);
+    }
+    const out = new Uint8Array(size);
+    let at = 0;
+    for (const chunk of chunks) { out.set(chunk, at); at += chunk.length; }
+    return out;
   }
 
   // Reads one entry's bytes. The central directory records where the local
   // header starts, but the payload sits after a variable-length name+extra
   // block that only the local header knows the size of.
-  async function readEntry(source, entry) {
+  async function readEntry(source, entry, limit) {
+    const max = limit || MAX_ENTRY_BYTES;
+    // Refused on its stated size before anything is read; the stream below
+    // holds an entry that understates it.
+    if (entry.uncompressedSize > max || (entry.method === 0 && entry.compressedSize > max)) throw tooLarge(entry.name, max);
     const head = await source.read(entry.headerOffset, entry.headerOffset + 30);
     const hdv = view(head);
     if (head.length < 30 || hdv.getUint32(0, true) !== SIG_LOCAL) {
@@ -154,7 +185,7 @@
     const dataStart = entry.headerOffset + 30 + hdv.getUint16(26, true) + hdv.getUint16(28, true);
     const raw = await source.read(dataStart, dataStart + entry.compressedSize);
     if (entry.method === 0) return raw;
-    if (entry.method === 8) return inflateRaw(raw);
+    if (entry.method === 8) return inflateRaw(raw, max, entry.name);
     throw new ZipError('Unsupported compression method ' + entry.method + ' in ' + entry.name);
   }
 
@@ -169,20 +200,21 @@
       entries,
       /** Entries whose path matches a predicate. */
       filter(fn) { return entries.filter(fn); },
-      /** Raw bytes of one entry. */
-      bytes(entry) { return readEntry(source, entry); },
+      /** Raw bytes of one entry, up to `limit` bytes unpacked (MAX_ENTRY_BYTES). */
+      bytes(entry, limit) { return readEntry(source, entry, limit); },
       /** Text of one entry, decoded as UTF-8. */
-      async text(entry) { return utf8.decode(await readEntry(source, entry)); },
-      /** Parsed JSON of one entry, or null when it does not parse. */
-      async json(entry) {
+      async text(entry, limit) { return utf8.decode(await readEntry(source, entry, limit)); },
+      /** Parsed JSON of one entry, or null when it does not parse or is too large (said in the console). */
+      async json(entry, limit) {
         try {
-          return JSON.parse(utf8.decode(await readEntry(source, entry)));
+          return JSON.parse(utf8.decode(await readEntry(source, entry, limit)));
         } catch (e) {
+          if (e && e.oversize && root.console && root.console.warn) root.console.warn(e.message);
           return null;
         }
       },
     };
   }
 
-  root.PsycheZip = { open, ZipError };
+  root.PsycheZip = { open, ZipError, MAX_ENTRY_BYTES };
 })(typeof window !== 'undefined' ? window : globalThis);

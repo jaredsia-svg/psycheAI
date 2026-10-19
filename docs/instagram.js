@@ -771,6 +771,13 @@
         if (!lower.endsWith('.json')) continue;
         sawJson = true;
         signals.files.total++;
+        // An entry that says it unpacks past what a tab can parse is skipped,
+        // as the Google and Facebook readers skip theirs; one that understates
+        // it is stopped by the ZIP reader as it unpacks (zip.js, MAX_ENTRY_BYTES).
+        if (entry.uncompressedSize > root.PsycheZip.MAX_ENTRY_BYTES) {
+          if (root.console && root.console.warn) root.console.warn('Skipped oversized ' + entry.name);
+          continue;
+        }
         const route = routeOf(entry.name);
         if (!route) continue;
         if (route === 'messages' && !opts.includeMessages) continue;

@@ -672,13 +672,14 @@
     deepRebuiltNote: 'This is what the Psyche Report is written from: the data your card was read from, with anything you just added.',
     premiumSourcesBlurb: 'More data, a fuller report: add or replace a source, or carry on. You review what is sent first.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
-    // The free card's unlock offer leads with sharing: one connection opening
-    // the reader's link unlocks their first Psyche Report free
-    // (lib/referral.js, claimFirst). Paying is the quiet second way in.
+    // The free card's unlock offer leads with sharing: one connection making
+    // their card from the reader's link unlocks their first Psyche Report free
+    // (lib/referral.js, claimFirst; an open of the link did until October
+    // 2026). Paying is the quiet second way in.
     unlockShare: {
       title: 'Unlock by sharing your link with 1 connection',
-      sub: 'Your Psyche Report unlocks free as soon as 1 connection opens your link.',
-      subReady: 'A connection opened your link – your Psyche Report is free.',
+      sub: 'Your Psyche Report unlocks free as soon as 1 connection makes their Psyche Card from your link.',
+      subReady: 'A connection made their Psyche Card from your link – your Psyche Report is free.',
       share: 'Share my link',
       copied: 'Link copied – send it to a connection',
       claim: 'Unlock my Psyche Report free',
@@ -792,6 +793,10 @@
     reviewProceed: 'Proceed',
     reviewSend: 'Send this',
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',
+    // The server makes no free read from data it cannot tie to an Instagram
+    // account (server.js, noAccount; October 2026): no username in it, and no
+    // dates on any message or post.
+    freeNoAccount: 'This data could not be matched to its Instagram account, so a free read cannot be made from it. Download your Instagram data again, in JSON, and load the whole file.',
     // The sheet for a paid run past the free card: never a card alone since
     // late October 2026, always the card and its report (authoriseAnalysis).
     bundleDialogTitle: 'Your Psyche Card and Psyche Report',
@@ -816,10 +821,10 @@
       ready: n => n === 1 ? '🎉 You have 1 credit' : '🎉 You have ' + n + ' credits',
       copyShort: 'Copy',
       gift: 'Gift a Psyche Report (1 credit)',
-      useFree: 'Unlock free – a connection opened your link',
+      useFree: 'Unlock free – a connection made their card from your link',
       useGift: 'Use your gifted free Psyche Report',
       claimFailed: 'You have no credits to spend yet.',
-      firstFailed: 'Your free Psyche Report unlocks once 1 connection opens your link.',
+      firstFailed: 'Your free Psyche Report unlocks once 1 connection makes their Psyche Card from your link.',
       // When this account has had a Psyche Report already (lib/referral.js, FIRST_USED).
       firstUsedPay: 'Your free Psyche Report from your link was for your first one. You can unlock this one below.',
       giftShareText: 'A free Psyche Report, from me 🎁 Make your free Psyche Card, then unlock the Psyche Report with this link:',
@@ -1352,7 +1357,7 @@
       // One or two plain lines for each part of the hub, behind its "i".
       tips: {
         report: 'Your full Psyche Report: every result explained, with the evidence behind it. Read it here or download the PDF.',
-        reportLocked: 'Your full Psyche Report: every result explained, with the evidence. It unlocks free when 1 person opens your link.',
+        reportLocked: 'Your full Psyche Report: every result explained, with the evidence. It unlocks free when 1 person makes their card from your link.',
         reportBuy: 'Your full Psyche Report: every result explained, with the evidence behind it.',
         link: 'Your personal link to share. Every connection who makes a card from it earns you 1 credit, for a question or a report to gift.',
         data: 'How well your data supports your reading. Tap the score for what was read; Add / change data to add a source and re-run.',

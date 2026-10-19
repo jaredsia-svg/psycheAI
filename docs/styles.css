@@ -1497,6 +1497,12 @@ textarea { resize: vertical; }
 }
 .sync-dialog::backdrop { background: rgba(20, 14, 26, .58); backdrop-filter: blur(2px); }
 .sync-dialog > .view { display: block; padding: clamp(1rem, 3vw, 1.6rem); }
+/* The header band pulls up and out by the page's own padding (.hero), which
+   is more than this popout's, so its top was cut off (October 2026). Here it
+   pulls by the popout's padding exactly, to the popout's edges and no further. */
+.sync-dialog > .view > .hero {
+  margin: calc(-1 * clamp(1rem, 3vw, 1.6rem)) calc(-1 * clamp(1rem, 3vw, 1.6rem)) 1.2rem;
+}
 .sync-dialog > .view[hidden] { display: none; }
 .sync-dialog-close {
   position: sticky; top: .6rem; float: right; z-index: 3; margin: .6rem .6rem 0 0;
@@ -4969,6 +4975,14 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-linkrow { --sec: #fff6ef; background: var(--sec); border-color: #f6e2d2; }
 .hub-data { --sec: #f1f9f5; background: var(--sec); border-color: #d9eee3; }
 .hub-keep { --sec: #f2f6fd; background: var(--sec); border-color: #dde6f6; }
+/* In dark mode the same three tints, deepened: the pastels stayed light under
+   the dark theme's near-white titles, which could not be read on them
+   (October 2026). Peach, mint and sky still, at the dark page's depth. */
+@media (prefers-color-scheme: dark) {
+  .hub-linkrow { --sec: #2a1f1a; border-color: #4a3529; }
+  .hub-data { --sec: #17251f; border-color: #2a4538; }
+  .hub-keep { --sec: #19202d; border-color: #2c3a52; }
+}
 .hub-data .hub-ring b { background: var(--sec); }
 .hub-go:not(.is-fill), .hub-btn:not(.is-locked), .hub-copy, .hub-del, .hub-chip:not(.is-add), .hub-linkstat {
   background: transparent; box-shadow: none; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }

@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInThisContext } from 'node:vm';
 
-import { buildExportZip, buildForeignExportZip, buildTakeoutZip, buildTakeoutHtmlZip } from './fixture.mjs';
+import { buildExportZip, buildForeignExportZip, buildTakeoutZip, buildTakeoutHtmlZip, makeZip } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -1405,14 +1405,15 @@ check('`why` gives the other side its count and says what it does not overturn',
   /what they do and do not overturn/.test(letterDesc('why')));
 check('and a one-sided axis may say so rather than manufacturing a doubt',
   /instead of manufacturing a doubt/i.test(letterDesc('why')));
-// The code may move the strength or the letter after the model wrote, so the
-// paragraph must not name either.
-check('`why` names no strength word and no score, since the code sets them',
-  /Names no strength word and no score/.test(letterDesc('why')) &&
-  /It names no strength word and no score: the code sets those/.test(prompts.PROFILE_SYSTEM));
-check('choice and strength are what the ledger adds up to, and the code checks them',
-  /The code checks the sum/.test(letterDesc('choice')) && /The code checks it/.test(letterDesc('strength')) &&
-  /`clear` from two-thirds with at least 14 in play, `moderate` from a third with at least 10/.test(letterDesc('strength')));
+// The model decides its letters (October 2026), so the paragraph is written
+// for the letter it then picks, and never calls the lean the other way.
+check('`why` argues the letter in `choice` and never says the lean goes the other way',
+  /It argues the letter in `choice` and nothing else: never says the lean goes the other way/.test(letterDesc('why')) &&
+  /It never says the lean goes the other way/.test(prompts.PROFILE_SYSTEM));
+check('choice and strength are the model\'s judgement, guided by the rubric',
+  /The letter you conclude, weighing the ledger \(the rubric's weights are a guide; you decide\)/.test(letterDesc('choice')) &&
+  /Your judgement, guided by the rubric/.test(letterDesc('strength')) &&
+  /`slight` when their own words put them on both sides/.test(letterDesc('strength')));
 check('the card schema scores its letters from the same ledger and strength rule',
   (() => {
     const free = prompts.CARD_BASE_SCHEMA.properties.mbti.properties.letters.items.properties;
@@ -1429,11 +1430,12 @@ check('the report and the card prompts carry the one MBTI ledger section, rubric
 check('and the merged prompt carries it once',
   prompts.MERGED_SYSTEM.split(prompts.MBTI_LEDGER_RULES).length === 2);
 const ledgerRules = prompts.MBTI_LEDGER_RULES;
-check('the method: the model tags, the code adds up, both sides searched as hard',
-  /The code adds the ledger up/.test(ledgerRules) &&
+check('the method: the model weighs the ledger and decides, the rubric a guide, both sides searched as hard',
+  /\*\*The rubric is a guide, not a rule: you decide\.\*\*/.test(ledgerRules) &&
+  /weigh each piece on its own merits/.test(ledgerRules) &&
+  /\*\*every line you write about the axis argues the letter you chose\*\*/.test(ledgerRules) &&
   /\*\*Search for the other letter as hard as for the one you expect\.\*\*/.test(ledgerRules) &&
-  /\*\*One entry per row and letter\*\*/.test(ledgerRules) &&
-  /Add it up yourself before you write `choice`, `strength` or anything that names the type/.test(ledgerRules));
+  /\*\*One entry per row and letter\*\*/.test(ledgerRules));
 check('the computed rows are the code\'s, never the model\'s',
   /\*\*Never the computed rows\.\*\*/.test(ledgerRules) && /`engagedThreads\.last5Years`, Instagram and Messenger together/.test(ledgerRules));
 check('volume is never in a ledger',
@@ -1470,9 +1472,10 @@ check('no direct messages means no conversation rows and E/I near the middle',
   /the code counts no conversation rows/.test(ledgerRules));
 check('J/P mixed across areas is entered both ways',
   /on J\/P, enter both, from the areas where they spend most of their time, money and effort/.test(ledgerRules));
-check('the extraversion score follows the E/I ledger, in the code\'s bands, and the other traits follow their axes',
-  /The extraversion score is set by the code from the E\/I ledger/.test(ledgerRules) &&
-  /\*\*E\*\* 51 to 59 at `slight`, 60 to 69 at `moderate`, 70 to 85 at `clear`, mirrored below 50 for \*\*I\*\*/.test(ledgerRules) &&
+check('the extraversion score goes with the E/I letter and its strength, and the other traits follow their axes',
+  /The extraversion score goes with the E\/I letter and its strength/.test(ledgerRules) &&
+  /\*\*E\*\* about 51 to 59 at `slight`, 60 to 69 at `moderate`, 70 to 85 at `clear`, mirrored below 50 for \*\*I\*\*/.test(ledgerRules) &&
+  /an \*\*I\*\* never scores above 50 and an \*\*E\*\* never below/.test(ledgerRules) &&
   /Openness reads off N\/S, agreeableness off T\/F and conscientiousness off J\/P/.test(ledgerRules));
 check('base rates: most people sit near the middle',
   /Most people sit near the middle on most traits; keep the extremes for extreme evidence/.test(ledgerRules));
@@ -1606,56 +1609,53 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
     card: { mbti: 'ENTJ', bigFive: { extraversion: 66 } },
     summary: 'As an ENTJ, The Commander plans.',
   });
-  const scored = S.scoreMbti(answer(), dm(10, 300));
-  check('ledger: the code sets the letters and strength from the ledger, the computed rows included',
-    scored.mbti.letters[0].choice === 'I' && scored.mbti.letters[0].strength === 'slight' &&
-    scored.mbti.letters[1].strength === 'slight' &&
-    scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'I' && /^10 Instagram conversations/.test(p.note)) &&
-    !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'E'),
-    JSON.stringify(scored.mbti.letters[0]));
-  check('ledger: the type, its nickname, the card\'s copies and the lines that named the old type follow',
-    scored.mbti.type === 'INTJ' && scored.mbti.nickname === 'The Architect' && scored.card.mbti === 'INTJ' &&
-    scored.summary === 'As an INTJ, The Architect plans.',
-    JSON.stringify([scored.mbti.type, scored.summary]));
-  check('ledger: the extraversion score and band follow the E/I result, and the card\'s copy with them',
-    scored.bigFive.extraversion.score < 50 && scored.bigFive.extraversion.score >= 41 && scored.bigFive.extraversion.band === 'moderate' &&
-    scored.card.bigFive.extraversion === scored.bigFive.extraversion.score, String(scored.bigFive.extraversion.score));
-  check('ledger: scoring twice changes nothing',
+  // The code checks the answer and never changes it (October 2026): the
+  // model's letters, type, strength and score are what is printed.
+  const scoredNotes = [];
+  const scored = S.scoreMbti(answer(), dm(10, 300), scoredNotes);
+  check('ledger: the model\'s letters, strength, type, nickname and score are left as it wrote them',
+    scored.mbti.letters[0].choice === 'E' && scored.mbti.letters[0].strength === 'moderate' &&
+    scored.mbti.letters[1].strength === 'clear' && scored.mbti.type === 'ENTJ' && scored.mbti.nickname === 'The Commander' &&
+    scored.card.mbti === 'ENTJ' && scored.summary === 'As an ENTJ, The Commander plans.' &&
+    scored.bigFive.extraversion.score === 66 && scored.card.bigFive.extraversion === 66,
+    JSON.stringify([scored.mbti.letters[0], scored.mbti.type]));
+  check('ledger: the ledger is cleaned to the rubric, and a row the code computes is dropped from it',
+    !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained') && scored.mbti.letters[0].ledger.length === 2,
+    JSON.stringify(scored.mbti.letters[0].ledger));
+  check('ledger: where its own ledger tallies the other letter, that is reported, not changed',
+    scoredNotes.join() === 'E/I E (ledger I)', scoredNotes.join());
+  const mismatch = answer();
+  mismatch.mbti.letters[0].choice = 'I';
+  mismatch.mbti.letters[0].ledger = [{ row: 'own-words', pointsTo: 'I', note: 'quiet weekends' }];
+  const mismatchNotes = [];
+  S.scoreMbti(mismatch, {}, mismatchNotes);
+  check('ledger: an extraversion score on the other side of 50 from the E/I letter is reported',
+    mismatchNotes.join() === 'E/I I (extraversion 66)', mismatchNotes.join());
+  check('ledger: checking twice changes nothing',
     JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(scored)), dm(10, 300))) === JSON.stringify(scored));
   const noLedger = answer();
   noLedger.mbti.letters.forEach(l => delete l.ledger);
   check('ledger: an answer without ledgers (a report pinned to its card) is left alone',
     JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(noLedger)), dm(10, 300))) === JSON.stringify(noLedger));
-  const split = answer();
-  delete split.mbti.type;
-  check('ledger: a report split from its card is not given a type of its own',
-    !('type' in S.scoreMbti(split, {}).mbti));
-  // The sample report agrees with its own ledger.
+  // The sample report's letters agree with its own ledgers.
   const sampleCopy = JSON.parse(readFileSync(new URL('../docs/sample.json', import.meta.url), 'utf8'));
-  const rescored = S.scoreMbti(JSON.parse(JSON.stringify(sampleCopy)), {});
-  check('ledger: the sample report\'s letters, strengths and extraversion are what its ledgers add up to',
-    rescored.mbti.letters.every((l, i) => l.choice === sampleCopy.mbti.letters[i].choice && l.strength === sampleCopy.mbti.letters[i].strength) &&
-    rescored.mbti.type === sampleCopy.mbti.type && rescored.bigFive.extraversion.score === sampleCopy.bigFive.extraversion.score,
-    JSON.stringify(rescored.mbti.letters.map(l => l.choice + ' ' + l.strength)) + ' ' + rescored.bigFive.extraversion.score);
+  const sampleNotes = [];
+  S.scoreMbti(JSON.parse(JSON.stringify(sampleCopy)), {}, sampleNotes);
+  check('ledger: the sample report\'s letters and extraversion agree with its own ledgers',
+    sampleNotes.length === 0, sampleNotes.join());
   // The computed rows go to the model after the evidence, so its own sum is
   // the code's, and a sum that still overturns the model's letter is counted.
   const note = S.computedText(dm(15, 300));
   check('ledger: the computed rows are handed to the model, with their points, after the evidence',
-    /Already in your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 Instagram conversations[^\n]*→ I \(weak, 1\)/.test(note) &&
+    /Counted from this digest by the code, for your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 Instagram conversations[^\n]*→ I \(weak, 1\)/.test(note) &&
     /E\/I, `share`: 5%[^\n]*→ I \(weak, 1\)/.test(note) && S.computedText({}) === '', note);
   const noteDigest = Object.assign(dm(15, 300), { coverage: { sources: ['instagram'] } });
   const blockText = blocks => blocks.map(b => b.text || '').join('\n');
   check('ledger: the card, the report and the one-call unlock all carry the note; a report pinned to its card does not',
     [prompts.freeBlocks(noteDigest), prompts.profileBlocks(noteDigest), prompts.mergedBlocks(noteDigest)]
       .every(b => blockText(b).indexOf(note) > blockText(b).indexOf('</evidence>')) &&
-    !blockText(prompts.profileBlocks(noteDigest, prompts.anchorFrom(answer()))).includes('Already in your MBTI ledgers') &&
-    /a note after the evidence lists them with their points: add those into each sum/.test(prompts.MBTI_LEDGER_RULES));
-  const flips = [];
-  S.scoreMbti(answer(), dm(10, 300), flips);
-  const kept = [];
-  S.scoreMbti(S.scoreMbti(answer(), dm(10, 300)), dm(10, 300), kept);
-  check('ledger: an axis whose sum overturned the model\'s own letter is reported, and rescoring reports nothing',
-    flips.join() === 'E/I E→I' && kept.length === 0, flips.join());
+    !blockText(prompts.profileBlocks(noteDigest, prompts.anchorFrom(answer()))).includes('Counted from this digest by the code') &&
+    /a note after the evidence lists them with a suggested weight: weigh them with the rest/.test(prompts.MBTI_LEDGER_RULES));
   // The server scores every answer before it is served, and the card before a report is anchored to it.
   const serverSource = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   check('ledger: the server scores every answer, and a card before its report is anchored to it',
@@ -5984,7 +5984,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // fix for a reported wrong answer; each must be in both prompts.
   const RULES = [
     ['activeThreads is reach over years, not people kept up with', /`activeThreads` counts every conversation they ever wrote in/],
-    ['the extraversion score follows the E/I ledger', /The extraversion score is set by the code from the E\/I ledger/],
+    ['the extraversion score goes with the E/I letter', /The extraversion score goes with the E\/I letter and its strength/],
     ['group chats are no evidence, busy or empty', /\*\*Group chats\*\*, busy or empty/],
     ['liked captions are other people\'s words', /likedPostCaptions[\s\S]{0,80}other people/i],
     ['the redaction markers are blanks', /PsycheUser[\s\S]{0,800}as (?:a )?blanks?\b/],
@@ -6294,11 +6294,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       stdio: 'ignore',
     });
     const base = 'http://localhost:${port}';
+    // A free read names its account (October 2026): each request here a
+    // fresh one, unless it says account: null to send none.
     const post = async body => {
       const ticket = (await (await fetch(base + '/api/nonce')).json()).nonce;
+      const sent = Object.assign({ account: require('node:crypto').randomBytes(32).toString('hex') }, body);
+      if (sent.account === null) delete sent.account;
       const response = await fetch(base + '/api/analyse', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': ticket },
-        body: JSON.stringify(body),
+        body: JSON.stringify(sent),
       });
       const text = await response.text();
       let json = null;
@@ -6319,11 +6323,16 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       out.full = await post({ digest, product: 'unlock', promoCode: '${promo}',
         anchor: { mbti: { type: 'ISTP', letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } } });
       out.fullFresh = await post({ digest, product: 'unlock', promoCode: '${promo}' });
-      out.padded = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000) }) });
+      out.padded = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(1000000) }) });
+      // Past the route's limit (2 MB), refused on its stated length.
+      out.tooLarge = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000) }) });
+      // A free read with no account, on the card path and the merged first read.
+      out.noAccount = await post({ digest: Object.assign({}, digest, { counts: Object.assign({}, digest.counts, { posts: 7 }) }), account: null });
+      out.firstNoAccount = await post({ digest: Object.assign({}, digest, { counts: Object.assign({}, digest.counts, { posts: 8 }) }), product: 'first', account: null });
       out.paddedCard = await post({ digest: Object.assign({}, digest, {
         samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
           Array.from({ length: 3000 }, (_, i) => 'extra caption ' + i)) }) }) });
-      out.paddedFull = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000),
+      out.paddedFull = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(1000000),
         samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
           Array.from({ length: 3000 }, (_, i) => 'extra caption ' + i)) }) }),
         product: 'unlock', promoCode: '${promo}',
@@ -6487,6 +6496,16 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Boolean(routes.stuffed) && routes.stuffed.status === 413, JSON.stringify(routes.stuffed && routes.stuffed.status));
   check('a digest that is not an object is refused before anything is spent',
     Boolean(routes.notObject) && routes.notObject.status === 400, JSON.stringify(routes.notObject));
+  check('a body past the analyse route\'s 2 MB is refused on its length, before it is read',
+    Boolean(routes.tooLarge) && routes.tooLarge.status === 413, JSON.stringify(routes.tooLarge));
+  // October 2026: leaving the account out used to skip the one-free-per-
+  // account check, so every free read was a first one.
+  check('a free card that names no account is refused, and says why',
+    Boolean(routes.noAccount) && routes.noAccount.status === 402 && routes.noAccount.json.noAccount === true &&
+      /could not be matched to its Instagram account/.test(routes.noAccount.json.error), JSON.stringify(routes.noAccount));
+  check('and so is the merged free first read (card and report) with no account',
+    routes.status.firstRun === 'merged' && Boolean(routes.firstNoAccount) && routes.firstNoAccount.status === 402 &&
+      routes.firstNoAccount.json.noAccount === true, JSON.stringify(routes.firstNoAccount));
 }
 
 // The card never frames closeness as a gate: a real card said "fierce,
@@ -6815,7 +6834,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     /const a = Card\.shape\(body\.a\);\s*const b = Card\.shape\(body\.b\);/.test(serverSource));
   check('both report routes scrub before the result is stored or served, the premium one on either way in',
     /const out = scrubbed\(result, sent, kind\);\s*return guess \? Object\.assign\(\{\}, out, \{ guess \}\) : out;/.test(serverSource) &&
-    (serverSource.match(/return scrubbed\(result, sent, 'premium'\)/g) || []).length === 2);
+    (serverSource.match(/return scrubbed\(result, sent, 'premium'\)/g) || []).length === 1);
 }
 
 // ---------- the structured report layout ----------
@@ -6865,7 +6884,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     check('structured Big Five: all five traits, each a score, a band and one line, no evidence list; MBTI carries the extraversion evidence',
       Object.keys(five).join() === 'openness,conscientiousness,extraversion,agreeableness,neuroticism' &&
       Object.values(five).every(t => Object.keys(t.properties).join() === 'reading,score,band' && /^One sentence: the specific behaviour from the data that sets this score/.test(t.properties.reading.description)) &&
-      /The code checks the sum/.test(choice) &&
+      /the rubric's weights are a guide; you decide/.test(choice) &&
       /only place the extraversion evidence is laid out/.test(structured.properties.mbti.properties.letters.items.properties.evidence.description) && !/depth a Big Five trait gets/.test(why) &&
       /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /cite a breadth number in the E\/I axis's `evidence`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
@@ -6910,7 +6929,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     [order.join(','), mbtiOrder, letterOrder].join(' | '));
   check('the card call too: scores first, the character just before the Overview, the type after its letters',
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).slice(0, 3).join() === 'confidence,mbti,bigFive' &&
-    /The extraversion score is set by the code from the E\/I ledger/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    /The extraversion score goes with the E\/I letter and its strength/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
     prompts.STRUCTURED_FREE_SYSTEM.indexOf('# MBTI') < prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five') &&
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('essence') === Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('summary') - 1 &&
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.mbti.properties).join() === 'letters,type,confidence,nickname',
@@ -8270,11 +8289,15 @@ check('the schema requires evidence on where they align and differ',
       stdio: 'ignore',
     });
     const base = 'http://localhost:${port}';
+    // A free read names its account (October 2026): each request here a
+    // fresh one, unless it says account: null to send none.
     const post = async body => {
       const ticket = (await (await fetch(base + '/api/nonce')).json()).nonce;
+      const sent = Object.assign({ account: require('node:crypto').randomBytes(32).toString('hex') }, body);
+      if (sent.account === null) delete sent.account;
       const response = await fetch(base + '/api/analyse', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': ticket },
-        body: JSON.stringify(body),
+        body: JSON.stringify(sent),
       });
       let json = null;
       try { json = await response.json(); } catch (error) { /* left null */ }
@@ -8457,14 +8480,25 @@ check('the schema requires evidence on where they align and differ',
     check('with no open and no friend\'s card yet, the first report is locked and nothing can be claimed',
       !none.first.unlocked && !none.first.claimed && (await referral.claimFirst(lonely)) === null &&
         (await referral.claim(lonely)) === null, JSON.stringify(none));
-    // One open of the link by someone else is enough: no card needed.
-    referral.countOpen(referral.codeOf(lonely));
+    // An open of the link is counted and unlocks nothing (October 2026): an
+    // open is an unauthenticated count anyone could send, with a fresh code
+    // each time, for a free report on demand.
+    for (let i = 0; i < 5; i++) referral.countOpen(referral.codeOf(lonely));
     await new Promise(resolve => setTimeout(resolve, 10));
     const opened = await referral.status(lonely);
-    const openGrant = await referral.claimFirst(lonely);
-    check('one open of the link unlocks the first report, with no friend\'s card and no credit',
-      opened.opens === 1 && opened.friends === 0 && opened.first.unlocked && opened.credits === 0 &&
-        /^[0-9a-f]{48}$/.test(openGrant || ''), JSON.stringify(opened));
+    check('opens of the link are a count only: five of them unlock nothing, and nothing can be claimed',
+      opened.opens === 5 && opened.friends === 0 && !opened.first.unlocked && opened.credits === 0 &&
+        (await referral.claimFirst(lonely)) === null, JSON.stringify(opened));
+    // The link's owner making a card from their own link is not a friend.
+    const ownerOwn = await referral.afterFreeCard({ account: sha('psycheai:lonely-referrer-2'), ref: referral.codeOf(lonely),
+      myRef: referral.codeOf(lonely), client: '10.9.9.9' });
+    check('a card made from a link by that link\'s own owner does not unlock it',
+      !ownerOwn.credited && !(await referral.status(lonely)).first.unlocked);
+    // One friend's card from the link does.
+    const friendCard = await referral.afterFreeCard({ account: sha('psycheai:lonely-friend'), ref: referral.codeOf(lonely), client: '10.9.9.8' });
+    const friendGrant = await referral.claimFirst(lonely);
+    check('one friend making their card from the link unlocks the first report',
+      friendCard.credited && (await referral.status(lonely)).first.unlocked && /^[0-9a-f]{48}$/.test(friendGrant || ''));
   }
   let status = await referral.status(secret);
   // One card, one credit (late October 2026; three until then).
@@ -8680,7 +8714,7 @@ check('the schema requires evidence on where they align and differ',
     check('the first free run is merged by default, PSYCHEAI_FIRST_RUN=card goes back to the card alone, and it needs an account and no payment',
       /process\.env\.PSYCHEAI_FIRST_RUN \|\| 'merged'/.test(serverSource) && /=== 'card'/.test(serverSource) &&
         /const firstFull = !paying && body\.product === 'first' && FIRST_RUN\(\) === 'merged' &&\s*Boolean\(referral\.cleanAccount\(body\.account\)\);/.test(serverSource) &&
-        /if \(full && !paying && !firstFull\)/.test(serverSource) && /if \(firstFull\) budget\.record\(kind\);/.test(serverSource) &&
+        /if \(full && !paying && !firstFull\)/.test(serverSource) && /if \(firstFull \|\| referralGrant\) budget\.record\(kind\);/.test(serverSource) &&
         /firstRun: FIRST_RUN\(\)/.test(serverSource));
     check('the server reads the guess only to judge it, against the card just written',
       (serverSource.match(/body\.guess/g) || []).length === 6 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource) &&
@@ -9049,7 +9083,7 @@ check('the schema requires evidence on where they align and differ',
     JSON.stringify(guarded) === JSON.stringify([
       '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
-      '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
+      '/api/stats', '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
   // Two routes are rate-limited without a ticket, and both are named here
   // rather than left to a rule, because "which reads are exempt" is exactly
@@ -9064,8 +9098,10 @@ check('the schema requires evidence on where they align and differ',
   // /api/link opens a short link by the id the link itself names.
   // /api/sync/inbox and /api/sync/done are the link owner's own reads and
   // clears, keyed by their secret, as /api/referral is.
+  // /api/stats is the operator's read, behind its token, with a bucket of
+  // its own (October 2026) so the token cannot be guessed at speed.
   const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result',
-    '/api/sync/done', '/api/sync/inbox'];
+    '/api/stats', '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
       guard.nonce === !TICKETLESS.includes(route)),
@@ -9281,6 +9317,314 @@ check('the schema requires evidence on where they align and differ',
   const priced = [...digestSource.matchAll(/^\s+'([\w.-]+)': \{ inputPerToken/gm)].map(m => m[1]);
   check('the rate table carries both the current model and the one to revert to',
     priced.includes(defaultModel) && priced.length >= 2, priced.join(', '));
+}
+
+// ---------- security and display fixes (October 2026) ----------
+//
+// One block for the batch the README records under "Security and display
+// fixes (October 2026)", each check named for the item it pins.
+{
+  const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
+  const appSource = readFileSync(join(docs, 'app.js'), 'utf8');
+  const cssSource = readFileSync(join(docs, 'styles.css'), 'utf8');
+
+  // S1: a payment is for the product it was made for.
+  {
+    const out = JSON.parse(execFileSync(process.execPath, ['-e', `
+      const s = require(${JSON.stringify(join(root, 'lib', 'stripe.js'))});
+      const ok = p => p.then(() => true, () => false);
+      (async () => {
+        const ask = await s.createPaymentIntent(null, 'ask');
+        const unlock = await s.createPaymentIntent(null, 'unlock');
+        const off = await s.createPaymentIntent(null, 'unlock', 'usd', { code: 'HALF', percent: 50 });
+        const meta = id => s.retrievePaymentIntent(id).then(i => i.metadata);
+        process.stdout.write(JSON.stringify({
+          samePrice: ask.amount === unlock.amount,
+          askMeta: await meta(ask.id), offMeta: await meta(off.id),
+          askAsUnlock: await ok(s.verifyPaid(ask.id, 'unlock')), askAsAsk: await ok(s.verifyPaid(ask.id, 'ask')),
+          unlockAsAsk: await ok(s.verifyPaid(unlock.id, 'ask')), unlockAsUnlock: await ok(s.verifyPaid(unlock.id, 'unlock')),
+          offAsUnlock: await ok(s.verifyPaid(off.id, 'unlock')),
+        }));
+      })();`], { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } }).toString());
+    check('S1: the Psyche Report and five questions cost the same, so the amount alone cannot tell them apart', out.samePrice);
+    check('S1: every PaymentIntent carries the product this server made it for, beside any promo code',
+      out.askMeta.product === 'ask' && out.offMeta.product === 'unlock' && out.offMeta.promo === 'HALF', JSON.stringify(out));
+    check('S1: a payment for questions does not buy the report, and a report payment does not buy questions',
+      !out.askAsUnlock && out.askAsAsk && !out.unlockAsAsk && out.unlockAsUnlock && out.offAsUnlock, JSON.stringify(out));
+    const legacy = (product, metadata) => JSON.parse(execFileSync(process.execPath, ['-e', `
+      const s = require(${JSON.stringify(join(root, 'lib', 'stripe.js'))});
+      s.__testing.setClient({ paymentIntents: { retrieve: async () => ({ id: 'pi_old', status: 'succeeded', amount: 500,
+        currency: 'usd', created: Math.floor(Date.now() / 1000), metadata: ${JSON.stringify(metadata || {})} }) } });
+      s.verifyPaid('pi_old', ${JSON.stringify(product)}).then(() => process.stdout.write('true'), () => process.stdout.write('false'));`],
+    { env: { PATH: process.env.PATH, STRIPE_SECRET_KEY: 'sk_test_stub', STRIPE_PUBLISHABLE_KEY: 'pk_test_stub' } }).toString());
+    check('S1: a payment made before products were written on it is honoured as the Psyche Report only',
+      legacy('unlock') === true && legacy('ask') === false && legacy('ask', { product: 'ask' }) === true &&
+        legacy('unlock', { product: 'ask' }) === false);
+  }
+
+  // S2: the free first report needs a friend's card (checked with the
+  // referral block above); a grant's report is metered by the daily budget.
+  check('S2: a report from a grant counts against the day\'s free budget, and is refused when it is spent',
+    /const freeFunded = !paying \|\| Boolean\(referralGrant\);\s*if \(freeFunded && !budget\.canSpend\(\)\)/.test(serverSource) &&
+      /if \(freeFunded\) \{\s*budget\.record\(kind\);/.test(serverSource));
+  check('S2: the user-facing words say a friend making their card unlocks it, not an open',
+    !/1 connection opens your link|person opens your link|who opens your link unlocks/.test(
+      [appSource, readFileSync(join(docs, 'copy.js'), 'utf8'), readFileSync(join(docs, 'index.html'), 'utf8'),
+        readFileSync(join(docs, 'terms.html'), 'utf8'), readFileSync(join(docs, 'faq.html'), 'utf8'), serverSource].join('\n')) &&
+      /makes their Psyche Card from your link/.test(readFileSync(join(docs, 'copy.js'), 'utf8')));
+
+  // S3, S7: what a code or a grant is held to, and the free path.
+  check('S3: a code and a grant are held to the whole report key (digest, card and depth), not the digest alone',
+    /promoRefusal\(promoCode, key\)/.test(serverSource) && /promo\.reserve\(promoCode, key\)/.test(serverSource) &&
+      /promoRedeemed\(promoCode, key\)/.test(serverSource) && /referral\.grantRefusal\(referralGrant, key,/.test(serverSource) &&
+      /referral\.reserveGrant\(referralGrant, key\)/.test(serverSource) && /referral\.spendGrant\(referralGrant, key\)/.test(serverSource) &&
+      !/promo\.reserve\(promoCode, body\.digest\)[\s\S]*async function judgeFor/.test(serverSource.slice(0, serverSource.indexOf('async function judgeFor'))));
+  check('S7: a free read ignores `deep` and `anchor`, and a free first read always marks its account',
+    /const deep = full && paying && body\.deep === true;/.test(serverSource) &&
+      /const anchor = full && !firstFull \? prompts\.anchorFrom\(body\.anchor\) : null;/.test(serverSource) &&
+      /if \(made === 'card' \|\| firstFull \|\| \(full && !anchor\)\)/.test(serverSource));
+
+  // S4, S5: the account code and its transition.
+  {
+    const referral = await import('../lib/referral.js').then(m => m.default);
+    const store = await import('../lib/store.js').then(m => m.default);
+    const { createHash } = await import('node:crypto');
+    const sha = text => createHash('sha256').update(text).digest('hex');
+    const legacy = sha('psycheai:someone-old');
+    const fresh = sha('psycheai:v2:someone-old:dm:1500000000');
+    await store.run([['SADD', 'free:accounts', store.keyed('acct', legacy)], ['SADD', 'full:accounts', store.keyed('acct', legacy)]]);
+    check('S4: the old username-only code still counts as used while it is checked',
+      await referral.freeCardUsed(fresh, legacy) && await referral.firstUsedBy(fresh, legacy) && !(await referral.freeCardUsed(fresh)));
+    check('S4: but /api/referral is told only about the new code, never the old one alone',
+      !(await referral.firstUsedBy(fresh)) && /status\.first\.used = await referral\.firstUsedBy\(body\.account\);/.test(serverSource));
+    await referral.afterFreeCard({ account: fresh, legacy });
+    const kept = await store.run([['SISMEMBER', 'free:accounts', store.keyed('acct', fresh)]]);
+    check('S4: only the new code is ever written', Number(kept[0]) === 1 && !JSON.stringify(await store.run([['SMEMBERS', 'free:accounts']])).includes(legacy));
+    check('S4: the old code is checked until ' + referral.LEGACY_ACCOUNT_UNTIL + ' and not after',
+      referral.cleanLegacy(legacy, Date.parse('2026-11-18T23:00:00Z')) === legacy &&
+        referral.cleanLegacy(legacy, Date.parse('2026-11-19T00:00:01Z')) === '');
+    check('S5: the page makes the account code from the username and the earliest own message or post, and sends the old one beside it',
+      /sha256Hex\('psycheai:v2:' \+ handle \+ ':' \+ \(mark \|\| 'none'\)\)/.test(appSource) &&
+        /s\.messages && s\.messages\.sentTimestamps/.test(appSource) && /'dm:' \+ sent/.test(appSource) && /'post:' \+ posted/.test(appSource) &&
+        /if \(legacy\) out\.legacyAccount = legacy;/.test(appSource) && /const LEGACY_ACCOUNT_UNTIL = '2026-11-18';/.test(appSource) &&
+        referral.LEGACY_ACCOUNT_UNTIL === '2026-11-18');
+    check('S5: a free read with no account is refused with noAccount, and the page says why in its own words',
+      /if \(!paying && ONE_FREE_PER_ACCOUNT && !account\)/.test(serverSource) && /noAccount: true/.test(serverSource) &&
+        /error\.noAccount && !auth\) \{\s*offerRetry\(TEXT\.freeNoAccount\)/.test(appSource) &&
+        /could not be matched to its Instagram account/.test(readFileSync(join(docs, 'copy.js'), 'utf8')));
+  }
+
+  // S6, S8, S10: in process.
+  {
+    const server = await import('../server.js').then(m => m.default);
+    check('S6: small routes take 64 KB; only the routes carrying a digest and a report take 2 MB',
+      server.bodyLimitFor('/api/event') === 64 * 1024 && server.bodyLimitFor('/api/referral') === 64 * 1024 &&
+        server.bodyLimitFor('/api/compatibility') === 64 * 1024 && server.bodyLimitFor('/api/create-payment-intent') === 64 * 1024 &&
+        server.bodyLimitFor('/api/analyse') === 2 * 1024 * 1024 && server.bodyLimitFor('/api/ask') === 2 * 1024 * 1024 &&
+        server.bodyLimitFor('/api/premium-analysis') === 2 * 1024 * 1024);
+    const said = error => server.publicError(error);
+    const providerError = (message, status) => Object.assign(new Error(message), { status, provider: true });
+    const leaks = [
+      said(providerError('Gemini has no model called "gemini-x" for this key. Run "npm run models"', 500)),
+      said(providerError('That GEMINI_API_KEY was rejected. Check it at aistudio.google.com/apikey.', 500)),
+      said(providerError('Gemini rate-limited or quota-exhausted this key.', 429)),
+      said(providerError('Gemini is overloaded right now … set GEMINI_MODEL to a less busy model.', 503)),
+      said(providerError('Gemini stopped the response on a safety filter (SAFETY).', 422)),
+      said(new TypeError('Cannot read properties of undefined (reading \'x\')')),
+    ];
+    check('S8: what a provider or a crash says is never passed to the reader: no model, key or setting named',
+      leaks.every(e => !/gemini|claude|grok|anthropic|xai|vertex|api[_ ]?key|npm|_MODEL|undefined/i.test(e.message)),
+      JSON.stringify(leaks));
+    check('S8: busy, declined and failed are still told apart, with their statuses',
+      leaks[2].status === 429 && leaks[3].status === 503 && /busy/.test(leaks[2].message) && /busy/.test(leaks[3].message) &&
+        leaks[4].status === 422 && /declined/.test(leaks[4].message) && leaks[0].status === 500, JSON.stringify(leaks));
+    check('S8: the server\'s own refusals still go out in their own words',
+      said(Object.assign(new Error('This payment does not match the price of what it is being used for.'), { status: 402 })).message ===
+        'This payment does not match the price of what it is being used for.');
+    const rateLimit = await import('../lib/ratelimit.js').then(m => m.default);
+    rateLimit.reset();
+    const logged = [];
+    const realLog = console.log;
+    console.log = line => logged.push(String(line));
+    try {
+      rateLimit.clientKey({ headers: { 'x-forwarded-for': '203.0.113.5, 198.51.100.7' }, socket: {} });
+      rateLimit.clientKey({ headers: { 'x-forwarded-for': '198.51.100.8' }, socket: {} });
+    } finally { console.log = realLog; }
+    check('S10: the first proxied request logs how many hops its chain had, once, and no address',
+      logged.length === 1 && /2 X-Forwarded-For entries/.test(logged[0]) && !/\d+\.\d+\.\d+\.\d+/.test(logged[0]), JSON.stringify(logged));
+    check('S9: /api/stats reads its token from the Authorization header only, and has a bucket of its own',
+      !/searchParams\.get\('token'\)/.test(serverSource) && server.API_GUARDS['/api/stats'].limit === 'stats' && Boolean(rateLimit.LIMITS.stats));
+  }
+
+  // S1, S3, S6, S9 against a real server.
+  {
+    const port = 8951;
+    const script = `
+      const { spawn } = require('node:child_process');
+      const { tmpdir } = require('node:os');
+      const { join } = require('node:path');
+      const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+        env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '', PSYCHEAI_PROMO_CODES: 'ONCE:1',
+          PSYCHEAI_STATS_TOKEN: 'selftest-fixes-token', PSYCHEAI_RATE_PAYMENT_INTENT: '50',
+          PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-selftest-fixes-budget-${process.pid}.jsonl'),
+          PSYCHEAI_PAYMENTS_FILE: join(tmpdir(), 'psycheai-selftest-fixes-payments-${process.pid}.jsonl'),
+          PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-selftest-fixes-usage-${process.pid}.jsonl') },
+        stdio: 'ignore',
+      });
+      const base = 'http://localhost:${port}';
+      const ticket = async () => (await (await fetch(base + '/api/nonce')).json()).nonce;
+      const post = async (path, body, raw) => {
+        const response = await fetch(base + path, { method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': await ticket() }, body: raw || JSON.stringify(body) });
+        const text = await response.text();
+        let json = null; try { json = JSON.parse(text); } catch (e) { /* left null */ }
+        return { status: response.status, json };
+      };
+      (async () => {
+        for (let i = 0; i < 100; i++) { try { await fetch(base + '/api/status'); break; } catch (e) { await new Promise(r => setTimeout(r, 100)); } }
+        const digest = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+        const out = {};
+        const ask = (await post('/api/create-payment-intent', { product: 'ask' })).json;
+        out.askForReport = await post('/api/analyse', { digest, product: 'unlock', paymentIntentId: ask.id });
+        const unlock = (await post('/api/create-payment-intent', { product: 'unlock' })).json;
+        out.premiumPaid = await post('/api/premium-analysis', { digest, paymentIntentId: unlock.id });
+        const card = (n) => ({ mbti: { type: n, letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } });
+        out.codeFirst = await post('/api/analyse', { digest, product: 'unlock', promoCode: 'ONCE', anchor: card('ISTP') });
+        out.codeAgain = await post('/api/analyse', { digest, product: 'unlock', promoCode: 'ONCE', anchor: card('ISTP') });
+        out.codeOtherAnchor = await post('/api/analyse', { digest, product: 'unlock', promoCode: 'ONCE', anchor: card('ENFJ') });
+        out.bigEvent = await post('/api/event', null, JSON.stringify({ event: 'open', pad: 'x'.repeat(100000) }));
+        out.smallEvent = await post('/api/event', { event: 'open' });
+        out.statsQuery = (await fetch(base + '/api/stats?token=selftest-fixes-token')).status;
+        out.statsHeader = (await fetch(base + '/api/stats', { headers: { Authorization: 'Bearer selftest-fixes-token' } })).status;
+        server.kill();
+        process.stdout.write(JSON.stringify(out));
+      })().catch(error => { server.kill(); process.stdout.write(JSON.stringify({ crashed: error.message })); });
+    `;
+    let got = {};
+    try { got = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 60000, input: JSON.stringify(heavyWithDms) })); }
+    catch (error) { got = { crashed: error.message }; }
+    check('fixes routes: the subprocess ran', !got.crashed, got.crashed);
+    if (!got.crashed) {
+      check('S1: an Ask PsycheAI payment is refused for the Psyche Report',
+        got.askForReport.status === 402 && /made for something else/.test(got.askForReport.json.error), JSON.stringify(got.askForReport));
+      check('S1: /api/premium-analysis no longer spends a payment at all; an old page is told to reload',
+        got.premiumPaid.status === 410 && /Reload/.test(got.premiumPaid.json.error), JSON.stringify(got.premiumPaid));
+      check('S3: a one-use code answers its own report again, and refuses the same digest explained against another card',
+        got.codeFirst.status === 200 && got.codeAgain.status === 200 && got.codeOtherAnchor.status === 402 &&
+          /used up/.test(got.codeOtherAnchor.json.error), JSON.stringify([got.codeFirst.status, got.codeAgain.status, got.codeOtherAnchor]));
+      check('S6: a 100 KB body to a small route is refused with 413; a normal one is served',
+        got.bigEvent.status === 413 && got.smallEvent.status === 200, JSON.stringify([got.bigEvent, got.smallEvent]));
+      check('S9: the stats token in the address is refused; in the Authorization header it works',
+        got.statsQuery === 401 && got.statsHeader === 200, JSON.stringify([got.statsQuery, got.statsHeader]));
+    }
+  }
+
+  // B1: a received sync is only the person it claims to be when it comes
+  // from the link their row was made with.
+  {
+    const adopt = (appSource.match(/function adoptReceivedSync\(card, data\) \{[\s\S]*?\n  \}\n/) || [''])[0];
+    check('B1: a sync claiming a card with a row here replaces it only from that row\'s link; otherwise it is a row of its own',
+      /const same = !theirs\.length \|\| theirs\.some\(entry => fromId && linkOf\(entry\) === fromId\);/.test(adopt) &&
+        /const key = same \? cardKey : cardKey \+ '~' \+ fromId;/.test(adopt) && /fromId \? \{ linkId: fromId \} : null/.test(adopt) &&
+        /linkId \? \{ linkId \} : null/.test(appSource) && /\(\{ outcome, key: savedAs \} = adoptReceivedSync\(card, data\)\)/.test(appSource));
+  }
+
+  // B2: a link is a card, not a decompression bomb.
+  {
+    const { deflateRawSync } = await import('node:zlib');
+    const toB64Url = buf => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const bomb = Card.VERSION + toB64Url(deflateRawSync(Buffer.from('{"n":"' + 'a'.repeat(2000000) + '"}')));
+    const real = await Card.encodeCard({ name: 'Ada', headline: 'A steady builder' });
+    check('B2: a bomb small enough to pass the length check still inflates to nothing past 16 KB',
+      bomb.length <= Card.MAX_PAYLOAD && (await Card.decodeCard(bomb)) === null, String(bomb.length));
+    check('B2: a payload over 4 KB is refused before anything is inflated, and a real card still decodes',
+      (await Card.decodeCard(Card.VERSION + 'A'.repeat(5000))) === null && (await Card.decodeCard(real)).name === 'Ada' &&
+        Card.MAX_PAYLOAD === 4096 && Card.MAX_INFLATED === 16384);
+    check('B2: a stored invite past the length is dropped rather than decoded again',
+      /if \(invite\.payload\.length > Card\.MAX_PAYLOAD\) \{\s*store\.remove\(KEYS\.invite\);/.test(appSource) &&
+        /i\.payload\.length <= Card\.MAX_PAYLOAD/.test(appSource));
+  }
+
+  // B3: the anchor goes with the placeholder, not the reader's name.
+  check('B3: an unlock\'s anchor has the reader\'s own name swapped back to the placeholder before it is sent',
+    /const anchor = dataChanged \? null\s*: withPlaceholderName\(state\.profile && \(state\.profile\.freeReport \|\| state\.profile\.report\), state\.profile\);/.test(appSource) &&
+      /function withPlaceholderName\(value, profile\)/.test(appSource));
+
+  // B4: one ZIP entry cannot unpack without limit.
+  {
+    const Zip = globalThis.PsycheZip;
+    const big = new Uint8Array(3 * 1024 * 1024).fill(32);
+    const honest = makeZip([{ name: 'a.json', content: '{}' }, { name: 'big.json', bytes: big }]);
+    // The same archive with big.json's stated size cut to 10 bytes.
+    const lying = Buffer.from(honest);
+    const cdAt = lying.readUInt32LE(lying.length - 22 + 16);
+    const second = cdAt + 46 + 'a.json'.length;
+    lying.writeUInt32LE(10, second + 24);
+    const read = async (bytes, limit) => {
+      const archive = await Zip.open(new Blob([bytes]));
+      const entry = archive.entries.find(e => e.name === 'big.json');
+      let error = null;
+      try { await archive.bytes(entry, limit); } catch (e) { error = e; }
+      const quiet = console.warn;
+      console.warn = () => {};
+      let parsed;
+      try { parsed = await archive.json(entry, limit); } finally { console.warn = quiet; }
+      return { error, parsed, small: (await archive.json(archive.entries.find(e => e.name === 'a.json'))) };
+    };
+    const stated = await read(honest, 1024 * 1024);
+    const understated = await read(lying, 1024 * 1024);
+    const within = await read(lying, 8 * 1024 * 1024);
+    check('B4: an entry over the limit is refused on its stated size, with a reason',
+      stated.error && stated.error.oversize && /unpacks to more than 1 MB/.test(stated.error.message) && stated.parsed === null,
+      stated.error && stated.error.message);
+    check('B4: an entry that understates its size is stopped as it unpacks, and its JSON read is skipped',
+      understated.error && understated.error.oversize && understated.parsed === null && JSON.stringify(understated.small) === '{}',
+      understated.error && understated.error.message);
+    check('B4: under the limit the same entry reads as it always did, and the default limit is 150 MB',
+      !within.error && Zip.MAX_ENTRY_BYTES === 150 * 1024 * 1024);
+    const igSource = readFileSync(join(docs, 'instagram.js'), 'utf8');
+    check('B4: each reader holds an entry to its own limit as it unpacks',
+      /entry\.uncompressedSize > root\.PsycheZip\.MAX_ENTRY_BYTES/.test(igSource) &&
+        /archive\.json\(job\.entry, LIMITS\.fileBytes\)/.test(readFileSync(join(docs, 'supplement.js'), 'utf8')) &&
+        /archive\.text\(entry, LIMITS\.fileBytes\)/.test(readFileSync(join(docs, 'whatsapp.js'), 'utf8')));
+  }
+
+  // F1, F4: the stylesheet.
+  check('F1: in dark mode the three hub rows take deep tints of their colours, not the light pastels',
+    /@media \(prefers-color-scheme: dark\) \{\s*\.hub-linkrow \{ --sec: #2a1f1a;[^}]*\}\s*\.hub-data \{ --sec: #17251f;[^}]*\}\s*\.hub-keep \{ --sec: #19202d;[^}]*\}\s*\}/.test(cssSource));
+  check('F4: inside the Sync popout the header band pulls out by the popout\'s own padding, so its top is not cut off',
+    /\.sync-dialog > \.view \{[^}]*padding: clamp\(1rem, 3vw, 1\.6rem\)/.test(cssSource) &&
+      /\.sync-dialog > \.view > \.hero \{\s*margin: calc\(-1 \* clamp\(1rem, 3vw, 1\.6rem\)\) calc\(-1 \* clamp\(1rem, 3vw, 1\.6rem\)\) 1\.2rem;/.test(cssSource));
+
+  // F2, F5, F7, F8: the page.
+  check('F2: a paid re-run that redraws the card lands on My Psyche; only an unlock of a card already held lands on My Report',
+    /if \(dataChanged\) \{\s*go\('profile'\);\s*\} else if \(fullReportPage\(\)\) \{[\s\S]{0,200}go\('full'\);/.test(appSource));
+  check('F5: "This is your own link" is brought into view where it is said',
+    /function sayOwnLink\(where\) \{[\s\S]*?scrollIntoView\(\{ behavior: 'instant', block: 'center' \}\)/.test(appSource));
+  check('F7: My Report\'s part list lights the first part at the top, and is worked out again when scrolling stops',
+    /window\.addEventListener\('scroll', partNavAtTop/.test(appSource) && /window\.addEventListener\('scrollend', partNavRecompute/.test(appSource) &&
+      /function partNavAtTop\(\) \{[\s\S]*?partNavLight\(partKeyOf\(first\)\)/.test(appSource));
+  {
+    const fn = (appSource.match(/function cardImageName\(\) \{[\s\S]*?\n  \}/) || [''])[0];
+    const nameFor = name => new Function('state', fn + '; return cardImageName();')({ profile: { card: { name } } });
+    check('F8: the card image\'s name folds accents rather than dropping letters, and has a plain fallback',
+      nameFor('Aleç') === 'psycheai-card-alec' && nameFor('José María') === 'psycheai-card-jose-maria' &&
+        nameFor('李小龙') === 'psycheai-card' && nameFor('') === 'psycheai-card',
+      [nameFor('Aleç'), nameFor('李小龙')].join(', '));
+  }
+
+  // F3: the PDF's title in its Info dictionary.
+  {
+    runInThisContext(readFileSync(join(docs, 'pdf.js'), 'utf8'), { filename: 'pdf.js' });
+    const PDF = globalThis.PsychePDF;
+    const title = PDF.pdfInfoString('Aleç’s psyche');
+    const decoded = Buffer.from(title.slice(5, -1), 'hex').swap16().toString('utf16le');
+    check('F3: a title outside ASCII goes as UTF-16 with its byte-order mark, so a viewer shows "Aleç’s", not "Aleç™s"',
+      title.startsWith('<FEFF') && decoded === 'Aleç’s psyche', title);
+    check('F3: a plain title stays a literal string, escaped',
+      PDF.pdfInfoString('Ada (draft)') === '(Ada \\(draft\\))' &&
+        /\/Title ' \+ pdfInfoString\(docTitle\)/.test(readFileSync(join(docs, 'pdf.js'), 'utf8')));
+  }
 }
 
 // ---------- results ----------
