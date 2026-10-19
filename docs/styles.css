@@ -3816,6 +3816,13 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-structured #psyche-card-section { padding: 0; overflow: hidden; }
 /* No gradient line along its top (October 2026): the card is its own frame. */
 #view-profile.profile-structured #psyche-card-section::before { display: none; }
+/* The card fills its box to the corners: its own corner, drawn at the card's
+   1080-wide scale and shrunk with it, came out rounder than the box's and
+   left the box's white showing in each corner (October 2026). The box's
+   rounding clips it instead. On the page only: the saved image keeps its own. */
+@media (min-width: 720px) {
+  #view-profile.profile-structured #psyche-card-section #psyche-card { border-radius: 0; }
+}
 #view-profile.profile-structured .psyche-card-slot { margin: 0; }
 #view-profile.profile-structured #psyche-card { box-shadow: none; }
 /* The panel beside the card says how to use it, so the card itself says nothing.
@@ -4082,10 +4089,9 @@ details.more[open] > summary::after { content: ' ▴'; }
     border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
     padding: 1rem;
   }
-  #view-profile.profile-structured .profile-top::before {
-    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; opacity: .8;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  }
+  /* No gradient line along the top of the card's box on a phone either
+     (October 2026), as on a laptop. */
+  #view-profile.profile-structured .profile-top::before { display: none; }
   #view-profile.profile-structured #profile-side, #view-profile.profile-structured .cx,
   #view-profile.profile-structured .cx-home { display: contents; }
   #view-profile.profile-structured #psyche-card-section {

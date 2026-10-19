@@ -2750,6 +2750,16 @@ Each is pinned by a check in `tools/selftest.mjs` (the block "security and displ
   in another script as `psycheai-card-.png`). It folds accents as the backup and PDF names do, and
   falls back to `psycheai-card.png` when nothing is left.
 
+### The card fills its corners; no line over it on a phone (October 2026)
+
+- **Laptop corners:** the Psyche Card is drawn on a 1080-wide canvas and scaled into its box on the page. Its
+  own 44px corner, once scaled, came out rounder than the box's 16px, so the box's white showed in each
+  corner. On a laptop the card's own corner is now square on the page, and the box's rounding clips it, so
+  the colour runs to the edge. The saved image keeps its rounded corners: the rule starts `#view-profile`,
+  which `CARD_RULE` does not copy into the image.
+- **Phone line:** on a phone the gradient line was drawn by the box around the card and its title
+  (`.profile-top::before`), not by the card's own section. It is gone too.
+
 ### The hub's buttons lift off their rows (October 2026)
 
 **What changed.** The hub's buttons (Read, download, See list, share, Ask, copy, the data-source chips,
