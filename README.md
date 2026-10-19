@@ -2750,6 +2750,17 @@ Each is pinned by a check in `tools/selftest.mjs` (the block "security and displ
   in another script as `psycheai-card-.png`). It folds accents as the backup and PDF names do, and
   falls back to `psycheai-card.png` when nothing is left.
 
+### The hub's sections in the site's colours (October 2026)
+
+The hub's four sections were lilac, peach, mint and sky. They were easy to tell apart, but peach, mint and
+sky appear nowhere else on the site, so the hub read as a different product. The owner compared a
+one-tint, an alternating and two purple-to-pink versions, and chose "B2", the wider range:
+- **The four colours:** violet for the tiles, orchid for Your Link, pink for Your Data and coral for Save
+  Your Profile. They run top to bottom, as the hub's own border runs purple to coral.
+- **Where they live:** variables on `.hub-card` (`--hub-violet`, `--hub-orchid`, `--hub-pink`,
+  `--hub-coral`, each with a `-line` border colour). The tiles' dividers use the violet line.
+- **Dark mode:** the same four at the dark page's depth.
+
 ### The card fills its corners; no line over it on a phone (October 2026)
 
 - **Laptop corners:** the Psyche Card is drawn on a 1080-wide canvas and scaled into its box on the page. Its

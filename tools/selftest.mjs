@@ -9590,8 +9590,13 @@ check('the schema requires evidence on where they align and differ',
   }
 
   // F1, F4: the stylesheet.
-  check('F1: in dark mode the three hub rows take deep tints of their colours, not the light pastels',
-    /@media \(prefers-color-scheme: dark\) \{\s*\.hub-linkrow \{ --sec: #2a1f1a;[^}]*\}\s*\.hub-data \{ --sec: #17251f;[^}]*\}\s*\.hub-keep \{ --sec: #19202d;[^}]*\}\s*\}/.test(cssSource));
+  // The hub's sections in the site's violet, orchid, pink and coral (October 2026),
+  // each with a deep dark-mode tint, never the light one under near-white titles.
+  check('F1: the hub sections take the site\'s four tints, and deep ones in dark mode',
+    /\.hub-card \{\s*--hub-violet: #eeeafc;[^}]*--hub-coral: #fef0ea;/.test(cssSource) &&
+      /@media \(prefers-color-scheme: dark\) \{\s*\.hub-card \{\s*--hub-violet: #221d33;[^}]*--hub-coral: #2f2120;/.test(cssSource) &&
+      /\.hub-linkrow \{ --sec: var\(--hub-orchid\)/.test(cssSource) && /\.hub-data \{ --sec: var\(--hub-pink\)/.test(cssSource) &&
+      /\.hub-keep \{ --sec: var\(--hub-coral\)/.test(cssSource) && /\.hub-tiles \{ gap: 0; background: var\(--hub-violet\)/.test(cssSource));
   check('F4: inside the Sync popout the header band pulls out by the popout\'s own padding, so its top is not cut off',
     /\.sync-dialog > \.view \{[^}]*padding: clamp\(1rem, 3vw, 1\.6rem\)/.test(cssSource) &&
       /\.sync-dialog > \.view > \.hero \{\s*margin: calc\(-1 \* clamp\(1rem, 3vw, 1\.6rem\)\) calc\(-1 \* clamp\(1rem, 3vw, 1\.6rem\)\) 1\.2rem;/.test(cssSource));

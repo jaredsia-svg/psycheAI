@@ -4978,17 +4978,23 @@ details.more[open] > summary::after { content: ' ▴'; }
    a thin outline each. The four tiles are one grouped box: a strip with
    dividers on a laptop, a list with dividers on a phone. Unlock free stays
    the one filled button. */
-.hub-linkrow { --sec: #fff6ef; background: var(--sec); border-color: #f6e2d2; }
-.hub-data { --sec: #f1f9f5; background: var(--sec); border-color: #d9eee3; }
-.hub-keep { --sec: #f2f6fd; background: var(--sec); border-color: #dde6f6; }
-/* In dark mode the same three tints, deepened: the pastels stayed light under
-   the dark theme's near-white titles, which could not be read on them
-   (October 2026). Peach, mint and sky still, at the dark page's depth. */
-@media (prefers-color-scheme: dark) {
-  .hub-linkrow { --sec: #2a1f1a; border-color: #4a3529; }
-  .hub-data { --sec: #17251f; border-color: #2a4538; }
-  .hub-keep { --sec: #19202d; border-color: #2c3a52; }
+/* The hub's four sections in the site's own colours, running violet, orchid,
+   pink and coral from top to bottom as the hub's border runs purple to coral
+   (October 2026, "B2" of the tints the owner compared; they were lilac,
+   peach, mint and sky). Dark mode: the same four at the dark page's depth. */
+.hub-card {
+  --hub-violet: #eeeafc; --hub-violet-line: #dcd4f4; --hub-orchid: #f6ebfa; --hub-orchid-line: #e7d2f0;
+  --hub-pink: #fcebf3; --hub-pink-line: #f2d0e1; --hub-coral: #fef0ea; --hub-coral-line: #f5d9cc;
 }
+@media (prefers-color-scheme: dark) {
+  .hub-card {
+    --hub-violet: #221d33; --hub-violet-line: #3a3155; --hub-orchid: #2a1f30; --hub-orchid-line: #46304f;
+    --hub-pink: #2e1d27; --hub-pink-line: #4c2f40; --hub-coral: #2f2120; --hub-coral-line: #4f3530;
+  }
+}
+.hub-linkrow { --sec: var(--hub-orchid); background: var(--sec); border-color: var(--hub-orchid-line); }
+.hub-data { --sec: var(--hub-pink); background: var(--sec); border-color: var(--hub-pink-line); }
+.hub-keep { --sec: var(--hub-coral); background: var(--sec); border-color: var(--hub-coral-line); }
 .hub-data .hub-ring b { background: var(--sec); }
 /* The hub's buttons lifted off the tinted rows, white with a soft purple
    shadow and no outline, so they read as pressable (October 2026; option C
@@ -5005,14 +5011,14 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-go:not(.is-fill):hover, .hub-btn:not(.is-locked):hover, .hub-copy:not(.is-done):hover, .hub-chip:hover {
   background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt)); }
 .hub-del:hover { background: color-mix(in srgb, var(--danger) 7%, var(--bg-alt)); }
-.hub-tiles { gap: 0; background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt));
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--bg-alt)); border-radius: 14px; overflow: hidden; }
+.hub-tiles { gap: 0; background: var(--hub-violet);
+  border: 1px solid var(--hub-violet-line); border-radius: 14px; overflow: hidden; }
 .hub-tile, .hub-tile.is-cta { border: 0; border-radius: 0; background: transparent; }
-.hub-tile + .hub-tile { border-left: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+.hub-tile + .hub-tile { border-left: 1px solid var(--hub-violet-line); }
 @media (max-width: 759px) {
   .hub-tiles { grid-template-columns: 1fr; }
   .hub-tile { flex-direction: row; align-items: center; padding: .55rem .7rem; gap: .6rem; }
-  .hub-tile + .hub-tile { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
+  .hub-tile + .hub-tile { border-left: 0; border-top: 1px solid var(--hub-violet-line); }
   .hub-l1 { flex: 1; min-width: 0; }
   .hub-acts { flex: none; width: 50%; }
 }
@@ -5075,7 +5081,7 @@ details.more[open] > summary::after { content: ' ▴'; }
    lavender, then the peach, mint and sky rows, each with its own thin outline. */
 .hub-card { background: linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,
   linear-gradient(135deg, #7b3fa0, #d1477a, #f0a35a) border-box; }
-.hub-tiles { background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt)); }
+.hub-tiles { background: var(--hub-violet); }
 
 /* Download and Share are their icon alone, a quarter of the row, on a laptop
    and a phone alike; Read and See list take the rest with their word. (Their
