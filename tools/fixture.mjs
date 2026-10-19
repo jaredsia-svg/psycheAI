@@ -23,7 +23,7 @@ function crc32(bytes) {
   return (c ^ -1) >>> 0;
 }
 
-function makeZip(files) {
+export function makeZip(files) {
   const encoder = new TextEncoder();
   const locals = [];
   const centrals = [];

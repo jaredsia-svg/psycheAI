@@ -156,9 +156,10 @@
     referral: 'psycheai_referral',
     // The friend's code this browser arrived on (?ref=), for 60 days.
     referredBy: 'psycheai_referred_by',
-    // A one-way code of this reader's Instagram username (SHA-256), so the
-    // server can keep the free card to one per account without ever seeing
-    // the username. Kept so a re-run after a reload still carries it.
+    // A one-way code of this reader's Instagram account (SHA-256 of the
+    // username and the time of their earliest message or post: accountKeys),
+    // so the server can keep the free card to one per account without ever
+    // seeing the username. Kept so a re-run after a reload still carries it.
     account: 'psycheai_account',
     // Which journey steps this browser has already reported today.
     steps: 'psycheai_steps',
@@ -1436,6 +1437,28 @@
     }
     return value;
   }
+  /**
+   * The other way: the reader's own name, wherever it was put back into a
+   * card or report, swapped for the placeholder again before that card or
+   * report goes to the server as something to explain (an unlock's
+   * `anchor`). The model never had the name, and the anchor is not where it
+   * should first meet it (October 2026). The card's name and its first word,
+   * the display name and the handle, each as a whole word, longest first.
+   */
+  function withPlaceholderName(value, profile) {
+    const card = (profile && profile.card) || {};
+    const full = String(card.name || '').trim();
+    const names = [full, full.split(/\s+/)[0], ownDisplayName(), String(ownHandle() || '').replace(/^@+/, '')]
+      .map(n => String(n || '').trim()).filter(n => n.length >= 2 && !isPlaceholder(n))
+      .filter((n, i, all) => all.indexOf(n) === i).sort((a, b) => b.length - a.length);
+    if (!names.length || !value) return value;
+    const escaped = names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp('(?<![\\p{L}\\p{N}_@])@?(?:' + escaped.join('|') + ')(?![\\p{L}\\p{N}_])', 'giu');
+    const walk = item => typeof item === 'string' ? item.replace(pattern, 'PsycheUser')
+      : Array.isArray(item) ? item.map(walk)
+        : item && typeof item === 'object' ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, walk(v)])) : item;
+    return walk(value);
+  }
   // The real name from wherever it can still be had: the archive in memory, the
   // job record written when the work started (for a page that rejoined it), or
   // the card the reader already has, if that one was named properly.
@@ -2080,9 +2103,9 @@
       if (!mine) return;
       button.disabled = true;
       try {
-        const account = await accountKey().catch(() => null);
+        const { account, legacy } = await accountKeys().catch(() => ({}));
         const answer = await LLM.postWithTicket('api/referral/claim',
-          Object.assign({ secret: mine.secret, first: true }, account ? { account } : {}));
+          Object.assign({ secret: mine.secret, first: true }, account ? { account } : {}, legacy ? { legacyAccount: legacy } : {}));
         referralStatus = answer && answer.status ? answer.status : referralStatus;
         if (!answer || !answer.grant) throw new Error(TEXT.referral.firstFailed);
         $('#premium-share').hidden = true;
@@ -6280,6 +6303,12 @@
         offerRetry(error.message);
         return;
       }
+      // The server could not tell whose this export is (no username and no
+      // dates in it), so it makes no free read from it (server.js).
+      if (error && error.noAccount && !auth) {
+        offerRetry(TEXT.freeNoAccount);
+        return;
+      }
       offerRetry((error && error.message) || 'The analysis failed.');
     } finally {
       stopElapsed();
@@ -7668,6 +7697,35 @@
     }, { rootMargin: '-20% 0px -70% 0px' });
     root.querySelectorAll('.part-card[data-part-card]').forEach(node => partObserver.observe(node));
     light('overview');
+    // The observer hears only a part crossing the band. A jump straight to
+    // the top (Home, a "back to top", the browser's own) can land with no
+    // part in it and the last one still lit (October 2026), so on every
+    // scroll: above the first part, the first part is the one lit; and once
+    // scrolling stops, the part across the band is worked out again.
+    partNavRoot = root;
+    partNavLight = light;
+    if (!partNavWired) {
+      partNavWired = true;
+      window.addEventListener('scroll', partNavAtTop, { passive: true });
+      window.addEventListener('scrollend', partNavRecompute, { passive: true });
+    }
+  }
+  let partNavRoot = null;
+  let partNavLight = null;
+  let partNavWired = false;
+  const partKeyOf = node => node.getAttribute('data-part') || node.getAttribute('data-part-card');
+  function partNavAtTop() {
+    if (!partNavRoot || !partNavLight || !partNavRoot.isConnected || !partNavRoot.offsetParent) return;
+    const first = partNavRoot.querySelector('.part-card[data-part-card]');
+    if (first && first.getBoundingClientRect().top > window.innerHeight * 0.2) partNavLight(partKeyOf(first));
+  }
+  function partNavRecompute() {
+    if (!partNavRoot || !partNavLight || !partNavRoot.isConnected || !partNavRoot.offsetParent) return;
+    const parts = [...partNavRoot.querySelectorAll('.part-card[data-part-card]')];
+    if (!parts.length) return;
+    const line = window.innerHeight * 0.3;
+    const passed = parts.filter(node => node.getBoundingClientRect().top <= line);
+    partNavLight(partKeyOf(passed.length ? passed[passed.length - 1] : parts[0]));
   }
 
   /** The attachment read with the app's gentler names put in, field by field. */
@@ -8804,10 +8862,15 @@
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   }
 
+  // Folded to plain letters the way the backup's and the PDF's names are
+  // (Aleç → alec), rather than dropped: `\W` took every letter outside ASCII
+  // with it, so "Aleç" saved as psycheai-card-ale and a name in another
+  // script as psycheai-card- (October 2026). Nothing left: psycheai-card.
   function cardImageName() {
-    return 'psycheai-card-' +
-      String((state.profile && state.profile.card && state.profile.card.name) || 'me')
-        .toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+    const slug = String((state.profile && state.profile.card && state.profile.card.name) || '')
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug ? 'psycheai-card-' + slug : 'psycheai-card';
   }
 
   function triggerDownload(blob, name) {
@@ -9559,7 +9622,10 @@
       // The card the reader already has, for the server to sanitise and the
       // model to explain. None when the data changed: a card read from less
       // evidence is not one to hold a fuller report to.
-      const anchor = dataChanged ? null : (state.profile && (state.profile.freeReport || state.profile.report));
+      // With the reader's own name back to the placeholder: the stored card
+      // has it put in (withOwnName), and none of it should travel.
+      const anchor = dataChanged ? null
+        : withPlaceholderName(state.profile && (state.profile.freeReport || state.profile.report), state.profile);
       const request = Object.assign({}, bundledAuth(auth), anchor ? { anchor } : {}, deepRead ? { deep: true } : {});
       // Recorded under its own kind, because collecting it is not the same as
       // collecting a free card: it attaches to the profile on screen rather
@@ -9626,7 +9692,12 @@
       // note, which says US$5 from this point on. An unlock of a card the
       // reader already had lands on the report it bought; every read that
       // writes a card lands on My Psyche, at the card (adoptBundle).
-      if (fullReportPage()) {
+      // A run that redrew the card (data added on the way, or a paid re-run
+      // from Add / change data) is a read that writes a card, so it lands on
+      // My Psyche at the card too (October 2026); it used to land on My Report.
+      if (dataChanged) {
+        go('profile');
+      } else if (fullReportPage()) {
         // The keep note at the report's head says it is ready, and where it is
         // kept (showKeepNote); there is no separate "ready" note any more.
         go('full');
@@ -11110,7 +11181,15 @@
   }
   function sayOwnLink(where) {
     flash(where, TEXT.syncOwnLink);
-    if ($(where)) $(where).classList.add('is-note');
+    const note = $(where);
+    if (!note) return;
+    note.classList.add('is-note');
+    // Said where the reader is looking on arrival (October 2026): My Psyche's
+    // note sits under the card, far below the top the page opens at, so it
+    // was never seen. Brought into view once the page has been drawn.
+    requestAnimationFrame(() => {
+      if (!note.hidden && note.offsetParent) note.scrollIntoView({ behavior: 'instant', block: 'center' });
+    });
   }
   function alreadySynced(card) {
     const key = syncCardKey(card);
@@ -11177,12 +11256,16 @@
     const key = syncCardKey(other);
     const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
     const canShare = Boolean(back && back.link && LINK_ID.test(back.link.id || '') && LINK_KEY.test(back.link.key || ''));
+    // Their link's id, when a short link brought them: a sync later sent
+    // back as this same person has to come from this same link
+    // (adoptReceivedSync).
+    const linkId = back && back.link && LINK_ID.test(back.link.id || '') ? back.link.id : '';
     history.unshift(Object.assign({
       when: new Date().toISOString(), withName: other.name, with: key, mode: report.mode, stance, report,
       // Their card as their link carried it, to open from My Syncs.
       card: Card.shape(other), face,
     // Where the result can still be shared to later, from its row.
-    }, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null));
+    }, linkId ? { linkId } : null, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null));
     store.write(KEYS.history, history.slice(0, 25));
     renderReport(report, other.name, undefined, key);
     show('report');
@@ -11382,9 +11465,10 @@
           // show that same card. Anyone holding this reader's link could
           // otherwise send a sync dressed as a friend's.
           const sender = await verifiedSender(data);
+          let savedAs = '';
           if (sender === 'retry') outcome = 'keep';
-          else if (sender === 'ok') outcome = adoptReceivedSync(card, data);
-          if (outcome === 'saved') arrived.push({ key: syncCardKey(card), name: firstName(card.name) || card.name, character: data.face && data.face.c });
+          else if (sender === 'ok') ({ outcome, key: savedAs } = adoptReceivedSync(card, data));
+          if (outcome === 'saved') arrived.push({ key: savedAs, name: firstName(card.name) || card.name, character: data.face && data.face.c });
         }
       } catch (error) { /* cannot be unlocked: cleared below */ }
       // Kept on the server when it could not be checked or saved just now
@@ -11478,23 +11562,43 @@
       caveats: text(r.caveats, 600),
     };
   }
-  /** Saves a verified received sync. 'saved', 'drop' (nothing to add), or 'keep' (could not be saved). */
+  /**
+   * Saves a verified received sync. { outcome: 'saved' | 'drop' (nothing to
+   * add) | 'keep' (could not be saved), key: the row's `with` }.
+   *
+   * verifiedSender proves only that the sender's link shows this card, and a
+   * card is public: anyone holding this reader's link and a friend's card can
+   * publish a link of their own showing it, and send a sync "from" that friend
+   * (October 2026). Syncing with someone new stays exactly as easy — a sync
+   * from a card with no row here is saved as today — but a card that already
+   * has a row is only that person when the sync comes from the link that row
+   * was made with (`linkId`). From any other link it is saved as a row of its
+   * own, beside theirs, and never replaces it.
+   */
   function adoptReceivedSync(card, data) {
-    const key = syncCardKey(card);
+    const cardKey = syncCardKey(card);
+    const fromId = data && data.from && LINK_ID.test(data.from.id || '') ? data.from.id : '';
     const when = !isNaN(new Date(data.when)) ? new Date(data.when).toISOString() : new Date().toISOString();
     const history = store.read(KEYS.history, []) || [];
+    const linkOf = entry => entry.linkId || (entry.back && entry.back.link && entry.back.link.id) || '';
+    const theirs = history.filter(entry => entry && entry.with === cardKey);
+    // Their row, when it was made with the link this sync came from (or the
+    // card has no row yet): this sync is theirs. Otherwise a row of its own,
+    // under that link, which a later sync from the same link replaces.
+    const same = !theirs.length || theirs.some(entry => fromId && linkOf(entry) === fromId);
+    const key = same ? cardKey : cardKey + '~' + fromId;
     // A sync this reader ran with them is theirs and stays as it is; only an
     // earlier one they were sent is replaced.
-    if (history.some(entry => entry && entry.with === key && !entry.received)) return 'drop';
+    if (history.some(entry => entry && entry.with === key && !entry.received)) return { outcome: 'drop', key };
     const kept = history.filter(entry => !(entry && entry.with === key));
-    kept.unshift({
+    kept.unshift(Object.assign({
       when, withName: card.name, with: key, mode: 'platonic', stance: null,
       report: shapeSyncReport(data.report), card: Card.shape(card), face: shapeFace(data.face), received: true, fresh: true,
-    });
-    if (!store.write(KEYS.history, kept.slice(0, 25))) return 'keep';
+    }, fromId ? { linkId: fromId } : null));
+    if (!store.write(KEYS.history, kept.slice(0, 25))) return { outcome: 'keep', key };
     // Their link, if it was waiting here too, is answered by this.
-    for (const invite of allInvites()) if (invite.payload === data.payload) spendInvite(invite.payload);
-    return 'saved';
+    if (same) for (const invite of allInvites()) if (invite.payload === data.payload) spendInvite(invite.payload);
+    return { outcome: 'saved', key };
   }
   /** The dot on Syncs while a sync someone sent back is still unopened. */
   function refreshSyncsDot() {
@@ -11703,6 +11807,12 @@
   function pendingInvite() {
     const invite = store.read(KEYS.invite, null);
     if (!invite || typeof invite.payload !== 'string') return null;
+    // No card's link is this long (Card.MAX_PAYLOAD): one kept from before
+    // that limit is dropped rather than decoded again on every visit.
+    if (invite.payload.length > Card.MAX_PAYLOAD) {
+      store.remove(KEYS.invite);
+      return null;
+    }
     if (!(Date.now() - Number(invite.at) < INVITE_DAYS * 86400000)) {
       store.remove(KEYS.invite);
       return null;
@@ -11717,7 +11827,7 @@
   function moreInvites() {
     const list = store.read(KEYS.invitesMore, []);
     return (Array.isArray(list) ? list : []).filter(i => i && typeof i.payload === 'string' &&
-      Date.now() - Number(i.at) < INVITE_DAYS * 86400000);
+      i.payload.length <= Card.MAX_PAYLOAD && Date.now() - Number(i.at) < INVITE_DAYS * 86400000);
   }
   /** Every friend whose link is waiting, latest first. */
   function allInvites() {
@@ -12190,18 +12300,57 @@
     return toHex(new Uint8Array(digest));
   }
 
-  /** A one-way code of this reader's Instagram username, or '' when there is none to make it from. */
-  async function accountKey() {
+  /**
+   * Something about this export only its owner has, and that stays the same
+   * when they download it again: the time (to the second) of the earliest
+   * message they sent, or with none, of their earliest post or caption.
+   * '' when the export has neither.
+   */
+  function ownMark(signals) {
+    const s = signals || {};
+    const earliest = list => {
+      let min = 0;
+      for (const ts of list) { const n = Math.floor(Number(ts) || 0); if (n > 0 && (!min || n < min)) min = n; }
+      return min;
+    };
+    const sent = earliest((s.messages && s.messages.sentTimestamps) || []);
+    if (sent) return 'dm:' + sent;
+    const posted = earliest(((s.captions || []).map(c => c && c.ts))
+      .concat((s.events || []).filter(e => e && /^(post|reel|story)$/.test(e.kind)).map(e => e.ts)));
+    return posted ? 'post:' + posted : '';
+  }
+  // The old code, the username alone, is sent beside the new one until this
+  // day, so a card made before the change still counts (lib/referral.js).
+  const LEGACY_ACCOUNT_UNTIL = '2026-11-18';
+  /**
+   * This reader's account, as one-way codes: `account`, from the Instagram
+   * username *and* ownMark, and while it is still checked `legacy`, from the
+   * username alone. Since October 2026 the code needs ownMark: the username
+   * alone is public, so anyone could work out anyone's code, ask whether
+   * they had used PsycheAI and spend their free read. The trade-off: a
+   * reader who deletes their earliest message or post gets a new code.
+   * Without the export in memory (after a reload, or a restored backup), the
+   * code kept from last time. { account: '' } when there is nothing to make
+   * one from, and the server then refuses a free read.
+   */
+  async function accountKeys() {
     try {
       const handle = String(ownHandle() || '').trim().replace(/^@+/, '').toLowerCase();
-      if (handle) {
-        const key = await sha256Hex('psycheai:' + handle);
-        store.write(KEYS.account, key);
-        return key;
+      const mark = state.signals ? ownMark(state.signals) : '';
+      if (handle || mark) {
+        const account = await sha256Hex('psycheai:v2:' + handle + ':' + (mark || 'none'));
+        store.write(KEYS.account, account);
+        const legacy = handle && new Date().toISOString().slice(0, 10) <= LEGACY_ACCOUNT_UNTIL
+          ? await sha256Hex('psycheai:' + handle) : '';
+        return { account, legacy };
       }
-    } catch (error) { /* no crypto: the server simply cannot limit this run */ }
+    } catch (error) { /* no crypto: the code kept from last time, if any */ }
     const saved = store.read(KEYS.account, null);
-    return typeof saved === 'string' && /^[0-9a-f]{64}$/.test(saved) ? saved : '';
+    return { account: typeof saved === 'string' && /^[0-9a-f]{64}$/.test(saved) ? saved : '', legacy: '' };
+  }
+  /** A one-way code of this reader's Instagram account, or '' when there is none to make it from. */
+  async function accountKey() {
+    return (await accountKeys()).account;
   }
 
   // The reader's own invite-friends code, made once on this device.
@@ -12274,8 +12423,9 @@
     const via = viaCode();
     if (via) out.via = via;
     if (pendingInvite()) out.invite = true;
-    const account = await accountKey();
+    const { account, legacy } = await accountKeys();
     if (account) out.account = account;
+    if (legacy) out.legacyAccount = legacy;
     const mine = await ensureReferral();
     if (mine && mine.code) out.myRef = mine.code;
     const by = referredBy();

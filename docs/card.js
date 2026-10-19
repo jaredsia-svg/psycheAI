@@ -122,7 +122,34 @@
   }
 
   const deflate = bytes => pipe(bytes, new root.CompressionStream('deflate-raw'));
-  const inflate = bytes => pipe(bytes, new root.DecompressionStream('deflate-raw'));
+
+  // A card's link is a few hundred characters, and what it inflates to under
+  // 2 KB. Anything far past that is not a card (October 2026): a 270 KB #p=
+  // link of zeros inflated to 200 MB, and an invite is decoded again on every
+  // visit for fourteen days. So a payload over MAX_PAYLOAD is refused before
+  // anything is inflated, and inflating stops as soon as the output passes
+  // MAX_INFLATED, read a chunk at a time rather than all at once.
+  const MAX_PAYLOAD = 4096;
+  const MAX_INFLATED = 16384;
+  async function inflate(bytes) {
+    const reader = new Blob([bytes]).stream().pipeThrough(new root.DecompressionStream('deflate-raw')).getReader();
+    const chunks = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > MAX_INFLATED) {
+        reader.cancel().catch(() => {});
+        throw new Error('That link holds more than a card.');
+      }
+      chunks.push(value);
+    }
+    const out = new Uint8Array(size);
+    let at = 0;
+    for (const chunk of chunks) { out.set(chunk, at); at += chunk.length; }
+    return out;
+  }
 
   // ---------- shaping ----------
 
@@ -251,6 +278,7 @@
   /** QR payload string → card object, or null if it is not one of ours. */
   async function decodeCard(payload) {
     const raw = String(payload || '').trim();
+    if (raw.length > MAX_PAYLOAD) return null;
     const prefix = READABLE.find(version => raw.startsWith(version));
     if (!prefix) return null;
     try {
@@ -273,5 +301,5 @@
     return match ? match[1] : raw.replace(/\s+/g, '');
   }
 
-  root.PsycheCard = { encodeCard, decodeCard, extractPayload, shape, pack, unpack, CAPS, COMFORTABLE_PAYLOAD, VERSION, READABLE, MOTIVATORS };
+  root.PsycheCard = { encodeCard, decodeCard, extractPayload, shape, pack, unpack, CAPS, COMFORTABLE_PAYLOAD, VERSION, READABLE, MOTIVATORS, MAX_PAYLOAD, MAX_INFLATED };
 })(typeof window !== 'undefined' ? window : globalThis);

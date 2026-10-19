@@ -80,6 +80,23 @@
     return out;
   }
 
+  /**
+   * A text string for the document's Info dictionary (its title, as a viewer
+   * shows it). Those are not drawn in a font, so WinAnsi is the wrong
+   * encoding for them: PDF reads them as PDFDocEncoding, where WinAnsi's
+   * curly apostrophe (0x92) is "™", and a title "Aleç’s psyche" showed as
+   * "Aleç™s psyche" (October 2026). Plain ASCII goes as a literal string;
+   * anything else as UTF-16BE with its byte-order mark, which every reader
+   * takes, as a hex string.
+   */
+  function pdfInfoString(text) {
+    const clean = String(text === null || text === undefined ? '' : text).replace(/[\r\n]+/g, ' ');
+    if (/^[\x20-\x7e]*$/.test(clean)) return '(' + clean.replace(/([\\()])/g, '\\$1') + ')';
+    let hex = 'FEFF';
+    for (let i = 0; i < clean.length; i++) hex += clean.charCodeAt(i).toString(16).toUpperCase().padStart(4, '0');
+    return '<' + hex + '>';
+  }
+
   function charWidth(code, bold) {
     const key = bold ? 'bold' : 'normal';
     if (code >= 32 && code <= 126) return WIDTHS[key][code - 32];
@@ -2521,9 +2538,8 @@
     objects[1] = '<< /Type /Pages /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') +
       '] /Count ' + pageIds.length + ' >>';
 
-    const info = add('<< /Title (' + toWinAnsi(docTitle).replace(/([\\()])/g, '\\$1') +
-      ') /Author (PsycheAI) /Creator (PsycheAI) /Subject (' +
-      toWinAnsi(subject).replace(/([\\()])/g, '\\$1') + ') >>');
+    const info = add('<< /Title ' + pdfInfoString(docTitle) +
+      ' /Author (PsycheAI) /Creator (PsycheAI) /Subject ' + pdfInfoString(subject) + ' >>');
 
     let file = '%PDF-1.4\n';
     const offsets = [];
@@ -2545,5 +2561,5 @@
     return new Blob([bytes], { type: 'application/pdf' });
   }
 
-  root.PsychePDF = { build, buildCompatibility, pairLabels, toWinAnsi, measure };
+  root.PsychePDF = { build, buildCompatibility, pairLabels, toWinAnsi, measure, pdfInfoString };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -251,7 +251,8 @@
 
     let done = 0;
     for (const job of jobs) {
-      const data = await job.archive.json(job.entry);
+      // Held to the same limit as it unpacks: the stated size can understate it.
+      const data = await job.archive.json(job.entry, LIMITS.fileBytes);
       done++;
       if (done % 5 === 0 || done === jobs.length) {
         report({ phase: 'parse', done, total: jobs.length,

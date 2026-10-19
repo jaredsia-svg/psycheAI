@@ -12,6 +12,14 @@ import { chromium } from 'playwright';
 
 import { buildExportZip, buildForeignExportZip, buildTakeoutZip, buildTakeoutHtmlZip } from './fixture.mjs';
 
+/** A PDF's Info title, read as a viewer reads it: a literal string, or UTF-16BE hex with its mark. */
+function pdfInfoTitle(text) {
+  const hex = /\/Title <FEFF([0-9A-F]*)>/.exec(text);
+  if (hex) return Buffer.from(hex[1], 'hex').swap16().toString('utf16le');
+  const literal = /\/Title \(((?:\\.|[^\\)])*)\)/.exec(text);
+  return literal ? literal[1].replace(/\\(.)/g, '$1') : '';
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const shots = process.argv.includes('--shots');
@@ -2313,7 +2321,7 @@ try {
       await invitePage.waitForSelector('#sync-invite:not([hidden])', { timeout: 60000 });
       check('the analysis carries the campaign code and says an invite was waiting, and nothing else extra',
         analyseBodies.length > 0 && analyseBodies[0].via === 'ava-tan' && analyseBodies[0].invite === true &&
-          Object.keys(analyseBodies[0]).filter(key => !['digest', 'background', 'via', 'invite', 'account', 'myRef', 'ref'].includes(key)).length === 0,
+          Object.keys(analyseBodies[0]).filter(key => !['digest', 'background', 'via', 'invite', 'account', 'legacyAccount', 'myRef', 'ref'].includes(key)).length === 0,
         JSON.stringify(analyseBodies.map(body => Object.keys(body))));
       // Card first: the reader lands on their own card, and the sync with the
       // sender is one tap away rather than run for them.
@@ -7322,8 +7330,10 @@ try {
   check('the text is text, in embeddable base-14 fonts',
     /\/BaseFont \/Helvetica\b/.test(pdfText) && /\/BaseFont \/Helvetica-Bold/.test(pdfText));
   check('accented names survive into the PDF', /Ale\xe7/.test(pdfText));
+  // The Info title is UTF-16 with its byte-order mark when it is not plain
+  // ASCII (October 2026), so a viewer shows "Aleç’s", never "Aleç™s".
   check('the document is titled for the reader',
-    /\/Title \(Ale\xe7.s psyche\)/.test(pdfText));
+    pdfInfoTitle(pdfText) === 'Ale\xe7\u2019s psyche', pdfInfoTitle(pdfText));
   check('the PDF numbers its pages', /\(Page 2 of \d+\)/.test(pdfText));
 
   // ---- the brand mark ----
@@ -7915,7 +7925,7 @@ try {
   check('the request carries a digest and nothing else but one-way codes',
     Object.keys(sentBody).every(k =>
       k === 'digest' || k === 'paymentIntentId' || k === 'promoCode' || k === 'background' ||
-      (k === 'account' && /^[0-9a-f]{64}$/.test(sentBody[k])) || ((k === 'myRef' || k === 'ref') && /^[0-9a-f]{12}$/.test(sentBody[k]))),
+      ((k === 'account' || k === 'legacyAccount') && /^[0-9a-f]{64}$/.test(sentBody[k])) || ((k === 'myRef' || k === 'ref') && /^[0-9a-f]{12}$/.test(sentBody[k]))),
     Object.keys(sentBody).join(','));
   check('and the only field beside the digest is a boolean, not more evidence',
     sentBody.background === true && Object.keys(sentBody).every(k =>
@@ -9775,7 +9785,7 @@ try {
     bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
     Boolean(bareBodies[0].anchor.card) &&
     Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
-      'product', 'anchor', 'account', 'myRef', 'ref', 'deep'].includes(k)),
+      'product', 'anchor', 'account', 'legacyAccount', 'myRef', 'ref', 'deep'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
   // With nothing added, the premium read is this export read again at the
   // premium pools — and an export this small binds none of them, so it is
@@ -10089,7 +10099,7 @@ try {
     (compatText.match(/\/Type \/Page[^s]/g) || []).length === 1 && compatText.includes('(IN ONE LINE)') && !compatText.includes('(in sync)'),
     String((compatText.match(/\/Type \/Page[^s]/g) || []).length) + ' pages');
   check('the comparison PDF is titled for the pair, not for one person',
-    /\/Title \(Ale\xe7 & Jordan/.test(compatText), (/\/Title \(([^)]*)/.exec(compatText) || [])[1]);
+    /^Ale\xe7 & Jordan/.test(pdfInfoTitle(compatText)), pdfInfoTitle(compatText));
   check('and carries its own subject rather than the profile one',
     /\/Subject \(Psyche Sync/.test(compatText));
 
@@ -10351,7 +10361,7 @@ try {
   check('the prices are named, once, with what each buys — the first card and report free, re-runs US$5, Psyche Sync free',
     /Your first Psyche Card and Psyche Report are free, together, and so is every Psyche Sync/.test(about) &&
       /a re-run – a new Psyche Card\s+with its Psyche Report – is (<span[^>]*>)?US\$5(<\/span>)?/.test(about) && !/US\$2\b/.test(about) &&
-      !/once 1 connection opens your/.test(about));
+      !/once 1 connection opens your|person who opens your link/.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
   check('the question about a thin account is gone, not half-removed',
@@ -12734,7 +12744,7 @@ try {
       });
       check('structured: the unlock offer leads with sharing the link with 1 connection, and paying US$5 is the small link under it',
         shareFirst.title === 'Unlock by sharing your link with 1 connection' &&
-          /unlocks free as soon as 1 connection opens your link/.test(shareFirst.sub) &&
+          /unlocks free as soon as 1 connection makes their Psyche Card from your link/.test(shareFirst.sub) &&
           shareFirst.share === 'Share my link' && shareFirst.claimHidden && shareFirst.pay === 'or pay US$5' &&
           shareFirst.payAfter && shareFirst.quieter && shareFirst.onePremium === 1, JSON.stringify(shareFirst));
       {
@@ -13304,9 +13314,11 @@ try {
         refCopied === copiedMessage &&
           await rp.evaluate(() => document.querySelector('#profile-body .hub-linkrow .hub-linkcopy').classList.contains('is-done')), refCopied);
       await closeLink(rp);
-      // Someone opens the link while the reader waits on My Psyche: the free
-      // unlock appears without a reload, as soon as the reader is back on the tab.
-      check('before anyone opens the link, the unlock panel asks the reader to share it',
+      // Someone opens the link while the reader waits on My Psyche: counted,
+      // and nothing more (October 2026: an open is a count anyone can send).
+      // A friend then makes their card from it, and the free unlock appears
+      // without a reload, as soon as the reader is back on the tab.
+      check('before anyone makes a card from the link, the unlock panel asks the reader to share it',
         await rp.evaluate(() => Boolean(document.querySelector('#profile-body .unlock-share:not(.is-ready)'))));
       {
         const other = await browser.newPage();
@@ -13317,8 +13329,29 @@ try {
         } finally { await other.close(); }
       }
       await rp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await rp.waitForTimeout(1500);
+      check('an open of the link alone unlocks nothing: the panel still asks the reader to share it',
+        await rp.evaluate(() => Boolean(document.querySelector('#profile-body .unlock-share:not(.is-ready)'))));
+      {
+        const asFriendPhone = route => route.continue({ headers: Object.assign({}, route.request().headers(),
+          { 'x-forwarded-for': '198.51.100.250' }) });
+        await rp.route('**/api/analyse', asFriendPhone);
+        const madeCard = await rp.evaluate(async code => {
+          await window.PsycheLoadReaders();
+          const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))),
+            b => b.toString(16).padStart(2, '0')).join('');
+          const digest = window.PsycheDigest.forModel(JSON.parse(localStorage.getItem('psycheai_digest')));
+          digest.counts = Object.assign({}, digest.counts, { posts: 1001 });
+          const result = await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend1'), ref: code });
+          return Boolean(result && result.data);
+        }, mine.code);
+        await rp.unroute('**/api/analyse', asFriendPhone);
+        check('a friend makes their free card from the link', madeCard);
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+      await rp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       const appeared = await rp.waitForSelector('#profile-body .unlock-share.is-ready', { timeout: 10000 }).then(() => true).catch(() => false);
-      check('one open of the link and the free unlock appears on its own, without a reload',
+      check('one friend\'s card from the link and the free unlock appears on its own, without a reload',
         appeared && await rp.evaluate(() => !document.querySelector('#profile-body .unlock-share-claim').hidden));
       // The same link as a QR code in the foot of the reader's own card, on
       // the page and in its full-screen copy, so any copy of the image leads
@@ -13707,7 +13740,8 @@ try {
         const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))),
           b => b.toString(16).padStart(2, '0')).join('');
         const out = [];
-        for (let n = 1; n <= 3; n++) {
+        // The first friend made theirs above, when the link was shared.
+        for (let n = 2; n <= 3; n++) {
           const digest = window.PsycheDigest.forModel(JSON.parse(text));
           digest.counts = Object.assign({}, digest.counts, { posts: 1000 + n });
           const result = await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend' + n), ref: code });
@@ -13716,7 +13750,7 @@ try {
         return out;
       }, [digestText, mine.code]);
       await rp.unroute('**/api/analyse', asOwnPhone);
-      check('three friends make their free cards from the link', credited.every(Boolean), JSON.stringify(credited));
+      check('two more friends make their free cards from the link', credited.length === 2 && credited.every(Boolean), JSON.stringify(credited));
       await new Promise(resolve => setTimeout(resolve, 400));
 
       // Back as the reader, with their own code: a free full report is ready.
@@ -13758,8 +13792,8 @@ try {
           claim: !box.querySelector('.unlock-share-claim').hidden && box.querySelector('.unlock-share-claim').textContent,
           pay: (document.querySelector('#profile-body .full-report-locked .premium-unlock') || {}).textContent };
       });
-      check('once a connection has opened the link, the unlock panel offers the Psyche Report free, paying still under it',
-        /A connection opened your link/.test(panelReady.sub) && panelReady.share &&
+      check('once a connection has made their card from the link, the unlock panel offers the Psyche Report free, paying still under it',
+        /A connection made their Psyche Card from your link/.test(panelReady.sub) && panelReady.share &&
           panelReady.claim === 'Unlock my Psyche Report free' && panelReady.pay === 'or pay US$5', JSON.stringify(panelReady));
       await rp.click('#profile-body .unlock-share-claim');
       await skipPremiumDataOffer(rp);
@@ -13917,7 +13951,7 @@ try {
       }
 
       // The journey, counted per campaign link.
-      const totals = await rp.evaluate(() => fetch('api/stats?token=uitest-stats').then(r => r.json()));
+      const totals = await rp.evaluate(() => fetch('api/stats', { headers: { Authorization: 'Bearer uitest-stats' } }).then(r => r.json()));
       const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
       check('the journey is counted per campaign link: arrived, export read, card made',
         day['via:uitest-creator:open'] >= 1 && day['via:uitest-creator:export_loaded'] >= 1 && day['via:uitest-creator'] >= 1 &&
@@ -14006,7 +14040,7 @@ try {
       check('first run merged: once per Instagram account; the same account again is offered the card and report together',
         /already had its free Psyche Card/.test(await fp.locator('#premium-dialog-blurb').innerText()), await fp.locator('#premium-dialog-blurb').innerText());
       await leavePayment(fp);
-      const totals = await fp.evaluate(() => fetch('api/stats?token=uitest-stats').then(r => r.json()));
+      const totals = await fp.evaluate(() => fetch('api/stats', { headers: { Authorization: 'Bearer uitest-stats' } }).then(r => r.json()));
       const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
       check('the first free read is counted, as a full report, and its credit as a guess won',
         day.first_full === 1 && day.full_report === 1 && day.guess_won_credit === 1, JSON.stringify(day));

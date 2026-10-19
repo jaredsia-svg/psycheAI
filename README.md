@@ -2285,7 +2285,9 @@ are: an address (rate limits) or the browser's account code is scrambled with `P
 ## One free card per Instagram account
 
 The browser sends `account`: SHA-256 of `psycheai:` + the Instagram username it read from the
-export (`accountKey()` in `docs/app.js`, kept as `psycheai_account`). The server scrambles that once
+export (`accountKey()` in `docs/app.js`, kept as `psycheai_account`). *Since October 2026 it is
+`psycheai:v2:` + the username + the time of the earliest own message or post, and a free read with
+no account is refused; see "Security and display fixes (October 2026)".* The server scrambles that once
 more and keeps it in one set; a second free card for an account already in it is refused with
 `402 { freeUsed: true }`, and the page opens the US$2 re-run sheet with *"This Instagram account has
 already had its free Psyche Card. Run it again for US$2."* The check runs after the result cache, so
@@ -2584,6 +2586,135 @@ change could pass without the live layout being exercised. Gone:
   - Tests: the popout's "takes no space" check now asserts the popout, its opener and paste box are not in
     the DOM; its print check was deleted, and so was the sample guard's "compatibility-link panel" row (that
     `.link-panel` was the popout's; the guard keeps its download and delete rows); the hub tools check asserts `#test-compat-open` is absent.
+
+### Security and display fixes (October 2026)
+
+A review found a batch of holes, mostly ways to get paid work for free, and a handful of display bugs.
+Each is pinned by a check in `tools/selftest.mjs` (the block "security and display fixes").
+
+**Server**
+
+- **S1. One payment bought every product.** `verifyPaid` checked status, age and amount, but the
+  Psyche Report and five Ask PsycheAI questions are both US$5, so one `ask` PaymentIntent was accepted
+  by `/api/analyse` (`product: 'unlock'`), by `/api/premium-analysis` for another digest, and by
+  `/api/ask/buy`. `createPaymentIntent` now writes `metadata.product` (the server's choice, beside any
+  promo fields), and `verifyPaid` requires it to match. An intent with no product, made before this
+  deployed, is honoured as `unlock` only (the one thing sold at that price before); the 30-day
+  redemption window retires them. Mock intents carry the same metadata. `/api/premium-analysis` no
+  longer spends a payment at all: the page has bought the report through `/api/analyse` for a long
+  time, and that route's separate ledger kind and binding let one payment buy a report and then the
+  premium sections of another digest. It answers `410` and asks an old page to reload; promo codes
+  still work there.
+- **S2. The free first report needs a friend's card, not an open.** On the card-first path the free
+  report unlocked on `opens >= 1`, and `/api/event` `referral_open` is unauthenticated, so a script
+  looping fake opens and fresh secrets got unlimited reports outside the daily budget. With no user
+  accounts (the owner's decision), it now needs one friend to make their card from the link
+  (`friends >= 1`, `status().first`). Opens stay a statistic. A card made by the link's own owner
+  never counts (`afterFreeCard`: `from === mine`, and the owner's own account). Reports paid for by a
+  grant (the free first one, a gift, a guess) are now metered by the daily free budget
+  (`freeFunded` in `handleAnalyse`), refused when it is spent and recorded twice like a free first
+  read, since nobody paid for them. Every string that said an open unlocks it now says a friend making
+  their card does (`docs/copy.js` `unlockShare`, `referral.useFree`/`firstFailed`/`tips.reportLocked`;
+  the FAQ in `docs/index.html` and `faq.html`; `terms.html`; the server's claim refusal).
+- **S3. A code or a grant wrote more than one report.** Grants and creator-code reservations were held
+  to `digestHash(body.digest)`, while the result cache and a payment's binding use the whole key
+  (the digest as the model reads it, the `anchor`, and `deep` through it). Varying `anchor` or
+  `deep` reran the paid engine on one use. `handleAnalyse` now computes the key first and holds
+  `promoRefusal`, `promo.reserve`/`redeem`, `grantRefusal`, `reserveGrant`, `spendGrant` and a
+  discount's redemption to it.
+- **S4, S5. The account code was computable from a username.** `sha256('psycheai:' + handle)` could be
+  worked out for anyone: `/api/referral` said whether a named person had used PsycheAI, and
+  `/api/analyse` with `product: 'first'` and their code spent their free read. `accountKeys()` now
+  hashes `psycheai:v2:` + the handle + `ownMark`: the time, in seconds, of the earliest message the
+  reader sent (`signals.messages.sentTimestamps`), or with none the earliest own post, story or
+  caption (`dm:` or `post:` says which). Only the export's owner has it, and it is the same in every
+  new download. With no export in memory (after a reload, a restored backup) the stored
+  `psycheai_account` is used, as before. **The trade-off:** a reader who deletes their earliest
+  message (or post, with no messages) gets a new code, and so a second free read; one whose
+  download covers a shorter date range may too. That is the price of a code nobody else can compute.
+  **The transition:** until 18 November 2026 (`LEGACY_ACCOUNT_UNTIL`, in `lib/referral.js` and
+  `docs/app.js`) the page also sends the old code as `legacyAccount`. An account counts as used
+  (free card, first report, guess) when either code is in a set, but only the new one is ever
+  written, and `/api/referral` reports `first.used` for the new code only. During those 30 days the
+  old code can still be used to ask `/api/analyse` whether a named person had a free card; after
+  them it is ignored. The privacy page now says the code is made from the username and that time.
+- **Free reads with no account.** The one-free-per-account check was skipped when no account was sent,
+  so leaving it out made every free read the first. A free read (the merged first read, or a free
+  card) with no account is now refused, `402 { noAccount: true }`, and the page says so in its own
+  words (`freeNoAccount`). An export with a username, or any dated message or post, always has one.
+  No per-IP daily cap was added (deferred by the owner). `PSYCHEAI_FREE_PER_ACCOUNT=0` still turns
+  both checks off for a test server.
+- **S6. Every POST buffered 24 MB.** Bodies are now held per route (`bodyLimitFor`): 64 KB for the
+  small routes (events, referral, links, syncs, payments, Ask credits and buying, and the Psyche Sync,
+  whose two shaped cards are under 4 KB each), and 2 MB for the three that carry a digest and a report
+  (`/api/analyse`, `/api/premium-analysis`, `/api/ask`): at most 179,000 characters of evidence plus
+  a report of up to 150,000, about 1 MB even in three-byte UTF-8, a few hundred KB in practice. A body
+  over its limit is refused from its `Content-Length` before any of it is read, and stopped as it
+  passes the limit when there is none.
+- **S7. A free first read could skip being counted.** One sent with an `anchor` never marked its
+  account (`afterFreeCard` ran only without one), and `deep` was honoured on the free path. A free
+  read now ignores both, and a free first read always marks its account.
+- **S8. Provider errors reached the reader word for word,** naming the model, the API key, the service
+  account or the setting to change. `publicError` in `server.js` passes the server's own refusals (a
+  4xx it raised) as they are, logs everything else, and tells the reader one of four plain things:
+  busy (429/503), declined by the AI's filter (422), incomplete, or that something went wrong. A
+  missing engine says only that analyses are unavailable; the set-up goes to the log. Stripe's
+  set-up failures (401, 403, 5xx) are logged and said as "The payment could not be started"; a
+  card decline is still Stripe's own words.
+- **S9. `/api/stats` took `?token=`** (which ends up in proxy logs and history) and had no rate limit.
+  The token is read from `Authorization: Bearer` only, and the route has a bucket of its own
+  (`stats`, 30 an hour).
+- **S10. Is Render's proxy chain what `PSYCHEAI_TRUST_PROXY` assumes?** The first proxied request
+  logs, once per process, how many `X-Forwarded-For` entries it carried and how many hops the server
+  steps back. No address is logged.
+
+**Browser**
+
+- **B1. A spoofed Psyche Sync.** `verifiedSender` only checks that the sender's link opens to the same
+  card, and a card is public: anyone holding a reader's link could publish a link showing a friend's
+  card and send a sync that showed as that friend's, replacing the real one. Syncing with someone new
+  is exactly as easy as before. But history rows now keep the sender's link id (`linkId`: the short
+  link a sync was run from, or the one a received sync came from), and a received sync that claims a
+  card with a row here is that person only when it comes from that row's link. From any other link
+  it is saved as a row of its own (`with: <card key>~<link id>`), beside theirs, and never replaces
+  it.
+- **B2. A link could be a decompression bomb.** A 270 KB `#p=` link inflated to 200 MB, and a stored
+  invite was decoded again on every visit for 14 days. `decodeCard` refuses a payload over 4 KB
+  (`MAX_PAYLOAD`) before inflating and stops inflating past 16 KB (`MAX_INFLATED`), a chunk at a
+  time. An invite kept from before with a payload over the limit is dropped.
+- **B3. The reader's name in the anchor.** The unlock sent the stored card and report as its `anchor`,
+  and those have the reader's real name put back in (`withOwnName`), so a stray name in a summary or
+  a pattern line reached the server and the model. `withPlaceholderName` swaps the card's name, its
+  first word, the display name and the handle back to `PsycheUser`, as whole words, before sending.
+- **B4. A ZIP entry could unpack without limit.** `inflateRaw` read the whole stream, Instagram
+  entries had no size check, and the Google, Facebook and WhatsApp readers trusted the stated size.
+  Output is now counted as it streams; an entry past its limit fails with a reason (`oversize`).
+  150 MB by default (`MAX_ENTRY_BYTES`, the Google/Facebook per-file limit), WhatsApp chats 60 MB.
+  A JSON entry that fails is skipped with a console warning, as an oversized one always was.
+
+**Display**
+
+- **F1. Dark mode on My Psyche.** Your Link, Your Data and Save your profile kept their light pastel
+  backgrounds under the dark theme's near-white titles. They now take deep tints of the same peach,
+  mint and sky in `prefers-color-scheme: dark`.
+- **F2. A paid re-run landed on My Report.** The rule: every read that writes a card lands on My Psyche
+  at the card; only an unlock of a card already held lands on My Report. A re-run from Add / change
+  data (and an unlock that added data) redraws the card, so `runPremiumAnalysis` now goes to My
+  Psyche when `dataChanged`.
+- **F3. The PDF's title showed "Aleç™s psyche".** The Info dictionary's title was written in WinAnsi,
+  but PDF reads those strings as PDFDocEncoding, where WinAnsi's curly apostrophe is "™".
+  `pdfInfoString` writes plain ASCII as a literal string and anything else as UTF-16BE with its
+  byte-order mark.
+- **F4. The Psyche Sync popout cut off its header.** `.hero` pulls up by the page's padding, more than
+  the popout's; inside the popout it now pulls by the popout's own padding, top and sides.
+- **F5. "This is your own link" was said out of sight,** under the card, about 1,400px down. Same
+  words, now scrolled into view where they are said.
+- **F7. My Report's part list kept the wrong part lit** after a jump to the top, because the observer
+  hears only a part crossing its band. On every scroll, above the first part, the first part is lit;
+  when scrolling stops (`scrollend`), the part across the band is worked out again.
+- **F8. The card image's file name dropped letters** ("Aleç" saved as `psycheai-card-ale.png`, a name
+  in another script as `psycheai-card-.png`). It folds accents as the backup and PDF names do, and
+  falls back to `psycheai-card.png` when nothing is left.
 
 ### MBTI: the model decides; the rubric guides (October 2026)
 
@@ -3088,8 +3219,8 @@ connections to make their Psyche Card from your link* in small type under the pr
 with sharing, because a shared link brings a new reader and a US$5 sale brings one payment:
 
 - **The panel** (`unlockShareHtml`, inside `.full-report-locked`): *Unlock by sharing your link with
-  1 connection*, the line *Your Psyche Report unlocks free as soon as 1 connection opens
-  your link*, and **Share my link** (the share sheet with the one share message, or
+  1 connection*, the line *Your Psyche Report unlocks free as soon as 1 connection makes their
+  Psyche Card from your link* (it said *opens your link* until the October 2026 fixes), and **Share my link** (the share sheet with the one share message, or
   copied where there is none). Under the box, as a small grey link, **or pay US$5**, the only
   `.premium-unlock` in the panel. Once someone has opened the link (`status.first.unlocked`,
   `refreshUnlockShare`), the line says so and the button becomes **Unlock my Psyche Report free**.
@@ -3098,7 +3229,9 @@ with sharing, because a shared link brings a new reader and a US$5 sale brings o
   `.share-first` and the pay button is drawn as an outline. **Unlock my Psyche Report free**
   (`#premium-first`) posts `/api/referral/claim` with `{ first: true }` and runs the report on the
   grant. A gifted report waiting on the device is offered instead, as before.
-- **"Sharing" is one open of the link by someone else** (`ref:<code>:opens`, from `/api/event`
+- **"Sharing" is one friend's card from the link** again since the October 2026 fixes (below): an
+  open is an unauthenticated count anyone can send with a fresh code each time, so it was a free
+  report on demand. Opens are a statistic only. What follows is the history. **It was one open of the link by someone else** (`ref:<code>:opens`, from `/api/event`
   `referral_open`; the owner's own browser never sends one), or one friend's card. It began as a
   friend's card only. A week later it was lowered to an open, to make the free report easy to get
   for now: a friend no longer needs their own Instagram export first. The cost is that an open is
@@ -3136,7 +3269,7 @@ with sharing, because a shared link brings a new reader and a US$5 sale brings o
   *Use it* is gone, and friends' paid reports are no longer counted (`afterPaid` is removed). Old
   grants keep working until they expire; old unclaimed rewards were not carried over, and credits
   start from `ref:<code>:spent`, not the old `claimed`.
-- **Terms, privacy and FAQ** say the same: the first report free once 1 connection opens the link, re-runs
+- **Terms, privacy and FAQ** say the same: the first report free once 1 connection makes their card from the link (an open, until the October 2026 fixes), re-runs
   paid, 3 cards a credit, and that the scrambled account code also notes whether an account has had
   a Psyche Report.
 

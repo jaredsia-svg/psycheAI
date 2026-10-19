@@ -152,9 +152,22 @@ function promoRedeemed(code, key) {
   if (!checked.creator) stats.count('promo:master');
 }
 
-// The digest is bounded client-side, but never trust that from the server.
-// A dozen-odd downscaled JPEGs land near 1MB of base64; the rest is headroom.
-const MAX_BODY_BYTES = 24 * 1024 * 1024;
+// How much a request body may hold, by route (October 2026). Every POST used
+// to be buffered up to 24 MB, a figure left from when photographs travelled
+// with the digest; nothing sends them now. Small routes (a step, a referral
+// code, a link, a payment) carry a few hundred bytes and are held to 64 KB.
+// The three that carry a digest and a report are held to 2 MB: the digest
+// as forModel passes it is at most DEEP_DIGEST_CHARS (179,000) characters of
+// evidence plus its structure, the card or report beside it up to
+// ASK_REPORT_MAX (150,000), and even written entirely in three-byte UTF-8
+// that is about 1 MB; real ones are a few hundred KB. A Psyche Sync carries
+// two shaped cards, under 4 KB each (Card.shape), so it is a small route. A
+// body over its limit is refused from its Content-Length before any of it is
+// read, and stopped as soon as it passes the limit when no length is given.
+const SMALL_BODY_BYTES = 64 * 1024;
+const LARGE_BODY_BYTES = 2 * 1024 * 1024;
+const LARGE_BODY_ROUTES = new Set(['/api/analyse', '/api/premium-analysis', '/api/ask']);
+const bodyLimitFor = route => (LARGE_BODY_ROUTES.has(route) ? LARGE_BODY_BYTES : SMALL_BODY_BYTES);
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -219,6 +232,44 @@ const KEEPALIVE_EVERY_MS = Number(process.env.PSYCHEAI_KEEPALIVE_PING_MS) || 150
  * buffer a response body by default, which would hold the whitespace and
  * reproduce exactly the silence this removes.
  */
+/**
+ * What a failure may say to the reader (October 2026). The server's own
+ * refusals — a payment that does not match, a body too large, a code used up
+ * — are written for the reader and go out as they are. Anything from a model
+ * provider, or anything unexpected, is written for whoever runs the server:
+ * it can name the model, the API key, the service account or the setting to
+ * change, and reached the reader word for word. Those go to the log, and the
+ * reader is told plainly what happened in words that name none of it: busy
+ * (a rate limit, a quota, an overload), declined by the AI's own filter, cut
+ * off, or just that something went wrong.
+ */
+const PUBLIC_ERRORS = {
+  busy: 'PsycheAI is busy right now. Wait a minute and try again.',
+  declined: 'The AI declined to write this one. That sometimes happens to ordinary content – try again.',
+  incomplete: 'Your read came back incomplete. Please try again.',
+  failed: 'Something went wrong while writing your read. Please try again in a moment.',
+};
+function publicError(error) {
+  const status = Number(error && error.status) || 0;
+  const fromProvider = Boolean(error && error.provider);
+  // The server's own words, said to the reader on purpose: a 4xx it raised itself.
+  if (!fromProvider && status >= 400 && status < 500 && status !== 429 && error.message) {
+    return { status, message: error.message };
+  }
+  // A provider's raw error, mapped by its own module to a status first.
+  let mapped = { status: status || 500 };
+  if (!status && provider.active) {
+    try { mapped = provider.active.describeError(error) || mapped; } catch (ignored) { /* keep 500 */ }
+  }
+  const code = Number(mapped.status) || 500;
+  const text = String((error && error.message) || '');
+  const message = code === 429 || code === 503 ? PUBLIC_ERRORS.busy
+    : code === 422 ? PUBLIC_ERRORS.declined
+      : /length limit|incomplete/i.test(text) ? PUBLIC_ERRORS.incomplete
+        : PUBLIC_ERRORS.failed;
+  return { status: code >= 400 && code < 600 ? code : 500, message };
+}
+
 async function sendJsonWhileWorking(response, produce) {
   response.writeHead(200, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -239,11 +290,7 @@ async function sendJsonWhileWorking(response, produce) {
     response.end(JSON.stringify(payload));
   } catch (error) {
     clearInterval(timer);
-    const described = error && error.status
-      ? { message: error.message }
-      : provider.active
-        ? provider.active.describeError(error)
-        : { message: (error && error.message) || 'Unknown server error.' };
+    const described = publicError(error);
     // The message only — never the body, which is somebody's evidence digest.
     console.error('[generation]', error && error.message ? error.message : error);
     if (!response.writableEnded) response.end(JSON.stringify({ error: described.message }));
@@ -363,12 +410,13 @@ function handleResult(response, url) {
 }
 
 function readJsonBody(request) {
+  const limit = request.psycheBodyLimit || SMALL_BODY_BYTES;
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     request.on('data', chunk => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > limit) {
         reject(Object.assign(new Error('Request body too large.'), { status: 413 }));
         request.destroy();
         return;
@@ -413,11 +461,12 @@ async function handleStatus(response) {
 
 // Every analysis route needs a configured provider; refuse early and clearly
 // rather than throwing an SDK error halfway through.
+// The set-up detail goes to the log, not to the reader (publicError).
+const UNAVAILABLE = 'Analyses are unavailable on this server right now. Please try again later.';
 function requireEngine(response) {
   if (!provider.active) {
-    sendJson(response, 503, {
-      error: 'This server has no model provider configured. ' + provider.describe().hint,
-    });
+    console.error('[engine] no model provider configured. ' + provider.describe().hint);
+    sendJson(response, 503, { error: UNAVAILABLE });
     return null;
   }
   return provider.active;
@@ -446,9 +495,8 @@ function requirePremiumEngine(response) {
     const named = PREMIUM_PROVIDER === 'anthropic'
       ? 'Claude, and needs ANTHROPIC_API_KEY'
       : 'Gemini, and needs GEMINI_API_KEY';
-    sendJson(response, 503, {
-      error: 'The paid analysis always uses ' + named + ' configured — set PSYCHEAI_PREMIUM_PROVIDER to switch which engine it uses.',
-    });
+    console.error('[engine] the paid analysis always uses ' + named + ' configured — set PSYCHEAI_PREMIUM_PROVIDER to switch which engine it uses.');
+    sendJson(response, 503, { error: UNAVAILABLE });
     return null;
   }
   return engine;
@@ -532,6 +580,10 @@ function readerText(value) {
 }
 
 const CARD_ALONE_REFUSAL = 'Past your free Psyche Card, a new card comes with your Psyche Report: US$5 for both.';
+// A free read that names no account (handleAnalyse). The page says it in its
+// own words (docs/copy.js, freeNoAccount); this is for anything else.
+const NO_ACCOUNT_REFUSAL = 'This data could not be matched to its Instagram account, so a free read cannot be made from it. ' +
+  'Download your Instagram data again, in JSON, and load the whole file.';
 
 async function handleAnalyse(request, response) {
   const body = await readJsonBody(request);
@@ -578,14 +630,64 @@ async function handleAnalyse(request, response) {
     sendJson(response, 402, { error: CARD_ALONE_REFUSAL });
     return;
   }
-  const promoProblem = promoCode ? promoRefusal(promoCode, body.digest) : null;
+
+  // What the model is sent, and under which cache key. Both calls read the
+  // same digest — Digest.forModel of whatever was posted, which for an honest
+  // client is exactly the digest it reviewed — so the card and the full
+  // premium report are written from identical evidence. The full report is
+  // keyed on the digest *and* the card it explains, so a report written to
+  // explain one card is never served to a reader holding another.
+  //
+  // The premium read is held to the premium pools — see "the premium read"
+  // in docs/digest.js and the two caps that price it; everything else to
+  // the standard pools (POOL_CAPS), priced by FREE_COST_CAP and COST_CAP.
+  // A free read is never the premium read, whatever the request says
+  // (October 2026): `deep` is honoured only on a paid or granted report.
+  const deep = full && paying && body.deep === true;
+  const sent = Digest.forModel(body.digest, { deep });
+  // The backstop for the one thing forModel cannot bound by construction —
+  // the number of keys in the few objects it copies whole. An honest digest
+  // never gets here; Digest.build lands every real export under the line.
+  // Counted as the model reads it, the same measure the trim loop uses.
+  // 179,000 for every read (Digest.budgetFor).
+  if (Digest.evidenceChars(sent) > Digest.budgetFor(sent, deep)) {
+    sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
+    return;
+  }
+  // A free first read is the card and its report from the digest alone: a
+  // card sent to anchor it is ignored, so a free read cannot be a report
+  // written to explain a card chosen by the request.
+  const anchor = full && !firstFull ? prompts.anchorFrom(body.anchor) : null;
+  let kind;
+  let key;
+  let call;
+  if (full) {
+    // One call for everything the unlock buys: the written report and the
+    // four premium sections in a single response (FULL_SCHEMA).
+    kind = 'full';
+    key = anchor ? Object.assign({}, sent, { anchor }) : sent;
+    call = anchor
+      ? engine => engine.analyseFull(sent, anchor)
+      : engine => mergedOrTwoCalls(engine, sent);
+  } else {
+    kind = 'card';
+    key = sent;
+    call = engine => engine.analyseCard(sent);
+  }
+
+  // A code and a free report from a link are held to `key`, the whole of
+  // what the report is written from — the same key the result cache and a
+  // payment's binding use (October 2026). They were held to the digest
+  // alone, so a different `anchor` or `deep` wrote a second report, on the
+  // paid engine, for one use.
+  const promoProblem = promoCode ? promoRefusal(promoCode, key) : null;
   if (promoProblem) {
     sendJson(response, 402, { error: promoProblem });
     return;
   }
   if (referralGrant) {
     const grantProblem = !full ? 'A free report from your link unlocks the Psyche Report only.'
-      : await referral.grantRefusal(referralGrant, body.digest, { account: body.account, myRef: body.myRef });
+      : await referral.grantRefusal(referralGrant, key, { account: body.account, legacy: body.legacyAccount, myRef: body.myRef });
     if (grantProblem) {
       sendJson(response, 402, Object.assign({ error: grantProblem }, grantProblem === referral.FIRST_USED ? { firstUsed: true } : {}));
       return;
@@ -612,53 +714,19 @@ async function handleAnalyse(request, response) {
   }
 
   // Checked before the model call, so a day that is already over budget costs
-  // nothing rather than one more analysis. Paid calls skip the gate entirely.
-  if (!paying && !budget.canSpend()) {
+  // nothing rather than one more analysis. Paid calls skip the gate. A free
+  // report from a link (a grant) does not (October 2026): nobody paid for
+  // it, so it is metered by the day's free ceiling like any free read.
+  const freeFunded = !paying || Boolean(referralGrant);
+  if (freeFunded && !budget.canSpend()) {
     sendJson(response, 503, {
-      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC – ' +
-        'or you can run one now for a small fee.',
+      error: referralGrant
+        ? 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC, and your free Psyche Report will still be here.'
+        : 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC – ' +
+          'or you can run one now for a small fee.',
       budgetExhausted: true,
     });
     return;
-  }
-
-  // What the model is sent, and under which cache key. Both calls read the
-  // same digest — Digest.forModel of whatever was posted, which for an honest
-  // client is exactly the digest it reviewed — so the card and the full
-  // premium report are written from identical evidence. The full report is
-  // keyed on the digest *and* the card it explains, so a report written to
-  // explain one card is never served to a reader holding another.
-  //
-  // The premium read is held to the premium pools — see "the premium read"
-  // in docs/digest.js and the two caps that price it; everything else to
-  // the standard pools (POOL_CAPS), priced by FREE_COST_CAP and COST_CAP.
-  const deep = full && body.deep === true;
-  const sent = Digest.forModel(body.digest, { deep });
-  // The backstop for the one thing forModel cannot bound by construction —
-  // the number of keys in the few objects it copies whole. An honest digest
-  // never gets here; Digest.build lands every real export under the line.
-  // Counted as the model reads it, the same measure the trim loop uses.
-  // 179,000 for every read (Digest.budgetFor).
-  if (Digest.evidenceChars(sent) > Digest.budgetFor(sent, deep)) {
-    sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
-    return;
-  }
-  let kind;
-  let key;
-  let call;
-  if (full) {
-    const anchor = prompts.anchorFrom(body.anchor);
-    // One call for everything the unlock buys: the written report and the
-    // four premium sections in a single response (FULL_SCHEMA).
-    kind = 'full';
-    key = anchor ? Object.assign({}, sent, { anchor }) : sent;
-    call = anchor
-      ? engine => engine.analyseFull(sent, anchor)
-      : engine => mergedOrTwoCalls(engine, sent);
-  } else {
-    kind = 'card';
-    key = sent;
-    call = engine => engine.analyseCard(sent);
   }
 
   // The full report is paid for, so it runs on the paid engine — the fixed
@@ -697,8 +765,18 @@ async function handleAnalyse(request, response) {
   // One free card per Instagram account (lib/referral.js). After the result
   // cache, so a retry of the same card is still answered; before anything is
   // spent, so a second free card costs nothing to refuse.
+  //
+  // A free read has to say whose it is (October 2026). It was enough to
+  // leave the account out: the check below was skipped, and every free read
+  // was the first. docs/app.js always sends one for a real export.
   const account = referral.cleanAccount(body.account);
-  if (!paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account)) {
+  const legacyAccount = referral.cleanLegacy(body.legacyAccount);
+  if (!paying && ONE_FREE_PER_ACCOUNT && !account) {
+    stats.count('free_refused_no_account');
+    sendJson(response, 402, { error: NO_ACCOUNT_REFUSAL, noAccount: true });
+    return;
+  }
+  if (!paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account, legacyAccount)) {
     stats.count('free_refused_account');
     sendJson(response, 402, {
       error: 'This Instagram account has already had its free Psyche Card. A new Psyche Card comes with your Psyche Report: US$5 for both.',
@@ -729,13 +807,13 @@ async function handleAnalyse(request, response) {
   // A creator code's place under its cap, and a free report's grant, are
   // taken now rather than counted once the report is written, so requests at
   // once cannot spend one more than once. Given back if the report fails.
-  const holdPromo = promoCode ? promo.reserve(promoCode, body.digest) : () => {};
+  const holdPromo = promoCode ? promo.reserve(promoCode, key) : () => {};
   if (!holdPromo) {
     holdPayment();
     sendJson(response, 402, { error: 'That code has been used up.' });
     return;
   }
-  const holdGrant = referralGrant ? await referral.reserveGrant(referralGrant, body.digest) : () => {};
+  const holdGrant = referralGrant ? await referral.reserveGrant(referralGrant, key) : () => {};
   if (!holdGrant) {
     holdPayment();
     holdPromo();
@@ -790,13 +868,15 @@ async function handleAnalyse(request, response) {
       if (paying) {
         if (paidRun) paymentLedger.recordUse(paymentIntentId, ledgerKind);
         if (paidRun) paymentLedger.bindDigest(paymentIntentId, ledgerKind, key);
-        if (paidRun) discountRedeemed(paidIntent, body.digest);
-      } else {
+        if (paidRun) discountRedeemed(paidIntent, key);
+      }
+      if (freeFunded) {
         budget.record(kind);
         // A free first read is a card and a report: about twice a card's
         // cost (FREE_COST_CAP against MERGED_COST_CAP), so it is counted
         // twice against the day's free ceiling, which was sized in cards.
-        if (firstFull) budget.record(kind);
+        // A report from a grant is counted the same way.
+        if (firstFull || referralGrant) budget.record(kind);
       }
       // The day's totals, counted once per report actually written.
       const made = full ? 'full_report' : paying ? 'card_paid' : 'card';
@@ -804,9 +884,9 @@ async function handleAnalyse(request, response) {
       if (firstFull) stats.count('first_full');
       if (via) stats.count('via:' + via + (made === 'card' ? '' : ':' + made));
       if (fromInvite && made === 'card') stats.count('card_from_invite');
-      if (promoCode) promoRedeemed(promoCode, body.digest);
+      if (promoCode) promoRedeemed(promoCode, key);
       if (referralGrant) {
-        referral.spendGrant(referralGrant, body.digest);
+        referral.spendGrant(referralGrant, key);
         stats.count('referral_report');
       }
       // Any full report, paid or not: this account has had its first, so
@@ -822,8 +902,11 @@ async function handleAnalyse(request, response) {
       // after Delete everything) is that link's card too, so its owner is
       // recorded the same way: without it, friends' cards from the new link
       // were never credited ("the referrer has to have made a card").
-      if (made === 'card' || (full && !body.anchor)) {
-        referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
+      // A free first read is always marked (October 2026): sent with an
+      // `anchor` it was not, and the same account could ask again. Its
+      // anchor is ignored above, so it is always a card of its own.
+      if (made === 'card' || firstFull || (full && !anchor)) {
+        referral.afterFreeCard({ account, legacy: legacyAccount, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
           guessed: made === 'card' || firstFull ? Boolean(body.guess) : false })
           .then(outcome => {
             if (outcome && outcome.credited) {
@@ -856,7 +939,8 @@ async function judgeFor(body, result, request) {
   const card = (data && data.freeCard) || data;
   const guess = await referral.judgeGuess({
     guess: body.guess, character: card && card.essence && card.essence.character,
-    account: referral.cleanAccount(body.account), client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
+    account: referral.cleanAccount(body.account), legacy: body.legacyAccount,
+    client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
     // The prize is a credit (October 2026), on the card path too: one way to
     // win, said the same way, whichever path PSYCHEAI_FIRST_RUN takes.
     creditTo: String(body.myRef || ''),
@@ -1096,60 +1180,13 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 400, { error: 'Expected a "paymentIntentId" or "promoCode" string.' });
     return;
   }
-  if (!payments.hasKey()) {
-    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
-    return;
-  }
-  const paidIntent = await payments.verifyPaid(paymentIntentId, 'unlock');
-  if (!paymentLedger.canUse(paymentIntentId, 'premium')) {
-    sendJson(response, 429, {
-      error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
-    });
-    return;
-  }
-  const engine = requirePremiumEngine(response);
-  if (!engine) return;
-  // The most expensive thing in the product to lose to a dead socket: this one
-  // was paid for. Served from the cache before the ledger is touched, so a
-  // reader whose connection died collecting sections they had already bought
-  // gets them back without spending a second use of the same payment — and
-  // before the hold below, so that a reader who reconnects while their own
-  // generation is still running is handed it rather than told to wait.
-  const answeredPaid = servedFromMemory(response, 'premium', sent, background);
-  if (answeredPaid) {
-    await answeredPaid;
-    return;
-  }
-  const bindProblem = await paymentLedger.digestRefusal(paymentIntentId, 'premium', sent);
-  if (bindProblem) {
-    sendJson(response, 402, { error: bindProblem });
-    return;
-  }
-  // Held across the generation, because canUse above read a count that
-  // recordUse below will not write for several minutes — see lib/premiumLedger
-  // on the race that gap opens. Taken after the cache check, so a reader
-  // collecting something already generated is never turned away by it.
-  const release = paymentLedger.hold(paymentIntentId, 'premium');
-  if (!release) {
-    sendJson(response, 429, {
-      error: 'This payment is already generating an analysis. Wait for it to finish before trying again.',
-    });
-    return;
-  }
-  await generate(response, {
-    background,
-    kind: 'premium',
-    key: sent,
-    settle: release,
-    produce: async () => {
-      const result = await engine.analysePremium(sent);
-      usage.record('premium', result, true);
-      paymentLedger.recordUse(paymentIntentId, 'premium');
-      paymentLedger.bindDigest(paymentIntentId, 'premium', sent);
-      discountRedeemed(paidIntent, body.digest);
-      stats.count('premium_sections');
-      return scrubbed(result, sent, 'premium');
-    },
+  // A payment is no longer spent here (October 2026). The page has bought the
+  // Psyche Report through /api/analyse (product 'unlock') for a long time, and
+  // a payment spent here was ledgered and bound apart from that report, so one
+  // US$5 bought the report and then the premium sections of another digest.
+  // A page old enough to ask here is told to reload; its payment carries over.
+  sendJson(response, 410, {
+    error: 'This page is out of date. Reload it and unlock your Psyche Report again – your payment carries over.',
   });
 }
 
@@ -1163,8 +1200,10 @@ function handleStats(request, response, url) {
     sendJson(response, 404, { error: 'No such endpoint.' });
     return;
   }
+  // The Authorization header only (October 2026): a token in the address
+  // (?token=) ends up in proxy logs and browser history.
   const header = request.headers['authorization'] || '';
-  const given = Buffer.from(header.replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '', 'utf8');
+  const given = Buffer.from(/^Bearer\s+/i.test(header) ? header.replace(/^Bearer\s+/i, '') : '', 'utf8');
   const want = Buffer.from(STATS_TOKEN, 'utf8');
   if (given.length !== want.length || !require('node:crypto').timingSafeEqual(given, want)) {
     sendJson(response, 401, { error: 'Not authorised.' });
@@ -1210,7 +1249,10 @@ async function handleReferral(request, response) {
     return;
   }
   // Whether this reader's account has had a full report already, so the page
-  // never offers a free first report the run would refuse.
+  // never offers a free first report the run would refuse. The account's own
+  // code only, never the old username-only one (lib/referral.js): that one
+  // anybody can work out from a username, and this would say whether its
+  // owner had used PsycheAI.
   if (body && body.account) status.first.used = await referral.firstUsedBy(body.account);
   sendJson(response, 200, status);
 }
@@ -1220,13 +1262,13 @@ async function handleReferralClaim(request, response) {
   const body = await readJsonBody(request);
   const first = Boolean(body && body.first === true);
   // Refused before a grant is made: this account has had its first report.
-  if (first && await referral.firstUsedBy(body && body.account)) {
+  if (first && await referral.firstUsedBy(body && body.account, body && body.legacyAccount)) {
     sendJson(response, 402, { error: referral.FIRST_USED, firstUsed: true });
     return;
   }
   const grant = first ? await referral.claimFirst(body && body.secret) : await referral.claim(body && body.secret);
   if (!grant) {
-    sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection opens your link.'
+    sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection makes their Psyche Card from your link.'
       : 'You have no credits to spend yet.' });
     return;
   }
@@ -1576,6 +1618,9 @@ const API_GUARDS = {
   '/api/sync/send': { limit: 'sync-send', nonce: true },
   '/api/sync/inbox': { limit: 'referral', nonce: false },
   '/api/sync/done': { limit: 'referral', nonce: false },
+  // The operator's totals: behind a token, and a bucket of its own so the
+  // token cannot be guessed at speed.
+  '/api/stats': { limit: 'stats', nonce: false },
 };
 
 // The ticket travels in a header rather than in the body, for three reasons:
@@ -1811,6 +1856,19 @@ function routeRequest(route, url, request, response) {
       return;
     }
 
+    // A body larger than this route ever needs is refused on its stated
+    // length, before a byte of it is read (readJsonBody holds the same limit
+    // for a body sent without one).
+    request.psycheBodyLimit = bodyLimitFor(route);
+    const declared = Number(request.headers['content-length']);
+    if (Number.isFinite(declared) && declared > request.psycheBodyLimit) {
+      // Answered at once; whatever follows is discarded as it arrives, never
+      // held, so the caller can read the answer.
+      request.resume();
+      sendJson(response, 413, { error: 'Request body too large.' });
+      return;
+    }
+
     // Before the handler, and before the body is read: a refused request
     // should cost us as little as the caller intended it to cost them.
     const guard = API_GUARDS[route];
@@ -1848,11 +1906,7 @@ function routeRequest(route, url, request, response) {
         return null;
       })
       .catch(error => {
-        const described = error && error.status
-          ? { status: error.status, message: error.message }
-          : provider.active
-            ? provider.active.describeError(error)
-            : { status: 500, message: (error && error.message) || 'Unknown server error.' };
+        const described = publicError(error);
         // The message only. This route's request body is somebody's personality
         // report, and an error handler that logs bodies would put it in the
         // server log — which is exactly the thing the design is built to avoid.
@@ -1960,5 +2014,5 @@ if (require.main === module) {
 // rather than about the function.
 module.exports = {
   premiumEngine, isValidPromoCode, server, sendJsonWhileWorking, canonicalRedirect,
-  API_GUARDS, NONCE_HEADER, CSP,
+  API_GUARDS, NONCE_HEADER, CSP, publicError, bodyLimitFor, SMALL_BODY_BYTES, LARGE_BODY_BYTES,
 };
