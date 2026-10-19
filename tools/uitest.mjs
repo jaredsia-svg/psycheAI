@@ -44,7 +44,7 @@ async function openLink(page) {
   await page.waitForSelector('#profile-body .hub-linkrow', { timeout: 10000 });
 }
 async function closeLink(page) {
-  await page.waitForTimeout(0);
+  // Nothing to close: the link's counts sit on the hub itself, not in a popout.
 }
 async function closeMethod(page) {
   if (await page.evaluate(() => document.querySelector('#hub-method-dialog').open)) await page.click('#hub-method-dialog .hub-dialog-close');
@@ -85,6 +85,123 @@ async function waitForLength(array, target, timeout) {
     }
     await new Promise(resolve => setTimeout(resolve, 50));
   }
+}
+
+// ---- waiting on conditions, not the clock (October 2026) ----
+//
+// Each of these waits for the thing a fixed sleep used to guess at, and
+// throws when it does not come: a slow machine waits longer, a fast one not
+// at all, and a regression fails loudly instead of passing on a lucky timer.
+
+// Animation frames: whatever the last event queued for style, layout and
+// paint (a resize handler, a class flip, a draw scheduled for the next
+// frame) has run by the second one.
+async function frames(page, n = 2) {
+  await page.evaluate(count => new Promise(resolve => {
+    const step = left => (left ? requestAnimationFrame(() => step(left - 1)) : resolve());
+    step(count);
+  }), n);
+}
+
+// Settled: two frames, then every finite CSS transition and animation inside
+// `scope` (the whole document when none is given) has finished. Infinite
+// ones (a pulse, a progress sweep) never finish, so they are left out.
+async function settle(page, scope, timeout = 5000) {
+  await frames(page);
+  await page.waitForFunction(sel => {
+    const root = sel ? document.querySelector(sel) : null;
+    if (sel && !root) return true;
+    const running = (root ? root.getAnimations({ subtree: true }) : document.getAnimations())
+      .filter(a => a.playState === 'running' && !(a.effect && a.effect.getTiming().iterations === Infinity));
+    return running.length === 0;
+  }, scope || null, { timeout });
+}
+
+// A scroll (smooth or not) has come to rest: the window's position, or an
+// element's, unchanged for `quietMs` of animation frames. The quiet spell
+// is what a smooth scroll that has not started yet, or a follow-up scroll
+// the app schedules a moment later, cannot fake.
+async function scrollSettled(page, selector, quietMs = 150, timeout = 10000) {
+  await page.evaluate(([sel, quiet, limit]) => new Promise((resolve, reject) => {
+    const el = sel ? document.querySelector(sel) : null;
+    const pos = () => (el ? el.scrollLeft + ',' + el.scrollTop : scrollX + ',' + scrollY);
+    const start = performance.now();
+    let last = pos();
+    let since = start;
+    const tick = now => {
+      const at = pos();
+      if (at !== last) { last = at; since = now; }
+      if (now - since >= quiet) return resolve();
+      if (now - start > limit) return reject(new Error('scrollSettled: still moving after ' + limit + 'ms (' + at + ')'));
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }), [selector || null, quietMs, timeout]);
+}
+
+// The page has booted: /api/status has answered (every server here is a mock
+// one, so its "Mock mode" line is written as it lands), boot() has gone on
+// from there to the view it shows, and the web fonts are in, so anything
+// measured is measured in the type it will stay in.
+async function booted(page, timeout = 20000) {
+  await page.waitForFunction(() => {
+    const line = document.querySelector('#server-status');
+    return Boolean(line && line.textContent);
+  }, null, { timeout });
+  await page.evaluate(() => document.fonts.ready.then(() => null));
+  await frames(page);
+}
+
+// For a check that something does NOT appear on load (the private-window
+// note): booted, and the storage estimate that note waits on answered too.
+async function bootedQuiet(page) {
+  await booted(page);
+  await page.evaluate(() => (navigator.storage && navigator.storage.estimate ? navigator.storage.estimate() : null));
+  await frames(page);
+}
+
+// A Node-side condition (a request seen, a count reached), polled.
+async function waitUntil(test, label, timeout = 10000) {
+  const deadline = Date.now() + timeout;
+  while (!test()) {
+    if (Date.now() > deadline) throw new Error('waitUntil: timed out waiting for ' + label);
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+}
+
+// A run (a re-run, an unlock) has landed: its job collected and the profile
+// drawn again, on whichever of My Psyche or My Report the page is on.
+async function runLanded(page) {
+  await page.waitForFunction(() => localStorage.getItem('psycheai_job') === null &&
+    Boolean(document.querySelector('#profile-body .hub-card, #profile-body .part-card')), null, { timeout: 60000 });
+  await frames(page);
+}
+
+// A step back through history the app handles itself (a popout put away by
+// Back) has finished: app.js scrolls back to where the reader was, then 400ms
+// later scrolls there again and turns scroll restoration back on. That last
+// step is the end of it, and the next Back must not overtake it.
+async function backLanded(page, timeout = 5000) {
+  await page.waitForFunction(() => history.scrollRestoration === 'auto', null, { timeout });
+  await frames(page);
+}
+
+// collectSyncs() on a page loading now: the inbox asked and, when anything
+// was in it, those items checked and cleared with /api/sync/done. Started
+// before the load, so neither response can slip past.
+function syncsCollected(page, timeout = 20000) {
+  const done = page.waitForResponse(r => r.url().includes('/api/sync/done'), { timeout }).catch(() => null);
+  return (async () => {
+    const inbox = await page.waitForResponse(r => r.url().includes('/api/sync/inbox'), { timeout });
+    const body = await inbox.json().catch(() => ({}));
+    if ((body.items || []).length && !(await done)) throw new Error('syncsCollected: the inbox was never cleared');
+    await frames(page);
+  })();
+}
+
+// A <dialog> has closed (or was never open).
+async function dialogClosed(page, selector, timeout = 10000) {
+  await page.waitForFunction(sel => !document.querySelector(sel).open, selector, { timeout });
 }
 
 // Most of this suite is about what the app *does*, not what it charges for,
@@ -659,7 +776,7 @@ try {
     // straight below it, on this page.
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.click('#view-welcome .steps-row a.step-below');
-    await page.waitForTimeout(900);
+    await scrollSettled(page);
     const landed = await page.evaluate(() => ({
       text: document.querySelector('#view-welcome .steps-row a.step-below').textContent,
       top: Math.round(document.querySelector('#cast').getBoundingClientRect().top),
@@ -702,18 +819,18 @@ try {
       await page.locator(opener).scrollIntoViewIfNeeded();
       await page.click(opener);
       await page.waitForSelector(dialogId + '[open]', { timeout: 20000 });
-      await page.waitForTimeout(250);
+      await settle(page, dialogId);
     };
     const shut = async () => {
       await page.keyboard.press('Escape');
       await page.waitForFunction(id => !document.querySelector(id).open, dialogId, { timeout: 15000 });
-      await page.waitForTimeout(200);
+      await frames(page);
     };
 
     await reopen();
     // Far enough down to be past the first screen of either popout.
     await page.evaluate(sel => { document.querySelector(sel).scrollTop = 800; }, dialogId + ' ' + bodySel);
-    await page.waitForTimeout(150);
+    await frames(page);
     const left = await page.evaluate(sel =>
       Math.round(document.querySelector(sel).scrollTop), dialogId + ' ' + bodySel);
     check(opener + ' can be scrolled down, so reopening at the top means something',
@@ -756,7 +873,7 @@ try {
     const coldPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await coldPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await coldPage.waitForTimeout(300);
+      await booted(coldPage);
       const sample = await coldPage.evaluate(() => fetch('sample.json').then(r => r.json()));
       // A stored report and a stored digest carrying Google — and nothing in
       // memory, which is what a returning reader looks like.
@@ -776,7 +893,7 @@ try {
       await coldPage.locator(CHANGE_DATA).scrollIntoViewIfNeeded();
       await coldPage.click(CHANGE_DATA);
       await coldPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
-      await coldPage.waitForTimeout(300);
+      await settle(coldPage, '#datasources-dialog');
       const googleRow = '#datasources-dialog .mode-option[data-datasource="google"]';
       check('a returning reader sees Google ticked from the stored digest',
         await coldPage.evaluate(sel => Boolean(document.querySelector(sel + ' .mode-added')), googleRow));
@@ -840,7 +957,7 @@ try {
     const payPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await payPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await payPage.waitForTimeout(300);
+      await booted(payPage);
       const sample = await payPage.evaluate(() => fetch('sample.json').then(r => r.json()));
       await payPage.evaluate(full => {
         // A card with the report still to buy: the sample without its
@@ -918,7 +1035,7 @@ try {
     const halfPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await halfPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await halfPage.waitForTimeout(300);
+      await booted(halfPage);
       const sample = cardOnlySample(await halfPage.evaluate(() => fetch('sample.json').then(r => r.json())));
       await halfPage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       await halfPage.evaluate(report => {
@@ -1037,7 +1154,7 @@ try {
           note.copy === 'Copy link' && note.chrome, JSON.stringify(note));
       await priv.click('#inapp-close');
       await priv.reload({ waitUntil: 'load' });
-      await priv.waitForTimeout(800);
+      await bootedQuiet(priv);
       check('its ✕ puts it away for the rest of the tab', await priv.locator('#inapp-warn').isHidden());
     } finally {
       await priv.close();
@@ -1049,7 +1166,7 @@ try {
         navigator.storage.estimate = () => Promise.resolve({ quota: 160e9, usage: 0 });
       });
       await normal.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await normal.waitForTimeout(800);
+      await bootedQuiet(normal);
       check('a normal window, with a normal storage quota, sees no note', await normal.locator('#inapp-warn').isHidden());
     } finally {
       await normal.close();
@@ -1112,7 +1229,7 @@ try {
       });
       await fresh.goto('http://localhost:' + PORT + '/?fresh=1#p=' + igPayload, { waitUntil: 'load' });
       await fresh.waitForSelector('#invite-inapp:not([hidden])', { timeout: 20000 });
-      await fresh.waitForTimeout(500);
+      await booted(fresh);
       check('opened fresh, a friend\'s link never flashes the general note before its own Step 1',
         await fresh.evaluate(() => !window.__barShown && document.querySelector('#inapp-warn').hidden));
       await fresh.close();
@@ -1123,7 +1240,7 @@ try {
     const plain = await browser.newPage({ viewport: { width: 390, height: 844 } });
     try {
       await plain.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await plain.waitForTimeout(300);
+      await bootedQuiet(plain);
       check('an ordinary browser sees no in-app note', await plain.locator('#inapp-warn').isHidden());
       const plainCard = await plain.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card));
       const plainPayload = await plain.evaluate(card =>
@@ -1138,7 +1255,7 @@ try {
         kept: Boolean(localStorage.getItem('psycheai_invite')),
       }));
       await plain.reload({ waitUntil: 'load' });
-      await plain.waitForTimeout(500);
+      await booted(plain);
       check('a friend\'s invite can be closed, stays closed, and is still kept to wait on My Syncs',
         putAway.hidden && putAway.kept && await plain.locator('#invite-banner').isHidden(), JSON.stringify(putAway));
       await plain.evaluate(() => { try { localStorage.clear(); } catch (e) { /* none */ } });
@@ -1232,7 +1349,7 @@ try {
         await pick.setFiles({ name: 'WhatsApp Chat with ' + friend + '.txt', mimeType: 'text/plain', buffer: Buffer.from(chat(friend)) });
         if (await newPage.locator('#datasources-who:not([hidden])').count()) await newPage.click('#datasources-who-list button:text-is("Sam Rivera")');
         await newPage.waitForFunction(sel => document.querySelector(sel).classList.contains('is-added'), waRow, { timeout: 15000 });
-        await newPage.waitForTimeout(300);
+        await settle(newPage, '#datasources-dialog');
       }
       // Up to three at the first upload now: a second chat is added beside
       // the first, not in its place.
@@ -1258,7 +1375,7 @@ try {
     const linkPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await linkPage.goto('http://localhost:' + PORT + '/?promo=uihalf', { waitUntil: 'load' });
-      await linkPage.waitForTimeout(300);
+      await booted(linkPage);
       check('a ?promo= code is kept for later and taken out of the address',
         !/promo=/.test(linkPage.url()) &&
           await linkPage.evaluate(() => (JSON.parse(localStorage.getItem('psycheai_link_promo') || '{}').code) === 'UIHALF'),
@@ -1290,7 +1407,7 @@ try {
           JSON.stringify(net) === JSON.stringify([['Price', 'US$5'], ['Promo UIHALF (50% off)', '−US$2.50'], ['You pay', 'US$2.50']]),
         JSON.stringify(net));
       await linkPage.keyboard.press('Escape');
-      await linkPage.waitForTimeout(300);
+      await frames(linkPage);
 
       // A code that is not a code, arriving the same way.
       await linkPage.goto('http://localhost:' + PORT + '/?promo=NOSUCHCODE', { waitUntil: 'load' });
@@ -1329,7 +1446,7 @@ try {
     const sgPage = await browser.newPage({ viewport: { width: 1100, height: 900 }, timezoneId: 'Asia/Singapore' });
     try {
       await sgPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await sgPage.waitForTimeout(300);
+      await booted(sgPage);
       const sample = cardOnlySample(await sgPage.evaluate(() => fetch('sample.json').then(r => r.json())));
       await sgPage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       await sgPage.evaluate(report => {
@@ -1394,7 +1511,7 @@ try {
     const cutPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await cutPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await cutPage.waitForTimeout(300);
+      await booted(cutPage);
 
       // First attempt returns the keep-alive whitespace and nothing else, as a
       // cut stream does; the second is let through to the real server.
@@ -1476,7 +1593,7 @@ try {
     const dropPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await dropPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await dropPage.waitForTimeout(300);
+      await booted(dropPage);
 
       let attempts = 0;
       await dropPage.route('**/api/analyse', async route => {
@@ -2083,7 +2200,7 @@ try {
     const resumePage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await resumePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await resumePage.waitForTimeout(300);
+      await booted(resumePage);
       const sample = cardOnlySample(await resumePage.evaluate(() => fetch('sample.json').then(r => r.json())));
       await resumePage.evaluate(() => localStorage.setItem('psycheai_first_used', 'true'));
       const seed = async (pending, withDigest = true) => {
@@ -2100,7 +2217,7 @@ try {
           else localStorage.removeItem('psycheai_pending');
         }, [sample, pending, withDigest]);
         await resumePage.reload();
-        await resumePage.waitForTimeout(700);
+        await booted(resumePage);
       };
       const banner = () => resumePage.evaluate(() => {
         const box = document.querySelector('#pending-work');
@@ -2172,7 +2289,7 @@ try {
           { configurable: true, get: () => 'visible' });
         document.dispatchEvent(new Event('visibilitychange'));
       });
-      await resumePage.waitForTimeout(200);
+      await frames(resumePage);
       check('returning to a restored tab offers the purchase without needing a reload',
         (await banner()).shown === true, JSON.stringify(await banner()));
 
@@ -2242,7 +2359,7 @@ try {
       check('a long link has no character to name, so the card leaves it out',
         !drawnCard.name && drawnCard.title === '⭐ This is Ava’s Psyche Card', drawnCard.title);
       await invitePage.click('#invite-guide');
-      await invitePage.waitForTimeout(900);
+      await scrollSettled(invitePage);
       check('"Get my free Psyche Card" scrolls to "Request your Instagram data first", and opens nothing over it',
         await invitePage.evaluate(() => {
           const top = document.querySelector('.help-card').getBoundingClientRect().top;
@@ -2263,7 +2380,7 @@ try {
       await invitePage.goto('about:blank');
       await invitePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
-      await invitePage.waitForTimeout(200);
+      await booted(invitePage);
       check('the invite is still there after the tab is closed and reopened',
         (await banner()).shown && /This is Ava’s Psyche Card/.test((await banner()).text));
 
@@ -2275,7 +2392,7 @@ try {
       });
       await invitePage.reload({ waitUntil: 'load' });
       await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
-      await invitePage.waitForTimeout(200);
+      await booted(invitePage);
       check('a dropped invite leaves nothing drawn on the page, not even its empty panel',
         await invitePage.evaluate(() => document.querySelector('#invite-banner').getBoundingClientRect().height === 0));
       check('an invite older than fourteen days is dropped rather than shown',
@@ -2371,6 +2488,8 @@ try {
       // screen appears. It used to start two syncs, and both landed in the list.
       await invitePage.dblclick('.match-waiting .sync-invite-go');
       await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
+      // Kept: a negative check. A second sync started by the double tap would
+      // land within this window; there is no event for one that never comes.
       await invitePage.waitForTimeout(1500);
       check('a double tap on Sync runs one sync and saves one row, not two',
         await invitePage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history') || '[]')
@@ -2388,14 +2507,14 @@ try {
         JSON.stringify(synced));
       // The same friend's link pasted into "Sync with others" is not run again.
       await invitePage.keyboard.press('Escape');
-      await invitePage.waitForTimeout(300);
+      await dialogClosed(invitePage, '#sync-dialog');
       await invitePage.click('#nav-scan');
       await invitePage.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
       const requestsBefore = [];
       invitePage.on('request', r => { if (/api\/compatibility/.test(r.url())) requestsBefore.push(r.url()); });
       await invitePage.fill('#paste-input', 'https://psycheai.io/#p=' + avaPayload);
       await invitePage.click('#paste-go');
-      await invitePage.waitForTimeout(800);
+      await invitePage.waitForFunction(() => /Already synced with/.test(document.querySelector('#scan-alert').innerText), null, { timeout: 10000 }).catch(() => {});
       check('pasting a link already synced with says so and does not sync again',
         /Already synced with Ava/.test(await invitePage.locator('#scan-alert').innerText()) && requestsBefore.length === 0 &&
           await invitePage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history')).filter(e => /Ava/.test(e.withName)).length === 1),
@@ -2408,7 +2527,7 @@ try {
         localStorage.setItem('psycheai_history', JSON.stringify([history[0], copy].concat(history.slice(1))));
       });
       await invitePage.reload();
-      await invitePage.waitForTimeout(800);
+      await booted(invitePage);
       check('duplicates already saved are tidied to one row per card, keeping the newest',
         await invitePage.evaluate(() => {
           const ava = JSON.parse(localStorage.getItem('psycheai_history')).filter(e => /Ava/.test(e.withName));
@@ -2475,7 +2594,7 @@ try {
       check('"Load my data" opens the Add your data popout straight from the hero',
         await guidePage.evaluate(() => document.querySelector('#datasources-dialog').open));
       await guidePage.keyboard.press('Escape');
-      await guidePage.waitForTimeout(300);
+      await dialogClosed(guidePage, '#datasources-dialog');
       await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
       await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
       check('/#sample opens the sample report straight away, and tidies the address',
@@ -2494,7 +2613,7 @@ try {
     await page.locator('#insight-sample').scrollIntoViewIfNeeded();
     await page.click('#insight-sample');
     await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
-    await page.waitForTimeout(300);
+    await settle(page, '#sample-dialog');
     check('the sample report shows no Psyche Card, only the report',
       await page.evaluate(() => document.querySelector('#sample-card-section').hidden &&
         !document.querySelector('#sample-card-dialog').open &&
@@ -2515,7 +2634,7 @@ try {
     check('and it is a high-confidence sample rather than a hedged one',
       Number(scores.stored) >= 80, String(scores.stored));
     await page.evaluate(() => document.querySelector('#sample-dialog').close());
-    await page.waitForTimeout(300);
+    await frames(page);
   }
 
   check('clicking the summary opens it',
@@ -2772,7 +2891,7 @@ try {
     const vp = await browser.newPage({ viewport: { width, height } });
     try {
       await vp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await vp.waitForTimeout(300);
+      await booted(vp);
       const box = await vp.evaluate(() => {
         const r = el => document.querySelector(el).getBoundingClientRect();
         const v = r('.hero-video');
@@ -2837,7 +2956,7 @@ try {
       !soundOn.muted && soundOn.label === T.heroVideoMute && soundOn.invite && soundOff, JSON.stringify(soundOn));
     await page.click('#hero-video-full');
     await page.waitForFunction(() => document.fullscreenElement, null, { timeout: 3000 }).catch(() => {});
-    await page.waitForTimeout(300);
+    await settle(page, '.hero-video');
     const inFull = await page.evaluate(() => {
       const frame = document.querySelector('.hero-video');
       const bar = document.querySelector('.hero-video-bar').getBoundingClientRect();
@@ -2849,7 +2968,7 @@ try {
     });
     await page.click('#hero-video-full');
     await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).catch(() => {});
-    await page.waitForTimeout(150);
+    await frames(page);
     const after = await page.evaluate(() => ({ full: Boolean(document.fullscreenElement),
       label: document.querySelector('#hero-video-full').getAttribute('aria-label') }));
     check('full screen takes the whole player, the video whole and the controls with it, with sound',
@@ -2867,12 +2986,13 @@ try {
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     try {
       await phone.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await phone.waitForTimeout(300);
+      await booted(phone);
       const cast = await phone.evaluate(() => document.querySelector('#hero-video').disableRemotePlayback);
       const depth = await phone.evaluate(() => history.length);
       await phone.locator('#hero-video-full').scrollIntoViewIfNeeded();
       await phone.tap('#hero-video-full');
-      await phone.waitForTimeout(250);
+      await phone.waitForFunction(() => document.querySelector('.hero-video').classList.contains('is-expanded'), null, { timeout: 5000 }).catch(() => {});
+      await settle(phone, '.hero-video');
       const open = await phone.evaluate(() => {
         const frame = document.querySelector('.hero-video');
         const r = frame.getBoundingClientRect();
@@ -2884,7 +3004,8 @@ try {
           label: document.querySelector('#hero-video-full').getAttribute('aria-label') };
       });
       await phone.goBack();
-      await phone.waitForTimeout(250);
+      await phone.waitForFunction(() => !document.querySelector('.hero-video').classList.contains('is-expanded'), null, { timeout: 5000 }).catch(() => {});
+      await frames(phone);
       const closed = await phone.evaluate(() => ({ expanded: document.querySelector('.hero-video').classList.contains('is-expanded'),
         welcome: !document.querySelector('#view-welcome').hidden, url: location.pathname }));
       check('on a phone the video is never cast: no cast button', cast === true, String(cast));
@@ -2903,7 +3024,7 @@ try {
     const still = await browser.newPage({ viewport: { width: 1100, height: 900 }, reducedMotion: 'reduce' });
     try {
       await still.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await still.waitForTimeout(500);
+      await booted(still);
       const state = await still.evaluate(() => ({ paused: document.querySelector('#hero-video').paused,
         button: document.querySelector('#hero-video-sound').textContent.trim(), want: window.PsycheCopy.TEXT.heroVideoPlay }));
       check('with reduced motion the video waits to be played, and the button says so',
@@ -3131,14 +3252,14 @@ try {
   // less than proving the page does not move.
   await page.click('#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
-  await page.waitForTimeout(200);
+  await settle(page, '#guide-dialog');
   // Read after the dialog is up, not before: clicking the button makes
   // Playwright scroll it into view first, so a position captured earlier
   // measures that auto-scroll rather than anything the wheel below did.
   const pageScrollBeforeDialog = await page.evaluate(() => window.scrollY);
   await page.mouse.move(200, 60);
   await page.mouse.wheel(0, 600);
-  await page.waitForTimeout(400);
+  await scrollSettled(page);
   check('the page behind an open dialog does not scroll',
     (await page.evaluate(() => window.scrollY)) === pageScrollBeforeDialog,
     'was ' + pageScrollBeforeDialog + ', now ' + (await page.evaluate(() => window.scrollY)));
@@ -3156,7 +3277,7 @@ try {
     }));
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
-  await page.waitForTimeout(200);
+  await frames(page);
   check('and the page scrolls again once the dialog is closed',
     (await page.evaluate(() => getComputedStyle(document.body).overflow)) !== 'hidden');
   // One rule for all eleven dialogs rather than a class each remembers to
@@ -3164,7 +3285,7 @@ try {
   // dialog too, since it is opened by entirely different code.
   await page.click('#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
-  await page.waitForTimeout(200);
+  await settle(page, '#sample-dialog');
   check('the lock covers every dialog, not just the one it was written for',
     (await page.evaluate(() => getComputedStyle(document.body).overflow)) === 'hidden');
   await page.keyboard.press('Escape');
@@ -3184,7 +3305,7 @@ try {
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     try {
       await phone.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await phone.waitForTimeout(400);
+      await booted(phone);
       check('on a phone the hint above the steps says to tap',
         await phone.evaluate(() => [...document.querySelector('#request-data .howto-hint').children]
           .filter(s => getComputedStyle(s).display !== 'none').map(s => s.textContent).join('|')) === 'Tap a purple label to see that screen.');
@@ -3345,7 +3466,7 @@ try {
   // the failure only ever appeared at one of them.
   for (const [label, width, height] of [['a phone', 390, 844], ['a laptop', 1100, 900]]) {
     await page.setViewportSize({ width, height });
-    await page.waitForTimeout(250);
+    await frames(page);
     check('nothing in the guide scrolls sideways on ' + label,
       await page.evaluate(() => {
         const body = document.querySelector('.guide-body');
@@ -3358,11 +3479,11 @@ try {
   // column on a phone, several on a laptop, which is what makes "no sideways
   // scrolling" mean "all of it is visible" rather than "it is squashed".
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(250);
+  await frames(page);
   const phoneCols = await page.evaluate(() => getComputedStyle(
     document.querySelector('#guide-dialog .guide-shots')).gridTemplateColumns.split(' ').length);
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.waitForTimeout(250);
+  await frames(page);
   const laptopCols = await page.evaluate(() => getComputedStyle(
     document.querySelector('#guide-dialog .guide-shots')).gridTemplateColumns.split(' ').length);
   check('the screenshots stack on a phone and sit side by side on a laptop',
@@ -3669,13 +3790,13 @@ try {
     check('clicking the summary card preview opens the full card', opened.open && opened.stats >= 4 &&
       opened.label === opened.want, JSON.stringify(opened));
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+    await dialogClosed(page, '#sample-card-dialog').catch(() => {});
     check('and escape closes it', !(await page.evaluate(() => document.querySelector('#sample-card-dialog').open)));
     // A faint cross in the top right of the screen closes it too — on a
     // phone there is no Escape key — at a phone's width and a laptop's.
     for (const [label, width, height] of [['phone', 390, 844], ['laptop', 1100, 900]]) {
       await page.setViewportSize({ width, height });
-      await page.waitForTimeout(150);
+      await settle(page);
       await page.locator('#insight-card-open').scrollIntoViewIfNeeded();
       await page.click('#insight-card-open');
       await page.waitForSelector('#sample-card-dialog[open]', { timeout: 5000 });
@@ -3687,7 +3808,7 @@ try {
           right: Math.round(r.right), top: Math.round(r.top), seen: Math.round(seen) };
       });
       await page.click('#sample-card-dialog-close');
-      await page.waitForTimeout(200);
+      await dialogClosed(page, '#sample-card-dialog').catch(() => {});
       // On a phone the story card's cross sits under the card instead (checked
       // with the sample card's explanations, further down).
       check('on a ' + label + ' the full screen sample card has a cross ' + (label === 'phone' ? 'that closes it' : 'in its top right that closes it'),
@@ -3827,7 +3948,7 @@ try {
   // tier's content edge and nothing in the tier sits below it.
   {
     await page.setViewportSize({ width: 1100, height: 900 });
-    await page.waitForTimeout(200);
+    await settle(page);
     const row = await page.evaluate(() => {
       const button = document.querySelector('#insight-sample').getBoundingClientRect();
       const last = [...document.querySelectorAll('.insight-premium .insight-extras li')].pop().getBoundingClientRect();
@@ -3842,7 +3963,7 @@ try {
   }
   for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.waitForTimeout(200);
+    await settle(page);
     const place = await page.evaluate(() => {
       const tier = document.querySelector('.insight-premium');
       const pad = parseFloat(getComputedStyle(tier).paddingRight);
@@ -3863,7 +3984,7 @@ try {
   const tierLayout = {};
   for (const width of [1100, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.waitForTimeout(150);
+    await settle(page);
     tierLayout[width] = await page.evaluate(() => {
       const list = document.querySelector('.insight-free .card-features').getBoundingClientRect();
       const card = document.querySelector('.insight-preview').getBoundingClientRect();
@@ -3906,7 +4027,7 @@ try {
       drawnAtFirst === '0,1,prev', drawnAtFirst);
     // Once round the deck and back to the front, so every card has been drawn.
     for (let i = 0; i < 6; i++) await page.evaluate(() => document.querySelector('.insight-deck-step[data-deck-step="1"]').click());
-    await page.waitForTimeout(300);
+    await settle(page, '#insight-deck');
     const gallery = await page.evaluate(() => {
       const g = document.querySelector('#insight-deck');
       const cards = [...g.querySelectorAll('.insight-preview')];
@@ -3948,7 +4069,7 @@ try {
     // The deck's back arrow brings the last card to the front, wrapping round.
     await page.locator('.insight-deck-step[data-deck-step="-1"]').scrollIntoViewIfNeeded();
     await page.click('.insight-deck-step[data-deck-step="-1"]');
-    await page.waitForTimeout(500);
+    await settle(page, '#insight-deck');
     const stepped = await page.evaluate(() => ({
       front: [...document.querySelectorAll('#insight-deck .insight-preview.is-front')].map(c => c.getAttribute('data-card')),
       dot: [...document.querySelectorAll('#insight-deck-dots i')].findIndex(d => d.classList.contains('is-on')),
@@ -3969,10 +4090,10 @@ try {
     check('a gallery card opens full screen, and steps left and right through the rest, wrapping round',
       /^6 \/ 6 /.test(opened) && /^1 \/ 6 Mulan/.test(wrapped) && back === opened, [opened, wrapped, back].join(' | '));
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+    await dialogClosed(page, '#sample-card-dialog');
     // Closed, the deck is left on the card last looked at; put it back.
     await page.click('.insight-deck-step[data-deck-step="1"]');
-    await page.waitForTimeout(500);
+    await settle(page, '#insight-deck');
   }
 
   // ---- the dark theme is a theme, not a hope ----
@@ -4149,18 +4270,12 @@ try {
   // on a dropzone they cannot use.
   // Settled first: the phone widths swept above leave resize work (the
   // deck's refit) that would otherwise cut the smooth scroll short.
-  await page.waitForTimeout(800);
+  await settle(page);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(200);
+  await frames(page);
   await page.click('#hero-start');
-  // Until the smooth scroll has arrived and settled: near the top, and the
-  // same position two reads apart.
-  for (let i = 0, last = null; i < 40; i++) {
-    await page.waitForTimeout(150);
-    const top = await page.evaluate(() => document.querySelector('#cast').getBoundingClientRect().top);
-    if (last !== null && Math.abs(top - last) < 0.5 && top < 300) break;
-    last = top;
-  }
+  // Until the smooth scroll has arrived and come to rest.
+  await scrollSettled(page, null, 250);
   check('the primary action lands on Meet the cast, with the instructions for getting the export straight below',
     await page.evaluate(() => {
       const cast = document.querySelector('#cast').getBoundingClientRect();
@@ -4207,7 +4322,7 @@ try {
     check('and it is slim: under 165px tall, its note included', cast.height < 165, String(cast.height));
     const at = () => page.evaluate(() => document.querySelector('#cast-strip').scrollLeft);
     const before = await at();
-    await page.waitForTimeout(800);
+    await page.waitForFunction(was => document.querySelector('#cast-strip').scrollLeft > was, before, { timeout: 5000 }).catch(() => {});
     const after = await at();
     check('it turns on its own until touched', after > before, before + ' → ' + after);
     // A press anywhere on it hands it over: it stops for good.
@@ -4216,7 +4331,9 @@ try {
     await page.mouse.down();
     await page.mouse.up();
     const handed = await at();
-    await page.waitForTimeout(800);
+    // Still for 400ms: past the strip's 180ms rest timer (app.js), and long
+    // enough that its 40px-a-second turn would have moved it.
+    await scrollSettled(page, '#cast-strip', 400).catch(() => {});
     check('once touched it stops turning by itself', Math.abs((await at()) - handed) < 1, handed + ' → ' + (await at()));
     // A mouse drag scrolls it.
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -4228,13 +4345,13 @@ try {
     // The arrows move it a few tiles each way. From the middle copy, so the
     // step back into it after coming to rest does not enter the reading.
     await page.evaluate(() => { const strip = document.querySelector('#cast-strip'); strip.scrollLeft = 2 * strip.scrollWidth / 5; });
-    await page.waitForTimeout(400);
+    await scrollSettled(page, '#cast-strip', 250);
     const middle = await at();
     await page.click('.cast-arrow-right');
-    await page.waitForTimeout(900);
+    await scrollSettled(page, '#cast-strip', 250);
     const right = await at();
     await page.click('.cast-arrow-left');
-    await page.waitForTimeout(900);
+    await scrollSettled(page, '#cast-strip', 250);
     const left = await at();
     check('the right arrow moves it on and the left one back', right > middle + 100 && left < right - 100,
       [middle, right, left].join(' → '));
@@ -4889,7 +5006,7 @@ try {
     const shownOn = {};
     for (const [name, nav] of [['syncs', '#nav-scan'], ['faq', '#nav-about'], ['front', '.brand[data-nav="main"]']]) {
       await page.click(nav);
-      await page.waitForTimeout(150);
+      await frames(page);
       shownOn[name] = await page.locator('#report-promo').isVisible();
     }
     check('it shows on the front page, My Syncs and the FAQ too', Object.values(shownOn).every(Boolean), JSON.stringify(shownOn));
@@ -4897,13 +5014,10 @@ try {
     check('on the front page the banner steps down the same small gap, not touching the bar', frontGap >= 4 && frontGap <= 16, String(frontGap));
     await page.click('#report-promo-go');
     await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 });
-    // Until the smooth scroll has come to rest: the same place twice, 300ms apart.
-    for (let last = -1, i = 0; i < 20; i++) {
-      await page.waitForTimeout(300);
-      const now = await page.evaluate(() => Math.round(scrollY));
-      if (now === last && now > 0) break;
-      last = now;
-    }
+    // Until the smooth scroll has come to rest: moved, then still for longer
+    // than the 350ms after which the app scrolls to the offer a second time.
+    await page.waitForFunction(() => scrollY > 0, null, { timeout: 10000 }).catch(() => {});
+    await scrollSettled(page, null, 450);
     // Scrolled to it: its head near the top, or as near as the page's end allows.
     const landed = await page.evaluate(() => {
       const offer = document.querySelector('#view-profile .full-report-locked');
@@ -4976,7 +5090,7 @@ try {
   {
     const vp = page.viewportSize();
     await page.setViewportSize({ width: 390, height: 800 });
-    await page.waitForTimeout(200);
+    await frames(page);
     const centred = await page.evaluate(() => {
       const head = document.querySelector('#profile-body .full-report-locked .premium-tier-head').getBoundingClientRect();
       const b = document.querySelector('#profile-body .full-report-locked .tier-sample').getBoundingClientRect();
@@ -4984,7 +5098,7 @@ try {
       return { off: Math.round((b.left + b.right) / 2 - (head.left + head.right) / 2), below: b.top >= title.bottom - 1 };
     });
     await page.setViewportSize(vp);
-    await page.waitForTimeout(200);
+    await frames(page);
     check('on a phone, "See sample report" sits centred on its own line under the title',
       Math.abs(centred.off) <= 2 && centred.below, JSON.stringify(centred));
   }
@@ -5143,7 +5257,7 @@ try {
   // test. The handler is delegated on document, so a dispatched click on the
   // head bubbles to it exactly as a real one does.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(200);
+  await frames(page);
   {
     const revealed = await page.evaluate(async () => {
       const parts = [...document.querySelectorAll('#profile-body .part-card')];
@@ -5182,7 +5296,7 @@ try {
   }
 
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.waitForTimeout(200);
+  await frames(page);
   await toHub(page);
 
   await openAllSections(page);
@@ -5237,7 +5351,7 @@ try {
   // already runs close to the full slot width, so there is nothing there to
   // measure a difference against.
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.waitForTimeout(150);
+  await frames(page);
   const hug = await page.evaluate(() => {
     const container = document.querySelector('.container').getBoundingClientRect();
     const section = document.querySelector('#psyche-card-section').getBoundingClientRect();
@@ -5555,7 +5669,8 @@ try {
   const fitAt = async (width, height) => {
     await page.setViewportSize({ width, height });
     await page.click('#psyche-card-open', { position: { x: 6, y: 6 } });
-    await page.waitForTimeout(220);
+    await page.waitForSelector('#card-dialog[open]', { timeout: 10000 });
+    await settle(page, '#card-dialog');
     const out = await page.evaluate(() => {
       const card = document.querySelector('#psyche-card-full');
       const box = card.getBoundingClientRect();
@@ -5582,7 +5697,7 @@ try {
       };
     });
     await page.click('#card-dialog-close');
-    await page.waitForTimeout(120);
+    await dialogClosed(page, '#card-dialog');
     return out;
   };
   // The card as a PNG. Rasterising DOM through an SVG foreignObject fails in a
@@ -5594,13 +5709,14 @@ try {
   const DL = '#profile-side .cx-tool[data-act="download"]';
   const SH = '#profile-side .cx-tool[data-act="share"]';
   await page.click('#psyche-card-open', { position: { x: 6, y: 6 } });
-  await page.waitForTimeout(250);
+  await page.waitForSelector('#card-dialog[open]', { timeout: 10000 }).catch(() => {});
+  await settle(page, '#card-dialog');
   check('full screen is the card alone, with no download or share',
     await page.evaluate(() => document.querySelector('#card-dialog').open &&
       document.querySelector('#card-dialog').classList.contains('no-tools')) &&
     !(await page.locator('#card-download').isVisible()) && !(await page.locator('#card-share').isVisible()));
   await page.click('#card-dialog-close');
-  await page.waitForTimeout(150);
+  await dialogClosed(page, '#card-dialog');
   check('beside the card, My Psyche offers a download and a share button',
     (await page.locator(DL).isVisible()) && (await page.locator(SH).isVisible()));
   check('each carries a small visible label beside its icon, plus a fuller tooltip',
@@ -5722,7 +5838,7 @@ try {
     await page.setViewportSize({ width, height });
     await page.click('#psyche-card-open');
     await page.waitForSelector('#card-dialog[open]', { timeout: 15000 });
-    await page.waitForTimeout(250);
+    await settle(page, '#card-dialog');
     const geo = await page.evaluate(() => {
       const close = document.querySelector('#card-dialog-close').getBoundingClientRect();
       const actions = [...document.querySelectorAll('.card-dialog-actions .btn')]
@@ -5758,7 +5874,7 @@ try {
     !onLaptop.barOverlaps && !onPhone.barOverlaps,
     JSON.stringify({ laptop: onLaptop.barOverlaps, phone: onPhone.barOverlaps }));
   await page.setViewportSize({ width: 1440, height: 860 });
-  await page.waitForTimeout(150);
+  await frames(page);
 
   // The page opens on the card: the banner that named the reader above it is
   // gone from sight, kept as a level-1 heading for screen readers.
@@ -6112,7 +6228,8 @@ try {
           /Google data/.test(note) && /Facebook data/.test(note) && !(await page.locator('#datasources-dialog[open]').count()),
         note.slice(0, 300));
       await page.click('#more-data-back');
-      await page.waitForTimeout(300);
+      await dialogClosed(page, '#more-data-dialog').catch(() => {});
+      await frames(page);
       check('and Back there leaves the unlock, with nothing else open',
         !(await page.locator('#more-data-dialog[open], #datasources-dialog[open], #premium-dialog[open]').count()));
       await clickClear(page, '#profile-body .paid-card[data-paid="wellness"] .premium-unlock');
@@ -6149,11 +6266,13 @@ try {
           (await low.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')]
             .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook');
       await low.click('#datasources-back').catch(() => low.keyboard.press('Escape'));
-      await low.waitForTimeout(300);
+      await dialogClosed(low, '#datasources-dialog').catch(() => {});
+      await frames(low);
       await low.click('#profile-body .premium-unlock');
       await low.waitForSelector('#more-data-dialog[open]', { timeout: 10000 });
       await low.click('#more-data-back');
-      await low.waitForTimeout(300);
+      await dialogClosed(low, '#more-data-dialog').catch(() => {});
+      await frames(low);
       check('and Back on the note leaves the unlock, with nothing else open',
         !(await low.locator('#more-data-dialog[open], #datasources-dialog[open], #premium-dialog[open]').count()));
     } finally {
@@ -6665,7 +6784,8 @@ try {
   // No data offer on this path: the receipt already exists, so this reader is
   // collecting sections they paid for rather than starting a new unlock.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => /already paid/i.test(document.querySelector('#premium-dialog-title').innerText), null, { timeout: 10000 }).catch(() => {});
+  await settle(page, '#premium-dialog');
   check('resuming does not create a second PaymentIntent',
     intentRequests === 0, intentRequests + ' create-payment-intent requests');
   check('and the dialog leads with the fact that they already paid',
@@ -6701,7 +6821,7 @@ try {
   check('Cancel is offered right up until the moment something is authorised',
     !(await page.locator('#premium-cancel').isDisabled()));
   await page.click('#premium-retry');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.querySelector('#premium-cancel').disabled, null, { timeout: 5000 }).catch(() => {});
   check('and is greyed out the moment the authorised run starts',
     await page.locator('#premium-cancel').isDisabled());
   // Greyed out to look at, not only to the DOM. There was no `.btn:disabled`
@@ -6718,12 +6838,12 @@ try {
       return s.opacity + ' | ' + s.filter + ' | ' + s.cursor;
     }));
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(50);
+  await frames(page);
   check('escape never closes the payment sheet, in flight or not',
     await page.locator('#premium-dialog').isVisible());
   await page.evaluate(() =>
     document.querySelector('#premium-dialog').dispatchEvent(new MouseEvent('click', { bubbles: true })));
-  await page.waitForTimeout(50);
+  await frames(page);
   check('nor does a backdrop click',
     await page.locator('#premium-dialog').isVisible());
   // Not page.click(): the point is that the button refuses the press. A real
@@ -6731,7 +6851,7 @@ try {
   // what actually holds them here, so this drives the same no-op rather than
   // waiting on an enabled state that is never coming.
   await page.evaluate(() => document.querySelector('#premium-cancel').click());
-  await page.waitForTimeout(50);
+  await frames(page);
   check('and Cancel itself no longer closes it either, with its fetch genuinely in flight',
     await page.locator('#premium-dialog').isVisible());
 
@@ -6862,7 +6982,11 @@ try {
         const fetched = [];
         fresh.on('request', r => fetched.push(new URL(r.url()).pathname));
         await fresh.goto('http://localhost:' + PORT + '/');
-        await fresh.waitForTimeout(2500);
+        // Every draw boot makes is made once status has landed; both files fetched,
+        // and any second download would have been asked for by then.
+        await booted(fresh);
+        await waitUntil(() => fetched.includes('/sample.json') && fetched.includes('/sample-cards.json'), 'the sample files', 15000).catch(() => {});
+        await frames(fresh);
         const count = name => fetched.filter(p => p === name).length;
         check('the front page downloads sample.json and sample-cards.json once each',
           count('/sample.json') === 1 && count('/sample-cards.json') === 1, JSON.stringify(fetched.filter(p => /sample/.test(p))));
@@ -7975,7 +8099,7 @@ try {
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
   check('the PsycheAI logo takes a reader with a card to the main page',
     await page.locator('#hero-load').isVisible() && !(await page.locator('#view-profile').isVisible()));
-  await page.waitForTimeout(400);
+  await settle(page);
   check('the sample card there is fitted to its box, not left at full size off the page',
     await page.evaluate(() => {
       const card = document.querySelector('#insight-card-preview');
@@ -8151,7 +8275,7 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
   await page.locator('.upload-card').scrollIntoViewIfNeeded();
-  await page.waitForTimeout(200);
+  await frames(page);
   const scrollAtDropzone = await page.evaluate(() => window.scrollY);
   check('the dropzone really is far enough down to make this matter',
     scrollAtDropzone > 400, String(scrollAtDropzone));
@@ -8161,7 +8285,7 @@ try {
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
   await page.click('#supplement-back');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
-  await page.waitForTimeout(300);
+  await scrollSettled(page);
   check('Back at the offer leaves the page where the reader left it',
     Math.abs((await page.evaluate(() => window.scrollY)) - scrollAtDropzone) < 40,
     'was ' + scrollAtDropzone + ', now ' + (await page.evaluate(() => window.scrollY)));
@@ -8177,7 +8301,7 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
-  await page.waitForTimeout(300);
+  await scrollSettled(page);
   check('and Escape at the review does too, since it means the same thing',
     Math.abs((await page.evaluate(() => window.scrollY)) - scrollAtDropzone) < 40,
     'was ' + scrollAtDropzone + ', now ' + (await page.evaluate(() => window.scrollY)));
@@ -8264,7 +8388,7 @@ try {
       return tick('instagram') && tick('google') && !tick('facebook');
     }));
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(200);
+  await dialogClosed(page, '#datasources-dialog');
   await page.evaluate(() => localStorage.removeItem('psycheai_digest'));
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
@@ -8892,7 +9016,8 @@ try {
     !(await page.evaluate(() => document.querySelector(
       '#datasources-dialog .mode-option[data-datasource="instagram"]').classList.contains('is-added'))));
   await continueFromDataSources(page);
-  await page.waitForTimeout(600);
+  await page.waitForFunction(() => /no longer on this device/i.test(document.querySelector('#profile-alert').innerText), null, { timeout: 10000 }).catch(() => {});
+  await frames(page);
   check('Continue with nothing loaded says what is needed instead of throwing',
     /no longer on this device/i.test(await page.locator('#profile-alert').innerText()) &&
     !(await page.evaluate(() => document.querySelector('#review-dialog').open)),
@@ -8986,7 +9111,7 @@ try {
   const noteChooser = () => { popoutPickerOpened = true; };
   page.on('filechooser', noteChooser);
   await openDataSourcesPopout(page);
-  await page.waitForTimeout(300);
+  await settle(page, '#datasources-dialog');
   page.off('filechooser', noteChooser);
   check('the button opens the data-sources popout, without asking for anything through a native picker yet',
     (await page.locator('#datasources-dialog').isVisible()) && !popoutPickerOpened);
@@ -9124,7 +9249,7 @@ try {
     await page.evaluate(() => document.querySelector('#review-dialog').open && !document.querySelector('#premium-dialog').open));
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, null, { timeout: 15000 });
-  await page.waitForTimeout(300);
+  await frames(page);
 
   // Loading Google for real, all the way through to a paid re-run: the
   // popout, Continue, review, payment, and the enriched digest landing in
@@ -9218,7 +9343,7 @@ try {
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   await leavePayment(page);
-  await page.waitForTimeout(300);
+  await frames(page);
   check('declining the re-run leaves the report and its digest exactly as they were',
     (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeDecline0 &&
     (await page.locator('#view-profile').isVisible()) &&
@@ -9261,7 +9386,7 @@ try {
   // Escape, by contrast, still leaves entirely.
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
-  await page.waitForTimeout(200);
+  await frames(page);
   check('Escape at that same review still abandons the attempt rather than stepping back',
     !(await page.evaluate(() => document.querySelector('#datasources-dialog').open)) &&
     (await page.locator('#view-profile').isVisible()) &&
@@ -9378,7 +9503,7 @@ try {
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await settleProfile(page);
-  await page.waitForTimeout(500);
+  await scrollSettled(page);
 
   await openDataSourcesPopout(page);
   check('Google shows loaded in the popout too, carried forward from the in-memory session',
@@ -9399,7 +9524,7 @@ try {
     const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
     return row && !row.classList.contains('is-loading');
   }, { timeout: 30000 });
-  await page.waitForTimeout(300);
+  await settle(page, '#datasources-dialog');
   // This asserted the opposite until the predicate behind it was corrected,
   // and the old assertion was wrong in a way the suite could not see.
   //
@@ -9505,7 +9630,7 @@ try {
   // the request count actually landing is the only wait that means what it
   // says.
   await waitForLength(analyseBodies, analysesBeforeSend + 1, 60000);
-  await page.waitForTimeout(300);
+  await runLanded(page);
   page.off('request', noteRerunPremium);
   // One call regenerates the whole premium report — card, written report and
   // the four sections — so there is exactly one request, and no second one to
@@ -9764,7 +9889,7 @@ try {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
     return Boolean(p && p.premiumAnalysis);
   }, { timeout: 40000 });
-  await page.waitForTimeout(500);
+  await runLanded(page);
   // One call for the written report, anchored to the card on screen — and the
   // card itself left exactly as it was, QR payload and all. The reader may
   // already have shared it.
@@ -9863,7 +9988,7 @@ try {
     await page.locator('#premium-dialog-title').innerText());
   const beforeDecline = analyseBodies.length;
   await leavePayment(page);
-  await page.waitForTimeout(400);
+  await frames(page);
   check('declining costs nothing and leaves the existing report alone',
     analyseBodies.length === beforeDecline &&
     (await page.locator('#view-profile').isVisible()) &&
@@ -9963,7 +10088,7 @@ try {
   await page.waitForSelector('#view-scan:not([hidden])');
   await page.fill('#paste-input', 'https://psycheai.io/#p=nonsense');
   await page.click('#paste-go');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => /not a PsycheAI link/.test(document.querySelector('#scan-alert').innerText), null, { timeout: 10000 }).catch(() => {});
   check('a link that is not one is refused on My Syncs, saying so',
     /not a PsycheAI link/.test(await page.locator('#scan-alert').innerText()) &&
       await page.locator('#view-scan').isVisible(), await page.locator('#scan-alert').innerText());
@@ -10850,10 +10975,10 @@ try {
         await page.evaluate(() => document.querySelector('#delete-dialog').open), saved && saved.suggestedFilename());
     await page.waitForSelector('#backup-dialog[open]', { timeout: 5000 });
     await page.click('#backup-dialog-ok');
-    await page.waitForTimeout(150);
+    await dialogClosed(page, '#backup-dialog');
   }
   await page.click('#delete-cancel');
-  await page.waitForTimeout(200);
+  await dialogClosed(page, '#delete-dialog').catch(() => {});
   check('and Cancel keeps everything where it was',
     !(await page.evaluate(() => document.querySelector('#delete-dialog').open)) &&
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) !== null &&
@@ -10884,7 +11009,8 @@ try {
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
   // Continue with no Instagram: said inside the popout, which stays open.
   await page.click('#datasources-continue');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelector('#datasources-status').textContent !== '', null, { timeout: 10000 }).catch(() => {});
+  await frames(page);
   const needsIg = await page.evaluate(() => ({ open: document.querySelector('#datasources-dialog').open,
     said: document.querySelector('#datasources-status').textContent,
     page: (document.querySelector('#upload-error') || {}).textContent || '' }));
@@ -10914,7 +11040,8 @@ try {
     broken.data.profile.payload = 'not-a-card';
     await page.setInputFiles('#restore-input', { name: 'edited.json', mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(broken)) });
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => !document.querySelector('#restore-open').disabled, null, { timeout: 10000 });
+    await frames(page);
     check('a backup whose card does not decode is refused',
       (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
   }
@@ -10922,7 +11049,7 @@ try {
     buffer: Buffer.from(backupText || '{}') });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 }).catch(() => {});
   // The popout's own Back must not then take the reader to the main page.
-  await page.waitForTimeout(500);
+  await booted(page);
   check('restoring closes the popout and stays on My Psyche',
     !(await page.evaluate(() => document.querySelector('#datasources-dialog').open)) &&
       await page.locator('#view-profile').isVisible());
@@ -11122,7 +11249,7 @@ try {
       await wp.locator('#insight-card-open').scrollIntoViewIfNeeded();
       if (label === 'phone') await wp.tap('#insight-card-open'); else await wp.click('#insight-card-open');
       await wp.waitForSelector('#sample-card-dialog[open]', { timeout: 5000 });
-      await wp.waitForTimeout(300);
+      await settle(wp, '#sample-card-dialog');
       const tip = await wp.evaluate(() => {
         const t = document.querySelector('#sample-card-tip');
         const r = t.getBoundingClientRect();
@@ -11136,7 +11263,7 @@ try {
       for (const key of ['character', 'type', 'love']) {
         const part = '#sample-psyche-card-full [data-cx="' + key + '"]';
         if (label === 'phone') await wp.tap(part); else await wp.hover(part);
-        await wp.waitForTimeout(350);
+        await settle(wp, '#sample-card-dialog');
         notes.push(await wp.evaluate(key => {
           const pop = document.querySelector('#sample-card-dialog .cx-pop');
           const p = pop.getBoundingClientRect();
@@ -11148,7 +11275,7 @@ try {
             against: (p.top >= r.bottom - 1 && p.top - r.bottom <= 14) || (p.bottom <= r.top + 1 && r.top - p.bottom <= 14),
             onScreen: p.top >= 0 && p.bottom <= innerHeight + 1 && p.right <= innerWidth + 1 };
         }, key));
-        if (label === 'phone') { await wp.tap('#sample-card-dialog .cx-close'); await wp.waitForTimeout(200); }
+        if (label === 'phone') { await wp.tap('#sample-card-dialog .cx-close'); await settle(wp, '#sample-card-dialog'); }
       }
       check('structured: on a ' + label + ' each part of the sample card is explained ' +
         (label === 'phone' ? 'right against the part tapped' : 'beside the card, level with the part'),
@@ -11156,7 +11283,8 @@ try {
           notes[1].title === 'MBTI', JSON.stringify(notes));
       if (label === 'laptop') {
         await wp.mouse.move(4, 400);
-        await wp.waitForTimeout(250);
+        await wp.waitForFunction(() => document.querySelector('#sample-card-dialog .cx-pop').hidden, null, { timeout: 5000 }).catch(() => {});
+        await frames(wp);
         check('structured: and leaving the sample card puts the explanation away',
           await wp.evaluate(() => document.querySelector('#sample-card-dialog .cx-pop').hidden &&
             document.querySelector('#sample-card-dialog').open));
@@ -11169,7 +11297,7 @@ try {
         check('structured: on a phone the sample card\'s cross sits beside the line under it, clear of the card',
           cross.clear && cross.onScreen, JSON.stringify(cross));
         await wp.tap('#sample-card-dialog-close');
-        await wp.waitForTimeout(200);
+        await dialogClosed(wp, '#sample-card-dialog').catch(() => {});
         check('structured: and closes it', !(await wp.evaluate(() => document.querySelector('#sample-card-dialog').open)));
       }
       check('structured: the sample card full screen on a ' + label + ' with no page errors', wpErrors.length === 0, wpErrors.join(' | '));
@@ -11284,7 +11412,7 @@ try {
         const rows = [];
         for (const [width, height] of [[1280, 900], [390, 844]]) {
           await sp.setViewportSize({ width, height });
-          await sp.waitForTimeout(200);
+          await frames(sp);
           rows.push(await sp.evaluate(() => [...document.querySelectorAll('#view-profile .cta-row .btn')]
             .filter(b => !b.hidden && getComputedStyle(b).display !== 'none')
             .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
@@ -11455,7 +11583,7 @@ try {
         sp.on('download', listen);
         await sp.click('.hub-card [data-hub-go="ai"]');
         await sp.waitForSelector('#hub-confirm-dialog[open]', { timeout: 10000 });
-        await sp.waitForTimeout(300);
+        await settle(sp, '#hub-confirm-dialog');
         sp.off('download', listen);
         check('AI Personal Context explains itself first, with Back and Download, and downloads nothing yet',
           !early && await sp.evaluate(() => document.querySelector('#hub-confirm-title').textContent === 'AI Personal Context' &&
@@ -11638,13 +11766,14 @@ try {
         {
           const vp = sp.viewportSize();
           await sp.setViewportSize({ width: 1920, height: 1000 });
-          await sp.waitForTimeout(300);
+          await settle(sp, '#ask-dialog');
           const edge = () => Math.round(document.querySelector('main.container').getBoundingClientRect().right);
           const open = await sp.evaluate(edge => ({ page: eval(edge)(), panel: Math.round(document.querySelector('#ask-dialog').getBoundingClientRect().left),
             panelRight: Math.round(document.querySelector('#ask-dialog').getBoundingClientRect().right) }), edge.toString());
           if (process.env.UITEST_SHOTS) await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-laptop.png' });
           await sp.click('#ask-close');
-          await sp.waitForTimeout(200);
+          await dialogClosed(sp, '#ask-dialog');
+          await backLanded(sp);
           const shut = await sp.evaluate(() => {
             const page = document.querySelector('main.container');
             const fab = document.querySelector('#ask-fab').getBoundingClientRect();
@@ -11662,7 +11791,7 @@ try {
           await sp.click('#ask-fab');
           await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
           await sp.setViewportSize(vp);
-          await sp.waitForTimeout(300);
+          await settle(sp, '#ask-dialog');
         }
         await sp.click('#ask-close');
         await sp.reload({ waitUntil: 'load' });
@@ -11675,7 +11804,8 @@ try {
           await sp.evaluate(() => { const c = getComputedStyle(document.querySelector('#ask-close'));
             return c.backgroundColor !== 'rgba(0, 0, 0, 0)' && c.borderRadius !== '0px'; }));
         await sp.goBack();
-        await sp.waitForTimeout(400);
+        await dialogClosed(sp, '#ask-dialog').catch(() => {});
+        await backLanded(sp).catch(() => {});
         check('on My Psyche, Back with the panel up minimises it rather than leaving the site',
           await sp.evaluate(() => location.port !== '' && !document.querySelector('#ask-dialog').open &&
             !document.querySelector('#view-profile').hidden && Boolean(document.querySelector('#profile-body .hub-card'))));
@@ -11740,13 +11870,14 @@ try {
         // short pull springs back, a long one minimises it.
         const wide = sp.viewportSize();
         await sp.setViewportSize({ width: 390, height: 800 });
-        await sp.waitForTimeout(300);
+        await settle(sp, '#ask-dialog');
         const drag = async dy => {
           const h = await sp.locator('#ask-handle').boundingBox();
           const x = h.x + h.width / 2, y = h.y + h.height / 2;
           await sp.mouse.move(x, y); await sp.mouse.down();
           await sp.mouse.move(x, y + dy / 2); await sp.mouse.move(x, y + dy); await sp.mouse.up();
-          await sp.waitForTimeout(300);
+          await settle(sp, '#ask-dialog');
+          if (!(await sp.evaluate(() => document.querySelector('#ask-dialog').open))) await backLanded(sp).catch(() => {});
         };
         check('on a phone the sheet is set apart from the page by an accent border along its top',
           await sp.evaluate(() => { const c = getComputedStyle(document.querySelector('#ask-dialog'));
@@ -11769,12 +11900,13 @@ try {
         await sp.click('#ask-fab');
         await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
         await sp.goBack();
-        await sp.waitForTimeout(400);
+        await dialogClosed(sp, '#ask-dialog').catch(() => {});
+        await backLanded(sp).catch(() => {});
         check('Back with the panel up minimises it and stays on My Report',
           await sp.evaluate(() => !document.querySelector('#ask-dialog').open && !document.querySelector('#ask-fab').hidden &&
             document.querySelectorAll('#profile-body .part-card').length > 0));
         await sp.setViewportSize(wide);
-        await sp.waitForTimeout(300);
+        await frames(sp);
       }
       await sp.goBack();
       await sp.waitForSelector('#profile-body .hub-card', { timeout: 15000 });
@@ -11808,7 +11940,7 @@ try {
         check('and a tap opens just the part the reader chose',
           (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,career:shut,together:shut,appendix:shut', await states());
         await sp.click('#profile-body .part-card[data-part-card="drives"] .card-toggle');
-        await sp.waitForTimeout(900);
+        await scrollSettled(sp);
         const opened = await sp.evaluate(() => {
           const card = document.querySelector('#profile-body .part-card[data-part-card="drives"]').getBoundingClientRect();
           const nav = document.querySelector('.nav').getBoundingClientRect();
@@ -11837,7 +11969,7 @@ try {
       // The card is on My Psyche.
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
-      await sp.waitForTimeout(300);
+      await frames(sp);
       // Gifts, given: the schema has one name for gifts ("Receiving gifts"),
       // and on the Shows care as side it reads as giving them.
       {
@@ -11880,7 +12012,7 @@ try {
         await seed(true);
         await sp.click('#nav-profile');
         await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
-        await sp.waitForTimeout(300);
+        await frames(sp);
       }
       const cardFace = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card');
@@ -12274,7 +12406,7 @@ try {
         for (const sel of ['.wellness-card', '.motivators-card, .part-card[data-part-card="drives"] .section-card', '.development-card .timeline']) {
           await sp.evaluate(sel => { const n = document.querySelector('#profile-body ' + sel.split(', ').join(', #profile-body '));
             window.scrollTo(0, n.getBoundingClientRect().top + scrollY - innerHeight * 0.22); }, sel);
-          await sp.waitForTimeout(300);
+          await frames(sp, 3);
           lit.push(await sp.evaluate(() => { const b = document.querySelector('#profile-body .part-nav-item.is-current'); return b && b.getAttribute('data-part-target'); }));
         }
         check('structured: the nav lights the part being read, even after a jump into its middle',
@@ -12304,11 +12436,11 @@ try {
       for (const [label, width] of [['wide', 1440], ['laptop', 1100]]) {
         await sp.setViewportSize({ width, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
-        await sp.waitForTimeout(250);
+        await frames(sp);
         const landed = [];
         for (const key of ['drives', 'connect', 'career', 'together']) {
           await sp.click('#profile-body .part-nav-item[data-part-target="' + key + '"]');
-          await sp.waitForTimeout(900);
+          await scrollSettled(sp);
           landed.push(await sp.evaluate(key => {
             const heading = document.querySelector('#profile-body .report-part[data-part="' + key + '"]');
             const r = heading.getBoundingClientRect();
@@ -12327,7 +12459,7 @@ try {
       {
         await sp.setViewportSize({ width: 390, height: 844 });
         await sp.evaluate(() => window.scrollTo(0, 2400));
-        await sp.waitForTimeout(300);
+        await frames(sp);
         const phoneNav = await sp.evaluate(() => {
           const nav = document.querySelector('#profile-body .part-nav');
           return { hidden: !nav || getComputedStyle(nav).display === 'none',
@@ -12366,9 +12498,9 @@ try {
       for (const [label, width] of [['wide', 1440]]) {
         await sp.setViewportSize({ width, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 3000));
-        await sp.waitForTimeout(250);
+        await frames(sp);
         await sp.click('#profile-body .part-nav-item[data-part-target="overview"]');
-        await sp.waitForTimeout(900);
+        await scrollSettled(sp);
         check('structured: on a ' + label + ' screen 00 goes to the top of My Report',
           await sp.evaluate(() => window.scrollY < 5));
       }
@@ -12378,7 +12510,7 @@ try {
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
       await sp.evaluate(() => window.scrollTo(0, 0));
-      await sp.waitForTimeout(300);
+      await frames(sp);
       const paidTop = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
         const side = document.querySelector('#profile-side');
@@ -12410,7 +12542,7 @@ try {
           !document.querySelector('#profile-side .cx-tool[data-act="compat"]')));
       await sp.click('#nav-full');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
-      await sp.waitForTimeout(300);
+      await frames(sp);
       const actions = await sp.evaluate(() => {
         const row = document.querySelector('#view-profile .cta-row');
         const r = row.getBoundingClientRect();
@@ -12440,7 +12572,7 @@ try {
       for (const [w, h] of [[1280, 620], [1024, 600]]) {
         await sp.setViewportSize({ width: w, height: h });
         await sp.evaluate(() => window.scrollTo(0, 0));
-        await sp.waitForTimeout(300);
+        await frames(sp);
         const small = await sp.evaluate(() => {
           const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
           const row = document.querySelector('#view-profile .cta-row').getBoundingClientRect();
@@ -12455,7 +12587,7 @@ try {
           small.fixed && small.left && small.clear && small.actions && small.spill <= 1, JSON.stringify(small));
       }
       await sp.setViewportSize({ width: 1100, height: 900 });
-      await sp.waitForTimeout(300);
+      await frames(sp);
       check('structured: at a laptop width My Report starts straight on its parts, with no card above them',
         await sp.evaluate(() => document.querySelector('#profile-top').getBoundingClientRect().height === 0));
 
@@ -12478,7 +12610,7 @@ try {
       await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
 
       await sp.setViewportSize({ width: 360, height: 800 });
-      await sp.waitForTimeout(200);
+      await frames(sp);
       const spill = await sp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       check('structured: no sideways scroll on a phone', spill <= 1, spill + 'px');
       await sp.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
@@ -12627,7 +12759,7 @@ try {
       // short Evidence and method on the right, and no trust card or re-run —
       // more data comes with the full report, whose unlock asks for it first.
       await sp.mouse.move(2, 2);
-      await sp.waitForTimeout(150);
+      await frames(sp);
       const freeShape = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
         const side = document.querySelector('#profile-side');
@@ -12742,7 +12874,7 @@ try {
         // under one and a half screens, its sections as chips with no paragraphs.
         const vp = sp.viewportSize();
         await sp.setViewportSize({ width: 390, height: 844 });
-        await sp.waitForTimeout(300);
+        await frames(sp);
         const offer = await sp.evaluate(() => {
           const panel = document.querySelector('#profile-body .full-report-locked');
           return { height: Math.round(panel.getBoundingClientRect().height), screen: innerHeight,
@@ -12802,7 +12934,7 @@ try {
         !/Psyche Card again/i.test(await sp.locator('#premium-dialog-title').innerText()) &&
         (await sp.locator('#premium-dialog input[type="checkbox"]').count()) === 0);
       await leavePayment(sp);
-      await sp.waitForTimeout(400);
+      await frames(sp);
       check('structured: and Cancel leaves the report as it was',
         await sp.evaluate(() => !document.querySelector('#supplement-dialog').open && !document.querySelector('#premium-dialog').open));
       // Pointing at a part of the card pops its explanation out on the right,
@@ -12810,7 +12942,7 @@ try {
       const explained = [];
       for (const key of ['confidence', 'type', 'love']) {
         await sp.hover('#psyche-card [data-cx="' + key + '"]');
-        await sp.waitForTimeout(350);
+        await settle(sp, '#profile-side');
         explained.push(await sp.evaluate(key => {
           const pop = document.querySelector('#profile-side .cx-pop');
           const part = document.querySelector('#psyche-card [data-cx="' + key + '"]').getBoundingClientRect();
@@ -12828,7 +12960,7 @@ try {
           explained[0].title === 'Signal strength' && explained[1].title === 'MBTI' &&
           explained[1].letters === sampleReport.mbti.type, JSON.stringify(explained));
       await sp.mouse.move(5, 5);
-      await sp.waitForTimeout(200);
+      await frames(sp);
       check('structured: and the panel empties again when the pointer leaves the card',
         await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden &&
           !document.querySelector('#psyche-card').classList.contains('pc-guiding')));
@@ -12843,7 +12975,7 @@ try {
       check('structured: the card shows a zoom-in cursor, except over the parts that pop out',
         cursors.slot === 'zoom-in' && cursors.card === 'zoom-in' && cursors.part === 'help', JSON.stringify(cursors));
       await sp.click('#psyche-card [data-cx="motives"]');
-      await sp.waitForTimeout(250);
+      await frames(sp);
       check('structured: clicking a part explains it rather than opening the card; no "Tap to open full screen"',
         !(await sp.evaluate(() => document.querySelector('#card-dialog').open)) &&
         !(await sp.locator('#psyche-card-hint').isVisible()) && !(await sp.locator('.psyche-card-expand').isVisible()));
@@ -12860,14 +12992,15 @@ try {
         return null;
       });
       await sp.mouse.click(blank.x, blank.y);
-      await sp.waitForTimeout(300);
+      await sp.waitForSelector('#card-dialog[open]', { timeout: 10000 }).catch(() => {});
+      await settle(sp, '#card-dialog');
       check('structured: clicking the card anywhere else opens it full screen',
         await sp.evaluate(() => document.querySelector('#card-dialog').open), JSON.stringify(blank));
       check('structured: on a laptop, full screen has no Download or Share and explains nothing',
         !(await sp.locator('#card-download').isVisible()) && !(await sp.locator('#card-share').isVisible()) &&
         !(await sp.locator('#card-dialog-tip').isVisible()));
       await sp.keyboard.press('Escape');
-      await sp.waitForTimeout(200);
+      await dialogClosed(sp, '#card-dialog');
       // Beside the card: Download, Share Card, Copy link, each label whole on one line.
       const toolRow = await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-tool')].map(b => {
         const label = b.querySelector('span');
@@ -12912,13 +13045,13 @@ try {
       check('structured: Share hands the card over too — as a download where sharing files is not supported',
         /\.png$/.test(shared.suggestedFilename()), shared.suggestedFilename());
       await sp.setViewportSize({ width: 390, height: 844 });
-      await sp.waitForTimeout(300);
+      await frames(sp);
       // On a phone pointing at the card explains nothing in place: the card is
       // explained full screen.
       await sp.locator('#psyche-card [data-cx="type"]').scrollIntoViewIfNeeded();
       await sp.evaluate(() => document.querySelector('#psyche-card [data-cx="type"]') &&
         document.querySelector('#psyche-card [data-cx="type"]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
-      await sp.waitForTimeout(250);
+      await frames(sp);
       check('structured: on a phone pointing at the card explains nothing in place',
         await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden));
       await sp.mouse.move(2, 2);
@@ -12956,7 +13089,8 @@ try {
       // on the page; full screen has no Download or Share, only a line saying
       // to tap a part.
       await sp.click('#psyche-card [data-cx="bigFive"]');
-      await sp.waitForTimeout(300);
+      await sp.waitForSelector('#card-dialog[open]', { timeout: 10000 }).catch(() => {});
+      await settle(sp, '#card-dialog');
       check('structured: on a phone tapping the card opens it full screen, explaining nothing on the page',
         await sp.evaluate(() => document.querySelector('#card-dialog').open &&
           document.querySelector('#profile-side .cx-pop').hidden &&
@@ -12984,7 +13118,7 @@ try {
       const fullExplained = [];
       for (const key of ['character', 'type', 'love']) {
         await sp.click('#psyche-card-full [data-cx="' + key + '"]');
-        await sp.waitForTimeout(300);
+        await settle(sp, '#card-dialog');
         fullExplained.push(await sp.evaluate(key => {
           const pop = document.querySelector('#card-dialog .cx-pop');
           const p = pop.getBoundingClientRect();
@@ -12998,7 +13132,7 @@ try {
             overlap: Math.round(Math.max(0, Math.min(p.bottom, r.bottom) - Math.max(p.top, r.top))) };
         }, key));
         await sp.click('#card-dialog .cx-close');
-        await sp.waitForTimeout(200);
+        await settle(sp, '#card-dialog');
       }
       check('structured: in full screen on a phone, tapping a part explains it in a sheet that does not cover it',
         fullExplained.every(e => e.shown && e.title && e.body && e.lit && e.inView && e.overlap === 0 && e.beside) &&
@@ -13008,29 +13142,30 @@ try {
       // With one explained, a tap on another part goes back to the card,
       // rather than straight on to the next part's explanation.
       await sp.click('#psyche-card-full [data-cx="character"]');
-      await sp.waitForTimeout(250);
+      await settle(sp, '#card-dialog');
       await sp.click('#psyche-card-full [data-cx="bigFive"]');
-      await sp.waitForTimeout(250);
+      await settle(sp, '#card-dialog');
       check('structured: with a part explained, a tap on another part puts the explanation away, back to the card',
         await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open));
       // A tap off the card first puts an explanation away; the next closes the card.
       await sp.click('#psyche-card-full [data-cx="motives"]');
-      await sp.waitForTimeout(250);
+      await settle(sp, '#card-dialog');
       await sp.mouse.click(4, 4);
-      await sp.waitForTimeout(250);
+      await settle(sp, '#card-dialog');
       check('structured: a tap off the card puts the explanation away first, without closing the card',
         await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open &&
           !document.querySelector('#psyche-card-full').classList.contains('pc-guiding')));
       await sp.mouse.click(4, 4);
-      await sp.waitForTimeout(250);
+      await dialogClosed(sp, '#card-dialog').catch(() => {});
       check('structured: and the next tap off the card closes it',
         !(await sp.evaluate(() => document.querySelector('#card-dialog').open)));
       await sp.click('#psyche-card-open', { position: { x: 30, y: 30 } });
-      await sp.waitForTimeout(300);
+      await sp.waitForSelector('#card-dialog[open]', { timeout: 10000 }).catch(() => {});
+      await settle(sp, '#card-dialog');
       check('structured: a tap on the card opens it full screen, guided', await sp.evaluate(() => document.querySelector('#card-dialog').open &&
         document.querySelector('#card-dialog').classList.contains('is-guided')));
       await sp.keyboard.press('Escape');
-      await sp.waitForTimeout(200);
+      await dialogClosed(sp, '#card-dialog');
       await sp.setViewportSize({ width: 1100, height: 900 });
       check('structured: no console errors', spErrors.length === 0, spErrors.join(' | '));
     } finally {
@@ -13160,7 +13295,8 @@ try {
           /You guessed right!/.test(told.text) && /You said Hulk/.test(told.text) && /1 credit is on your link/.test(told.text) &&
             !/Unlock it free/.test(told.text) && told.faces === 1 && !told.later, JSON.stringify(told));
         await gp.click('#guess-go');
-        await gp.waitForTimeout(300);
+        await dialogClosed(gp, '#guess-dialog');
+        await frames(gp);
         const won = await gp.evaluate(() => ({
           gift: JSON.parse(localStorage.getItem('psycheai_gift') || 'null'),
           banner: document.querySelector('#view-profile .gift-banner').hidden,
@@ -13187,7 +13323,7 @@ try {
         await gp.evaluate(() => { localStorage.clear(); localStorage.setItem('psycheai_runs', '1'); });
         await gp.reload({ waitUntil: 'load' });
         await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
-        await gp.waitForTimeout(500);
+        await booted(gp);
         await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Po"]').click());
         const spent = await gp.evaluate(() => ({
           title: document.querySelector('#cast-title').textContent,
@@ -13288,7 +13424,7 @@ try {
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
       await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
       await rp.click('#profile-side .cx-tool[data-act="copy"]');
-      await rp.waitForTimeout(300);
+      await rp.waitForFunction(() => document.querySelector('#profile-side .cx-tool[data-act="copy"] span').textContent === window.PsycheCopy.TEXT.linkMessageCopiedShort, null, { timeout: 5000 }).catch(() => {});
       const copiedMessage = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
       const copied = copiedMessage.replace(/^.*: /, '');
       check('Copy link beside the card copies the one share message, ending in the short personal link, /c/<id>#<key>',
@@ -13298,7 +13434,7 @@ try {
       await openLink(rp);
       await rp.evaluate(() => navigator.clipboard.writeText('').catch(() => {}));
       await rp.click('#profile-body .hub-linkrow .hub-linkcopy');
-      await rp.waitForTimeout(300);
+      await rp.waitForSelector('#profile-body .hub-linkrow .hub-linkcopy.is-done', { timeout: 5000 }).catch(() => {});
       const refCopied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
       check('Your Link\'s copy icon copies the same share message and link as the card\'s Copy link, and turns to a tick',
         refCopied === copiedMessage &&
@@ -13366,11 +13502,11 @@ try {
             pastedOwn.syncs === 0 && !pastedOwn.share, JSON.stringify(pastedOwn));
         await rp.goto(home, { waitUntil: 'load' });
         await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
-        await rp.waitForTimeout(500);
+        await booted(rp);
       }
       // Pointing at the code says what it is for.
       await rp.locator('#psyche-card .pc-qr-slot').hover().catch(() => {});
-      await rp.waitForTimeout(300);
+      await settle(rp, '#profile-side');
       const qrPop = await rp.evaluate(() => {
         const pop = document.querySelector('#profile-side .cx-pop');
         return pop && !pop.hidden ? pop.innerText : '';
@@ -13470,7 +13606,8 @@ try {
           await friendPage.keyboard.press('Escape');
           await friendPage.evaluate(() => { const d = document.querySelector('#sync-dialog'); if (d.open) d.close(); });
           await friendPage.click('#scan-history .match-name[data-card]');
-          await friendPage.waitForTimeout(600);
+          await friendPage.waitForSelector('#sample-card-dialog[open]', { timeout: 10000 }).catch(() => {});
+          await settle(friendPage, '#sample-card-dialog');
           check('and the Card button shows that character',
             (await friendPage.locator('#sample-psyche-card-full').innerText()).includes(character));
           await friendPage.keyboard.press('Escape');
@@ -13543,8 +13680,9 @@ try {
             await rp.evaluate(() => !document.querySelector('#synced-dialog').open &&
               document.querySelector('#nav-scan').classList.contains('has-new') &&
               (JSON.parse(localStorage.getItem('psycheai_history')) || []).some(e => e && e.fresh)));
+          const toldOnce = syncsCollected(rp);
           await rp.reload({ waitUntil: 'load' });
-          await rp.waitForTimeout(1500);
+          await toldOnce;
           check('and it is told once: not again on the next start',
             await rp.evaluate(() => !document.querySelector('#synced-dialog').open));
           await rp.click('#nav-scan');
@@ -13557,7 +13695,8 @@ try {
           check('its row reads New · Synced with you, with Pat\'s character in the circle',
             row && /^NewSynced with you · /.test(row.meta) && row.emblem, JSON.stringify(row));
           await rp.click('#scan-history .match-row:has(.match-new) .match-results');
-          await rp.waitForTimeout(500);
+          await rp.waitForSelector('#sync-dialog[open]', { timeout: 10000 }).catch(() => {});
+          await settle(rp, '#sync-dialog');
           check('and its results say Pat shared them, with nothing to send',
             (await rp.locator('#compat-return-title').innerText()) === 'Pat shared these results with you' &&
               await rp.evaluate(() => document.querySelector('#compat-return-share').hidden && document.querySelector('#share-link-report').hidden));
@@ -13585,8 +13724,9 @@ try {
             await fetch('api/sync/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
               body: JSON.stringify({ id: link.id, ref, blob }) });
           });
+          const forgedDropped = syncsCollected(rp);
           await rp.reload({ waitUntil: 'load' });
-          await rp.waitForTimeout(2500);
+          await forgedDropped;
           check('a forged sync, its sender link not opening to the card it claims, is dropped and never shown',
             await rp.evaluate(() => !(JSON.parse(localStorage.getItem('psycheai_history') || '[]')).some(e => e && /Mallory/.test(e.withName || ''))) &&
               (await ownerInboxNow()).items.length === 0);
@@ -13607,6 +13747,9 @@ try {
           await friendPage.waitForSelector('#sync-share-dialog[open]', { timeout: 15000 });
           await friendPage.click('#sync-share-no');
           await friendPage.waitForFunction(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length === 1, null, { timeout: 60000 });
+          // Kept: a negative check. Nothing must be sent to the link's owner, and a
+          // send would follow the result by a moment; there is no event for one that
+          // never comes.
           await friendPage.waitForTimeout(1500);
           check('"Sync without sharing" syncs, and the result stays on this device: nothing waits for the link\'s owner',
             (await ownerInbox()).items.length === 0 &&
@@ -13622,7 +13765,8 @@ try {
               panel.text.startsWith(ownerFirst + ' cannot see these results yet. If you share them') &&
               panel.share === 'Yes, share with ' + ownerFirst && !panel.link, JSON.stringify(panel));
           await friendPage.keyboard.press('Escape');
-          await friendPage.waitForTimeout(400);
+          await dialogClosed(friendPage, '#sync-dialog').catch(() => {});
+          await frames(friendPage);
           const shareButton = await friendPage.evaluate(() => {
             const button = document.querySelector('#scan-history .match-share[data-share]');
             return button ? { text: button.textContent, label: button.getAttribute('aria-label') } : null;
@@ -13668,7 +13812,7 @@ try {
           await friendPage.goto('about:blank');
         }
         await friendPage.goto(base + 'c/' + saved.id, { waitUntil: 'load' });
-        await friendPage.waitForTimeout(800);
+        await friendPage.waitForFunction(() => /couldn’t be opened/.test((document.querySelector('#upload-error') || {}).innerText || ''), null, { timeout: 10000 }).catch(() => {});
         check('a short link cut short (no key) says so rather than failing silently',
           /couldn’t be opened/.test(await friendPage.locator('#upload-error').innerText().catch(() => '')));
       } finally {
@@ -13692,7 +13836,7 @@ try {
           !/Run your Psyche Card again/.test(await rp.locator('#premium-dialog').innerText()),
         await rp.locator('#premium-dialog').innerText());
       await leavePayment(rp);
-      await rp.waitForTimeout(300);
+      await frames(rp);
 
       // Three friends, each a different account on a phone of their own
       // (a different address each: one connection counts at most two).
