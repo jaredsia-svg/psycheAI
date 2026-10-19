@@ -207,6 +207,19 @@ function syncsCollected(page, timeout = 20000) {
   })();
 }
 
+// A popout the app put away with its own history.back() (popOwnEntry in
+// app.js): that step lands a moment later, and a Back pressed before it does
+// is overtaken by it. Runs `act`, then waits for the popstate that follows.
+async function afterOwnBack(page, act, timeout = 5000) {
+  await page.evaluate(() => {
+    window.__ownBack = false;
+    addEventListener('popstate', () => { window.__ownBack = true; }, { once: true });
+  });
+  await act();
+  await page.waitForFunction(() => window.__ownBack, null, { timeout });
+  await frames(page);
+}
+
 // A <dialog> has closed (or was never open).
 async function dialogClosed(page, selector, timeout = 10000) {
   await page.waitForFunction(sel => !document.querySelector(sel).open, selector, { timeout });
@@ -8150,11 +8163,11 @@ try {
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
   check('and "Get my data" opens the illustrated guide instead',
     await page.evaluate(() => document.querySelector('#guide-dialog').open));
-  await page.keyboard.press('Escape');
+  await afterOwnBack(page, () => page.keyboard.press('Escape'));
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
   await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
-  await page.click('#sample-close');
+  await afterOwnBack(page, () => page.click('#sample-close'));
   await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, { timeout: 15000 });
   check('the sample opened from there leaves the reader\'s own card untouched',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === storedBefore);

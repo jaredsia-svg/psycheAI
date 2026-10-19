@@ -2531,7 +2531,11 @@ The timings also turned up two older tolerant waits that always timed out: `choo
 supplement offer the caller had already answered (twice per run), and a wait for "already synced" missed
 the capital A of the copy. They now wait for the offer or the review after it, and match either case.
 
-The suite went from 498 s to 382–405 s (three runs in a row: 382, 405 and 394 s), with all 1,586 checks still passing.
+Going faster exposed one race the old sleeps had hidden. Closing the guide or the sample calls the app's
+own `history.back()` (`popOwnEntry`), which lands a moment later, and the suite's next Back could get there
+first and leave My Psyche. `afterOwnBack` now waits for that popstate before going on.
+
+The suite went from 498 s to 383–398 s (three runs in a row on the final code: 398, 383 and 387 s), with all 1,586 checks still passing.
 
 ### The classic layout retired (18 Oct 2026)
 
