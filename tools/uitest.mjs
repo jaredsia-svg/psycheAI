@@ -482,7 +482,10 @@ async function addSupplement(page, source, buffer, name) {
 // rather than inlined at forty call sites, and kept tolerant, so that the one
 // dialog left on the way through is answered the way a reader would.
 async function chooseDepth(page) {
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 }).catch(() => {});
+  // The offer, or the review that follows it when the caller has already
+  // answered the offer: waiting on the offer alone sat out its whole 30s
+  // timeout on every such call (October 2026).
+  await page.waitForSelector('#supplement-dialog[open], #review-dialog[open]', { timeout: 30000 }).catch(() => {});
   await passSupplement(page);
 }
 
@@ -13464,8 +13467,12 @@ try {
             body: JSON.stringify({ event: 'referral_open', ref: code }) }), mine.code);
         } finally { await other.close(); }
       }
+      // Coming back to the tab asks /api/referral at once; its answer is what
+      // would turn the panel, so the wait is for that answer to be drawn.
+      const askedReferral = rp.waitForResponse(r => r.url().includes('/api/referral'), { timeout: 15000 });
       await rp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-      await rp.waitForTimeout(1500);
+      await askedReferral;
+      await frames(rp);
       check('an open of the link alone unlocks nothing: the panel still asks the reader to share it',
         await rp.evaluate(() => Boolean(document.querySelector('#profile-body .unlock-share:not(.is-ready)'))));
       {
@@ -13834,7 +13841,7 @@ try {
           const before = await friendPage.locator('#scan-history .match-share').count();
           await friendPage.fill('#paste-input', copied);
           await friendPage.click('#paste-go');
-          await friendPage.waitForFunction(() => /already synced/.test(document.querySelector('#scan-alert').textContent), null, { timeout: 15000 })
+          await friendPage.waitForFunction(() => /already synced/i.test(document.querySelector('#scan-alert').textContent), null, { timeout: 15000 })
             .catch(() => {});
           check('an older sync gains its Share button once that person\'s link is pasted again, without syncing twice',
             before === 0 && (await friendPage.locator('#scan-history .match-share[data-share]').count()) === 1 &&

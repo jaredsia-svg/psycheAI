@@ -2503,6 +2503,36 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
+### UI suite: waits on conditions, not the clock (October 2026)
+
+`tools/uitest.mjs` had 173 fixed `waitForTimeout` sleeps (about 65 s of them in all, once the deploy branch's
+new link-open check was merged in). Each one guessed how long something takes: too long on a fast machine,
+and on a slow one too short to catch what it was waiting for. 171 of them now wait on the thing itself,
+with helpers at the top of the file that throw when it never comes:
+
+- `frames` (two `requestAnimationFrame`s, for layout after a resize, a class flip or an instant scroll),
+  `settle` (those frames plus every finite CSS transition and animation in a scope finished, through
+  `getAnimations()`, with infinite pulses left out) and `scrollSettled` (the window or an element still for a
+  quiet spell, which covers smooth scrolls and the app's own follow-up scrolls, such as the report bar's
+  second scroll at 350 ms and the cast strip's 180 ms rest timer);
+- `booted` (`/api/status` answered, so the mock-mode line is drawn, and `document.fonts.ready`),
+  `bootedQuiet` (the private-window note's storage estimate answered as well), `dialogClosed`, `runLanded`
+  (a re-run's job collected and the profile drawn again), `backLanded` (app.js's 400 ms step after a Back
+  that puts away the Ask panel, ending with scroll restoration back on) and `syncsCollected` (the Syncs
+  inbox read and, when anything was in it, cleared);
+- and, where a check is about one visible outcome (an alert's words, a "Copied" label, the hub's tick),
+  a `waitForFunction` on that outcome that gives up quietly, so the check itself reports the failure.
+
+Two are kept, each with a comment. Both are negative checks with nothing to wait for: a double tap must
+not start a second Psyche Sync, and "Sync without sharing" must not send anything to the link's owner.
+Neither a second sync nor a send fires an event when it does not happen.
+
+The timings also turned up two older tolerant waits that always timed out: `chooseDepth` waited 30 s for a
+supplement offer the caller had already answered (twice per run), and a wait for "already synced" missed
+the capital A of the copy. They now wait for the offer or the review after it, and match either case.
+
+The suite went from 498 s to 382–405 s (three runs in a row: 382, 405 and 394 s), with all 1,586 checks still passing.
+
 ### The classic layout retired (18 Oct 2026)
 
 The structured report had been the default for weeks, with the classic one kept as a no-deploy way back
