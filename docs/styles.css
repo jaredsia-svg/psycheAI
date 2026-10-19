@@ -463,28 +463,9 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 }
 .premium-tier-blurb { margin: .5rem 0 0; font-size: .9rem; color: var(--ink-soft); }
 
-/* Two columns where there is room for them, one where there is not. Four
-   items in a single column is a tall block for something that is not the
-   point of the page — but four across a wide laptop screen is the opposite
-   problem, a single thin row that is harder to scan than two rows of two.
-   Fixed at exactly two columns above the breakpoint, the same one
-   the welcome page's tiers switch at, rather than `auto-fit`, which would keep
-   adding a third and fourth column as the container gets wider. */
-.premium-tier-list {
-  list-style: none; margin: .8rem 0 0; padding: 0;
-  display: grid; grid-template-columns: 1fr; gap: .55rem .9rem;
-}
-@media (min-width: 560px) {
-  .premium-tier-list { grid-template-columns: repeat(2, 1fr); }
-}
 .premium-tier-item { display: flex; align-items: flex-start; gap: .55rem; }
-.premium-tier-icon { font-size: 1.05rem; line-height: 1.45; flex: none; }
-.premium-tier-text { display: flex; flex-direction: column; min-width: 0; }
-.premium-tier-text strong { font-size: .92rem; line-height: 1.45; }
-.premium-tier-text span { font-size: .84rem; color: var(--ink-soft); line-height: 1.4; }
-
-/* The report's own use of this block — see paidSectionsLockedHtml() in
-   app.js — sits among .card.section-card siblings, each with their own
+/* The report's own use of this block — the unlock offer on a free report,
+   fullReportLockedHtml() in app.js — sits among .card.section-card siblings, each with their own
    margin-bottom, so this needs the same spacing below it that .premium-tier
    otherwise only ever had above it on the welcome page. The button is full
    width for a report-width block; on the welcome page's narrower marketing
@@ -1155,26 +1136,8 @@ ol.howto-rows .ui-peek:hover, ol.howto-rows .ui-peek[aria-expanded="true"] { bac
 .confidence-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
 .caveats { color: var(--ink-soft); font-size: .89rem; padding-left: 1.1rem; margin: .6rem 0 0; }
 
-/* The confidence card's "Data sources" subsection and its re-run button —
-   see sourcesUsedHtml() in app.js. Compact: each row is a status line, not a
-   card, and the whole list sits on one strip rather than one box per source —
-   the section describes a fact about the report, not three separate actions,
-   now that adding or replacing a source lives behind the button below it. */
-.trust-sources { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line); }
-.trust-sources h3 { margin: 0 0 .35rem; font-size: 1rem; }
-.trust-sources > p.muted { margin: 0 0 .6rem; font-size: .88rem; }
-.source-list {
-  list-style: none; margin: 0 0 .8rem; padding: 0; border: 1px solid var(--line); border-radius: 12px;
-  overflow: hidden; background: var(--bg-alt);
-}
-.source-row {
-  display: flex; align-items: center; justify-content: space-between; gap: .8rem;
-  padding: .45rem .8rem; font-size: .92rem;
-}
-.source-row + .source-row { border-top: 1px solid var(--line); }
-.source-name { font-weight: 600; }
+/* A source's tick. */
 .source-tick { color: var(--good); font-weight: 700; }
-.source-cross { color: var(--danger); font-weight: 700; }
 
 /* ---------- trait bars ---------- */
 
@@ -1693,7 +1656,7 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 /* The interface's line icons (Copy.lineIcon), one set in place of emoji:
    sized to the text they sit in and drawn in the accent. */
 .line-icon { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
-.card-icon, .mode-icon, .premium-tier-icon, .source-read-icon, .gift-banner-icon, .deid-icon,
+.card-icon, .mode-icon, .source-read-icon, .gift-banner-icon, .deid-icon,
 .more-data-icon, .referral-icon, .insight-compat-icon, .partner-summary-icon, .roast-half-icon,
 .bonus-caveat-mark, .insight-extras li > span[aria-hidden] { color: var(--accent); }
 .card-sub { margin: .25rem 0 0; color: var(--ink-soft); font-size: .9rem; }
@@ -2051,32 +2014,8 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .mode-dialog .fineprint { margin: .2rem 0 0; }
 .mode-dialog .btn-row { margin-bottom: .4rem; }
 
-/* The QR code and its actions need more elbow room side by side than the
-   30rem default gives most mode-dialogs. Width only — position is left at
-   the UA stylesheet's own `fixed`, which is what actually centres a modal
-   dialog on the viewport regardless of where the page was scrolled to.
-   Overriding it to `relative` was tried first, on the reasoning that the
-   close cross needs a positioning root — but `position: fixed` is already a
-   valid containing block for an `absolute` child, so nothing needed the
-   override, and it broke the one thing `fixed` was doing: the dialog no
-   longer being pinned to the viewport is what left it laid out at its
-   in-flow position for anything that measured it while scrolled, which is
-   what the reader actually saw as the page jumping under the dialog. */
-.compat-dialog { width: min(38rem, calc(100vw - 2rem)); }
-.compat-dialog .link-title { padding-right: 2.2rem; }
-.compat-paste { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-.compat-paste[hidden] { display: none; }
 /* Under a sync: one button at a time, Share or Send my link (app.js, refreshCompatReturn). */
 .compat-return .btn[hidden] { display: none; }
-.compat-paste .field { margin-bottom: .6rem; }
-.compat-dialog-close {
-  position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid var(--line); background: var(--bg);
-  color: var(--ink-soft); font-size: .95rem; line-height: 1; cursor: pointer;
-}
-.compat-dialog-close:hover, .compat-dialog-close:focus-visible {
-  background: var(--accent-soft); color: var(--ink); outline: none;
-}
 
 .mode-options { display: grid; gap: .55rem; margin-bottom: 1rem; }
 /* A row the current entry point does not offer — the welcome page hides
@@ -2350,7 +2289,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   }
   .card:last-of-type { border-bottom: 0; }
   .section-card::before { display: none; }
-  .compat-dialog-close { display: none; }
 
   .card-head { gap: .5rem; margin-bottom: 3mm; align-items: center; }
   /* The glyph is an emoji on a tinted tile. The tint is what showed up as a

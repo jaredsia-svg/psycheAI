@@ -489,7 +489,6 @@
   let Copy = null;
   let TEXT = null;
   let TRAIT_LABELS = null;
-  let MODE_LABELS = null;
 
   // The attachment read with the app's gentler names put in (see
   // Copy.gentleAttachment): the PDF never calls a reader fearful-avoidant either.
@@ -505,14 +504,13 @@
     Copy = root.PsycheCopy;
     TEXT = Copy.TEXT;
     TRAIT_LABELS = Copy.TRAIT_LABELS;
-    MODE_LABELS = Copy.MODE_LABELS;
   }
 
   function Report(doc, meta) {
     this.doc = doc;
     this.meta = meta;
-    // Filled by sectionTitle as each one is laid out, and read back by
-    // coverContents once the whole report exists. Collected rather than
+    // Filled by sectionTitle and part as each one is laid out, and read back
+    // by storyContents once the whole report exists. Collected rather than
     // declared up front so the list cannot claim a section the reader did not
     // pay for, or miss one added later — it is a record of what printed.
     this.contents = [];
@@ -697,10 +695,6 @@
     return this.body(text, { size: 8.6, color: SOFT, leading: 12.4 });
   };
 
-  Report.prototype.muted = function (text) {
-    return this.body(text, { size: 9.8, color: SOFT, leading: 14 });
-  };
-
   /** A small tracked-out label, the typographic workhorse of the whole thing. */
   Report.prototype.eyebrow = function (text, color) {
     this.need(16);
@@ -787,13 +781,6 @@
     }
     if (detail) this.body(detail, { x: this.x + indent, width: this.w - indent, size: o.detailSize || 9.8, color: o.detailColor || SOFT, leading: o.detailLeading || 14 });
     this.space(4);
-    return this;
-  };
-
-  Report.prototype.points = function (items) {
-    const values = (items || []).filter(Boolean);
-    if (!values.length) return this.muted(TEXT.pointsEmpty);
-    for (const item of values) this.point(item.title, item.detail);
     return this;
   };
 
@@ -1023,26 +1010,6 @@
     return this;
   };
 
-  /** One behaviour facet: its fixed label, the model's headline, the detail. */
-  Report.prototype.facet = function (label, headline, detail) {
-    this.need(60);
-    this.space(6);
-    this.doc.draw(toWinAnsi(String(label).toUpperCase()), MARGIN, this.doc.y + 8,
-      { size: 7.2, bold: true, color: ACCENT_2, tracking: 1.1 });
-    this.doc.y += 14;
-    if (headline) {
-      const style = { size: 11.2, bold: true, color: INK };
-      for (const line of wrap(toWinAnsi(headline), COLUMN, style)) {
-        this.need(16);
-        this.doc.draw(line, MARGIN, this.doc.y + 9, style);
-        this.doc.y += 16;
-      }
-    }
-    if (detail) this.body(detail, { size: 9.8, leading: 14 });
-    this.space(4);
-    return this;
-  };
-
   /** A tinted box: the page's callout, and its fineprint caveats. */
   Report.prototype.note = function (text, label) {
     const encoded = toWinAnsi(text);
@@ -1066,513 +1033,12 @@
     return this;
   };
 
-  /** The match history table, minus the screen's "Open" link column. */
-  Report.prototype.matchTable = function (history) {
-    const columns = [
-      { label: TEXT.matchWith, width: COLUMN * 0.4 },
-      { label: TEXT.matchBasis, width: COLUMN * 0.34 },
-      { label: TEXT.matchWhen, width: COLUMN * 0.26 },
-    ];
-    this.need(48);
-    this.space(4);
-    let x = MARGIN;
-    for (const column of columns) {
-      this.doc.draw(toWinAnsi(String(column.label).toUpperCase()), x, this.doc.y + 8,
-        { size: 7.2, bold: true, color: SOFT, tracking: 1 });
-      x += column.width;
-    }
-    this.doc.y += 13;
-    this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
-    this.doc.y += 4;
-    for (const entry of history) {
-      this.need(22);
-      const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
-      const cells = [
-        { text: entry.withName || '', bold: true, color: INK },
-        { text: MODE_LABELS[mode] || mode, color: SOFT },
-        { text: entry.when ? new Date(entry.when).toLocaleDateString() : '', color: SOFT },
-      ];
-      x = MARGIN;
-      cells.forEach((cell, index) => {
-        const style = { size: 9.6, bold: Boolean(cell.bold), color: cell.color };
-        const line = wrap(toWinAnsi(cell.text), columns[index].width - 8, style)[0];
-        this.doc.draw(line, x, this.doc.y + 9, style);
-        x += columns[index].width;
-      });
-      this.doc.y += 17;
-      this.doc.hairline(this.doc.y - 4, MARGIN, PAGE.width - MARGIN);
-    }
-    this.space(8);
-    return this;
-  };
-
-  // ---------- the cover ----------
-  //
-  // The band carried the brand, the title and a line of provenance, and then
-  // roughly 70pt of empty purple where a headline used to be — the first page
-  // of a paid report opened on dead space and a section heading. It is a real
-  // cover now: the same summary card the reader sees on screen, printed at the
-  // top of page one, with the report starting on page two.
-  //
-  // The card is the one object in this product people actually share, so it is
-  // the right thing for the document to open on — and the only page in the PDF
-  // that a reader might screenshot rather than read.
-
   /**
-   * A labelled column inside the card: the small tracked caps, then its lines.
-   * Returns the height it will take, so the caller can size a row from the
-   * tallest column before anything is drawn.
-   */
-  function cardColumn(doc, x, top, width, label, lines, options) {
-    const settings = options || {};
-    const style = settings.style || { size: 9.6, bold: true, color: INK };
-    const leading = settings.leading || 12.6;
-    const lead = settings.lead || '';
-    const leadHeight = lead ? 14 : 0;
-    if (doc) {
-      doc.draw(toWinAnsi(String(label).toUpperCase()), x, top + 7,
-        { size: 6.8, bold: true, color: settings.labelColor || SOFT, tracking: 1 });
-      if (lead) doc.draw(lead, x, top + 20, { size: 11.5, bold: true, color: INK });
-      let cursor = top + 20 + leadHeight;
-      for (const line of lines) {
-        doc.draw(line, x, cursor, style);
-        cursor += leading;
-      }
-    }
-    return 20 + leadHeight + lines.length * leading;
-  }
-
-  function psycheCard(doc, report, card, top) {
-    const essence = report.essence || {};
-    // `noun` is what this field was called before it held a character, so a
-    // profile saved before that change still prints a name here.
-    const name = essence.character || essence.noun || '';
-    // The same four sentences the on-screen card shows. `cardBlurb()` in
-    // app.js has two further fallbacks for reports written before
-    // `cardHighlights` existed, but both of them stitch text out of fields
-    // this file would have to re-derive; `card.summary` is the shaped card's
-    // own line and is never empty, so it is the one fallback kept here.
-    const fullBlurb = String(report.cardHighlights || card.summary || '').trim();
-    // The card's write-up is two sentences on why they are like the
-    // character; a report written before that keeps its first two, as the
-    // story card on the page does.
-    const blurb = (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim();
-    const mbti = report.mbti || {};
-    const five = report.bigFive || {};
-    const love = (report.relationship && report.relationship.loveLanguages) || {};
-    const confidence = Number((card || {}).confidence);
-
-    const padX = 22;
-    const innerW = COLUMN - padX * 2;
-
-    // ---- measure the head before drawing it, so its panel can be filled first
-    //
-    // The card was a purple slab with a magenta wedge across its foot, which is
-    // exactly what the band above it is. Two of them stacked read as one
-    // continuous block of colour with a page title floating in it, and the
-    // card — the thing actually worth looking at — lost any identity of its
-    // own.
-    //
-    // So it is paper now and the band keeps the colour. The contrast does the
-    // work the repetition was undoing: a saturated masthead, then a light card
-    // lifted off the page beneath it. The accent survives as detailing rather
-    // than as a fill — a rule across the top, the character's name set in it,
-    // the eyebrow in the second brand colour — which is quieter and, on a page
-    // that is otherwise all text, considerably better looking.
-    const nameStyle = { size: 26, bold: true, color: ACCENT };
-    const blurbStyle = { size: 9.8, color: INK };
-    const blurbLeading = 14.6;
-    // Room kept clear on the right for the confidence pill, so a long character
-    // name cannot run underneath it.
-    const nameLines = wrap(toWinAnsi(name), innerW - 72, nameStyle);
-    // Capped rather than trusted: `cardHighlights` is four sentences by schema,
-    // but a model that ignored that must not push the card off the page.
-    const blurbLines = wrap(toWinAnsi(blurb), innerW, blurbStyle).slice(0, 9);
-    const heroH = 30 + 14 + nameLines.length * 30 +
-      (blurbLines.length ? 10 + blurbLines.length * blurbLeading : 0) + 16;
-
-    // ---- measure the three rows underneath it ----
-    const letters = (mbti.letters || []).map(l => toWinAnsi(
-      String(l.choice || '') + '  ' + ((Copy.MBTI_POLES[l.choice] || {}).name || '') + (l.strength ? ' · ' + l.strength : '')));
-    // A column holds the signature patterns, numbered as the report numbers them.
-    const patternLines = (Array.isArray(report.patterns) ? report.patterns : [])
-      .filter(p => p && /^p[1-3]$/.test(p.id) && p.name)
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .flatMap(p => wrap(toWinAnsi(p.id.replace('p', '') + '  ' + p.name), innerW / 2 - 12, { size: 9, bold: true }));
-    // Extraversion is the E of the type beside it, so the card leaves it out
-    // of the Big Five, as the story card does.
-    const fiveRows = Object.keys(TRAIT_LABELS)
-      .filter(key => five[key] && key !== 'extraversion')
-      .map(key => toWinAnsi(TRAIT_LABELS[key] + '  ' + Math.round(Number(five[key].score) || 0)));
-
-    const titles = (rows, limit) => (rows || []).slice(0, limit)
-      .map(r => (r && (r.title || r.name || r.value || r.belief)) || '').filter(Boolean);
-    const wrapCell = (text, width, style) =>
-      text ? wrap(toWinAnsi(text), width - 10, style || { size: 9.6, color: INK }) : [];
-
-    const smallStyle = { size: 9, color: INK };
-    // The four-letter type leads its own column in bold, with the per-axis
-    // strengths under it in plain — the same split the on-screen card makes,
-    // where the code is the finding and the strengths are how firmly each
-    // letter was picked. Drawn as a `lead` rather than as another line, so the
-    // two weights cannot be confused for one list.
-    const typeCell = { label: TEXT.cardType, lead: '',
-      lines: letters, style: { size: 9, color: INK }, leading: 12 };
-    const fiveCell = { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: 12 };
-    // The story card's rows — the patterns beside what motivates
-    // them, then the type beside the Big Five.
-    const motiveKeys = (() => {
-      const known = Copy.STRUCTURED.motivators;
-      const named = (report.topMotivators || []).filter(key => known[key]);
-      if (named.length) return named.slice(0, 3);
-      return ((report.motivators && report.motivators.scores) || []).filter(row => row && known[row.value])
-        .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
-    })();
-    const motiveLines = motiveKeys.flatMap((key, i) =>
-      wrap(toWinAnsi((i + 1) + '  ' + Copy.STRUCTURED.motivators[key].label), innerW / 2 - 12, { size: 9, bold: true }));
-    const leadCells = [{ label: TEXT.cardPatterns, lines: patternLines, style: { size: 9, bold: true, color: INK }, leading: 12 },
-      { label: Copy.STRUCTURED.titles.motivators, lines: motiveLines, style: { size: 9, bold: true, color: INK }, leading: 12 }];
-    const statCells = [typeCell, fiveCell];
-    // Values and beliefs as one "what you stand for", beside what they are
-    // into — the story card's two panels.
-    const chipCells = [{ label: Copy.STRUCTURED.cardStandFor, style: smallStyle,
-      lines: wrapCell(titles(report.values, 3).concat(titles(report.beliefs, 1)).slice(0, 4).join(' · '), innerW / 2, smallStyle) },
-    { label: Copy.STRUCTURED.cardInto, style: smallStyle,
-      lines: wrapCell(titles(report.interests, 3).join(' · '), innerW / 2, smallStyle) }];
-    const chipWidth = innerW / chipCells.length;
-    const loveNames = side => (side || []).slice(0, 2).map(l => l && l.language).filter(Boolean).join(' · ');
-    const half = innerW / 2;
-    const loveCells = [
-      { label: TEXT.cardLoveIn, lines: wrapCell(loveNames(love.receiving), half, smallStyle), style: smallStyle },
-      { label: TEXT.cardLoveOut, lines: wrapCell(loveNames(Copy.givingLove(love.giving)), half, smallStyle), style: smallStyle },
-    ];
-
-    const rowHeight = cells => Math.max(...cells.map(c =>
-      cardColumn(null, 0, 0, 0, c.label, c.lines, c)));
-    const leadH = leadCells.some(c => c.lines.length) ? rowHeight(leadCells) + 14 : 0;
-    const statH = rowHeight(statCells) + 14;
-    const chipH = chipCells.some(c => c.lines.length) ? rowHeight(chipCells) + 14 : 0;
-    const loveH = loveCells.some(c => c.lines.length) ? rowHeight(loveCells) + 14 : 0;
-    const bodyH = 8 + (leadH ? leadH + 1 : 0) + statH + (chipH ? chipH + 1 : 0) + (loveH ? loveH + 1 : 0) + 8;
-    const totalH = heroH + bodyH;
-
-    // ---- draw: shadow, card, accent rule, then all the text ----
-    //
-    // A soft offset rectangle behind the card, which is the whole of the
-    // "lifted off the page" effect — this writer has no shadow operator, and
-    // three points of tint peeking out below the white does the job in print
-    // as well as a real one would.
-    doc.roundRect(MARGIN + 1, top + 3, COLUMN, totalH, 16, LINE);
-    doc.roundRect(MARGIN, top, COLUMN, totalH, 16, WHITE);
-    // The accent as a rule across the top rather than a slab behind
-    // everything: drawn as a rounded rect so it follows the card's own top
-    // corners, then cut back to five points with the card colour. A plain rect
-    // would square the corners off against the rounded card and leave two
-    // small notches of paper at the ends.
-    doc.roundRect(MARGIN, top, COLUMN, 16, 16, ACCENT);
-    doc.rect(MARGIN, top + 5, COLUMN, 11, WHITE);
-
-    const x = MARGIN + padX;
-    // The second brand colour, used once. It appears nowhere else on this page
-    // except in the band's wedge, which is what keeps the two related without
-    // the card copying the band outright.
-    doc.draw(toWinAnsi(String(TEXT.essenceLabel).toUpperCase()), x, top + 32,
-      { size: 6.8, bold: true, color: ACCENT_2, tracking: 1.1 });
-    if (Number.isFinite(confidence) && confidence > 0) {
-      // A pill rather than bare text: on paper the figure needs something to
-      // sit in, or it reads as a stray number in the corner.
-      const score = toWinAnsi(Math.round(confidence) + '/100');
-      const width = measure(score, 9.4, true);
-      const pillW = width + 18;
-      doc.roundRect(MARGIN + COLUMN - padX - pillW, top + 20, pillW, 19, 9.5, WASH);
-      doc.draw(score, MARGIN + COLUMN - padX - pillW + 9, top + 33,
-        { size: 9.4, bold: true, color: ACCENT });
-    }
-    let cursor = top + 40;
-    for (const line of nameLines) {
-      doc.draw(line, x, cursor + 22, nameStyle);
-      cursor += 30;
-    }
-    cursor += 10;
-    for (const line of blurbLines) {
-      doc.draw(line, x, cursor + 16, blurbStyle);
-      cursor += blurbLeading;
-    }
-    // Separates the head from the rows the way the rows separate from each
-    // other, so the card is one system of hairlines rather than a coloured
-    // block sitting on top of a list.
-    doc.hairline(top + heroH - 1, x, MARGIN + COLUMN - padX);
-
-    let rowTop = top + heroH + 8;
-    if (leadH) {
-      leadCells.forEach((cell, i) => cardColumn(doc, x + i * innerW / 2, rowTop, innerW / 2, cell.label, cell.lines, cell));
-      rowTop += leadH;
-      doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
-    }
-    const statWidth = innerW / statCells.length;
-    statCells.forEach((cell, i) => cardColumn(doc, x + i * statWidth, rowTop, statWidth, cell.label, cell.lines, cell));
-    rowTop += statH;
-    if (chipH) {
-      doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
-      chipCells.forEach((cell, i) => cardColumn(doc, x + i * chipWidth, rowTop, chipWidth, cell.label, cell.lines, cell));
-      rowTop += chipH;
-    }
-    if (loveH) {
-      doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
-      loveCells.forEach((cell, i) => cardColumn(doc, x + i * half, rowTop, half, cell.label, cell.lines, cell));
-      rowTop += loveH;
-    }
-    return top + totalH;
-  }
-
-  /**
-   * The cover's contents list, drawn onto page one *after* the whole report
-   * has been laid out.
-   *
-   * It has to be last, because the page numbers do not exist until the pages
-   * do — and it has to be on page one, which was finished long before. Both
-   * are satisfied by pointing the document's op buffer back at page one's own
-   * array for the duration: `Doc.op` appends to `this.buffer` and nothing else
-   * caches it, so swapping it is enough to write into a finished page. Drawn
-   * at absolute coordinates rather than through `doc.y`, which by now belongs
-   * to the last page.
-   *
-   * Skipped rather than squeezed when the card leaves no room — a long
-   * character name and a full four-sentence blurb can push it down — because a
-   * contents list colliding with the colophon is worse than no contents list.
-   */
-  function coverContents(doc, out, cardBottom) {
-    const rows = out.contents;
-    if (!rows.length) return;
-    const rowHeight = 16.5;
-    // 24 rather than 32. The card grew when it became a paper panel — bigger
-    // name, roomier blurb leading — and the list, which only draws when it
-    // fits above the colophon, was missing the guard below by about three
-    // points and silently not drawing at all. The gap is the cheapest thing on
-    // the page to give back, and there is more than enough clearance beneath
-    // the list either way.
-    const top = cardBottom + 24;
-    // Two columns past six entries. A full report runs to a dozen sections,
-    // and a single column of those is taller than the space the card leaves —
-    // the list simply never drew. Splitting it halves the height and fills the
-    // foot of the cover rather than stacking down past the colophon.
-    const columns = rows.length > 6 ? 2 : 1;
-    const perColumn = Math.ceil(rows.length / columns);
-    const columnWidth = COLUMN / columns;
-    const needed = 22 + perColumn * rowHeight;
-    if (top + needed > PAGE.height - MARGIN - 26) return;
-
-    const saved = doc.buffer;
-    doc.buffer = doc.pages[0].content;
-    doc.draw(toWinAnsi(String(TEXT.pdfContents).toUpperCase()), MARGIN, top,
-      { size: 6.8, bold: true, color: SOFT, tracking: 1.1 });
-    doc.hairline(top + 8, MARGIN, PAGE.width - MARGIN);
-    rows.forEach((row, index) => {
-      const column = Math.floor(index / perColumn);
-      const x = MARGIN + column * columnWidth;
-      // The number sits at the end of its own column, not the page, or the
-      // left column's figures would be stranded mid-page against nothing.
-      const rightEdge = x + columnWidth - (column === columns - 1 ? 0 : 18);
-      const y = top + 22 + (index % perColumn) * rowHeight + 8;
-      const page = toWinAnsi(String(row.page));
-      const pageWidth = measure(page, 9, false);
-      const titleStyle = { size: 9.6, color: INK };
-      // Trimmed to what is left after the page number, so a long section name
-      // cannot run through the digit beside it.
-      const title = wrap(toWinAnsi(row.title), rightEdge - x - pageWidth - 10, titleStyle)[0];
-      doc.draw(title, x, y, titleStyle);
-      doc.draw(page, rightEdge - pageWidth, y, { size: 9, color: SOFT });
-    });
-    doc.buffer = saved;
-  }
-
-  function cover(doc, report, card, meta) {
-    doc.newPage({ bare: true, top: 0 });
-    doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
-    const bandHeight = 150;
-    doc.rect(0, 0, PAGE.width, bandHeight, ACCENT);
-    // A second, darker wedge so the band is not a flat slab of colour.
-    doc.setFill(ACCENT_2);
-    doc.op('0 ' + num(PAGE.height - bandHeight) + ' m ' +
-      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight) + ' l ' +
-      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 30) + ' l 0 ' +
-      num(PAGE.height - bandHeight) + ' l f');
-
-    // The brand lockup, as the nav and the printed letterhead have it: the mark
-    // with the wordmark beside it.
-    doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 42, size: 19, color: WHITE });
-    // Mixed case, no tracking: the same wordmark style the nav uses, not the
-    // tracked-caps treatment print letterheads default to.
-    doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 57, { size: 13, bold: true, color: WHITE });
-
-    // The title, and nothing under it. The card's one-line headline used to sit
-    // here in italics, and it read as a claim the cover was making about the
-    // person before they had read a word of the evidence.
-    const title = (card.name || 'Your') + '’s psyche';
-    const titleStyle = { size: 27, bold: true, color: WHITE };
-    let y = 104;
-    for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
-      doc.draw(line, MARGIN, y, titleStyle);
-      y += 31;
-    }
-
-    const cardBottom = psycheCard(doc, report, card, bandHeight + 24);
-
-    // The provenance line sits at the foot of the cover rather than under the
-    // band: it is what the page was printed from, which is a colophon, and it
-    // reads as one down there instead of as a subtitle.
-    const confidence = report.confidence || {};
-    const stamp = ['Generated ' + (meta.date || ''),
-      Math.round(Number(confidence.score) || 0) + '/100 confidence']
-      .filter(Boolean).join('  ·  ');
-    doc.draw(toWinAnsi(stamp), MARGIN, PAGE.height - MARGIN, { size: 8.8, color: SOFT });
-    return cardBottom;
-  }
-
-  // ---------- sections that were paid for ----------
-
-  /**
-   * Paywalled sections, and the whole rule for how they reach the PDF: a
-   * section in this table prints if and only if `meta.unlocked` carries its
-   * key, which the app fills from what the reader has actually bought. No
-   * payment, no key, no section — and nothing else in `build()` has to know a
-   * paywall exists.
-   *
-   * Four sections live here — the wellness read, the attachment read, the
-   * ideal-partner read and the career coaching — and one US$5 unlock fills
-   * all four. The roast used to be one of them; it is free now, printed
-   * unconditionally from `source.bonus` alongside the other free sections
-   * below rather than gated through this table — see "9a. The roast" further
-   * down for why it still needs its own consent reasoning even off the
-   * paywall.
-   *
-   * Adding a paywalled section later means adding an entry here and a key in
-   * `unlockedSections()` in docs/app.js. Do not reach for `source.<field>` in
-   * `build()` for paid content — a paid section read off the report object
-   * would print for anyone whose stored profile happened to contain it.
-   */
-  const PAID_SECTIONS = [{
-    // `facet()` takes the band where a behaviour facet takes a headline — and
-    // no `bar()`, deliberately: the page draws no progress bar for these
-    // dimensions and neither does the PDF, because a filled bar under
-    // "Emotional processing" would read as a measurement this section does
-    // not make. See the wellness schema comment in lib/prompts.js.
-    //
-    // The caveat prints with the section rather than being left on screen,
-    // for the same reason the roast's does.
-    key: 'wellness',
-    render(out, wellness, opts) {
-      out.sectionTitle((opts && opts.title) || TEXT.wellness, (opts && opts.sub) || TEXT.wellnessSub);
-      for (const [label, key] of Copy.WELLNESS_FACETS) {
-        const part = wellness[key];
-        if (!part) continue;
-        out.facet(label, part.band, part.reading);
-        out.tags(part.evidence);
-      }
-      if (wellness.overall) {
-        out.h3(TEXT.wellnessOverall);
-        out.body(wellness.overall, { size: 10, leading: 14.6 });
-      }
-      out.h3(TEXT.wellnessSuggestions);
-      out.points(wellness.suggestions);
-      out.space(4);
-      out.body(TEXT.wellnessCaveat, { size: 8.4, leading: 12, color: SOFT });
-    },
-  }, {
-    key: 'attachment',
-    render(out, source, opts) {
-      const attachment = gentleAttachmentOf(source);
-      out.sectionTitle(TEXT.attachment, (opts && opts.sub) || TEXT.attachmentSub);
-      out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
-      if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
-      if ((attachment.derivedFrom || []).length) {
-        out.eyebrow(TEXT.readFrom, SOFT);
-        out.tags(attachment.derivedFrom);
-      }
-      if ((attachment.implications || []).length) {
-        out.eyebrow(TEXT.attachmentPractice, SOFT);
-        out.points(attachment.implications);
-      }
-      if (attachment.caveat) out.fineprint(attachment.caveat);
-    },
-  }, {
-    // Argues directly off the attachment read immediately above, both on
-    // the page and here — see docs/app.js's idealPartnerBodyHtml.
-    key: 'idealPartner',
-    render(out, idealPartner, opts) {
-      out.sectionTitle(TEXT.idealPartner, (opts && opts.sub) || TEXT.idealPartnerSub);
-      out.h3(TEXT.idealPartnerNeeds);
-      out.points(idealPartner.needs);
-      out.h3(TEXT.idealPartnerCarefulOf);
-      out.points(idealPartner.carefulOf);
-      if (idealPartner.summary) {
-        out.h3(TEXT.idealPartnerSummary);
-        out.body(idealPartner.summary, { size: 10, leading: 15 });
-      }
-    },
-  }, {
-    // The coach's read, distinct from "At work" above. The horizon leads each
-    // action here the way the pill does on the page, so the thing that can be
-    // started this week is still the thing read first.
-    key: 'careerAssessment',
-    render(out, coaching, opts) {
-      if (opts && opts.bodyOnly) {
-        out.h3(TEXT.careerAssessment, ACCENT);
-      } else {
-        out.sectionTitle(TEXT.careerAssessment, (opts && opts.sub) || TEXT.careerAssessmentSub);
-      }
-      if (coaching.situation) {
-        out.h3(TEXT.careerSituation);
-        out.body(coaching.situation, { size: 10, leading: 15 });
-      }
-      if (coaching.edge) {
-        out.h3(TEXT.careerEdge, ACCENT);
-        out.h3(coaching.edge.headline);
-        if (coaching.edge.detail) out.body(coaching.edge.detail, { size: 10, leading: 15 });
-        out.tags(coaching.edge.evidence);
-      }
-      for (const [label, facet] of [[TEXT.careerUnderused, coaching.underused],
-        [TEXT.careerHoldingBack, coaching.holdingBack]]) {
-        if (!facet) continue;
-        out.facet(label, facet.headline, facet.detail);
-      }
-      out.h3(TEXT.careerActions);
-      const actions = (coaching.actions || []).filter(Boolean);
-      const horizons = Object.keys(TEXT.careerHorizons);
-      const ordered = horizons.flatMap(h => actions.filter(a => a.horizon === h))
-        .concat(actions.filter(a => !horizons.includes(a.horizon)));
-      for (const action of ordered) {
-        const label = TEXT.careerHorizons[action.horizon];
-        out.point((label ? label + '  ·  ' : '') + action.title, action.detail);
-      }
-    },
-  }];
-
-  // Free, printed unconditionally from `source.bonus` — see "9a. The roast"
-  // in `build()` below. Kept as its own function rather than folded into
-  // PAID_SECTIONS: it is read straight off the report object, not off
-  // `meta.unlocked`, which is exactly the shortcut the comment above
-  // PAID_SECTIONS warns against for anything paid.
-  function renderRoast(out, roast, options) {
-    if (options && options.structured) return renderStructuredRoast(out, roast);
-    out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
-    out.fineprint(TEXT.bonusCaveat);
-    if (roast.harsh) {
-      out.h3(TEXT.bonusHarsh);
-      out.body(roast.harsh, { size: 10, leading: 15 });
-    }
-    if (roast.advice) {
-      out.h3(TEXT.bonusAdvice);
-      out.body(roast.advice, { size: 10, leading: 15 });
-    }
-  }
-
-  /**
-   * The structured report's roast: the caveat as a tinted note rather than
+   * The roast: the caveat as a tinted note rather than
    * fineprint, then each half in a card of its own — the unkind read edged in
    * pink under a large open quote, the honest friend's advice edged in green.
    */
-  function renderStructuredRoast(out, roast) {
+  function renderRoast(out, roast) {
     const doc = out.doc;
     out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
     out.note(TEXT.bonusCaveat);
@@ -1592,70 +1058,7 @@
 
   function build(report, card, meta) {
     bindCopy();
-    // A report with its writing is the structured build; this one is left for
-    // a card-only profile: the card, what the report adds, and its confidence.
-    if (!(meta && meta.cardOnly)) return buildStructured(report, card, meta);
-    const source = report || {};
-    const who = card || {};
-    const stamp = meta || {};
-    const doc = new Doc();
-    const out = new Report(doc, { name: who.name || 'Your profile' });
-
-    // Page one is the card and nothing else. The report proper starts on page
-    // two, under the running head, so the cover stays a cover — a page that
-    // ends mid-section would not be one.
-    const cardBottom = cover(doc, source, who, stamp);
-    out.page();
-
-    // What the report adds, in place of sections this profile has not got.
-    out.sectionTitle(TEXT.fullReportTitle);
-    out.body(TEXT.fullReportPdf, { size: 10.4, leading: 15.4 });
-
-    // 9b. Whatever was bought, in the position it holds on the page — after
-    // the behaviour read, before matches and the confidence close. The list is
-    // `PAID_SECTIONS`; see the note there for why this is a table rather than
-    // an `if` per section, and why a paid section is read from `meta` rather
-    // than off the report object.
-    const unlocked = stamp.unlocked || {};
-    for (const section of PAID_SECTIONS) {
-      if (unlocked[section.key]) section.render(out, unlocked[section.key]);
-    }
-
-    // 10. Matches, when this device has any.
-    const history = (stamp.history || []).filter(entry => entry && entry.report);
-    if (history.length) {
-      out.sectionTitle(TEXT.matches);
-      out.matchTable(history);
-    }
-
-    // 11. Confidence closes the report, as it does on the page.
-    const confidence = source.confidence || {};
-    out.sectionTitle(TEXT.trust, TEXT.trustSub);
-    const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
-    out.need(40);
-    doc.roundRect(MARGIN, doc.y, COLUMN, 7, 3.5, LINE);
-    if (score > 0) doc.roundRect(MARGIN, doc.y, Math.max(7, COLUMN * score / 100), 7, 3.5, ACCENT);
-    doc.y += 18;
-    out.body(TEXT.trustScore + score + '/100 (' + (confidence.level || '') + ').',
-      { size: 10.4, bold: true, leading: 15 });
-    if (confidence.rationale) out.body(confidence.rationale, { size: 10, leading: 15 });
-
-    out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
-    // A second line only once the paid sections are actually in this file \u2014
-    // guarded on both fields together, the same way the page is, so a report
-    // that unlocked before this pair existed prints the one line it always
-    // had rather than a line naming a model with no date, or vice versa.
-    if (stamp.premiumModel && stamp.premiumDate) {
-      out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
-    }
-
-    // Last, because it is the only block whose content depends on the whole
-    // document already existing \u2014 see coverContents for how it reaches back
-    // onto page one.
-    coverContents(doc, out, cardBottom);
-
-    return serialise(doc, (who.name || 'Your') + '\u2019s psyche',
-      'Personality analysis from your Instagram data');
+    return buildStructured(report, card, meta);
   }
 
   // ---------- the structured report layout ----------
@@ -1666,8 +1069,8 @@
   // needs one, the Big Five on spectrums, the motivators chart, relationships
   // and work each as one section, the development plan with every action on
   // one plan, the pressure points, then the evidence page and the roast.
-  // The only build for a report with its writing; `build` above keeps the
-  // card-only profile's short PDF.
+  // The only build there is: a PDF is offered only once the report is
+  // unlocked, so `build` above goes straight here.
 
   /** One Big Five trait on a spectrum, the page's .bipolar. */
   Report.prototype.bipolar = function (label, score, poles, band) {
@@ -2870,7 +2273,7 @@
     if (source.bonus) {
       out.page();
       out.eyebrow(numeral('appendix') + '  ' + S.ask.appendixPrefix(roasted ? 1 : 0).replace(/: $/, ''), ACCENT_2);
-      renderRoast(out, source.bonus, { structured: true });
+      renderRoast(out, source.bonus);
     }
     const asked = (stamp.asked || []).filter(item => item && item.q && item.a);
     if (asked.length) {

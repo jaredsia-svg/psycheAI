@@ -487,8 +487,6 @@
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
-    matchWith: 'With',
-    matchBasis: 'Basis',
     // My Syncs: each past sync's two buttons.
     matchSyncLabel: 'Results',
     // Under a past sync's name, before its date.
@@ -511,7 +509,6 @@
     matchSharedMeta: 'Shared',
     matchOpenCard: (name) => name ? 'Open ' + possessive(name) + ' Psyche Card' : 'Open their Psyche Card',
     matchOpenSync: (name) => 'Open your Psyche Sync with ' + (name || 'them'),
-    matchWhen: 'When',
 
     // Cover copy for the three sections behind the paywall. Each says
     // specifically what is behind it rather than gesturing at "more
@@ -588,18 +585,6 @@
       reveal: 'Reveal my roast',
     },
 
-    // The premium tier block, shown twice on the way in — the insight diagram
-    // and "What you can expect?" — and built once in docs/app.js from
-    // `PAID_SECTIONS` so the section names it advertises are the section
-    // names the report actually renders. The price is `premiumPriceLabel` for
-    // the same reason: one string, so the landing page cannot drift from the
-    // unlock button.
-    //
-    // The free run is the summary card and nothing else now, so the offer is
-    // the writing behind the card plus the four sections — and says that, in
-    // that order, rather than pretending the card is a whole report.
-    premiumTierTitle: 'The Psyche Report',
-    premiumTierBlurb: 'Your Psyche Card is free. The Psyche Report explains every part of it, and adds four more sections:',
     // Shown under a free card, in place of the written report — see
     // fullReportLockedHtml in docs/app.js.
     fullReportSample: 'See sample report',
@@ -865,8 +850,6 @@
     premiumPriceNet: 'You pay',
 
     trust: 'How much to trust this',
-    trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
-      'it would stand behind them.',
     trustScore: 'Signal strength: ',
     // The six trajectory labels, keyed by the enum in lib/prompts.js. Written
     // for a reader rather than for a schema: "structural" is accurate and
@@ -888,14 +871,9 @@
       phasic: 'A phase',
     },
     trajectoryNote: 'The most recent year this shows up in your data',
-    sourcesUsed: 'Data sources',
-    sourcesUsedHint: 'You can raise this report’s confidence by adding more sources of data. ' +
-      'Instagram and Google together are the ideal combination – Instagram reads your outward ' +
-      'persona, the self you present; Google reads your inward self, what you search and watch when ' +
-      'no one is looking.',
-    // Shown in place of the hint above when the digest itself has gone — the
-    // report survives in its own localStorage entry, the evidence behind it
-    // does not. Says what re-running will ask for rather than leaving a
+    // Shown in Evidence and method's sources when the digest itself has gone
+    // — the report survives in its own localStorage entry, the evidence behind
+    // it does not. Says what re-running will ask for rather than leaving a
     // reader to discover it by pressing the button.
     sourcesInstagramLost: 'Your browser has cleared the data this report was read from. The report is safe; ' +
       'to run it again, load your Instagram data below.',
@@ -921,9 +899,6 @@
       : 'That chat is already loaded') + ' – choose a chat with someone else.',
     whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here – this one replaces the last.'
       : 'Three chats is the most – these start a fresh set.',
-    sourceLoaded: 'Loaded',
-    sourceMissing: 'Not loaded',
-    rerunAnalysis: 'Add / change data & re-run analysis',
     // Flashed on the report when Continue is pressed with no Instagram export
     // loaded and none stored. Names the one thing that would make the re-run
     // possible, rather than reporting a failure the reader cannot act on.
@@ -942,7 +917,7 @@
     // separately and is usually fine, so this does not claim otherwise.
     digestTooLarge: 'Your report is saved, but its evidence was too big for this browser. A re-run will ask for your Instagram data again.',
 
-    // The popout #rerun-with-data now opens, ahead of the review — see
+    // The popout adding or changing data opens, ahead of the review — see
     // askDataSources() in app.js. Every source already loaded is ticked but
     // stays clickable, so a reader can replace any one of them, Instagram
     // included, without starting the whole report over.
@@ -1538,7 +1513,6 @@
     overusedPrefix: 'Overused: ',
     // Everything the digest carries complete, beside the text it samples —
     // so "180 of 9,741 messages" is not read as all the analysis saw.
-    sourcesHint: 'Adding Google or Facebook raises confidence.',
     // Evidence and method's sources: one row per source, what was read from
     // it beneath, and the row itself opens the data popout.
     // The popout after Save a backup: what the file is for.

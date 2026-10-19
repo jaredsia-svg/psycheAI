@@ -78,7 +78,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 - **Character art:** `character-art.js`.
 - **Static pages:** `docs/*.html` (guides, privacy, terms, refunds, 404) are script-free pages sharing `styles.css`.
 
-**One report layout.** The report is the structured one (five parts, one thread). The classic layout and its `PSYCHEAI_REPORT_LAYOUT` switch were retired on 18 Oct 2026; its prompt and schema survive only as the base the report is spliced from (`FULL_SYSTEM_BASE`, `PROFILE_SCHEMA`, `CARD_BASE_SYSTEM`, `CARD_BASE_SCHEMA`, and `BASE_FULL_SCHEMA` as the size yardstick for Gemini). The PDF keeps a short build for a card-only profile (`build` in `docs/pdf.js`); everything else is `buildStructured`.
+**One report layout.** The report is the structured one (five parts, one thread). The classic layout and its `PSYCHEAI_REPORT_LAYOUT` switch were retired on 18 Oct 2026; its prompt and schema survive only as the base the report is spliced from (`FULL_SYSTEM_BASE`, `PROFILE_SCHEMA`, `CARD_BASE_SYSTEM`, `CARD_BASE_SCHEMA`, and `BASE_FULL_SCHEMA` as the size yardstick for Gemini). The PDF exists only for an unlocked report: `build` in `docs/pdf.js` is `buildStructured`.
 
 **Card image export.** `cardImageBlob` in `app.js` serialises the card into an SVG `foreignObject`.
 - Only CSS rules matching `:root`, `.psyche-card` or `.pc-*` (`CARD_RULE`) are copied into the image.

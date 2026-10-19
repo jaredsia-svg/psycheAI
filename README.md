@@ -2518,9 +2518,8 @@ change could pass without the live layout being exercised. Gone:
 - **The classic page.** The classic card, report sections, axes, interest and value tiles, digital
   footprint and confidence card in `docs/app.js` (`psycheCardHtml` is the story card only; `fitCard` always
   fits the portrait canvas), the narrow-card constants, and the classic unlock list.
-- **The classic PDF.** `build` in `docs/pdf.js` now only prints a card-only profile (the cover, what the
-  report adds, confidence); any report with its writing is `buildStructured`. The PDF card is the story
-  card's layout always.
+- **The classic PDF.** `build` in `docs/pdf.js` is `buildStructured` and nothing else (the card-only
+  build went with the dead-code pass below). The PDF card is the story card's layout always.
 - **Kept as the base.** The classic prompt and schemas are still what the report is spliced from, renamed
   so the name says so: `CARD_BASE_SYSTEM`/`CARD_BASE_SCHEMA` (were `CLASSIC_FREE_*`), `FULL_SYSTEM_BASE`
   (was also exported as `CLASSIC_FULL_SYSTEM`), and `BASE_FULL_SCHEMA` (was `CLASSIC_FULL_SCHEMA`), still
@@ -2564,6 +2563,27 @@ change could pass without the live layout being exercised. Gone:
   Rewritten checks that now assert something different are noted beside them in `tools/uitest.mjs`; the
   notable ones: the glyph-uniqueness check lets the development plan share Wellbeing's 🌱 (an owner's call
   which changes), and "one text size" measures only what is printed.
+- **Dead code left behind, removed (19 Oct 2026).** What only the classic page reached, or nothing did:
+  - `docs/app.js`: `sourcesUsedHtml()` and `sourceRowsHtml()` (the confidence card's sources table) with the
+    `#rerun-with-data` button, its price note and its delegated listener; `paidSectionsLockedHtml()` (the
+    four-section consolidated block) and `revealPaid()`, which spliced cards in over it and had no caller;
+    the `#compat-dialog` handlers (open, close, backdrop, the "Got their link?" paste box) and its
+    `#share-link`/`#copy-link` buttons; the `cardOnly` flag passed to the PDF. Live paths that passed
+    `$('#rerun-with-data')` now pass what they always got on this page: the bundled payment and the paid
+    re-run open the payment sheet with no button (`null`), and the gift banner's and the guess game's
+    "use it" click the report's own `.premium-unlock` with no fallback.
+  - `docs/index.html`: `#compat-dialog` and `#test-compat-open`.
+  - `docs/pdf.js`: the card-only `build` path with `cover()`, `psycheCard()`, `cardColumn()`,
+    `coverContents()`, its `PAID_SECTIONS` table, `matchTable`, and the `facet`, `points` and `muted`
+    helpers only they used; the classic roast (the structured one is `renderRoast` now). About 610 lines.
+  - `docs/styles.css`: the compat popout, its paste box and close button, the sources table
+    (`.trust-sources`, `.source-list`, `.source-row`…), and the consolidated block's list, icon and text.
+  - `docs/copy.js`: strings only those used (`sourcesUsed`, `sourcesUsedHint`, `STRUCTURED.sourcesHint`,
+    `rerunAnalysis`, `sourceLoaded`/`sourceMissing`, `premiumTierTitle`/`Blurb`, `matchWith`/`Basis`/`When`,
+    `trustSub`).
+  - Tests: the popout's "takes no space" check now asserts the popout, its opener and paste box are not in
+    the DOM; its print check was deleted, and so was the sample guard's "compatibility-link panel" row (that
+    `.link-panel` was the popout's; the guard keeps its download and delete rows); the hub tools check asserts `#test-compat-open` is absent.
 
 ### Titles without "Your", each with its mark; no line over the card (October 2026)
 

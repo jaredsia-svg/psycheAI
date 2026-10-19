@@ -272,7 +272,7 @@
    * written first. What the reader saw afterwards was a confidence card
    * claiming Instagram was loaded and a re-run button that threw when pressed.
    *
-   * Both halves of that are fixed elsewhere (sourcesUsedHtml reads the digest
+   * Both halves of that are fixed elsewhere (the sources list reads the digest
    * for the Instagram row now; rerunWithAdditionalData asks for the export
    * back instead of dereferencing null). This is the half that says it at the
    * moment it happens, rather than leaving the reader to find out later.
@@ -1070,15 +1070,15 @@
   // not even run the paid model call until it has independently verified a
   // real payment (lib/stripe.js's verifyPaid) or a valid promo code, so there
   // is nothing for a page saved or view-sourced before that point to give
-  // away — the covers ship alone, and `revealPaid` injects the writing once a
-  // real result has actually arrived.
+  // away — the covers ship alone, and the report is drawn again with the
+  // writing once a real result has actually arrived.
 
   /**
    * The paid sections, in the order they appear in the report. This table is
-   * the whole rule: `reportSectionsHtml` walks it, `revealPaid` walks it, and
-   * `unlockedSections` keys off it, so adding a paywalled section later means
-   * adding one entry here (plus its twin in docs/pdf.js's PAID_SECTIONS) and
-   * nothing else.
+   * the whole rule: `reportSectionsHtml` walks it and `unlockedSections`
+   * keys off it, so adding a paywalled section later means adding one entry
+   * here (plus where buildStructured in docs/pdf.js prints it) and nothing
+   * else.
    *
    * `body` is deliberately the *inner* HTML only — the card shell, the section
    * head and the cover are `paidCard`'s job. That split is what stops a new
@@ -1559,7 +1559,7 @@
   // click event at all, in any browser, so the delegated `.premium-unlock`
   // listener never sees it fire; that is what actually keeps a demo report
   // from opening a real payment dialog, not a scope check on the listener.
-  // Shared by paidCard and paidSectionsLockedHtml, so the two never say
+  // Shared by paidCard and fullReportLockedHtml, so the two never say
   // different things about the same button. A reader who already paid is
   // never shown the price again — the receipt is the difference between
   // "buy this" and "collect what you bought", and showing US$5 to somebody
@@ -1592,42 +1592,6 @@
       (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button></div>' +
       '<div class="premium-body"' + (data ? '' : ' hidden') + '>' +
       (data ? ((options && options.body) || section.body)(data) + ((options && options.extra) || '') : '') + '</div></div>';
-  }
-
-  /**
-   * Shown instead of the four individual `paidCard()` covers while nothing
-   * is unlocked yet — one block naming and explaining all four sections,
-   * with exactly one "Unlock — US$5" button at the bottom, rather than
-   * four separate price tags for what is in fact one purchase. Reuses the
-   * `.premium-tier` look the welcome page's insightsHtml() uses on the
-   * welcome page for the same offer, so the two read as one system; this is
-   * the one place among that family with a real, wired-up `.premium-unlock`
-   * button rather than a marketing preview.
-   *
-   * Only reached from reportSectionsHtml when `Object.keys(unlocked).length
-   * === 0` — the moment anything at all comes back from the paid call, the
-   * four sections switch to their own full cards (see paidCard) and this
-   * block does not render again, sample included.
-   */
-  function paidSectionsLockedHtml(options) {
-    const sample = Boolean(options && options.sample);
-    const items = PAID_SECTIONS.map(section =>
-      '<li class="premium-tier-item">' +
-      '<span class="premium-tier-icon" aria-hidden="true">' + Copy.iconHtml(section.icon) + '</span>' +
-      '<span class="premium-tier-text"><strong>' + esc(section.title()) + '</strong>' +
-      '<span>' + esc(section.coverBlurb()) + '</span>' +
-      '</span></li>').join('');
-    return '<div class="premium-tier paid-consolidated">' +
-      '<div class="premium-tier-head">' +
-      '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
-      '<h3>' + esc(TEXT.premiumTierTitle) + '</h3>' +
-      '</div>' +
-      '<p class="premium-tier-blurb">' + esc(TEXT.premiumTierBlurb) + '</p>' +
-      '<ul class="premium-tier-list">' + items + '</ul>' +
-      '<button class="btn premium-unlock" type="button" aria-expanded="false"' +
-      (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button>' +
-      (sample ? '' : linkPromoNoteHtml()) +
-      '</div>';
   }
 
   /** Under the unlock button: the promo code from the reader's link, if one came with it. */
@@ -1941,7 +1905,7 @@
       $('#cast').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
       return;
     }
-    const target = document.querySelector('#profile-body .premium-unlock') || $('#rerun-with-data');
+    const target = document.querySelector('#profile-body .premium-unlock');
     if (target) target.click();
   });
 
@@ -2744,7 +2708,7 @@
 
   // Free, behind a cover the reader has to click through — not a paid
   // section, so it is not in PAID_SECTIONS and shares nothing with
-  // paidCard()/paidSectionsLockedHtml() beyond a similar look.
+  // paidCard() beyond a similar look.
   //
   // The writing is NOT written into the markup here. Blurring it with CSS
   // would look the same and protect nothing: select-all copies it, a screen
@@ -3208,7 +3172,7 @@
       dialog.close();
       // A win goes straight to the unlock, which offers the free report.
       if (unlocks) {
-        const target = document.querySelector('#profile-body .premium-unlock') || $('#rerun-with-data');
+        const target = document.querySelector('#profile-body .premium-unlock');
         if (target) target.click();
       }
     };
@@ -3364,47 +3328,6 @@
     if (count < 2) return;
     deckIndex = ((deckIndex + step) % count + count) % count;
     arrangeDeck();
-  }
-
-  /**
-   * Fills every paid card's body once a real result has arrived, in place
-   * rather than by re-rendering the report — a reader who has just paid is
-   * looking at one of these cards, and rebuilding #profile-body would throw
-   * their scroll position away at exactly that moment.
-   */
-  function revealPaid(analysis) {
-    const unlocked = unlockedSections({ premiumAnalysis: analysis });
-    // Until now the reader was looking at the single consolidated block —
-    // see paidSectionsLockedHtml — which has no per-section cover or body to
-    // fill in place. Replace it outright with the four real cards, fully
-    // unlocked, rather than trying to reveal elements that never existed
-    // inside it.
-    const consolidated = document.querySelector('#profile-body .paid-consolidated');
-    if (consolidated) {
-      consolidated.outerHTML = PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('');
-    } else {
-      // Defensive fallback for the one case where individual cards could
-      // already be on screen — a stale unlock receipt from before this block
-      // existed, still holding a partial `premiumAnalysis` client-side.
-      for (const section of PAID_SECTIONS) {
-        const data = unlocked[section.key];
-        const card = document.querySelector('#profile-body .paid-card[data-paid="' + section.key + '"]');
-        if (!card || !data) continue;
-        const cover = card.querySelector('.premium-cover');
-        const body = card.querySelector('.premium-body');
-        setHtml(body, section.body(data));
-        body.hidden = false;
-        cover.hidden = true;
-        cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
-      }
-    }
-    // One call for both routes, and only one of them strictly needs it: cards
-    // built fresh above are born open, since nothing has run collapseSections
-    // over them, while the ones the fallback finds already on screen were shut
-    // by the render that put them there. Stating it once for both is what
-    // makes "what you just paid for is open" a property of this function
-    // rather than of whichever branch happened to run.
-    openPaidSections();
   }
 
   /**
@@ -3921,9 +3844,9 @@
     const nav = event.target.closest('[data-nav]');
     if (!nav) return;
     event.preventDefault();
-    // "Got their link?" lives inside #compat-dialog now — without
-    // this, navigating away leaves the dialog (and its backdrop) open on top
-    // of the view it just switched to.
+    // A link inside an open dialog closes it first: without this, navigating
+    // away leaves the dialog (and its backdrop) open on top of the view it
+    // just switched to.
     const openDialog = nav.closest('dialog[open]');
     if (openDialog) openDialog.close();
     go(nav.dataset.nav);
@@ -4789,13 +4712,6 @@
     }
   });
 
-  // Same reason: sourcesUsedHtml() writes this into #profile-body's innerHTML
-  // on every render, so a listener bound once to the element itself would be
-  // orphaned the next time the report redraws.
-  document.addEventListener('click', event => {
-    if (event.target.closest('#rerun-with-data')) startRerun();
-  });
-
   // The button is the discoverable path and opens the popout. Drag-and-drop
   // survives on the card itself rather than in a box of its own: an Instagram
   // export arrives as several .zip parts, and dropping them together stays
@@ -5600,16 +5516,6 @@
     await runAnalysis(digest, null);
   }
 
-  // The per-row "Load data" button in the confidence card's sources
-  // subsection — see sourcesUsedHtml(). Free and immediate: it only reads and
-  // merges the archive, the same as the offer a first upload shows, and never
-  // touches authoriseAnalysis(). Loading a source and paying to have it
-  // analysed are now two separate actions; this is the first of them.
-  //
-  // Not scoped to the source whose button was actually pressed — the dialog
-  // this opens has always offered both Google and Facebook together (see
-  // askSupplement), and a reader who came here for one may as well add the
-  // other while the picker is up rather than opening this twice.
   // An export read inside askDataSources() but never carried through to a
   // completed run — Back was pressed, or the popout was otherwise closed
   // before Continue. Reading an archive is real work a reader already did;
@@ -5633,8 +5539,8 @@
   let pendingDataSourceReads = {};
 
   /**
-   * Driven by the "Add / change data & re-run analysis" button — see
-   * sourcesUsedHtml() and startRerun below. Shows Instagram, Google Takeout
+   * Driven by startRerun below (the hub's and the sources list's change
+   * buttons, My Report's Add data, and "Load my data" with a card already). Shows Instagram, Google Takeout
    * and Facebook together; unlike askSupplement, a row already ticked stays
    * clickable, so any of the three — Instagram included — can be replaced
    * with a fresh export rather than only ever being added once.
@@ -6090,8 +5996,9 @@
     });
   }
 
-  // The bottom of the confidence card's sources subsection — see
-  // sourcesUsedHtml(). Opens the data-sources popout first, then goes to the
+  // Adding or changing data and re-running, from the hub's and the sources
+  // list's change buttons, My Report's Add data (#report-rerun) and "Load my
+  // data" with a card already. Opens the data-sources popout first, then goes to the
   // review of whatever comes out of it, then payment, then analysis.
   function startRerun() {
     flash('#profile-alert', '');
@@ -6196,7 +6103,7 @@
     } else {
       // No archive in memory and no stored digest to merge into — there is
       // nothing to send. Reached when the digest went missing on its own
-      // while the report survived (see sourcesUsedHtml's Instagram row), and
+      // while the report survived (the sources list says so), and
       // the reader pressed Continue without loading Instagram again.
       //
       // This used to fall into the branch above and dereference
@@ -6265,7 +6172,7 @@
       // Cleared in runPremiumAnalysis once the run succeeds.
       // Back from the payment sheet reviews the same data again, and Back
       // there goes on to the data popout, as everywhere else.
-      await openPremiumDialog($('#rerun-with-data'), 'rerunAll', premium || digest, {
+      await openPremiumDialog(null, 'rerunAll', premium || digest, {
         back: async () => {
           if ((await rerunWithAdditionalData(extraSupplements, freshInstagram)) === REVIEW_BACK) addDataAndRerun();
         },
@@ -6793,81 +6700,6 @@
   function shareMessage() {
     const report = state.profile && state.profile.report;
     return TEXT.cardShareText(report && report.essence && report.essence.character, myLinkUrl());
-  }
-
-  /**
-   * The report's sections as HTML, from the report alone.
-   *
-   * Split out of renderProfile so the sample can render the same sections
-   * into a dialog. Everything the sample must not offer — the download
-   * buttons, delete, the QR panel — lives outside #profile-body in
-   * index.html, so building only this excludes them by construction rather
-   * than by a list of things to hide that someone has to remember to update.
-   *
-   * The four paid sections render in the sample too, as covers — `{ sample:
-   * true }` forces every one of them locked regardless of what the reader's
-   * own profile has actually unlocked, and swaps the button for an inert,
-   * disabled "Unlock" (see `paidCard`). A sample that read the reader's real
-   * unlock state would show their own paid roast inside a stranger's fake
-   * report the moment they had ever unlocked one.
-   */
-  // The "Sources used" subsection of the confidence card: one row per
-  // possible source, a tick if this report's digest already carries it, a
-  // red cross if not. Reads state.digest directly rather than taking it as a
-  // parameter — reportSectionsHtml only ever calls this for the real report,
-  // and the digest is the one true record of what has actually been loaded,
-  // on a reload as much as in the session that uploaded it. Adding or
-  // replacing a source is not done from here any more — see
-  // askDataSources() — so a row is purely a status line, no button.
-  /** The sources rows on their own: a tick for each one this report's digest carries. */
-  function sourceRowsHtml() {
-    const digest = state.digest;
-    return [
-      { icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
-      { icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp) },
-      { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
-      { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
-    ].map(row =>
-      '<li class="source-row"><span class="source-name">' + Copy.iconHtml(row.icon) + ' ' + esc(row.label) + '</span>' +
-      (row.loaded
-        ? '<span class="source-tick" role="img" aria-label="' + esc(TEXT.sourceLoaded) + '">✓</span>'
-        : '<span class="source-cross" role="img" aria-label="' + esc(TEXT.sourceMissing) + '">✕</span>') +
-      '</li>').join('');
-  }
-
-  function sourcesUsedHtml(brief) {
-    const digest = state.digest;
-    const rows = [
-      // Not hardcoded true, which it was: the digest is a separate store from
-      // the profile and can go missing on its own, so missing means missing.
-      { loaded: Boolean(digest) },
-      { loaded: Boolean(digest && digest.google) },
-      { loaded: Boolean(digest && digest.facebook) },
-      { loaded: Boolean(digest && digest.whatsapp) },
-    ];
-    const rowsHtml = sourceRowsHtml();
-    const anyMissing = rows.some(row => !row.loaded);
-
-    return '<div class="trust-sources">' +
-      '<h3>' + esc(TEXT.sourcesUsed) + '</h3>' +
-      // A missing Instagram export is a different message from a missing
-      // supplement: the ordinary hint invites a reader to *raise* their
-      // confidence by adding Google or Facebook, which is beside the point
-      // when the evidence the report was written from is the thing that has
-      // gone. This one says what happened and what re-running will ask for.
-      (!digest ? '<p class="muted">' + esc(TEXT.sourcesInstagramLost) + '</p>'
-        : anyMissing ? '<p class="muted">' + esc(brief ? Copy.STRUCTURED.sourcesHint : TEXT.sourcesUsedHint) + '</p>' : '') +
-      '<ul class="source-list">' + rowsHtml + '</ul>' +
-      '<div class="btn-row">' +
-      '<button class="btn" id="rerun-with-data" type="button">' + esc(TEXT.rerunAnalysis) + '</button>' +
-      '</div>' +
-      // Unconditional once premium is unlocked — that US$5 is not tied to
-      // the free-run allowance mustPayForAnalysis() tracks, so the note has
-      // to say so even for a reader with free runs left. See
-      // rerunWithAdditionalData's own alreadyUnlocked branch.
-      (Object.keys(paidAnalysis()).length || mustPayForAnalysis()
-        ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNoteUnlocked) + '</p>' : '') +
-      '</div>';
   }
 
   // ---------- section bodies ----------
@@ -7867,6 +7699,15 @@
       'class="card section-card part-card free-overview"');
   }
 
+  /**
+   * The report's sections as HTML, from the report alone.
+   *
+   * Split out of renderProfile so the sample can render the same sections
+   * into a dialog. Everything the sample must not offer — the download
+   * buttons, delete, the QR panel — lives outside #profile-body in
+   * index.html, so building only this excludes them by construction rather
+   * than by a list of things to hide that someone has to remember to update.
+   */
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
     // The free report is the card above this and nothing else. What sits
@@ -8353,11 +8194,6 @@
     $('#card-share-label').textContent = TEXT.cardShareLabel;
     layoutPsycheCard();
 
-    // The sources subsection and the re-run button are built into this HTML
-    // by sourcesUsedHtml() — see reportSectionsHtml. #rerun-with-data is
-    // handled by a delegated listener (see the document click handler
-    // below) rather than bound here, because this element is replaced every
-    // time the report renders.
     // A free report sets its card beside what it was read from and has no
     // nav; a full one moves the card above the nav on a wide screen.
     const explained = hasExplanations(profile);
@@ -8401,8 +8237,6 @@
     // My Psyche has only the card, which has its own download: the full
     // report's is on My Report.
     $('#export-pdf-bottom').hidden = !reportPage;
-    // Its compatibility test is one of the card's tools.
-    $('#test-compat-open').hidden = true;
     layoutPsycheCard();
     setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
     if (explained && !hub) showKeepNote();
@@ -8586,7 +8420,6 @@
       linkStatus(statusSelector, TEXT.linkMessageCopied);
     }, () => window.prompt(TEXT.linkCopyPrompt, url));
   }
-  $('#share-link').addEventListener('click', () => sendMyLink('#share-link-status'));
   $('#share-link-report').addEventListener('click', () => sendMyLink('#share-link-report-status'));
   // Share PDF: the same PDF Download PDF saves, to the share sheet with the
   // one share message; where files cannot be shared, it is downloaded.
@@ -8602,7 +8435,6 @@
     }
     exportCompatPdf();
   });
-  $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
   $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
 
 
@@ -8644,8 +8476,6 @@
       // The roast prints only for the reader who bought it. Unpaid, the key is
       // absent and the section does not exist in the file at all.
       unlocked: unlockedSections(profile),
-      // A free profile prints its card and the offer, not empty sections.
-      cardOnly: !hasExplanations(profile),
       build: (() => {
         const b = state.server && state.server.build;
         return b && b.version ? 'v' + b.version : '';
@@ -9125,47 +8955,6 @@
   };
   measureHeader();
   window.addEventListener('resize', measureHeader);
-
-  // Sending this person's compatibility link is a popout, opened on demand
-  // from beside the download button.
-  $('#test-compat-open').addEventListener('click', () => {
-    const dialog = $('#compat-dialog');
-    if (typeof dialog.showModal === 'function') dialog.showModal();
-    else dialog.setAttribute('open', '');
-  });
-  $('#compat-dialog-close').addEventListener('click', () => $('#compat-dialog').close());
-  // "Got their link?" opens a box for it in the popout itself, rather than
-  // sending the reader to another page to find one.
-  $('#compat-paste-toggle').addEventListener('click', () => {
-    const form = $('#compat-paste');
-    form.hidden = false;
-    $('#compat-paste-toggle').setAttribute('aria-expanded', 'true');
-    $('#compat-paste-input').focus();
-  });
-  $('#compat-paste').addEventListener('submit', async event => {
-    event.preventDefault();
-    const value = $('#compat-paste-input').value;
-    // Read here first, so a link that is not one is said so in the popout
-    // the reader is looking at, not on a page behind it.
-    const link = await readLinkText(value);
-    if (!(await Card.decodeCard(link.payload))) {
-      linkStatus('#compat-paste-status', 'That is not a PsycheAI link. Copy the whole link they sent you.');
-      return;
-    }
-    $('#compat-dialog').close();
-    $('#compat-paste-input').value = '';
-    // Kept in My Syncs' own box too, so a sync that fails can be tried
-    // again without pasting again.
-    $('#paste-input').value = value;
-    await runMatch(link);
-  });
-  $('#compat-dialog').addEventListener('close', () => {
-    $('#compat-paste').hidden = true;
-    $('#compat-paste-toggle').setAttribute('aria-expanded', 'false');
-  });
-  $('#compat-dialog').addEventListener('click', event => {
-    if (event.target === $('#compat-dialog')) $('#compat-dialog').close();
-  });
 
   // ---------- premium unlock: Stripe's Payment Request Button ----------
   //
@@ -9869,7 +9658,7 @@
       retry.hidden = false;
       retry.onclick = () => runPremiumAnalysis(auth, dialog, options);
     } finally {
-      // In `finally` rather than once per branch: a throw inside revealPaid
+      // In `finally` rather than once per branch: a throw while the result is drawn
       // would otherwise leave the ticking counter running and the page
       // refusing to close, which is a worse failure than the one that caused
       // it. Teardown belongs on every exit, including the ones not written
@@ -10121,11 +9910,11 @@
       return;
     }
 
-    // Guarded rather than assumed present: askAnalysisPayment passes
-    // #rerun-with-data, which — since it now lives inside the report's own
-    // markup — does not exist yet the first time a reader is charged, before
-    // any report has ever rendered. Disabling it is a nicety for whichever
-    // button actually triggered this dialog, not a requirement of the flow.
+    // Guarded rather than assumed present: the bundled payment and the paid
+    // re-run pass no button (they are reached through the review, not one
+    // button), and neither does Ask PsycheAI. Disabling it is a nicety for
+    // whichever button actually triggered this dialog, not a requirement of
+    // the flow.
     if (button) button.disabled = true;
     try {
       // Through the same helper the model routes use, rather than fetching a
@@ -10218,7 +10007,7 @@
    * path, so it is done in the `close` handler where every exit passes.
    */
   function askBundlePayment() {
-    return askPaymentFor('bundle', $('#rerun-with-data'));
+    return askPaymentFor('bundle', null);
   }
 
   // Both of the above, and the shape is worth having once rather than twice:
