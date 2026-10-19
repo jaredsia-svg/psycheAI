@@ -1405,14 +1405,15 @@ check('`why` gives the other side its count and says what it does not overturn',
   /what they do and do not overturn/.test(letterDesc('why')));
 check('and a one-sided axis may say so rather than manufacturing a doubt',
   /instead of manufacturing a doubt/i.test(letterDesc('why')));
-// The code may move the strength or the letter after the model wrote, so the
-// paragraph must not name either.
-check('`why` names no strength word and no score, since the code sets them',
-  /Names no strength word and no score/.test(letterDesc('why')) &&
-  /It names no strength word and no score: the code sets those/.test(prompts.PROFILE_SYSTEM));
-check('choice and strength are what the ledger adds up to, and the code checks them',
-  /The code checks the sum/.test(letterDesc('choice')) && /The code checks it/.test(letterDesc('strength')) &&
-  /`clear` from two-thirds with at least 14 in play, `moderate` from a third with at least 10/.test(letterDesc('strength')));
+// The model decides its letters (October 2026), so the paragraph is written
+// for the letter it then picks, and never calls the lean the other way.
+check('`why` argues the letter in `choice` and never says the lean goes the other way',
+  /It argues the letter in `choice` and nothing else: never says the lean goes the other way/.test(letterDesc('why')) &&
+  /It never says the lean goes the other way/.test(prompts.PROFILE_SYSTEM));
+check('choice and strength are the model\'s judgement, guided by the rubric',
+  /The letter you conclude, weighing the ledger \(the rubric's weights are a guide; you decide\)/.test(letterDesc('choice')) &&
+  /Your judgement, guided by the rubric/.test(letterDesc('strength')) &&
+  /`slight` when their own words put them on both sides/.test(letterDesc('strength')));
 check('the card schema scores its letters from the same ledger and strength rule',
   (() => {
     const free = prompts.CARD_BASE_SCHEMA.properties.mbti.properties.letters.items.properties;
@@ -1429,11 +1430,12 @@ check('the report and the card prompts carry the one MBTI ledger section, rubric
 check('and the merged prompt carries it once',
   prompts.MERGED_SYSTEM.split(prompts.MBTI_LEDGER_RULES).length === 2);
 const ledgerRules = prompts.MBTI_LEDGER_RULES;
-check('the method: the model tags, the code adds up, both sides searched as hard',
-  /The code adds the ledger up/.test(ledgerRules) &&
+check('the method: the model weighs the ledger and decides, the rubric a guide, both sides searched as hard',
+  /\*\*The rubric is a guide, not a rule: you decide\.\*\*/.test(ledgerRules) &&
+  /weigh each piece on its own merits/.test(ledgerRules) &&
+  /\*\*every line you write about the axis argues the letter you chose\*\*/.test(ledgerRules) &&
   /\*\*Search for the other letter as hard as for the one you expect\.\*\*/.test(ledgerRules) &&
-  /\*\*One entry per row and letter\*\*/.test(ledgerRules) &&
-  /Add it up yourself before you write `choice`, `strength` or anything that names the type/.test(ledgerRules));
+  /\*\*One entry per row and letter\*\*/.test(ledgerRules));
 check('the computed rows are the code\'s, never the model\'s',
   /\*\*Never the computed rows\.\*\*/.test(ledgerRules) && /`engagedThreads\.last5Years`, Instagram and Messenger together/.test(ledgerRules));
 check('volume is never in a ledger',
@@ -1470,9 +1472,10 @@ check('no direct messages means no conversation rows and E/I near the middle',
   /the code counts no conversation rows/.test(ledgerRules));
 check('J/P mixed across areas is entered both ways',
   /on J\/P, enter both, from the areas where they spend most of their time, money and effort/.test(ledgerRules));
-check('the extraversion score follows the E/I ledger, in the code\'s bands, and the other traits follow their axes',
-  /The extraversion score is set by the code from the E\/I ledger/.test(ledgerRules) &&
-  /\*\*E\*\* 51 to 59 at `slight`, 60 to 69 at `moderate`, 70 to 85 at `clear`, mirrored below 50 for \*\*I\*\*/.test(ledgerRules) &&
+check('the extraversion score goes with the E/I letter and its strength, and the other traits follow their axes',
+  /The extraversion score goes with the E\/I letter and its strength/.test(ledgerRules) &&
+  /\*\*E\*\* about 51 to 59 at `slight`, 60 to 69 at `moderate`, 70 to 85 at `clear`, mirrored below 50 for \*\*I\*\*/.test(ledgerRules) &&
+  /an \*\*I\*\* never scores above 50 and an \*\*E\*\* never below/.test(ledgerRules) &&
   /Openness reads off N\/S, agreeableness off T\/F and conscientiousness off J\/P/.test(ledgerRules));
 check('base rates: most people sit near the middle',
   /Most people sit near the middle on most traits; keep the extremes for extreme evidence/.test(ledgerRules));
@@ -1606,56 +1609,53 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
     card: { mbti: 'ENTJ', bigFive: { extraversion: 66 } },
     summary: 'As an ENTJ, The Commander plans.',
   });
-  const scored = S.scoreMbti(answer(), dm(10, 300));
-  check('ledger: the code sets the letters and strength from the ledger, the computed rows included',
-    scored.mbti.letters[0].choice === 'I' && scored.mbti.letters[0].strength === 'slight' &&
-    scored.mbti.letters[1].strength === 'slight' &&
-    scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'I' && /^10 Instagram conversations/.test(p.note)) &&
-    !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained' && p.pointsTo === 'E'),
-    JSON.stringify(scored.mbti.letters[0]));
-  check('ledger: the type, its nickname, the card\'s copies and the lines that named the old type follow',
-    scored.mbti.type === 'INTJ' && scored.mbti.nickname === 'The Architect' && scored.card.mbti === 'INTJ' &&
-    scored.summary === 'As an INTJ, The Architect plans.',
-    JSON.stringify([scored.mbti.type, scored.summary]));
-  check('ledger: the extraversion score and band follow the E/I result, and the card\'s copy with them',
-    scored.bigFive.extraversion.score < 50 && scored.bigFive.extraversion.score >= 41 && scored.bigFive.extraversion.band === 'moderate' &&
-    scored.card.bigFive.extraversion === scored.bigFive.extraversion.score, String(scored.bigFive.extraversion.score));
-  check('ledger: scoring twice changes nothing',
+  // The code checks the answer and never changes it (October 2026): the
+  // model's letters, type, strength and score are what is printed.
+  const scoredNotes = [];
+  const scored = S.scoreMbti(answer(), dm(10, 300), scoredNotes);
+  check('ledger: the model\'s letters, strength, type, nickname and score are left as it wrote them',
+    scored.mbti.letters[0].choice === 'E' && scored.mbti.letters[0].strength === 'moderate' &&
+    scored.mbti.letters[1].strength === 'clear' && scored.mbti.type === 'ENTJ' && scored.mbti.nickname === 'The Commander' &&
+    scored.card.mbti === 'ENTJ' && scored.summary === 'As an ENTJ, The Commander plans.' &&
+    scored.bigFive.extraversion.score === 66 && scored.card.bigFive.extraversion === 66,
+    JSON.stringify([scored.mbti.letters[0], scored.mbti.type]));
+  check('ledger: the ledger is cleaned to the rubric, and a row the code computes is dropped from it',
+    !scored.mbti.letters[0].ledger.some(p => p.row === 'sustained') && scored.mbti.letters[0].ledger.length === 2,
+    JSON.stringify(scored.mbti.letters[0].ledger));
+  check('ledger: where its own ledger tallies the other letter, that is reported, not changed',
+    scoredNotes.join() === 'E/I E (ledger I)', scoredNotes.join());
+  const mismatch = answer();
+  mismatch.mbti.letters[0].choice = 'I';
+  mismatch.mbti.letters[0].ledger = [{ row: 'own-words', pointsTo: 'I', note: 'quiet weekends' }];
+  const mismatchNotes = [];
+  S.scoreMbti(mismatch, {}, mismatchNotes);
+  check('ledger: an extraversion score on the other side of 50 from the E/I letter is reported',
+    mismatchNotes.join() === 'E/I I (extraversion 66)', mismatchNotes.join());
+  check('ledger: checking twice changes nothing',
     JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(scored)), dm(10, 300))) === JSON.stringify(scored));
   const noLedger = answer();
   noLedger.mbti.letters.forEach(l => delete l.ledger);
   check('ledger: an answer without ledgers (a report pinned to its card) is left alone',
     JSON.stringify(S.scoreMbti(JSON.parse(JSON.stringify(noLedger)), dm(10, 300))) === JSON.stringify(noLedger));
-  const split = answer();
-  delete split.mbti.type;
-  check('ledger: a report split from its card is not given a type of its own',
-    !('type' in S.scoreMbti(split, {}).mbti));
-  // The sample report agrees with its own ledger.
+  // The sample report's letters agree with its own ledgers.
   const sampleCopy = JSON.parse(readFileSync(new URL('../docs/sample.json', import.meta.url), 'utf8'));
-  const rescored = S.scoreMbti(JSON.parse(JSON.stringify(sampleCopy)), {});
-  check('ledger: the sample report\'s letters, strengths and extraversion are what its ledgers add up to',
-    rescored.mbti.letters.every((l, i) => l.choice === sampleCopy.mbti.letters[i].choice && l.strength === sampleCopy.mbti.letters[i].strength) &&
-    rescored.mbti.type === sampleCopy.mbti.type && rescored.bigFive.extraversion.score === sampleCopy.bigFive.extraversion.score,
-    JSON.stringify(rescored.mbti.letters.map(l => l.choice + ' ' + l.strength)) + ' ' + rescored.bigFive.extraversion.score);
+  const sampleNotes = [];
+  S.scoreMbti(JSON.parse(JSON.stringify(sampleCopy)), {}, sampleNotes);
+  check('ledger: the sample report\'s letters and extraversion agree with its own ledgers',
+    sampleNotes.length === 0, sampleNotes.join());
   // The computed rows go to the model after the evidence, so its own sum is
   // the code's, and a sum that still overturns the model's letter is counted.
   const note = S.computedText(dm(15, 300));
   check('ledger: the computed rows are handed to the model, with their points, after the evidence',
-    /Already in your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 Instagram conversations[^\n]*→ I \(weak, 1\)/.test(note) &&
+    /Counted from this digest by the code, for your MBTI ledgers/.test(note) && /E\/I, `sustained`: 15 Instagram conversations[^\n]*→ I \(weak, 1\)/.test(note) &&
     /E\/I, `share`: 5%[^\n]*→ I \(weak, 1\)/.test(note) && S.computedText({}) === '', note);
   const noteDigest = Object.assign(dm(15, 300), { coverage: { sources: ['instagram'] } });
   const blockText = blocks => blocks.map(b => b.text || '').join('\n');
   check('ledger: the card, the report and the one-call unlock all carry the note; a report pinned to its card does not',
     [prompts.freeBlocks(noteDigest), prompts.profileBlocks(noteDigest), prompts.mergedBlocks(noteDigest)]
       .every(b => blockText(b).indexOf(note) > blockText(b).indexOf('</evidence>')) &&
-    !blockText(prompts.profileBlocks(noteDigest, prompts.anchorFrom(answer()))).includes('Already in your MBTI ledgers') &&
-    /a note after the evidence lists them with their points: add those into each sum/.test(prompts.MBTI_LEDGER_RULES));
-  const flips = [];
-  S.scoreMbti(answer(), dm(10, 300), flips);
-  const kept = [];
-  S.scoreMbti(S.scoreMbti(answer(), dm(10, 300)), dm(10, 300), kept);
-  check('ledger: an axis whose sum overturned the model\'s own letter is reported, and rescoring reports nothing',
-    flips.join() === 'E/I E→I' && kept.length === 0, flips.join());
+    !blockText(prompts.profileBlocks(noteDigest, prompts.anchorFrom(answer()))).includes('Counted from this digest by the code') &&
+    /a note after the evidence lists them with a suggested weight: weigh them with the rest/.test(prompts.MBTI_LEDGER_RULES));
   // The server scores every answer before it is served, and the card before a report is anchored to it.
   const serverSource = readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   check('ledger: the server scores every answer, and a card before its report is anchored to it',
@@ -5984,7 +5984,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // fix for a reported wrong answer; each must be in both prompts.
   const RULES = [
     ['activeThreads is reach over years, not people kept up with', /`activeThreads` counts every conversation they ever wrote in/],
-    ['the extraversion score follows the E/I ledger', /The extraversion score is set by the code from the E\/I ledger/],
+    ['the extraversion score goes with the E/I letter', /The extraversion score goes with the E\/I letter and its strength/],
     ['group chats are no evidence, busy or empty', /\*\*Group chats\*\*, busy or empty/],
     ['liked captions are other people\'s words', /likedPostCaptions[\s\S]{0,80}other people/i],
     ['the redaction markers are blanks', /PsycheUser[\s\S]{0,800}as (?:a )?blanks?\b/],
@@ -6865,7 +6865,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     check('structured Big Five: all five traits, each a score, a band and one line, no evidence list; MBTI carries the extraversion evidence',
       Object.keys(five).join() === 'openness,conscientiousness,extraversion,agreeableness,neuroticism' &&
       Object.values(five).every(t => Object.keys(t.properties).join() === 'reading,score,band' && /^One sentence: the specific behaviour from the data that sets this score/.test(t.properties.reading.description)) &&
-      /The code checks the sum/.test(choice) &&
+      /the rubric's weights are a guide; you decide/.test(choice) &&
       /only place the extraversion evidence is laid out/.test(structured.properties.mbti.properties.letters.items.properties.evidence.description) && !/depth a Big Five trait gets/.test(why) &&
       /Each trait gets its score, its band and one line, with no evidence list/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /cite a breadth number in the E\/I axis's `evidence`/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
@@ -6910,7 +6910,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     [order.join(','), mbtiOrder, letterOrder].join(' | '));
   check('the card call too: scores first, the character just before the Overview, the type after its letters',
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).slice(0, 3).join() === 'confidence,mbti,bigFive' &&
-    /The extraversion score is set by the code from the E\/I ledger/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    /The extraversion score goes with the E\/I letter and its strength/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
     prompts.STRUCTURED_FREE_SYSTEM.indexOf('# MBTI') < prompts.STRUCTURED_FREE_SYSTEM.indexOf('# Big Five') &&
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('essence') === Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties).indexOf('summary') - 1 &&
     Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties.mbti.properties).join() === 'letters,type,confidence,nickname',

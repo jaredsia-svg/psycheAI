@@ -2585,6 +2585,33 @@ change could pass without the live layout being exercised. Gone:
     the DOM; its print check was deleted, and so was the sample guard's "compatibility-link panel" row (that
     `.link-panel` was the popout's; the guard keeps its download and delete rows); the hub tools check asserts `#test-compat-open` is absent.
 
+### MBTI: the model decides; the rubric guides (October 2026)
+
+**What went wrong.** A report printed a slight I with extraversion 47, under a paragraph ending
+"extraversion holds a narrow lead". The model had written its paragraph for E. The code then added up the
+ledger, came out I, and replaced the letter, the type and the score, but it could not rewrite the
+paragraph. Handing the model the computed rows narrowed that gap but did not close it: whenever the
+model's own weighing differed from the arithmetic, the page contradicted itself.
+
+**What changed.** The model now decides each letter, its strength and the extraversion score:
+- **The ledger stays.** It is still written first: every piece of evidence for either letter, tagged with
+  a rubric row and quoted or counted.
+- **The weights are a guide.** "Strong about 3, medium about 2, weak about 1" says what a typical piece is
+  worth. The model weighs each piece on its merits: a vivid, repeated or recent showing counts for more, a
+  faint or one-off one for less.
+- **Strength is described, not computed.** `moderate` is one side clearly ahead on several solid pieces,
+  and `clear` is the other side having little to offer. Mixed own words still mean `slight`.
+- **The writing follows the letter.** Every line about the axis (`why`, the evidence, the trait reading,
+  the summary) argues the letter chosen. An I never scores above 50 and an E never below.
+- **Computed rows are context.** The sustained-conversation and share rows still arrive as a note after the
+  evidence, each with a suggested weight, to weigh with the rest.
+
+**What the code does now.** `lib/mbtiScore.js` `scoreMbti` checks without changing anything. It cleans
+each ledger to the rubric. It reports, as `mbti_flip` in the stats and an `[mbti]` log line, any axis
+where the model's own ledger would tally the other letter, and any extraversion score on the wrong side of
+50 for the E/I letter. If that count climbs, the prompt needs tightening, not the code. The mock's
+extraversion score (48 under an E) is now 62, so the mock agrees with itself.
+
 ### Titles without "Your", each with its mark; no line over the card (October 2026)
 
 - **Titles:** My Psyche's card panel is "Psyche Card" and its hub "Psyche Hub". My Report's header is

@@ -480,14 +480,16 @@ function requirePremiumEngine(response) {
 // spent — and the full report is never produced without one.
 // A report with the private names its digest supplied taken out. Logs how
 // often it happens, never what was removed.
-// Where the code's sum overturned the letter the model picked, its `why`
-// may argue the other one: logged and counted (`mbti_flip`, and per axis),
-// so the rate shows and the prompt can be tightened if it climbs.
+// The model decides its letters (lib/mbtiScore.js only checks them). Where
+// its own ledger would tally the other letter, or its extraversion score sits
+// on the other side of 50 from its E/I letter, that is logged and counted
+// (`mbti_flip`, and per axis), so the rate shows and the prompt can be
+// tightened if it climbs. Nothing is changed.
 function countFlips(flips, kind) {
   if (!flips.length) return;
-  console.warn('[mbti] ' + kind + ': the ledger overturned the model\'s letter: ' + flips.join(', '));
+  console.warn('[mbti] ' + kind + ': the answer disagrees with its own ledger or score: ' + flips.join(', '));
   stats.count('mbti_flip');
-  for (const flip of flips) stats.count('mbti_flip:' + flip.slice(0, 3));
+  for (const flip of flips) stats.count('mbti_flip:' + flip.slice(0, 3).replace('/', ''));
 }
 
 function scrubbed(result, digest, kind) {
