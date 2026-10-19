@@ -2746,6 +2746,18 @@ Each is pinned by a check in `tools/selftest.mjs` (the block "security and displ
   in another script as `psycheai-card-.png`). It folds accents as the backup and PDF names do, and
   falls back to `psycheai-card.png` when nothing is left.
 
+### The hub's buttons lift off their rows (October 2026)
+
+**What changed.** The hub's buttons (Read, download, See list, share, Ask, copy, the data-source chips,
+Save Backup, AI Personal Context, delete) were transparent with a faint lilac outline, so on the tinted
+rows they barely read as buttons. The owner compared four styles at phone width (today, a thicker black
+border, a shadow, a purple border plus shadow) and chose the shadow:
+- **Light mode:** white buttons (`--bg-alt`), no outline, and a soft purple shadow (`--hub-press`).
+- **Dark mode:** buttons a step lighter than the surface (`--hub-button`), with a deeper shadow.
+
+**What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
+their dashed outline, because they are figures, not buttons.
+
 ### MBTI: the model decides; the rubric guides (October 2026)
 
 **What went wrong.** A report printed a slight I with extraversion 47, under a paragraph ending

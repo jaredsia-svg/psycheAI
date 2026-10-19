@@ -4984,11 +4984,21 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-keep { --sec: #19202d; border-color: #2c3a52; }
 }
 .hub-data .hub-ring b { background: var(--sec); }
-.hub-go:not(.is-fill), .hub-btn:not(.is-locked), .hub-copy, .hub-del, .hub-chip:not(.is-add), .hub-linkstat {
-  background: transparent; box-shadow: none; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
-.hub-del { border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
-.hub-go:not(.is-fill):hover, .hub-btn:not(.is-locked):hover, .hub-copy:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
-.hub-del:hover { background: color-mix(in srgb, var(--danger) 7%, transparent); }
+/* The hub's buttons lifted off the tinted rows, white with a soft purple
+   shadow and no outline, so they read as pressable (October 2026; option C
+   of four the owner compared). The link's counts stay outlined: they are
+   figures, not buttons. */
+.hub-card { --hub-press: 0 1px 2px rgba(36, 26, 46, .14), 0 4px 12px rgba(123, 63, 160, .22); }
+@media (prefers-color-scheme: dark) {
+  .hub-card { --hub-press: 0 1px 2px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .45);
+    --hub-button: color-mix(in srgb, var(--accent) 12%, var(--bg-alt)); }
+}
+.hub-go:not(.is-fill), .hub-btn:not(.is-locked), .hub-copy:not(.is-done), .hub-del, .hub-chip, .hub-chip.is-add {
+  background: var(--hub-button, var(--bg-alt)); border: 0; box-shadow: var(--hub-press); }
+.hub-linkstat { background: transparent; box-shadow: none; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.hub-go:not(.is-fill):hover, .hub-btn:not(.is-locked):hover, .hub-copy:not(.is-done):hover, .hub-chip:hover {
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt)); }
+.hub-del:hover { background: color-mix(in srgb, var(--danger) 7%, var(--bg-alt)); }
 .hub-tiles { gap: 0; background: color-mix(in srgb, var(--accent) 6%, var(--bg-alt));
   border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--bg-alt)); border-radius: 14px; overflow: hidden; }
 .hub-tile, .hub-tile.is-cta { border: 0; border-radius: 0; background: transparent; }
