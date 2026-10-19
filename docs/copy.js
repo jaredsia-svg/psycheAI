@@ -252,21 +252,16 @@
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
     inviteStart: 'Get my free Psyche Card',
-    // The strip of every character above the request steps: before a first
-    // card, a guess at which one it will name; a right one wins the report.
-    // The prize is a credit on the reader's link, on either first-run path.
-    castTitle: 'Guess which character you are and win a free credit',
-    castLabel: 'All 29 characters a Psyche Card can name. Drag to spin, hold to pause, tap one to guess.',
-    castPick: 'Tap the character you think you are.',
-    castPicked: (name) => 'Your guess: ' + name + '. Make your free Psyche Card to find out. One guess, locked in when your card is made.',
-    castPickedCredit: (name) => 'Your guess: ' + name + '. Make your free Psyche Card and Report to find out. One guess, locked in when your card is made.',
-    // A device whose free card is spent (its next run is paid, which never
-    // counts a guess), with no card on it now: nothing to win, so said.
-    castUsedTitle: 'Which one are you?',
-    castUsedNote: 'The guessing game is for a first free Psyche Card, and this device has made one already.',
-    // Once a card exists there is nothing left to guess.
-    castFriendsTitle: 'Which one are your friends?',
-    castFriendsNote: 'Send them your link to find out.',
+    // The guessing game on the waiting screen, while a first free read is
+    // written (app.js, openGuessGame). The prize is a credit on the
+    // reader's link, on either first-run path.
+    guessGameTitle: 'While you wait: guess which character you are',
+    guessGameNote: 'Tap the character you think your card will name, then lock it in. A right guess wins a free credit.',
+    guessLockPick: 'Pick a character',
+    guessLock: (name) => 'Lock in ' + name,
+    guessLocked: (name) => 'Locked in: ' + name + '. Your card will tell you if you\u2019re right.',
+    guessTooLate: 'Your card was finished before the guess arrived, so this one can\u2019t count.',
+    guessLockFailed: 'The guess didn\u2019t go through. Try again.',
     // On the reader's card, once it is made.
     guessWonTitle: 'You guessed right!',
     guessWonText: (name) => 'You said ' + name + ', and your Psyche Card agrees. Your Psyche Report is free.',

@@ -905,9 +905,14 @@ async function handleAnalyse(request, response) {
       // A free first read is always marked (October 2026): sent with an
       // `anchor` it was not, and the same account could ask again. Its
       // anchor is ignored above, so it is always a card of its own.
+      // The guess: sent with the request by a page from before October 2026,
+      // or locked onto this job from the waiting screen (handleGuess). Taken
+      // here, once the card is written and before anyone can see it, which
+      // also closes the job to a guess arriving later.
+      const guessed = takeLockedGuess(results.keyFor(kind, key)) || body.guess;
       if (made === 'card' || firstFull || (full && !anchor)) {
         referral.afterFreeCard({ account, legacy: legacyAccount, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
-          guessed: made === 'card' || firstFull ? Boolean(body.guess) : false })
+          guessed: made === 'card' || firstFull ? Boolean(guessed) : false })
           .then(outcome => {
             if (outcome && outcome.credited) {
               stats.count('referral_friend');
@@ -922,7 +927,7 @@ async function handleAnalyse(request, response) {
       // beside the digest, never inside it, so the model never saw it.
       // A free first read with its report judges it too, against the card it
       // wrote. A right guess is one credit on the reader's link, on either path.
-      const guess = (made === 'card' || firstFull) && body.guess ? await judgeFor(body, result, request) : null;
+      const guess = (made === 'card' || firstFull) && guessed ? await judgeFor(body, guessed, result, request) : null;
 
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
@@ -933,12 +938,64 @@ async function handleAnalyse(request, response) {
   });
 }
 
+/**
+ * Guesses locked onto a running first read from the waiting screen (October
+ * 2026): the guessing game moved there from the front page, so a guess is
+ * made after the request has gone. Keyed by the job; CLOSED once the card is
+ * written (takeLockedGuess), so a guess can only ever be made before the
+ * answer exists anywhere a reader could see it. Held in this process, as the
+ * job itself is.
+ */
+const lockedGuesses = new Map();
+const CLOSED = Symbol('closed');
+const MAX_LOCKED_GUESSES = 5000;
+
+/** The guess locked onto this job, if any; the job takes no guess after this. */
+function takeLockedGuess(job) {
+  const locked = lockedGuesses.get(job);
+  lockedGuesses.set(job, CLOSED);
+  return typeof locked === 'string' ? locked : '';
+}
+
+// A guess for a job still being written, once: { job, guess }. Refused once
+// the card is written, or when the job is not running in this process (it
+// finished, failed, or the server restarted); the page then says the guess
+// came too late, and the card opens as it would have.
+async function handleGuess(request, response) {
+  const body = await readJsonBody(request);
+  const job = String(body && body.job || '');
+  const guess = String(body && body.guess || '');
+  if (!/^(card|full):[0-9a-f]{64}$/.test(job) || !prompts.CHARACTER_NAMES.includes(guess)) {
+    sendJson(response, 400, { error: 'That is not a guess for a running card.' });
+    return;
+  }
+  for (const key of lockedGuesses.keys()) {
+    if (results.lookup(key).status !== 'running') lockedGuesses.delete(key);
+  }
+  const held = lockedGuesses.get(job);
+  if (results.lookup(job).status !== 'running' || held === CLOSED) {
+    sendJson(response, 409, { error: 'Your card is already written, so this guess came too late.', tooLate: true });
+    return;
+  }
+  if (typeof held === 'string') {
+    sendJson(response, 409, { error: 'A guess is already locked in for this card.', guess: held, locked: true });
+    return;
+  }
+  if (lockedGuesses.size >= MAX_LOCKED_GUESSES) {
+    sendJson(response, 503, { error: 'Too many guesses waiting. Try again in a minute.' });
+    return;
+  }
+  lockedGuesses.set(job, guess);
+  stats.count('guess_locked');
+  sendJson(response, 200, { locked: true, guess });
+}
+
 /** A guess judged against the card it came with (lib/referral.js, judgeGuess), and counted. */
-async function judgeFor(body, result, request) {
+async function judgeFor(body, guessed, result, request) {
   const data = result && result.data;
   const card = (data && data.freeCard) || data;
   const guess = await referral.judgeGuess({
-    guess: body.guess, character: card && card.essence && card.essence.character,
+    guess: guessed, character: card && card.essence && card.essence.character,
     account: referral.cleanAccount(body.account), legacy: body.legacyAccount,
     client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
     // The prize is a credit (October 2026), on the card path too: one way to
@@ -1599,6 +1656,10 @@ const API_GUARDS = {
   '/api/premium-analysis': { limit: 'premium-analysis', nonce: true },
   // A step of the journey: counts only, so no ticket.
   '/api/event': { limit: 'event', nonce: false },
+  // A guess locked onto a running job: no ticket, for the same reason as
+  // /api/result — the job key is a SHA-256 of the digest, so holding it is
+  // holding the evidence. It spends nothing; the job's own request did.
+  '/api/guess': { limit: 'referral', nonce: false },
   // Read-only (counts for a secret only its holder has), so no ticket; the
   // claim, which spends something, takes one.
   '/api/referral': { limit: 'referral', nonce: false },
@@ -1837,6 +1898,7 @@ function routeRequest(route, url, request, response) {
               : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
                   : route === '/api/stats' && request.method === 'GET' ? () => handleStats(request, response, url)
                   : route === '/api/event' && request.method === 'POST' ? () => handleEvent(request, response)
+                  : route === '/api/guess' && request.method === 'POST' ? () => handleGuess(request, response)
                   : route === '/api/referral' && request.method === 'POST' ? () => handleReferral(request, response)
                   : route === '/api/referral/claim' && request.method === 'POST' ? () => handleReferralClaim(request, response)
                   : route === '/api/ask/credits' && request.method === 'POST' ? () => handleAskCredits(request, response)

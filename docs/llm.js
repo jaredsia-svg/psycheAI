@@ -401,8 +401,29 @@
    */
   const resumeJob = job => collect(job, null);
 
+  /**
+   * Lock a guess at the character onto a first read still being written
+   * (server.js, handleGuess). { locked, guess } when it is held (a guess
+   * already held for the job comes back instead of this one), { tooLate }
+   * once the card is written, {} when it could not be sent.
+   */
+  async function lockGuess(job, guess) {
+    try {
+      const response = await fetch('/api/guess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job, guess }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (body && body.locked && typeof body.guess === 'string') return { locked: true, guess: body.guess };
+      return body && body.tooLate ? { tooLate: true } : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
   root.PsycheLLM = {
-    status, ticket, analyseProfile, analyseCompatibility, analysePremium, resumeJob,
+    status, ticket, analyseProfile, analyseCompatibility, analysePremium, resumeJob, lockGuess,
     // Exported so the payment-intent call in app.js goes through the same
     // ticket handling as everything else. It was fetching a ticket by hand and
     // posting it directly, which meant it was the one protected route with no

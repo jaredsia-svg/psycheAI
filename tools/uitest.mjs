@@ -796,17 +796,16 @@ try {
     /Download your data from Instagram \(WhatsApp and Google data are optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   {
-    // "below" goes to the cast ("Guess which character"), the request steps
-    // straight below it, on this page.
+    // "below" goes to the request steps, on this page.
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.click('#view-welcome .steps-row a.step-below');
     await scrollSettled(page);
     const landed = await page.evaluate(() => ({
       text: document.querySelector('#view-welcome .steps-row a.step-below').textContent,
-      top: Math.round(document.querySelector('#cast').getBoundingClientRect().top),
+      top: Math.round(document.querySelector('#request-data').getBoundingClientRect().top),
       hash: location.hash,
     }));
-    check('and its "below" goes to the cast, "Guess which character", without touching the link in the address bar',
+    check('and its "below" goes to the request steps, without touching the link in the address bar',
       landed.text === 'below' && landed.top >= -2 && landed.top < 200 && landed.hash === '', JSON.stringify(landed));
     await page.evaluate(() => window.scrollTo(0, 0));
   }
@@ -4300,102 +4299,20 @@ try {
   await page.click('#hero-start');
   // Until the smooth scroll has arrived and come to rest.
   await scrollSettled(page, null, 250);
-  check('the primary action lands on Meet the cast, with the instructions for getting the export straight below',
+  check('the primary action lands on the instructions for getting the export',
     await page.evaluate(() => {
-      const cast = document.querySelector('#cast').getBoundingClientRect();
       const help = document.querySelector('#view-welcome .help-card').getBoundingClientRect();
       const nav = document.querySelector('.nav').getBoundingClientRect();
-      // The strip at the top of what is left of the viewport, the steps under it.
-      return cast.top >= nav.bottom - 4 && cast.top < nav.bottom + 80 &&
-        help.top > cast.bottom - 1 && help.top - cast.bottom < 40 && help.top < window.innerHeight / 2;
+      return help.top >= nav.bottom - 4 && help.top < nav.bottom + 80;
     }),
     await page.evaluate(() =>
-      'cast at ' + Math.round(document.querySelector('#cast').getBoundingClientRect().top) +
-      ', help-card at ' + Math.round(document.querySelector('.help-card').getBoundingClientRect().top) +
+      'help-card at ' + Math.round(document.querySelector('.help-card').getBoundingClientRect().top) +
       ', scrollY ' + Math.round(scrollY) + ', nav ' + Math.round(document.querySelector('.nav').getBoundingClientRect().bottom) +
       ', dialogs ' + [...document.querySelectorAll('dialog[open]')].map(d => d.id).join() +
       ', view ' + (document.querySelector('.view:not([hidden])') || {}).id));
-
-  // The cast: every character a card can name, round tiles in their scenes,
-  // slim, turning on its own until touched, then scrolled by hand, with arrows
-  // either side and no end.
-  {
-    const cast = await page.evaluate(() => {
-      const tiles = [...document.querySelectorAll('.cast-tile')];
-      const shown = tiles.filter(t => !t.closest('[aria-hidden="true"]'));
-      return {
-        head: document.querySelector('.cast-head').textContent.trim(),
-        all: tiles.length,
-        shown: shown.map(t => [t.querySelector('.cast-name').textContent,
-          /cast-sprite\.webp/.test(getComputedStyle(t.querySelector('.cast-art')).backgroundImage)]),
-        height: document.querySelector('#cast').getBoundingClientRect().height,
-        expected: Object.keys(window.PsycheCopy.CHARACTER_SYNCS),
-        drawings: document.querySelectorAll('#cast-track svg').length,
-        // Each copy's tile shows its own slice of the one image.
-        slices: new Set([...document.querySelectorAll('.cast-tile')].map(t => t.querySelector('.cast-art').style.backgroundPosition)).size,
-        arrows: document.querySelectorAll('.cast-arrow').length,
-      };
-    });
-    check('the cast shows all 29 characters, each in its scene with its name, under the guessing game\'s title',
-      cast.head === 'Guess which character you are and win a free credit' && cast.shown.length === 29 &&
-        cast.shown.every(([, art]) => art) && JSON.stringify(cast.shown.map(([n]) => n).sort()) === JSON.stringify(cast.expected.slice().sort()),
-      JSON.stringify(cast).slice(0, 300));
-    check('laid out five times over for its loop, each tile a slice of one image, no live drawings',
-      cast.all === 145 && cast.drawings === 0 && cast.slices === 29, JSON.stringify({ all: cast.all, drawings: cast.drawings, slices: cast.slices }));
-    check('with an arrow either side', cast.arrows === 2);
-    check('and it is slim: under 165px tall, its note included', cast.height < 165, String(cast.height));
-    const at = () => page.evaluate(() => document.querySelector('#cast-strip').scrollLeft);
-    const before = await at();
-    await page.waitForFunction(was => document.querySelector('#cast-strip').scrollLeft > was, before, { timeout: 5000 }).catch(() => {});
-    const after = await at();
-    check('it turns on its own until touched', after > before, before + ' → ' + after);
-    // A press anywhere on it hands it over: it stops for good.
-    const box = await page.locator('#cast-strip').boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.up();
-    const handed = await at();
-    // Still for 400ms: past the strip's 180ms rest timer (app.js), and long
-    // enough that its 40px-a-second turn would have moved it.
-    await scrollSettled(page, '#cast-strip', 400).catch(() => {});
-    check('once touched it stops turning by itself', Math.abs((await at()) - handed) < 1, handed + ' → ' + (await at()));
-    // A mouse drag scrolls it.
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2, { steps: 6 });
-    await page.mouse.up();
-    const dragged = await at();
-    check('dragging it with a mouse scrolls it', dragged > handed + 60, handed + ' → ' + dragged);
-    // The arrows move it a few tiles each way. From the middle copy, so the
-    // step back into it after coming to rest does not enter the reading.
-    await page.evaluate(() => { const strip = document.querySelector('#cast-strip'); strip.scrollLeft = 2 * strip.scrollWidth / 5; });
-    await scrollSettled(page, '#cast-strip', 250);
-    const middle = await at();
-    await page.click('.cast-arrow-right');
-    await scrollSettled(page, '#cast-strip', 250);
-    const right = await at();
-    await page.click('.cast-arrow-left');
-    await scrollSettled(page, '#cast-strip', 250);
-    const left = await at();
-    check('the right arrow moves it on and the left one back', right > middle + 100 && left < right - 100,
-      [middle, right, left].join(' → '));
-    // No end: pushed most of the way to one, it is put back into the middle
-    // copy once it comes to rest, showing the same tiles.
-    const ends = await page.evaluate(async () => {
-      const strip = document.querySelector('#cast-strip');
-      strip.scrollLeft = strip.scrollWidth - strip.clientWidth - 5;
-      const first = () => [...document.querySelectorAll('.cast-tile')].find(t => t.getBoundingClientRect().left > strip.getBoundingClientRect().left + 30);
-      const showing = first() && first().dataset.name;
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const copy = strip.scrollWidth / 5;
-      return { showing, after: first() && first().dataset.name, inMiddle: strip.scrollLeft > copy * 1.4 && strip.scrollLeft < copy * 2.6 };
-    });
-    check('it has no end: near one it is put back into the middle, showing the same characters',
-      ends.inMiddle && ends.showing === ends.after, JSON.stringify(ends));
-    // The press above landed on a tile and so made a guess; taken back, so
-    // the rest of this page's checks see a reader who has not guessed.
-    await page.evaluate(() => localStorage.removeItem('psycheai_guess'));
-  }
+  // The character strip that was here is gone (October 2026): the guessing
+  // game is on the waiting screen, checked with the first card below.
+  check('the front page has no character strip', await page.evaluate(() => document.querySelectorAll('#cast, .cast-tile').length === 0));
   await page.evaluate(() => window.scrollTo(0, 0));
 
   // A page-length glide is the motion "reduce motion" exists to suppress, and
@@ -13280,46 +13197,102 @@ try {
         drawn.includes(held.character) && /How you work/.test(drawn) && upErrors.length === 0,
         upErrors.join(' | ') || drawn.slice(0, 200));
 
-      // Guess your character: a tap on the cast before the first card, judged
-      // on the server against the card it writes (the mock card is Hulk).
+      // Guess your character, on the waiting screen (October 2026): picked
+      // and locked onto the running job, then judged on the server against
+      // the card it writes (the mock card is Hulk). Its own server, with the
+      // mock's card held back a few seconds so the wait can be played.
+      const guessPort = PORT + 1;
+      const guessServer = spawn(process.execPath, [join(root, 'server.js')], {
+        env: {
+          ...process.env, PORT: String(guessPort), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0',
+          PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-guess-budget.jsonl'),
+          PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-guess-usage.jsonl'),
+          PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+          PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_NONCE: '100000',
+          PSYCHEAI_FIRST_RUN: 'card', PSYCHEAI_MOCK_DELAY_MS: '6000',
+        },
+        stdio: 'ignore',
+      });
       const gp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
-      const guessBodies = [];
+      const gpErrors = [];
+      gp.on('pageerror', error => gpErrors.push(error.message));
+      const guessPosts = [];
       gp.on('request', request => {
-        if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) guessBodies.push(JSON.parse(request.postData() || '{}'));
+        if (request.method() === 'POST' && /\/api\/(analyse|guess)$/.test(request.url())) {
+          guessPosts.push({ route: request.url().replace(/^.*\/api\//, ''), body: JSON.parse(request.postData() || '{}') });
+        }
       });
       try {
-        await gp.goto('http://localhost:' + structuredPort + '/', { waitUntil: 'load' });
+        await waitForServer(guessPort);
+        await gp.goto('http://localhost:' + guessPort + '/', { waitUntil: 'load' });
         await gp.evaluate(() => localStorage.clear());
         await gp.reload({ waitUntil: 'load' });
-        await gp.waitForSelector('.cast-tile[data-name="Hulk"]', { timeout: 15000 });
-        // The strip never stops moving, so the tap is dispatched rather than aimed.
-        await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Hulk"]').click());
-        const picked = await gp.evaluate(() => ({
-          note: document.querySelector('#cast-note').textContent,
-          pressed: document.querySelector('.cast-tile[data-name="Hulk"]').getAttribute('aria-pressed'),
-          others: document.querySelectorAll('.cast-tile.is-picked').length,
-        }));
-        check('tapping a character makes it the guess, marked, and says it is locked in when the card is made',
-          picked.pressed === 'true' && picked.others === 5 && /^Your guess: Hulk\. Make your free Psyche Card to find out\./.test(picked.note),
-          JSON.stringify(picked));
         await gp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
         await chooseDepth(gp);
         await answerReview(gp);
+        await gp.waitForSelector('#view-working:not([hidden]) #working-guess:not([hidden]) .guess-tile[data-name="Hulk"]', { timeout: 15000 });
+        const open = await gp.evaluate(() => {
+          const bar = document.querySelector('#progress-bar');
+          return {
+            title: document.querySelector('#working-guess-title').textContent,
+            note: document.querySelector('#working-guess-note').textContent,
+            tiles: document.querySelectorAll('#guess-grid .guess-tile').length,
+            art: [...document.querySelectorAll('#guess-grid .cast-art')].every(a => /cast-sprite\.webp/.test(getComputedStyle(a).backgroundImage)),
+            slices: new Set([...document.querySelectorAll('#guess-grid .cast-art')].map(a => a.style.backgroundPosition)).size,
+            picked: document.querySelectorAll('#guess-grid .is-picked').length,
+            lock: document.querySelector('#guess-lock').textContent,
+            lockOff: document.querySelector('#guess-lock').disabled,
+            sweeping: bar.classList.contains('indeterminate') && bar.style.width === '' && bar.getBoundingClientRect().width > 50,
+          };
+        });
+        check('while the first card is written, the waiting screen offers every character to guess, nothing picked yet',
+          open.title === 'While you wait: guess which character you are' && /then lock it in\. A right guess wins a free credit\./.test(open.note) &&
+            open.tiles === 29 && open.art && open.slices === 29 && open.picked === 0 && open.lock === 'Pick a character' && open.lockOff,
+          JSON.stringify(open));
+        check('and its bar sweeps: no width left over from reading the export holds it still', open.sweeping, JSON.stringify(open));
+        await gp.click('.guess-tile[data-name="Hulk"]');
+        const picked = await gp.evaluate(() => ({
+          pressed: document.querySelector('.guess-tile[data-name="Hulk"]').getAttribute('aria-pressed'),
+          others: document.querySelectorAll('#guess-grid .is-picked').length,
+          lock: document.querySelector('#guess-lock').textContent,
+          lockOff: document.querySelector('#guess-lock').disabled,
+          stored: localStorage.getItem('psycheai_guess'),
+        }));
+        check('a tap picks a character and offers to lock it in, with nothing sent yet',
+          picked.pressed === 'true' && picked.others === 1 && picked.lock === 'Lock in Hulk' && !picked.lockOff && !picked.stored &&
+            !guessPosts.some(p => p.route === 'guess'), JSON.stringify(picked));
+        await gp.click('#guess-lock');
+        await gp.waitForSelector('#working-guess.is-locked', { timeout: 10000 });
+        const locked = await gp.evaluate(() => ({
+          note: document.querySelector('#working-guess-note').textContent,
+          lockHidden: document.querySelector('#guess-lock').hidden,
+          tilesOff: [...document.querySelectorAll('#guess-grid .guess-tile')].every(t => t.disabled),
+          stored: JSON.parse(localStorage.getItem('psycheai_guess') || 'null'),
+          job: JSON.parse(localStorage.getItem('psycheai_job') || 'null'),
+          working: !document.querySelector('#view-working').hidden,
+        }));
+        check('locked in before the card exists: said, the rest set aside, and kept with the job it was locked onto',
+          locked.working && locked.note === 'Locked in: Hulk. Your card will tell you if you’re right.' && locked.lockHidden && locked.tilesOff &&
+            locked.stored && locked.stored.name === 'Hulk' && !locked.stored.outcome && locked.job && locked.stored.job === locked.job.key,
+          JSON.stringify(locked));
+        const analyse = guessPosts.find(p => p.route === 'analyse');
+        const lockPost = guessPosts.find(p => p.route === 'guess');
+        check('the guess goes after the request, to the job being written, beside the digest and never inside it',
+          analyse && !analyse.body.guess && !JSON.stringify(analyse.body.digest || {}).includes('Hulk') &&
+            lockPost && lockPost.body.guess === 'Hulk' && /^card:[0-9a-f]{64}$/.test(lockPost.body.job) && Object.keys(lockPost.body).sort().join() === 'guess,job',
+          JSON.stringify({ analyse: analyse && Object.keys(analyse.body), lock: lockPost && lockPost.body }));
         await gp.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
-        const sentGuess = guessBodies.find(body => body.guess);
-        check('the guess goes with the first free card, beside the digest and never inside it',
-          sentGuess && sentGuess.guess === 'Hulk' && !JSON.stringify(sentGuess.digest || {}).includes('Hulk'),
-          JSON.stringify(sentGuess && { guess: sentGuess.guess, keys: Object.keys(sentGuess) }));
         // Told in a popout: the guess and that it is right, and the credit it won.
         await gp.waitForSelector('#guess-dialog[open]', { timeout: 15000 });
         const told = await gp.evaluate(() => ({
           text: document.querySelector('#guess-dialog').innerText,
           faces: document.querySelectorAll('#guess-faces .guess-face').length,
           later: getComputedStyle(document.querySelector('#guess-later-row')).display !== 'none',
+          game: document.querySelector('#working-guess').hidden,
         }));
-        check('a right guess is announced in a popout, with the guessed character and the credit on the link',
+        check('a right guess is announced in a popout, with the guessed character and the credit on the link; the game is put away',
           /You guessed right!/.test(told.text) && /You said Hulk/.test(told.text) && /1 credit is on your link/.test(told.text) &&
-            !/Unlock it free/.test(told.text) && told.faces === 1 && !told.later, JSON.stringify(told));
+            !/Unlock it free/.test(told.text) && told.faces === 1 && !told.later && told.game, JSON.stringify(told));
         await gp.click('#guess-go');
         await dialogClosed(gp, '#guess-dialog');
         await frames(gp);
@@ -13336,50 +13309,21 @@ try {
           !won.gift && won.banner && linkCredits.available === 1, JSON.stringify({ won, linkCredits }));
         check('and the slim Psyche Report bar still offers the report, unlocked as before',
           won.promo === false, JSON.stringify(won));
-        await gp.click('.brand[data-nav="main"]');
-        await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
-        const after = await gp.evaluate(() => ({
-          title: document.querySelector('#cast-title').textContent,
-          guessing: document.querySelector('#cast').classList.contains('is-guessing'),
-        }));
-        check('once the card is made the cast turns to friends, with nothing left to guess',
-          after.title === 'Which one are your friends?' && !after.guessing, JSON.stringify(after));
-        // A device that has spent its free card, with no card on it now (Delete
-        // everything): its next run is paid and never counts a guess, so none is offered.
-        await gp.evaluate(() => { localStorage.clear(); localStorage.setItem('psycheai_runs', '1'); });
-        await gp.reload({ waitUntil: 'load' });
-        await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
-        await booted(gp);
-        await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Po"]').click());
-        const spent = await gp.evaluate(() => ({
-          title: document.querySelector('#cast-title').textContent,
-          note: document.querySelector('#cast-note').textContent,
-          guessing: document.querySelector('#cast').classList.contains('is-guessing'),
-          picked: localStorage.getItem('psycheai_guess'),
-        }));
-        check('a device that has spent its free card is not offered a guess it cannot win, and is told why',
-          spent.title === 'Which one are you?' && /for a first free Psyche Card/.test(spent.note) && !spent.guessing && !spent.picked,
-          JSON.stringify(spent));
-        // The same export again on a fresh device: the card is the one the server
-        // still holds, and this account has had its guess. Said, not left silent.
-        await gp.evaluate(() => localStorage.clear());
-        await gp.reload({ waitUntil: 'load' });
-        await gp.waitForSelector('.cast-tile[data-name="Hulk"]', { timeout: 15000 });
-        await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Hulk"]').click());
-        await gp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
-        await chooseDepth(gp);
-        await answerReview(gp);
-        await gp.waitForSelector('#guess-dialog[open]', { timeout: 60000 });
-        const again = await gp.evaluate(() => ({
-          text: document.querySelector('#guess-dialog').innerText,
-          won: document.querySelector('#guess-dialog').classList.contains('is-won'),
-          later: getComputedStyle(document.querySelector('#guess-later-row')).display !== 'none',
-        }));
-        check('a guess that cannot count is told so in the popout, with why, and no prize',
-          /Your guess wasn’t counted/.test(again.text) && /already had it/.test(again.text) && !again.won && !again.later,
-          JSON.stringify(again));
+        // The job is closed to guesses once its card is written: a guess now
+        // is a guess at a known answer.
+        const late = await gp.evaluate(async job => {
+          const send = body => fetch('api/guess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            .then(async r => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+          return [await send({ job, guess: 'Po' }), await send({ job: 'card:' + 'f'.repeat(64), guess: 'Po' }),
+            await send({ job, guess: 'Mario' }), await send({ job: 'compatibility:' + 'f'.repeat(64), guess: 'Po' })];
+        }, lockPost && lockPost.body.job);
+        check('a guess for a card already written, or for no running card, is refused as too late; a bad job or name outright',
+          late[0].status === 409 && late[0].body.tooLate === true && late[1].status === 409 && late[1].body.tooLate === true &&
+            late[2].status === 400 && late[3].status === 400, JSON.stringify(late));
+        check('the guessing game runs with no page errors', gpErrors.length === 0, gpErrors.join(' | '));
       } finally {
         await gp.close();
+        guessServer.kill();
       }
     } finally {
       await up.close();
@@ -13508,7 +13452,12 @@ try {
       await rp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       const appeared = await rp.waitForSelector('#profile-body .unlock-share.is-ready', { timeout: 10000 }).then(() => true).catch(() => false);
       check('one friend\'s card from the link and the free unlock appears on its own, without a reload',
-        appeared && await rp.evaluate(() => !document.querySelector('#profile-body .unlock-share-claim').hidden));
+        appeared && await rp.evaluate(() => !document.querySelector('#profile-body .unlock-share-claim').hidden),
+        JSON.stringify(await rp.evaluate(async secret => ({
+          view: (document.querySelector('.view:not([hidden])') || {}).id,
+          share: [...document.querySelectorAll('.unlock-share')].map(e => e.className),
+          status: await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret }) }).then(r => r.json()),
+        }), mine.secret)));
       // The same link as a QR code in the foot of the reader's own card, on
       // the page and in its full-screen copy, so any copy of the image leads
       // back to it.
@@ -14136,7 +14085,7 @@ try {
     const firstPort = PORT + 4;
     const firstServer = spawn(process.execPath, [join(root, 'server.js')], {
       env: {
-        ...process.env, PORT: String(firstPort), PSYCHEAI_MOCK: '1',
+        ...process.env, PORT: String(firstPort), PSYCHEAI_MOCK: '1', PSYCHEAI_MOCK_DELAY_MS: '4000',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-first-budget.jsonl'),
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-first-usage.jsonl'),
         PSYCHEAI_DAILY_FREE_LIMIT: '100000',
@@ -14159,12 +14108,16 @@ try {
       await fp.evaluate(() => localStorage.clear());
       await fp.goto(base, { waitUntil: 'load' });
       const status = await fp.evaluate(() => fetch('api/status').then(r => r.json()));
-      const castTitle = await fp.locator('#cast-title').innerText();
-      // A guess at the character the mock names.
-      await fp.click('#cast-track .cast-tile[data-name="Hulk"]');
       await fp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
       await chooseDepth(fp);
       await answerReview(fp);
+      // A guess at the character the mock names, locked in while the card
+      // and its report are written.
+      await fp.waitForSelector('#working-guess:not([hidden]) .guess-tile[data-name="Hulk"]', { timeout: 15000 });
+      const castTitle = await fp.locator('#working-guess-note').innerText();
+      await fp.click('.guess-tile[data-name="Hulk"]');
+      await fp.click('#guess-lock');
+      await fp.waitForSelector('#working-guess.is-locked', { timeout: 10000 });
       await fp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 90000 });
       const body = sent[sent.length - 1] || {};
       const first = await fp.evaluate(() => {
@@ -14179,8 +14132,8 @@ try {
             return r.top >= -1 && r.top < innerHeight; })(),
         };
       });
-      check('first run merged: the server says so, the cast offers a credit, and one free run brings the card and its report, landing on the My Psyche hub',
-        status.firstRun === 'merged' && /win a free credit/.test(castTitle) && body.product === 'first' && !body.paymentIntentId &&
+      check('first run merged: the server says so, the waiting screen offers a credit for a guess, and one free run brings the card and its report, landing on the My Psyche hub',
+        status.firstRun === 'merged' && /A right guess wins a free credit/.test(castTitle) && body.product === 'first' && !body.paymentIntentId &&
           first.paid && first.card && first.unlocked && !first.locked && first.onHub,
         JSON.stringify({ firstRun: status.firstRun, castTitle, product: body.product, first }));
       await fp.waitForSelector('#guess-dialog[open]', { timeout: 10000 });

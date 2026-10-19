@@ -1,9 +1,10 @@
-// The cast strip's tiles as one image: docs/media/cast-sprite.webp, every
+// The character tiles as one image: docs/media/cast-sprite.webp, every
 // catalogue character's scene cropped to a square tile on the card's purple,
 // in the order of docs/copy.js's CHARACTER_SYNCS, and docs/media/cast-sprite.json
-// naming that order. The strip (docs/app.js, mountCast) shows each tile as a
-// background position on that one image, so the front page carries a few
-// hundred plain elements instead of the scenes' twenty thousand.
+// naming that order. The guessing game on the waiting screen (docs/app.js,
+// openGuessGame) and the guess popout show each tile as a background position
+// on that one image, so the page carries a few dozen plain elements instead
+// of the scenes' twenty thousand.
 //
 //   node tools/cast-sprite.mjs           redraw both files
 //   node tools/cast-sprite.mjs --check   exit 1 if they are out of date

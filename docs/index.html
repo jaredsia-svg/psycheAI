@@ -230,7 +230,7 @@
   <h2 class="row-head">How it works</h2>
   <div class="steps-row">
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
-      <p>Download your data from Instagram (WhatsApp and Google data are optional). See <a href="#cast" class="step-below">below</a> for instructions.</p></div>
+      <p>Download your data from Instagram (WhatsApp and Google data are optional). See <a href="#request-data" class="step-below">below</a> for instructions.</p></div>
     <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
       <p>Your data is analysed by Gemini, which creates a report for you. No data is stored by PsycheAI.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
@@ -259,21 +259,6 @@
          and its price. -->
     <div data-insights></div>
   </div>
-
-  <!-- The cast: all 29 characters a card can name, turning slowly until
-       touched, then swiped by hand, with arrows either side. Before
-       a first card, tap one to guess which you are: a right guess wins a free
-       Psyche Report. Request my IG data lands here, with the request steps straight
-       below. Filled by app.js (mountCast). -->
-  <section class="cast" id="cast" aria-labelledby="cast-title">
-    <p class="cast-head" id="cast-title"></p>
-    <div class="cast-view">
-      <div class="cast-strip" id="cast-strip" role="group"><ul class="cast-track" id="cast-track"></ul></div>
-      <button type="button" class="cast-arrow cast-arrow-left" data-dir="left" aria-label="Scroll the cast left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <button type="button" class="cast-arrow cast-arrow-right" data-dir="right" aria-label="Scroll the cast right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
-    </div>
-    <p class="cast-note" id="cast-note" aria-live="polite"></p>
-  </section>
 
   <div class="card help help-card" id="request-data">
     <div class="help-head">
@@ -403,6 +388,15 @@
     <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
     <p id="progress-label" class="muted">Opening the archive…</p>
     <p class="fineprint" id="working-note"></p>
+    <!-- The guessing game, while a free first read is written (app.js,
+         openGuessGame): every character a card can name; one picked and
+         locked in before the card exists (server.js, handleGuess). -->
+    <div class="working-guess" id="working-guess" hidden>
+      <h3 id="working-guess-title"></h3>
+      <p class="working-guess-note" id="working-guess-note" aria-live="polite"></p>
+      <ul class="guess-grid" id="guess-grid"></ul>
+      <button class="btn btn-primary" id="guess-lock" type="button" disabled></button>
+    </div>
   </div>
 </section>
 

@@ -2091,6 +2091,9 @@ elements, ready in about 3 seconds, finished in under 5, with 5.3 seconds of CPU
 
 ### Guess your character, win the report
 
+*Moved to the waiting screen in October 2026: see "The guessing game moved to the waiting screen". The
+strip below is gone; how a guess is judged still holds.*
+
 The 29 characters are the app's strongest draw, and the front page showed one at a time. Above
 *Request your Instagram data first* there is now one slim row (about 150px with its note): the title
 **Guess which character you are and win a Psyche Report for free**, every character in its own scene
@@ -2782,6 +2785,72 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
+
+### J/P read by area; uncounted notes are weak (October 2026)
+
+**What went wrong.** J/P kept swinging between reports for one reader. Their backup's J/P ledger had three
+J pieces and one P piece, none counted or quoted ("tracks property transactions", "occasionally books
+spontaneous flights"), and no own-words row. It tallied 5 to 2 out of 7, which the guide calls slight, yet
+the model printed *moderate J*. The data is genuinely split: hard planning on money, property and travel,
+loose plans with friends. Which side got more entries depended on what the model happened to pick up on
+that run, and J/P has no rows the code computes.
+
+**What changed.**
+- **J/P is read by area.** The model looks at four areas: work and money, travel, plans with friends and
+  day to day. For each area the digest shows, it enters that area's strongest piece for each letter and
+  opens the note with the area (`travel: flights booked 6 weeks ahead in 3 chats`). A row may repeat across
+  areas, never inside one. An area the digest is silent on is left out.
+- **A split is slight.** Where every area shown leans one way, the letter can be moderate or clear. Where
+  they split (planning hard in some and loose in others), the axis is `slight`, towards the side of the
+  areas that carry most of their time, money and effort. Own words about planning outweigh any one area.
+- **Counted or quoted, or weak, on every axis.** Each note gives a count from the digest or quotes their
+  words. A note with neither ("often", "occasionally") counts as weak whatever its row, and impressions
+  alone never make a letter more than slight.
+
+**What the code does.** `cleanLedger` in `lib/mbtiScore.js` keeps one J/P entry per row, letter and area
+(`areaOf` reads the area off the note), and counts an uncounted, unquoted note as weak (`counted`). This
+changes only the advisory tally behind `mbti_flip`; the model still decides the letter. The sample
+report's ledgers were rewritten to the new rules, with their notes counted and its J/P ledger by area.
+**Cost:** `FREE_FIXED_INPUT_TOKENS` is 14,100 (14,074 measured), inside the 8.7¢ cap.
+
+**Temperature was considered and left alone.** A lower temperature would cut run-to-run randomness, but
+Gemini's thinking models are meant to run at the default 1.0 (lowering it risks looping), and Claude allows
+only 1 while thinking is on. The swing came from which evidence went into the ledger, which these rules
+address on any provider.
+
+### The guessing game moved to the waiting screen; the bar sweeps again (October 2026)
+
+**The bar.** While a card was being written, the progress bar sat empty. The steps before it (opening the
+archive, building the digest) set the bar's width inline, and an inline width overrides the sweep's own 40%,
+so the stripe stayed at whatever was set last, usually 0. `startElapsed` now clears that width before the
+sweep starts.
+
+**The game.** The front page's strip of 29 characters is gone. Most readers never noticed that a tap on it
+was a guess, and the reader is at the waiting screen with two or three minutes to fill anyway. Now, while a
+free first read is written, the waiting screen shows *While you wait: guess which character you are*: every
+character as a round tile, one picked, then **Lock in Hulk** (`openGuessGame` in `docs/app.js`). On a phone
+the button rides at the foot of the screen while the grid scrolls. Locked in, the pick stays marked, the rest
+step back, and the note says *Locked in: Hulk. Your card will tell you if you're right.*
+
+**Keeping it fair.** The request has already gone by then, so the guess is sent on its own, to `/api/guess`
+with the job's key (`handleGuess` in `server.js`):
+- **Accepted only while the job is running.** The server holds it beside the job, never in the digest, so the
+  model never sees it.
+- **Closed the moment the card is written.** `takeLockedGuess` reads the guess and closes the job to any
+  more, after the model returns and before the result can reach anyone. A guess can still only be made before
+  the answer exists. A late one gets 409 `tooLate`, and the page says it can't count.
+- **One per job.** A second lock returns the guess already held.
+- **Judged as before.** `judgeGuess` against the card just written, one guess per Instagram account, and a
+  right guess is one credit on the reader's link.
+- **No ticket.** As with `/api/result`, the job key is a SHA-256 of the digest, so holding it means holding
+  the evidence. The route spends nothing.
+
+A reload during the wait reopens the game, with the guess still locked if it was (`psycheai_guess` keeps the
+job it was locked onto). A guess picked on the old front-page strip before this deployed is still sent with
+the request and judged as it was. If the card arrives before a guess is locked, the game simply closes. The
+character tiles are the same one image as before (`docs/media/cast-sprite.webp`). *Get my data* and *See
+below* now land on the request steps. `PSYCHEAI_MOCK_DELAY_MS` holds the mock's card back so the wait can be
+played and tested.
 
 ### MBTI: the model decides; the rubric guides (October 2026)
 

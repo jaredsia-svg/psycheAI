@@ -992,46 +992,40 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .guess-face figcaption { display: grid; gap: .05rem; font-size: .8rem; color: var(--ink-soft); }
 .guess-face figcaption b { font-size: .92rem; color: var(--ink); }
 .guess-dialog.is-won .guess-face .cast-art { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent); }
-/* The cast: one slim row of round tiles above the request steps, scrolled
-   sideways (app.js, mountCast), with no scrollbar and an arrow either side. */
-.cast { margin: 1.2rem 0 .9rem; scroll-margin-top: 4.5rem; }
-.cast-head { margin: 0 0 .3rem; font-size: .95rem; font-weight: 700; color: var(--ink); }
-.cast-note { margin: .2rem 0 0; font-size: .82rem; line-height: 1.35; color: var(--ink-soft); min-height: 1.1em; }
-.cast-tile {
-  appearance: none; border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: inherit;
-  flex: none; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+/* The guessing game on the waiting screen (app.js, openGuessGame): every
+   character a card can name as a round tile, one picked and locked in. */
+.working-guess { margin: 1.4rem 0 0; padding-top: 1.2rem; border-top: 1px solid var(--line); }
+.working-guess h3 { margin: 0 0 .3rem; font-size: 1.05rem; }
+.working-guess-note { margin: 0 auto .9rem; max-width: 34rem; font-size: .88rem; line-height: 1.4; color: var(--ink-soft); }
+.guess-grid {
+  list-style: none; margin: 0 0 1rem; padding: 6px 0 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 14px 8px;
 }
-.cast-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 12px; }
-.cast.is-guessing .cast-tile { cursor: pointer; }
-.cast.is-guessing .cast-tile:hover .cast-art { box-shadow: 0 0 0 3px var(--accent-soft), 0 3px 10px rgba(80, 30, 110, .2); }
-/* The guess: a ring and a tick, so it is found again as the strip turns. */
-.cast-tile.is-picked .cast-art { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent); }
-.cast-tile.is-picked .cast-name { color: var(--accent); }
-.cast-tile { position: relative; }
-.cast-tile.is-picked::after {
-  content: '✓'; position: absolute; top: -2px; right: 4px; width: 20px; height: 20px; border-radius: 999px;
+.guess-tile {
+  appearance: none; border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
+  position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.guess-tile:disabled { cursor: default; }
+.guess-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 12px; }
+.guess-tile:not(:disabled):hover .cast-art { box-shadow: 0 0 0 3px var(--accent-soft), 0 3px 10px rgba(80, 30, 110, .2); }
+.guess-tile.is-picked .cast-art { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent); }
+.guess-tile.is-picked .cast-name { color: var(--accent); }
+.guess-tile.is-picked::after {
+  content: '✓'; position: absolute; top: -4px; right: calc(50% - 36px); width: 20px; height: 20px; border-radius: 999px;
   display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent);
 }
-.cast-view { position: relative; }
-.cast-strip {
-  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+/* Locked in: the guess stands out, the rest step back. */
+.working-guess.is-locked .guess-tile:not(.is-picked) { opacity: .35; }
+/* In reach wherever the pick was made: on a phone the grid runs past the
+   screen, so the button rides at its foot while the grid scrolls. */
+#guess-lock { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 1; box-shadow: 0 6px 18px rgba(80, 30, 110, .25); }
+#guess-lock:disabled { box-shadow: none; }
+#guess-lock[hidden] { display: none; }
+@media (max-width: 560px) {
+  .guess-grid { grid-template-columns: repeat(4, 1fr); gap: 12px 4px; }
+  .guess-grid .cast-art { width: 54px; height: 54px; }
+  .guess-tile.is-picked::after { right: calc(50% - 32px); }
 }
-.cast-strip::-webkit-scrollbar { display: none; }
-.cast-track { list-style: none; margin: 0; padding: 7px 0 2px; display: flex; align-items: flex-start; column-gap: 14px; width: max-content; }
-/* Small, over the faded ends, level with the tiles' art. */
-.cast-arrow {
-  position: absolute; top: 22px; z-index: 1; width: 30px; height: 30px; border-radius: 999px; padding: 0;
-  display: grid; place-items: center; cursor: pointer; color: var(--accent);
-  border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent);
-  box-shadow: 0 2px 8px rgba(60, 20, 90, .14);
-}
-.cast-arrow svg { width: 15px; height: 15px; }
-.cast-arrow:hover, .cast-arrow:focus-visible { background: var(--accent-soft); outline: none; }
-.cast-arrow-left { left: -4px; }
-.cast-arrow-right { right: -4px; }
 .cast-art {
   width: 58px; height: 58px; border-radius: 999px; overflow: hidden; display: flex; align-items: center; justify-content: center;
   color: #fff; background: url(media/cast-sprite.webp) no-repeat, linear-gradient(150deg, var(--accent), var(--accent-2));

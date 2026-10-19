@@ -1470,8 +1470,16 @@ check('a blank is never evidence',
 check('no direct messages means no conversation rows and E/I near the middle',
   /`coverage\.directMessagesIncluded` is false, or they barely use direct messages/.test(ledgerRules) &&
   /the code counts no conversation rows/.test(ledgerRules));
-check('J/P mixed across areas is entered both ways',
-  /on J\/P, enter both, from the areas where they spend most of their time, money and effort/.test(ledgerRules));
+check('J/P is read by area: four areas, a split is slight, the note opens with its area',
+  /\*\*J\/P is read by area\.\*\*/.test(ledgerRules) &&
+  /\*\*work and money\*\*, \*\*travel\*\*, \*\*plans with friends\*\* and \*\*day to day\*\*/.test(ledgerRules) &&
+  /where they split \(planning hard in some and loose in others\), the axis is `slight`/.test(ledgerRules) &&
+  /An area the digest is silent on is left out/.test(ledgerRules) &&
+  mbtiScore.JP_AREAS.join() === 'work and money,travel,plans with friends,day to day');
+check('every ledger note is counted or quoted, or it counts as weak',
+  /\*\*Counted or quoted, or weak\.\*\*/.test(ledgerRules) &&
+  /impressions alone never make a letter more than `slight`/.test(ledgerRules) &&
+  /with neither it counts as weak/.test(String(letterProps.ledger && letterProps.ledger.items && letterProps.ledger.items.properties.note.description)));
 check('the extraversion score goes with the E/I letter and its strength, and the other traits follow their axes',
   /The extraversion score goes with the E\/I letter and its strength/.test(ledgerRules) &&
   /\*\*E\*\* about 51 to 59 at `slight`, 60 to 69 at `moderate`, 70 to 85 at `clear`, mirrored below 50 for \*\*I\*\*/.test(ledgerRules) &&
@@ -1565,6 +1573,17 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
   ]);
   check('ledger: unknown rows, computed rows, letters a row cannot point to and repeats are dropped',
     cleaned.map(p => p.row + ':' + p.to).join() === 'setting:I,reach-out:E', JSON.stringify(cleaned));
+  check('ledger: an uncounted, unquoted note counts as weak; a count or a quote keeps its row\'s weight',
+    cleaned.every(p => p.weight === 'weak') &&
+    S.cleanLedger('E/I', [{ row: 'setting', pointsTo: 'I', note: 'avoids mixers 4 times' }])[0].weight === 'strong' &&
+    S.cleanLedger('E/I', [{ row: 'own-words', pointsTo: 'I', note: 'calls themselves "peopled out"' }])[0].weight === 'strong');
+  const jp = S.cleanLedger('J/P', [
+    { row: 'plans-ahead', pointsTo: 'J', note: 'travel: 7 of 9 trips booked ahead' },
+    { row: 'plans-ahead', pointsTo: 'J', note: 'work and money: 3 trackers kept' },
+    { row: 'plans-ahead', pointsTo: 'J', note: 'travel: 2 hotels booked ahead' },
+  ]);
+  check('ledger: on J/P a row repeats across areas, never inside one',
+    jp.map(p => S.areaOf(p.note)).join() === 'travel,work and money' && S.areaOf('Travel : x') === 'travel' && S.areaOf('beach: x') === '', JSON.stringify(jp));
   const piece = (to, weight) => ({ row: 'x', to, weight });
   const axis = list => S.scoreAxis('E/I', list, '');
   check('ledger: the side with more points wins; a third\'s margin over 10 points is moderate, two-thirds over 14 clear',
@@ -8717,9 +8736,10 @@ check('the schema requires evidence on where they align and differ',
         /if \(full && !paying && !firstFull\)/.test(serverSource) && /if \(firstFull \|\| referralGrant\) budget\.record\(kind\);/.test(serverSource) &&
         /firstRun: FIRST_RUN\(\)/.test(serverSource));
     check('the server reads the guess only to judge it, against the card just written',
-      (serverSource.match(/body\.guess/g) || []).length === 6 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource) &&
+      (serverSource.match(/body\.guess/g) || []).length === 5 && /referral\.judgeGuess\(\{\s*guess: guessed,/.test(serverSource) &&
         (serverSource.match(/await judgeFor\(/g) || []).length === 1 &&
-        /const guess = \(made === 'card' \|\| firstFull\) && body\.guess \? await judgeFor\(body, result, request\) : null;/.test(serverSource) &&
+        /const guessed = takeLockedGuess\(results\.keyFor\(kind, key\)\) \|\| body\.guess;/.test(serverSource) &&
+        /const guess = \(made === 'card' \|\| firstFull\) && guessed \? await judgeFor\(body, guessed, result, request\) : null;/.test(serverSource) &&
         /creditTo: String\(body\.myRef \|\| ''\),/.test(serverSource));
     // A card already made has been seen: a guess sent with it again is not
     // judged (it was a free report on demand, with a fresh account each time),
@@ -9081,7 +9101,7 @@ check('the schema requires evidence on where they align and differ',
   const guarded = Object.keys(server.API_GUARDS).sort();
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
-      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/link', '/api/link/save',
+      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/guess', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
       '/api/stats', '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
@@ -9096,11 +9116,13 @@ check('the schema requires evidence on where they align and differ',
   // nothing and returns nothing, and a ticket per step would cost more than
   // the count.
   // /api/link opens a short link by the id the link itself names.
+  // /api/guess locks a guess onto a running job by its key, as /api/result
+  // reads one, and spends nothing.
   // /api/sync/inbox and /api/sync/done are the link owner's own reads and
   // clears, keyed by their secret, as /api/referral is.
   // /api/stats is the operator's read, behind its token, with a bucket of
   // its own (October 2026) so the token cannot be guessed at speed.
-  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result',
+  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/guess', '/api/link', '/api/nonce', '/api/referral', '/api/result',
     '/api/stats', '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
