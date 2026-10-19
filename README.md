@@ -2221,7 +2221,8 @@ character pages (*Most in sync with …*) all read it, so they cannot disagree. 
   least one woman and at least one man (Baymax, WALL-E, Remy, Pikachu and Totoro are neither, and
   exempt);
 - the pairings go both ways, except one loop of three (Pikachu → Totoro → Shrek → Pikachu), because 87
-  is odd, so the 29 characters cannot all pair off.
+  is odd, so the 29 characters cannot all pair off. (Since Totoro's retirement in October 2026 there are
+  28, and every pairing goes both ways.)
 
 `npm test` checks all of these. The card guide explains the box, and the UI suite checks that the
 reader's own card, QR code included, still fits its 1080×1920 canvas.
@@ -2785,6 +2786,31 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
+
+### Totoro retired: 28 characters, every sync mutual (October 2026)
+
+**Why Totoro.** Of the characters drawn as neither woman nor man, Totoro (calm, comforting, at home in
+quiet places) overlapped most with Baymax (gentle, patient, caring) and WALL-E (gentle, quietly devoted),
+and all three are open to every reader. The other two in that group each cover a type nobody else there
+does: Pikachu is the only upbeat one open to everyone (Joy is offered to women only), and Remy the only
+driven, craft-focused one.
+
+**The sync table.** 29 characters could not all pair off, so the table carried one loop of three
+(Pikachu → Totoro → Shrek → Pikachu). Without Totoro, Baymax and WALL-E take each other and Pikachu takes
+Shrek, who already listed Pikachu. Every character is still named exactly three times, every pairing is now
+mutual, and every woman and man still has at least one of each side. `npm test` checks all of it.
+
+**What changed with it.**
+- **Catalogue and prompt:** `CHARACTER_CATALOGUE` holds 28, and readers the model cannot place choose from
+  four instead of five.
+- **Old cards:** Totoro moved to `RETIRED_CHARACTERS`, so a card already naming Totoro still draws its scene
+  and emblem, in the older layout without the sync row.
+- **Front page:** the Totoro sample card (Kenji Nakamura) is gone from the gallery, which now shows the full
+  sample and four more.
+- **Search pages:** the Totoro page is deleted, and `/totoro-personality` now goes to `/baymax-personality`
+  with a permanent redirect (`RETIRED_PAGES` in `server.js`). The other pages, the sitemap and the
+  character tile image were regenerated.
+- **Guessing game:** 28 tiles, a neat 4 × 7 on a phone.
 
 ### J/P read by area; uncounted notes are weak (October 2026)
 

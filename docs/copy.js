@@ -1681,9 +1681,9 @@
   // printed on the card and on the character pages (tools/seo-pages.mjs).
   // Balanced: every character is named exactly three times, so none is left
   // out, and every woman and man is paired with at least one of the other
-  // and at least one of their own (the five drawn as neither are exempt).
-  // The first two are mutual; so is the third, except for one loop of three
-  // (Pikachu, Totoro, Shrek), since 29 characters cannot all pair off.
+  // and at least one of their own (the four drawn as neither are exempt).
+  // Every pairing is mutual (October 2026: with Totoro retired the catalogue
+  // is an even 28, and the one loop of three it forced is gone).
   // Retired characters have none, and their cards show the old layout.
   const CHARACTER_SYNCS = {
     'Mulan': ['Baymax', 'Po', 'Hermione Granger'],
@@ -1693,10 +1693,10 @@
     'Rapunzel': ['Elsa', 'Remy', 'Hulk'],
     'Judy Hopps': ['Nick Wilde', 'Simba', 'Wonder Woman'],
     'Nick Wilde': ['Judy Hopps', 'Shrek', 'Kuromi'],
-    'Baymax': ['Mulan', 'Totoro', 'Hiccup'],
+    'Baymax': ['Mulan', 'WALL-E', 'Hiccup'],
     'Woody': ['Buzz Lightyear', 'Joy', 'WALL-E'],
     'Buzz Lightyear': ['Woody', 'Wonder Woman', 'Captain America'],
-    'WALL-E': ['Totoro', 'Remy', 'Woody'],
+    'WALL-E': ['Baymax', 'Remy', 'Woody'],
     'Remy': ['Rapunzel', 'WALL-E', 'Batman'],
     'Joy': ['Woody', 'Pikachu', 'Moana'],
     'Iron Man': ['Captain America', 'Spider-Man', 'Elsa'],
@@ -1705,9 +1705,8 @@
     'Hulk': ['Batman', 'Hiccup', 'Rapunzel'],
     'Wonder Woman': ['Captain America', 'Buzz Lightyear', 'Judy Hopps'],
     'Batman': ['Hermione Granger', 'Hulk', 'Remy'],
-    'Pikachu': ['Joy', 'Sailor Moon', 'Totoro'],
+    'Pikachu': ['Joy', 'Sailor Moon', 'Shrek'],
     'Princess Peach': ['Hello Kitty', 'Sailor Moon', 'Simba'],
-    'Totoro': ['Baymax', 'WALL-E', 'Shrek'],
     'Shrek': ['Nick Wilde', 'Kuromi', 'Pikachu'],
     'Po': ['Mulan', 'Simba', 'Hello Kitty'],
     'Hiccup': ['Moana', 'Hulk', 'Baymax'],

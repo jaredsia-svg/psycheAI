@@ -260,18 +260,6 @@ export const CHARACTERS = [
     types: ['ESFJ', 'ENFJ'],
   },
   {
-    name: 'Totoro', franchise: 'Studio Ghibli',
-    tagline: 'Calm, comforting and at home in quiet, natural places.',
-    about: 'A Totoro reading is someone with a calm, grounding presence. They like slow days, nature and small comforts, and people feel at ease around them. They show up quietly when it matters most.',
-    signs: ['Your saves are full of nature, cosy places and calm.',
-      'You post rarely and gently.',
-      'Your activity follows an unhurried rhythm.',
-      'Friends describe you as easy to be with.'],
-    strengths: ['Calm and grounding', 'Kind', 'Present when it matters'],
-    growth: ['Speaking up in busy groups', 'Sharing plans and wishes'],
-    types: ['ISFP', 'INFP'],
-  },
-  {
     name: 'Shrek', franchise: 'DreamWorks',
     tagline: 'Blunt, funny and much softer underneath than they let on.',
     about: 'A Shrek reading is someone who values their own space, says what they think and has a dry sense of humour. They are slow to let people in, but once they do they are loyal and protective. They prefer real over polished.',

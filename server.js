@@ -1821,6 +1821,9 @@ function applySecurityHeaders(request, response) {
 // address can still collect a report it is waiting for. Unset, nothing is
 // redirected. Matched on the onrender.com suffix rather than on "anything
 // but the canonical host", so localhost and the test suite are never moved.
+// Pages of retired characters and where they now point (see above the short links).
+const RETIRED_PAGES = { 'totoro-personality': 'baymax-personality' };
+
 const CANONICAL_HOST = String(process.env.PSYCHEAI_CANONICAL_HOST || '').trim().toLowerCase();
 function canonicalRedirect(request) {
   if (!CANONICAL_HOST || (request.method !== 'GET' && request.method !== 'HEAD')) return null;
@@ -1975,6 +1978,16 @@ function routeRequest(route, url, request, response) {
         console.error('[' + route + ']', error && error.message ? error.message : error);
         sendJson(response, described.status, { error: described.message });
       });
+    return;
+  }
+
+  // A retired character's page, to the closest one still in the catalogue
+  // (October 2026: Totoro, to Baymax), so a search result or an old link
+  // lands somewhere useful rather than on the 404.
+  const retired = /^\/([a-z-]+-personality)(?:\.html)?\/?$/.exec(route);
+  if (retired && RETIRED_PAGES[retired[1]] && (request.method === 'GET' || request.method === 'HEAD')) {
+    response.writeHead(301, { Location: '/' + RETIRED_PAGES[retired[1]], 'Cache-Control': 'public, max-age=86400' });
+    response.end();
     return;
   }
 

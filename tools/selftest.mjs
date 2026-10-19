@@ -7114,12 +7114,12 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   }
   check('the card picks a character on the reader\'s likely side or the neither group, and only the neither group when unsure',
     prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 &&
-      prompts.CHARACTER_SIDES.neither.join() === 'Baymax,WALL-E,Remy,Pikachu,Totoro' &&
+      prompts.CHARACTER_SIDES.neither.join() === 'Baymax,WALL-E,Remy,Pikachu' &&
       prompts.STRUCTURED_FREE_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) &&
       prompts.CHARACTER_SIDES.women.concat(prompts.CHARACTER_SIDES.men, prompts.CHARACTER_SIDES.neither)
         .every(name => prompts.CHARACTER_SIDE_RULE.includes(name)) &&
       /Either may also get one of the characters who are neither: Baymax/.test(prompts.CHARACTER_SIDE_RULE) &&
-      /If you cannot tell with reasonable confidence, or they present as neither, choose only from those five/.test(prompts.CHARACTER_SIDE_RULE),
+      /If you cannot tell with reasonable confidence, or they present as neither, choose only from those four/.test(prompts.CHARACTER_SIDE_RULE),
     prompts.CHARACTER_SIDE_RULE.slice(0, 200));
   check('and never writes that judgement down: the rule says so, and the privacy rule allows only this private use',
     /never state, hint at or explain it anywhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
@@ -7136,7 +7136,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       'Sailor Moon', 'Princess Peach', 'Hello Kitty'].every(name => prompts.CHARACTER_NAMES.includes(name)) &&
       prompts.CHARACTER_NAMES.filter(name => ['Simba', 'Nick Wilde', 'Woody', 'Buzz Lightyear', 'Iron Man', 'Captain America',
         'Spider-Man', 'Hulk', 'Batman', 'Shrek', 'Po', 'Hiccup'].includes(name)).length === 12 &&
-      prompts.CHARACTER_NAMES.length === 29 &&
+      prompts.CHARACTER_NAMES.length === 28 &&
       prompts.RETIRED_CHARACTERS.every(([name]) => !prompts.CHARACTER_NAMES.includes(name)),
     prompts.CHARACTER_NAMES.join(', '));
   check('the sample\'s character is in the catalogue', prompts.CHARACTER_NAMES.includes(sample.essence.character));
@@ -8007,7 +8007,7 @@ check('the schema requires evidence on where they align and differ',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 62 &&
+  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 61 &&
     ['/', '/privacy', '/terms', '/refunds', '/faq', '/sample-report', '/characters', '/mbti-types', '/intj-personality']
       .every(path => paths.includes(path)), JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
@@ -8037,7 +8037,7 @@ check('the schema requires evidence on where they align and differ',
       /"@type":"FAQPage"/.test(faq) && /class="footer-note"/.test(faq) && !/<script src=/.test(faq));
     const generated = paths.filter(p => /-personality$|^\/(faq|sample-report|characters|mbti-types|love-language-test|big-five-personality-test|what-instagram-knows-about-you|instagram-data-download-help|best-friend-compatibility-test)$/.test(p));
     check('the front page links to none of the generated pages',
-      generated.length === 54 && generated.every(p => !index.includes('href="' + p + '"') && !index.includes('href="' + p.slice(1) + '"')),
+      generated.length === 53 && generated.every(p => !index.includes('href="' + p + '"') && !index.includes('href="' + p.slice(1) + '"')),
       generated.filter(p => index.includes('href="' + p + '"')).join());
     check('the guides link to them instead',
       ['/characters', '/mbti-types', '/faq', '/sample-report'].every(p => pages.find(([q]) => q === '/instagram-personality-test')[1].includes('href="' + p + '"')));
@@ -8104,8 +8104,12 @@ check('the schema requires evidence on where they align and differ',
     check('the cast strip\'s image is current and in the table\'s order (node tools/cast-sprite.mjs)',
       spriteFresh && JSON.stringify(spriteIndex.names) === JSON.stringify(Object.keys(table)) &&
         statSync(join(root, 'docs', 'media', 'cast-sprite.webp')).size > 10000);
-    check('the pairings go both ways, but for one loop of three',
-      Object.entries(table).flatMap(([a, list]) => list.filter(b => !table[b].includes(a))).length === 3);
+    check('Totoro is retired: no page of its own, and its old address is sent on to Baymax\'s',
+      !existsSync(join(root, 'docs', 'totoro-personality.html')) && !('Totoro' in table) &&
+        /const RETIRED_PAGES = \{ 'totoro-personality': 'baymax-personality' \};/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
+        prompts.RETIRED_CHARACTERS.some(([name]) => name === 'Totoro'));
+    check('every pairing goes both ways (28 characters pair off, October 2026)',
+      Object.entries(table).flatMap(([a, list]) => list.filter(b => !table[b].includes(a))).length === 0);
   }
   check('no scene draws a studio\'s character outright: the art file names no franchise',
     !/Disney|Pixar|Marvel|Nintendo|DreamWorks|Ghibli|Pok[eé]mon|Sanrio|Harry Potter|Hogwarts|Toei/i.test(JSON.stringify(art)));
@@ -8138,7 +8142,7 @@ check('the schema requires evidence on where they align and differ',
     if (![love.receiving, love.giving].every(side => side && side.length && side.every(l => languages.includes(l.language)))) out.push(at + 'love languages');
     return out;
   });
-  check('the gallery\'s sample cards each have what a card reads', gallery.length === 5 && faults.length === 0, faults.join(', '));
+  check('the gallery\'s sample cards each have what a card reads', gallery.length === 4 && faults.length === 0, faults.join(', '));
   const names = [sample.card.name].concat(gallery.map(c => c.card && c.card.name));
   const characters = [sample.essence.character].concat(gallery.map(c => c.essence && c.essence.character));
   check('and no two in the gallery share a person or a character',

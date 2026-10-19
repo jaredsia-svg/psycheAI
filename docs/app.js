@@ -3193,7 +3193,7 @@
       target.insertAdjacentHTML('beforeend', insightCards.slice(1).map((report, i) =>
         insightSlot(i + 1, '', '', I.previewOpenNamed.replace('{name}', (report.card && report.card.name) || ''))).join(''));
       // Drawn only as each comes into view (arrangeDeck): the front card and
-      // the two peeking out beside it. The rest wait, empty, behind them; six
+      // the two peeking out beside it. The rest wait, empty, behind them; five
       // cards with their scenes were the front page's heaviest part.
       deckDrawn.clear();
       // Fitted as soon as they are drawn, so the page never lays out a

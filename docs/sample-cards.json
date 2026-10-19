@@ -104,32 +104,6 @@
         "receiving": [{ "language": "Words of affirmation" }, { "language": "Receiving gifts" }],
         "giving": [{ "language": "Receiving gifts" }, { "language": "Quality time" }]
       } }
-    },
-    {
-      "card": { "name": "Kenji Nakamura", "confidence": 81, "headline": "Calm, steady presence people feel safe around" },
-      "confidence": { "score": 81, "level": "high" },
-      "essence": { "character": "Totoro", "franchise": "Studio Ghibli", "icon": "🍃" },
-      "cardHighlights": "Like him, you say little and are there when it counts: a slow, unhurried account of forests, rain and long walks, and friends who tag you when they need somebody steady. You are at your best outdoors and unbothered by the clock, and the people around you calm down without quite knowing why.",
-      "patterns": [
-        { "id": "p1", "name": "Quiet, steady shelter" },
-        { "id": "p2", "name": "At home in nature" },
-        { "id": "p3", "name": "Unhurried by design" }
-      ],
-      "topMotivators": ["universalism", "security", "benevolence"],
-      "mbti": { "type": "ISFP", "letters": [
-        { "axis": "E/I", "choice": "I", "strength": "clear" },
-        { "axis": "N/S", "choice": "S", "strength": "moderate" },
-        { "axis": "T/F", "choice": "F", "strength": "moderate" },
-        { "axis": "J/P", "choice": "P", "strength": "slight" }
-      ] },
-      "bigFive": { "openness": { "score": 73 }, "conscientiousness": { "score": 62 }, "extraversion": { "score": 28 }, "agreeableness": { "score": 85 }, "neuroticism": { "score": 26 } },
-      "values": [{ "value": "Harmony" }, { "value": "Patience" }, { "value": "Kindness" }],
-      "beliefs": [{ "belief": "Slow is not the same as late" }],
-      "interests": [{ "name": "Hiking" }, { "name": "Gardening" }, { "name": "Film photography" }],
-      "relationship": { "loveLanguages": {
-        "receiving": [{ "language": "Quality time" }, { "language": "Physical touch" }],
-        "giving": [{ "language": "Acts of service" }, { "language": "Quality time" }]
-      } }
     }
   ]
 }
