@@ -10416,7 +10416,8 @@ try {
     !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
     /Your card summary and any Psyche Sync someone sends you are encrypted on your device, and the key\s+lives only in your link/.test(about) &&
     /PsycheAI stores them but never has the key, so no one at PsycheAI can read\s+them, and a Sync is deleted once your device has it, or after 30 days/.test(about) &&
-    /Your link’s counts \(such as\s+how many people made a card from it\) are kept too: plain numbers, never who/.test(about) &&
+    /It is sent over encrypted \(HTTPS\) connections, from your browser to PsycheAI and on to Google, and\s+PsycheAI never saves it to disk/.test(about) &&
+    !/encrypted on the way and at rest/.test(about) &&
     /privacy policy<\/a> lists every one|privacy policy lists every one/.test(about) &&
     /none of them names you/.test(about));
   check('and the Psyche Report no longer promises a secret bonus: the roast is free',

@@ -2878,6 +2878,11 @@ a second, alarming disclosure. Now:
   account to create. Hosting and payment providers see only that the site was used or a payment made.
 - **The privacy page** keeps its full detail, with Ask PsycheAI named once, under *Who receives it?*, beside the
   card and report. Its date moved to 20 October 2026.
+- **One answer per question.** *Is my data used to train AI?* no longer adds a line on encryption; *Can the
+  digest be linked back to me?* says it instead, and only what is true: it travels over HTTPS (the site sends
+  HSTS, and the Gemini SDK calls Google over HTTPS), PsycheAI never writes it to disk, and anything Google keeps
+  for a short time is encrypted at rest. *Can anyone else access my data?* drops the link's counts, which the
+  privacy policy lists. The privacy page drops the bullet about the character guess, and says *100-200KB*.
 
 ### The link preview says the current tagline (October 2026)
 
