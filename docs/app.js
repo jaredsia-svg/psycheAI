@@ -514,10 +514,10 @@
   /**
    * The card's markup, from a full report.
    *
-   * Deliberately omits three things the written report carries. The franchise
-   * ("Marvel", "Pixar") is dropped because the comparison is to the character's
-   * temperament and naming the studio invites the reader to check the costume
-   * instead. Attachment style is dropped because this is the surface most likely
+   * Deliberately omits two things the written report carries, and the studio
+   * ("Marvel", "Pixar"), which neither shows: the comparison is to the
+   * character's temperament and naming the studio invites the reader to check
+   * the costume instead. Attachment style is dropped because this is the surface most likely
    * to be shown to somebody else, and it is the most intimate line in the
    * report. The QR code is dropped because this is the reader's own page, where
    * they already have one.
@@ -610,8 +610,10 @@
         (name ? '<p class="pc-skicker">' + esc(TEXT.essenceLabel) + '</p>' +
         '<div class="pc-sname">' + (art ? '' : '<span class="pc-smedal" aria-hidden="true">' + (emblem || esc(safeIcon(essence.icon))) + '</span>') +
           // No studio beside the name: the card is the image people post, and a
-          // studio's name there reads as co-branding (the report still says it).
+          // studio's name there reads as co-branding. Only the sample carries a
+          // source (the Ballad of Mulan, the legend her story comes from).
           '<div><h2>' + esc(name) + '</h2>' +
+          (essence.source ? '<p class="pc-ssource">' + esc(essence.source) + '</p>' : '') +
           '</div></div>' : '') +
         (headline ? '<p class="pc-sheadline">' + esc(headline) + '</p>' : '') +
         (blurb ? '<p class="pc-sblurb">' + esc(blurb) + '</p>' : '') +
@@ -795,11 +797,12 @@
       '<span class="essence-icon' + (emblem ? ' has-emblem' : '') + '" role="img" aria-label="' + esc(name) + '">' +
       (emblem || esc(safeIcon(essence.icon))) + '</span>' +
       '<div><p class="essence-label">' + esc(TEXT.essenceLabel) + '</p>' +
-      // Siblings rather than one nested in the other: the gradient clip on the
-      // name would swallow the franchise, and the print suite only measures
-      // elements that have no element children.
+      // No studio beside the name, as on the card. Only the sample carries a
+      // source (the Ballad of Mulan). Siblings rather than one nested in the
+      // other: the gradient clip on the name would swallow it, and the print
+      // suite only measures elements that have no element children.
       '<div class="essence-name"><p class="essence-noun">' + esc(name) + '</p>' +
-      (essence.franchise ? '<span class="essence-franchise">' + esc(essence.franchise) + '</span>' : '') +
+      (essence.source ? '<span class="essence-source">' + esc(essence.source) + '</span>' : '') +
       '</div>' +
       '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
   }

@@ -1883,8 +1883,9 @@
           doc.draw(line, out.x, doc.y + 15, nameStyle);
           doc.y += 23;
         }
-        if (essence.franchise) {
-          doc.draw(toWinAnsi(String(essence.franchise).toUpperCase()), out.x, doc.y + 6,
+        // No studio, as on the card; only the sample carries a source.
+        if (essence.source) {
+          doc.draw(toWinAnsi(String(essence.source).toUpperCase()), out.x, doc.y + 6,
             { size: 7.4, bold: true, color: SOFT, tracking: 1.3 });
           doc.y += 12;
         }

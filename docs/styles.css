@@ -1745,9 +1745,9 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   background: linear-gradient(100deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-/* Name and franchise share a baseline, wrapping only if the name is long. */
+/* Name and the sample's source share a baseline, wrapping only if the name is long. */
 .essence-name { display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; }
-.essence-franchise {
+.essence-source {
   font-size: .8rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap;
 }
 .essence-why { margin: 0; font-size: .93rem; }
@@ -3293,6 +3293,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: 62px; background: rgba(255, 255, 255, .95); box-shadow: 0 6px 24px rgba(0, 0, 0, .18);
 }
 .pc-sname h2 { margin: 0; font-size: 70px; line-height: 1; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+.pc-ssource { margin: 10px 0 0; font-size: 24px; letter-spacing: .14em; text-transform: uppercase; opacity: .8; font-weight: 600; }
 .pc-sheadline { margin: 22px 0 0; font-size: 34px; line-height: 1.25; font-style: italic; font-weight: 650; }
 .pc-sblurb { margin: 12px 0 0; font-size: 26px; line-height: 1.42; opacity: .95; }
 
@@ -3466,12 +3467,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .pc-schips span { font-size: var(--pc-text); }
 .pc-slove { font-size: var(--pc-text); }
 /* Round four: the card's small print a step up — the panel labels, the
-   strength pills, the kicker and franchise, the numerals and the footer read
+   strength pills, the kicker and source, the numerals and the footer read
    at a glance on a phone, without the card turning heavy. */
 .pc-slab { font-size: 24px; }
 .pc-slab span:first-child { width: 42px; height: 42px; font-size: 23px; }
 .pc-sstrength { font-size: 21px; padding: 3px 13px; }
-.pc-skicker { font-size: 25.5px; }
+.pc-skicker, .pc-ssource { font-size: 25.5px; }
 .pc-spatterns .pc-snum, .pc-smotives .pc-snum { width: 44px; height: 44px; font-size: 23.5px; }
 .pc-sfoot { font-size: 21.5px; }
 .pc-ring-text { font-size: 21.5px; }

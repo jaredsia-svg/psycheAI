@@ -7437,6 +7437,17 @@ card is the image people post, and a studio's name beside its character there re
 report itself still names the studio beside the character, and the character pages keep their
 not-affiliated line.
 
+**No studio anywhere, and Mulan pinned to the legend** (20 October 2026). The studio is now gone from the
+report and its PDF too, and from the search pages: each character page's fine print says only that
+characters belong to their owners, and /characters is one alphabetical list instead of studio headings.
+The model's schema still carries `essence.franchise` (it tells two same-named characters apart), but
+nothing shows it. The sample — the card, the report, the og image and the promo card, i.e. the face of
+the marketing — carries `essence.source: "The Ballad of Mulan"` instead, printed where the studio was
+(`.pc-ssource` on the card, `.essence-source` in the report, capitals in the PDF). That frames its
+Mulan as the public-domain legend, whose art here is our own. Real reports never get a source: the
+schema has no such field. The og image is `?v=3`. The promo videos still show the old card until
+`npm run promo` is re-run with its cache.
+
 ### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the

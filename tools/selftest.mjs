@@ -5,7 +5,7 @@
 // and validates the prompt schemas against the structured-output rules.
 // The live model call is covered by tools/livetest.mjs, which needs a key.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1771,6 +1771,15 @@ const sampleSchema = {
     { topMotivators: prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators,
       premiumAnalysis: inlineRefs(prompts.PREMIUM_SCHEMA, prompts.PREMIUM_SCHEMA.$defs || {}) }),
 };
+// The one place the sample departs from a real report: no studio, and the
+// Ballad of Mulan as her source instead (a field the model is never given).
+{
+  const essence = prompts.PROFILE_SCHEMA.properties.essence;
+  const { franchise, ...kept } = essence.properties;
+  sampleSchema.properties = Object.assign({}, sampleSchema.properties, { essence: { ...essence,
+    required: essence.required.filter(key => key !== 'franchise'),
+    properties: { ...kept, source: { type: 'string' } } } });
+}
 const sampleFaults = schemaFaults(sampleSchema, sample, '');
 check('the sample report satisfies the profile schema exactly', sampleFaults.length === 0,
   sampleFaults.slice(0, 6).join(' | '));
@@ -8144,7 +8153,7 @@ check('the schema requires evidence on where they align and differ',
 //
 // docs/sample-cards.json holds the cards after the full sample's in the
 // gallery. Each is drawn by the same psycheCardHtml, so each needs what the
-// card reads: a catalogue character under its own franchise, a person's name
+// card reads: a catalogue character with no studio beside it, a person's name
 // nobody else in the gallery has, three patterns, three known motivators,
 // four type letters, the Big Five, and both sides of the love languages.
 {
@@ -8156,7 +8165,7 @@ check('the schema requires evidence on where they align and differ',
     const at = '#' + (i + 1) + ' ';
     const out = [];
     const character = c.essence && c.essence.character;
-    if (!catalogue.has(character) || catalogue.get(character) !== c.essence.franchise) out.push(at + 'character ' + character);
+    if (!catalogue.has(character) || 'franchise' in c.essence || 'source' in c.essence) out.push(at + 'character ' + character);
     if (!c.card || !/^\S+ \S+/.test(c.card.name || '') || !c.card.headline || !(c.card.confidence > 0)) out.push(at + 'card');
     if (!c.cardHighlights) out.push(at + 'highlights');
     if ((c.patterns || []).map(p => p.id).join() !== 'p1,p2,p3') out.push(at + 'patterns');
@@ -8168,6 +8177,15 @@ check('the schema requires evidence on where they align and differ',
     return out;
   });
   check('the gallery\'s sample cards each have what a card reads', gallery.length === 5 && faults.length === 0, faults.join(', '));
+  // The full sample, the face of the marketing, names no studio either: its
+  // Mulan is pinned to the public-domain legend instead. Real reports get no
+  // source, since the schema has no such field (pinned above).
+  const sampleEssence = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8')).essence || {};
+  check('the sample\'s Mulan names the Ballad of Mulan and no studio',
+    sampleEssence.character === 'Mulan' && sampleEssence.source === 'The Ballad of Mulan' && !('franchise' in sampleEssence));
+  const studios = /\b(Disney|Pixar|Marvel|DreamWorks|Nintendo|Sanrio|Ghibli)\b/;
+  const naming = readdirSync(join(root, 'docs')).filter(f => f.endsWith('.html') && studios.test(readFileSync(join(root, 'docs', f), 'utf8')));
+  check('no page names a studio', naming.length === 0, naming.join(', '));
   const names = [sample.card.name].concat(gallery.map(c => c.card && c.card.name));
   const characters = [sample.essence.character].concat(gallery.map(c => c.essence && c.essence.character));
   check('and no two in the gallery share a person or a character',

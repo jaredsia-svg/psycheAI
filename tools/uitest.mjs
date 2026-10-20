@@ -2650,6 +2650,10 @@ try {
     check('the sample report is the Mulan one',
       /Mulan/.test(sampleText) && !/Captain America/.test(sampleText),
       sampleText.slice(0, 120));
+    // The face of the marketing names the legend she comes from, not a studio.
+    check('the sample report pins Mulan to the Ballad of Mulan and names no studio',
+      (await page.locator('#sample-body .essence-source').first().textContent()).trim() === 'The Ballad of Mulan' &&
+        !/\bDisney\b/.test(sampleText));
     // The story card prints no score; the report's own is the sample's.
     const scores = await page.evaluate(async () => ({
       stored: String(((await fetch('sample.json').then(r => r.json())).confidence || {}).score),
@@ -7098,13 +7102,16 @@ try {
   check('the character is the one the model picked',
     (await page.locator('.essence-noun').innerText()).trim() === 'Hulk',
     await page.locator('.essence-noun').innerText());
-  check('the character names the franchise it is from',
-    (await page.locator('.essence-franchise').innerText()).trim() === 'Marvel',
-    await page.locator('.essence-franchise').innerText());
-  // The card is the image people post: the studio stays off it.
+  // No studio beside the character, in the report or on the card: only the
+  // sample carries a source (the Ballad of Mulan).
+  check('the report names no studio beside the character',
+    (await page.locator('.essence-source, .essence-franchise').count()) === 0 &&
+      !/\bMarvel\b/.test(await page.locator('.essence').first().innerText()));
   check('the Psyche Card names no studio beside the character',
     await page.evaluate(() => [...document.querySelectorAll('.psyche-card')].every(card =>
-      !card.querySelector('.pc-sfranchise') && !/\bMarvel\b/.test(card.textContent))));
+      !card.querySelector('.pc-sfranchise') && !/\bMarvel\b/.test(card.textContent) &&
+      // Only the sample's Mulan carries a source line.
+      (!card.querySelector('.pc-ssource') || card.querySelector('.pc-ssource').textContent === 'The Ballad of Mulan'))));
   // A catalogue character carries its emblem; anything else keeps an emoji.
   check('the character carries an icon',
     (await page.locator('.essence-icon.has-emblem svg').count()) === 1 ||
@@ -7127,13 +7134,6 @@ try {
   check('the label introduces it as a likeness',
     (await page.locator('.essence-label').first().textContent()).trim() === 'You are most like',
     await page.locator('.essence-label').first().textContent());
-  // The name carries a gradient clipped to the text; anything nested inside it
-  // inherits transparent fill and vanishes.
-  check('the franchise is not swallowed by the name\'s gradient', await page.evaluate(() => {
-    const franchise = document.querySelector('.essence-franchise');
-    const fill = getComputedStyle(franchise).webkitTextFillColor;
-    return !franchise.closest('.essence-noun') && fill !== 'rgba(0, 0, 0, 0)';
-  }));
 
   // The glance row — type, highest trait, lowest trait, enneagram — came off
   // this page because the psyche card above it already carried all four, and
@@ -7724,9 +7724,9 @@ try {
     !pdfText.includes('(What it suggests)'));
   check('the PDF no longer carries the QR-contents section',
     !pdfText.includes('(What your QR code contains)'));
-  // The franchise in capitals on its own line under the name (overviewOpening).
-  check('the PDF carries the character and the franchise it is from',
-    pdfText.includes('(Hulk)') && pdfText.includes('(MARVEL)'));
+  // The character's name, and no studio under it.
+  check('the PDF carries the character and no studio',
+    pdfText.includes('(Hulk)') && !pdfText.includes('(MARVEL)'));
 
   // Alignment holds because there is one copy of these strings, not two that
   // happen to agree today. Both renderers must read them from copy.js.
@@ -10514,8 +10514,8 @@ try {
   check('a profile saved before characters still shows its noun',
     (await page.locator('.essence-noun').innerText()).includes('Riverbed'),
     await page.locator('.essence-noun').innerText());
-  check('that older profile simply has no franchise beside it',
-    (await page.locator('.essence-franchise').count()) === 0);
+  check('that older profile simply has nothing beside it',
+    (await page.locator('.essence-source').count()) === 0);
   await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   const oldShapePdf = await page.evaluate(async () => {
     const saved = JSON.parse(localStorage.getItem('psycheai_profile'));

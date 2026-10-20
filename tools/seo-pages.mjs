@@ -63,9 +63,9 @@ function page({ slug, title, description, h1, lede, body, crumbs, schema, image 
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
-<meta property="og:image" content="${SITE}/media/og-card.jpg?v=2">
+<meta property="og:image" content="${SITE}/media/og-card.jpg?v=3">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="${SITE}/media/og-card.jpg?v=2">
+<meta name="twitter:image" content="${SITE}/media/og-card.jpg?v=3">
 <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -142,14 +142,14 @@ for (const c of CHARACTERS) {
       section(`You might be most like ${c.name} if…`, ticks(c.signs)) +
       section('Strengths and what to watch', `<h3>Strengths</h3>${ticks(c.strengths)}<h3>Worth watching</h3>${ticks(c.growth)}`) +
       section('Often paired with', `<p>MBTI types this temperament often reads as: ${types}</p><p>Most in sync with ${syncs}.</p>`) +
-      section('How the character is chosen', `<p>Your Psyche Card names the character whose temperament is closest to yours, from ${CHARACTERS.length} characters, using the same evidence as your MBTI and Big Five: how you post, write, keep in touch and spend your attention. It is a reading of temperament, never of looks.</p><p class="fineprint">${esc(c.name)} belongs to ${esc(c.franchise)}. PsycheAI is not affiliated with or endorsed by its owners.</p>`) +
+      section('How the character is chosen', `<p>Your Psyche Card names the character whose temperament is closest to yours, from ${CHARACTERS.length} characters, using the same evidence as your MBTI and Big Five: how you post, write, keep in touch and spend your attention. It is a reading of temperament, never of looks.</p><p class="fineprint">Characters belong to their owners. PsycheAI is not affiliated with or endorsed by any of them.</p>`) +
       faqBlock(faq),
   }));
 }
 {
-  const groups = [...new Set(CHARACTERS.map(c => c.franchise))];
-  const list = groups.map(g => `<h3>${esc(g)}</h3><ul class="seo-links">` + CHARACTERS.filter(c => c.franchise === g)
-    .map(c => `<li><a href="/${characterSlug(c)}">${esc(c.name)}</a> – ${esc(c.tagline)}</li>`).join('') + '</ul>').join('');
+  // One list in alphabetical order: no studio headings, as on the card.
+  const list = '<ul class="seo-links">' + CHARACTERS.slice().sort((a, b) => a.name.localeCompare(b.name))
+    .map(c => `<li><a href="/${characterSlug(c)}">${esc(c.name)}</a> – ${esc(c.tagline)}</li>`).join('') + '</ul>';
   pages.set('characters', page({
     slug: 'characters',
     title: 'Which character are you? From your Instagram | PsycheAI',
@@ -322,7 +322,7 @@ for (const slug of LEGAL) {
 <meta property="og:url" content="${SITE}/${slug}">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${description}">
-<meta property="og:image" content="${SITE}/media/og-card.jpg?v=2">
+<meta property="og:image" content="${SITE}/media/og-card.jpg?v=3">
 <meta name="twitter:card" content="summary_large_image">
 `);
   }
