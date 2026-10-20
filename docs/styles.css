@@ -3688,6 +3688,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   .report-hero-mark { position: relative; top: auto; right: auto; width: 60px; height: 60px; margin: 0 0 .8rem; }
   .report-hero-mark svg { width: 32px; height: 32px; }
   .report-hero-title { padding-right: 0; }
+  /* The parts-and-pages pill and Signal strength one over the other beside
+     the emblem, rather than each on a line of its own under it (October
+     2026): two rows saved. The title and lede run the full width below. */
+  .report-hero { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .9rem; align-items: center; }
+  .report-hero > :not(.report-hero-mark):not(.report-hero-meta) { grid-column: 1 / -1; }
+  .report-hero .report-hero-meta { flex-direction: column; align-items: flex-start; gap: .4rem; margin: 0 0 .8rem; }
 }
 /* Every name in full: the nav wraps rather than scrolling one off the end.
    On a phone it stays where it is rather than following the reader down, so

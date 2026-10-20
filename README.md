@@ -2787,6 +2787,13 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
 
+### My Report's header on a phone: the pills beside the emblem (October 2026)
+
+On a phone the header stacked the emblem, the *6 parts · 16 pages* pill and the Signal strength pill on three
+lines of their own above the title. The two pills now sit one over the other beside the emblem (a two-column
+grid under 640px), with the title and lede full width below. At 390px wide the header is 238px tall instead of
+311px.
+
 ### Copy link copies the link; a credit is five questions (October 2026)
 
 - **Copy link is the link alone.** The card's Copy link, the hub row's copy icon and My Syncs' Copy link each put
