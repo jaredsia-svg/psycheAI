@@ -10315,8 +10315,7 @@ try {
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the page says there is no account, and no collection of exports or reports to breach',
-    /no sign-up, no password to create/i.test(about) &&
-    /never stored by PsycheAI, so there is no collection of them for anyone to take/i.test(about));
+    /There is no account, and PsycheAI stores none of your data, digest or report, so there is\s+nothing for anyone to take/.test(about));
   check('the page names Google Gemini, the provider the site runs on, as the party that reads the digest',
     /It goes to Google Gemini/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
@@ -10400,26 +10399,24 @@ try {
   // The daily totals are disclosed in full: what is counted, and that visits
   // and anything identifying are not.
   check('the FAQ says exactly what is counted, and that other visits and identities are not',
-    /Only totals for each day/.test(about) && /\?via=/.test(about) && /Other\s+visits are not counted/.test(about) &&
-      /identifies you, your device or anything you\s+uploaded/.test(about));
+    /Only daily totals/.test(about) && /from a creator’s link/.test(about) && /Nothing in them identifies you/.test(about));
   check('the one-free-card question is gone, and what is kept for it is said in a clause',
-    !/Why is there one free card/.test(about) && /scrambled code that lets each Instagram account have one free card/.test(about));
+    !/Why is there one free card/.test(about) && /keeps only a few\s+small things that do not name you/.test(about));
   check('the digest answer no longer explains who might recognise it',
     !/de-identified rather than anonymous/.test(about) && !/someone who already knows you well/.test(about));
   check('the Psyche Sync answer says what the link actually is, who it is for, and that the result reaches you locked',
     /How does Psyche Sync work\?/.test(about) && /for friends, family or anyone close, never romance/.test(about) &&
     /If they choose to share it, the\s+result reaches you too, with their Psyche Card/.test(about) &&
-    /locks it with your link’s key, so\s+PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days/.test(about) &&
+    /locked so PsycheAI cannot read it, and deleted once\s+your device has it, or after 30 days/.test(about) &&
     /carries only your card’s short summary, never your data, messages or report/.test(about) &&
     /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
-    !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
-    /Your card summary and any Psyche Sync someone sends you are encrypted on your device, and the key\s+lives only in your link/.test(about) &&
-    /PsycheAI stores them but never has the key, so no one at PsycheAI can read\s+them, and a Sync is deleted once your device has it, or after 30 days/.test(about) &&
+    !/no database/i.test(about) && /stores none of your data, digest or report/.test(about) &&
+    /Your shared card and any Psyche Sync sent to you are locked with a key that lives only in your link,\s+so PsycheAI cannot read them/.test(about) &&
     /It is sent over encrypted \(HTTPS\) connections, from your browser to PsycheAI and on to Google, and\s+PsycheAI never saves it to disk/.test(about) &&
     !/encrypted on the way and at rest/.test(about) &&
     /privacy policy<\/a> lists every one|privacy policy lists every one/.test(about) &&
-    /none of them names you/.test(about));
+    /do not name you/.test(about));
   check('and the Psyche Report no longer promises a secret bonus: the roast is free',
     !/secret bonus/i.test(about));
   check('the FAQ gives a contact address',

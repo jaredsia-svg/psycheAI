@@ -2866,6 +2866,35 @@ the one pill sits there, on two lines.) At 390px wide the header is 238px tall i
   balance counts the link's credits in questions (`referral` = credits × 5), so *Includes 5 questions from your
   Referral credits* reads right. The FAQ says *five questions for PsycheAI*.
 
+### FAQ said once, terms in order (October 2026)
+
+**The FAQ repeated itself.** "PsycheAI keeps no copy" appeared five times, "no account" three, the
+de-identification list twice. Each answer now says its own thing once:
+- *Is my data used to train AI?* is the no, and why, in one sentence.
+- *Can the digest be linked back to me?* keeps the specifics ([P1], [N1], dates cut to the month) and the
+  encryption line ("stored encrypted", not "encrypted at rest").
+- *Can anyone else access my data?* is two paragraphs: nothing stored to take, the administrator cannot see it,
+  the privacy policy lists what is kept; shared cards and syncs are locked with a key only the link holds.
+- *Does PsycheAI count anything?*, *How does Psyche Sync work?* and *How do I keep my report?* are shorter.
+- *What is PsycheAI?* names WhatsApp, Google and Facebook as optional sources.
+- **The wait for Instagram's email is 1–2 hours** everywhere: the FAQ, the request steps, the guides and the
+  search pages (`tools/seo/topics.mjs`).
+
+**The privacy page** opens with one line instead of three, and the Google/Anthropic bullet is half as long with
+the same facts.
+
+**The terms** (dated 20 October 2026) follow the order a reader meets things. Fair use now says a reading needs
+enough of their own writing. Section 6, *What is free, and what you pay for*:
+- **Free:** the first card and report once per Instagram account, one Ask PsycheAI question, every sync.
+- **Paid:** a re-run (card and report) and Ask PsycheAI questions, five at a time.
+- **Credits** (one per friend's card): five questions or a gift link.
+- **Gift links and promo codes.** Ask PsycheAI. **Guess your character**: a right guess on the first free card
+  wins a credit.
+- **No cash value, and refunds.**
+
+It had gone stale: a credit was one question, the report brought a second free question, the first report needed a
+friend's card, and a right guess won a report.
+
 ### What leaves your device, said plainly (October 2026)
 
 The FAQ's *What data leaves this device?* and the privacy page's *What stays on your device?* led with an aside:

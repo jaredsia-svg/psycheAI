@@ -48,7 +48,7 @@ export const TOPICS = [
       ['What is in the download', '<ul class="ticks"><li><strong>Your content</strong>: posts, stories, reels and their captions.</li><li><strong>Your activity</strong>: likes, comments, saved posts, searches and the accounts you follow.</li><li><strong>Messages</strong>: your direct messages, with timestamps.</li><li><strong>How Instagram sees you</strong>: topics and ad interests it has inferred about you.</li><li><strong>Account information</strong>: your profile, login and device history.</li></ul>'],
       ['What it can reveal', '<p>Together these are a detailed record of how you spend attention and how you treat people: when you are active, who you talk to and how, what you return to, and what you announce but never mention again. That is the material a personality reading is built from.</p>'],
       ['How PsycheAI reads it, privately', '<p>PsycheAI opens your download inside your own browser. The zip, your photos and your full messages never leave your device. A short summary of your own activity is de-identified first, you review it, and only then is it sent to Google Gemini or Anthropic Claude to write your reading. PsycheAI keeps no copy.</p>'],
-      ['How to get your data', '<p>It takes about 30 seconds to request, and Instagram emails you the file, usually within a few hours. <a href="/download-instagram-data">Follow the step-by-step guide</a>, choosing JSON format and All time.</p>'],
+      ['How to get your data', '<p>It takes about 30 seconds to request, and Instagram emails you the file, usually within 1–2 hours. <a href="/download-instagram-data">Follow the step-by-step guide</a>, choosing JSON format and All time.</p>'],
     ],
     faq: [
       ['Can Instagram see what I do with my download?', 'No. Once downloaded, the file is yours, and PsycheAI reads it on your own device.'],
@@ -65,14 +65,14 @@ export const TOPICS = [
     sections: [
       ['You chose HTML instead of JSON', '<p>The download has two formats. PsycheAI needs <strong>JSON</strong>; an HTML download cannot be read. Request a new download and set Format to JSON before you confirm.</p>'],
       ['Only part of your history is there', '<p>The date range defaults to a recent slice. Set Date range to <strong>All time</strong>, or the reading will only see the last few months.</p>'],
-      ['The email has not arrived', '<p>Instagram usually takes a few hours, sometimes longer for large accounts. Check your spam folder and the email address on your account. You can also see the request’s progress in the Download your information screen.</p>'],
+      ['The email has not arrived', '<p>Instagram usually takes 1–2 hours, sometimes longer for large accounts. Check your spam folder and the email address on your account. You can also see the request’s progress in the Download your information screen.</p>'],
       ['The download link has expired', '<p>The link Instagram sends only works for a few days. If it has expired, request a new download; it is quick to do again.</p>'],
       ['Your download came as several zip files', '<p>Large accounts can arrive in parts. Load all of them at once: PsycheAI reads them together.</p>'],
       ['You cannot find the setting', '<p>Open Instagram, go to your profile, tap the menu (≡) at the top right, then <strong>Accounts Centre</strong> → <strong>Your information and permissions</strong> → <strong>Download your information</strong>. <a href="/download-instagram-data">The illustrated guide</a> shows every screen.</p>'],
       ['The file is too big', '<p>Set Media quality to <strong>Lower</strong>. Your photos and videos are never read, so lower quality only makes the download smaller and faster.</p>'],
     ],
     faq: [
-      ['How long does Instagram take to send my data?', 'Usually a few hours. Large accounts can take longer.'],
+      ['How long does Instagram take to send my data?', 'Usually 1–2 hours. Large accounts can take longer.'],
       ['Can I use the file on my phone?', 'Yes. Save the zip to Files (iPhone) or Downloads (Android), then load it in PsycheAI in Safari or Chrome.'],
       ['Is my data safe?', 'The zip is read in your own browser and never uploaded. Only a short, de-identified summary you review is sent for the reading.'],
     ],
