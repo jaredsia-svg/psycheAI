@@ -81,6 +81,10 @@ const PORT = Number(process.env.PORT) || 3000;
 // for why the server cannot tell whose first run it is, and the README for
 // what that split does and does not buy.
 const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
+// The least of the reader's own writing a card is read from (October 2026):
+// under it the card is mostly guesswork, and the page says so before the run.
+const MIN_OWN_WRITING = Number.isFinite(Number(process.env.PSYCHEAI_MIN_WRITING)) && process.env.PSYCHEAI_MIN_WRITING !== ''
+  ? Number(process.env.PSYCHEAI_MIN_WRITING) : 20000;
 // One free card per Instagram account (lib/referral.js). On unless set to 0 —
 // for a test server, or an operator checking their own account repeatedly.
 const ONE_FREE_PER_ACCOUNT = String(process.env.PSYCHEAI_FREE_PER_ACCOUNT || '1').trim() !== '0';
@@ -450,6 +454,7 @@ async function handleStatus(response) {
     // How many analyses a reader gets before being asked to pay. Served rather
     // than hard-coded in docs/app.js so the page and the server cannot drift.
     freeAnalyses: FREE_ANALYSES,
+    minWriting: MIN_OWN_WRITING,
     shortLinks: SHORT_LINKS(),
     // A new reader's first free run: 'merged' (the card and its report
     // together) or 'card' (the card alone). PSYCHEAI_FIRST_RUN; see FIRST_RUN.
@@ -658,6 +663,13 @@ async function handleAnalyse(request, response) {
   // card sent to anchor it is ignored, so a free read cannot be a report
   // written to explain a card chosen by the request.
   const anchor = full && !firstFull ? prompts.anchorFrom(body.anchor) : null;
+  // Too little of the reader's own writing to read a card from (October 2026).
+  // A report written to explain a card they already have is not held to it.
+  if (!anchor && Digest.ownWritingChars(sent) < MIN_OWN_WRITING) {
+    stats.count('refused_too_thin');
+    sendJson(response, 422, { error: 'There is not enough of your own writing in this data to read. Add WhatsApp, Google or Facebook data and try again.', tooThin: true });
+    return;
+  }
   let kind;
   let key;
   let call;

@@ -4529,8 +4529,20 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* With the bar showing, the page starts a small, even gap below it: My
    Psyche's card comes up close, and the front page's banner, which otherwise
    runs up to the navigation, steps down by the same gap and rounds its top. */
-.report-promo:not([hidden]) + main.container { padding-top: .6rem; }
-.report-promo:not([hidden]) + main .hero { margin-top: 0; border-radius: 28px; }
+.report-promo:not([hidden]) ~ main.container { padding-top: .6rem; }
+.report-promo:not([hidden]) ~ main .hero { margin-top: 0; border-radius: 28px; }
+/* Signal strength: the same pill with the hub's ring at its start. Its words
+   stay on a phone (the offer's are cut to the button there), so it may wrap
+   to two lines and rounds less. */
+.signal-bar-go { align-items: center; gap: .55rem; padding: .28rem .95rem .28rem .3rem; border-radius: 22px; text-align: left; flex-wrap: nowrap; }
+.signal-bar-go .hub-ring { width: 28px; height: 28px; flex: none; }
+.signal-bar-go .hub-ring b { width: 22px; height: 22px; font-size: .62rem; letter-spacing: 0; background: var(--accent-soft); }
+.signal-bar-words { display: inline; }
+@media (max-width: 520px) {
+  .signal-bar .report-promo-text { display: inline; }
+  .signal-bar .report-promo-cta::before { content: none; }
+  .signal-bar-go { font-size: .78rem; }
+}
 /* Reached from the bar above: clear of the sticky navigation. */
 .full-report-locked { scroll-margin-top: 72px; }
 /* One line on a phone: the offer alone. */

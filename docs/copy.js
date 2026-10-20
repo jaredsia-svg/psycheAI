@@ -307,6 +307,10 @@
     // The slim bar under the navigation once a free card exists.
     reportPromo: '✨ See the full story behind your card',
     reportPromoCta: 'Unlock your Psyche Report →',
+    // The bar in its place once the report is in hand and signal strength is
+    // under 80 (app.js, refreshSignalBar).
+    signalBarText: (score) => 'Signal strength ' + score + '%. Add more data for a sharper read.',
+    signalBarCta: (price) => 'Add data & re-run – ' + price + ' →',
     // Opening a friend's link that was already synced on this device.
     // The reader's own link, opened or pasted by them.
     syncOwnLink: 'This is your own link. Send it to friends to sync with them.',
@@ -662,11 +666,17 @@
     // Before that page, when the card's confidence is under 80: more sources
     // make a better report.
     // Before the review on a first upload with almost no writing in it.
-    thinDataTitle: 'Your data has little writing in it',
-    thinDataText: 'Your card is read mostly from what you write: captions, comments and messages. Yours has little, ' +
-      'so your card would be partly a guess, and your free Psyche Card is once per Instagram account. Adding WhatsApp ' +
-      'chats with close friends, your Google data or your Facebook data will make it much more accurate.',
+    thinDataTitle: 'Your data is on the thin side',
+    thinDataText: 'There is not much in your data to read, so your card would be partly a guess, and your free Psyche ' +
+      'Card is once per Instagram account. Adding WhatsApp chats with close friends, your Google data or your Facebook ' +
+      'data will make it much more accurate.',
     thinDataAdd: 'Add more data',
+    // Under the floor of their own writing (October 2026): no run at all.
+    tooThinTitle: 'Not enough of your own writing to read',
+    tooThinText: (k) => 'Your card is read mostly from what you write yourself: captions, comments and messages. ' +
+      'Your data has less than ' + k + ',000 characters of it, too little for a reading worth having. Add WhatsApp chats ' +
+      'with close friends, your Google data or your Facebook data, then try again.',
+    tooThinBack: 'Back',
     thinDataContinue: 'Continue anyway',
     moreDataTitle: 'Make your report more accurate',
     moreDataText: (score) => 'Your Psyche Card was read with ' + score + '% confidence. Adding more data – WhatsApp chats ' +

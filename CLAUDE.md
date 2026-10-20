@@ -56,7 +56,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.
 - **Results cache:** finished reports are held in memory only (`lib/results.js`, about 4h) so a dropped connection is not charged twice.
-- **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `shortLinks`, `firstRun` and `build.version`. A selftest pins the exact key set.
+- **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `minWriting`, `shortLinks`, `firstRun` and `build.version`. A selftest pins the exact key set.
 
 **Client (`docs/`).** No framework. Scripts are plain `<script>` tags that communicate through `window.*` globals. Load order is in `docs/index.html`, and `app.js` is last.
 - **Reading exports:** `zip.js` → `instagram.js` / `supplement.js` (Google, Facebook) / `whatsapp.js` read the exports in the browser.

@@ -2787,6 +2787,31 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
 
+### A floor of their own writing; a signal-strength bar under 80 (October 2026)
+
+**The floor.** A card read from an export with almost no writing of the reader's own is mostly guesswork, and
+used to cost a free card and a model call all the same: the only guard was a *Continue anyway* warning. A run
+now needs **20,000 characters of the reader's own writing** (about 3,000 words: captions, comments, and their
+own messages on Instagram, WhatsApp and Facebook), counted by `Digest.ownWritingChars` on the page and on the
+server alike.
+- **On the page:** under it, the first upload and a re-run stop before the review with *Not enough of your own
+  writing to read*. The only way on is **Add more data** (Back leaves them where they were). A re-run is
+  stopped before any payment.
+- **On the server:** `/api/analyse` refuses a digest under it (422, `tooThin`, `refused_too_thin` in the stats),
+  except for a report written to explain a card they already have.
+- **The number** comes from `PSYCHEAI_MIN_WRITING` (default 20000) and reaches the page as `minWriting` in
+  `/api/status`. The UI suite runs with it at 0, since its fixture holds about 4,400 characters, apart from
+  the one server that checks it.
+- **The old warning** remains for a digest over the floor but small in all (under 50,000 characters), once a
+  session.
+
+**The bar.** After the merged run the report is in hand, so the only nudge to add data was one dismissible line
+in the hub. Now, while signal strength is under 80, a bar sits under the navigation on every page the Psyche
+Report's offer uses, and on My Report as well: the hub's ring, *Signal strength 72%. Add more data for a sharper
+read.* and **Add data & re-run – US$5 →** (the local price), which opens the re-run. It cannot be closed, goes
+at 80, never shows with the unlock bar (it needs the report unlocked), and replaces the hub's line while it
+shows.
+
 ### Tentative: attachment style and conflict style (October 2026)
 
 Two reads rest on the least direct evidence: attachment style (already described as *a guess from behaviour,

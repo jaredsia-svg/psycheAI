@@ -545,6 +545,11 @@ const UITEST_PROMO = 'UITEST-PROMO-NOT-A-REAL-CODE';
 const USAGE_STORE = join(tmpdir(), 'psycheai-uitest-usage.jsonl');
 try { rmSync(USAGE_STORE); } catch (error) { /* not there yet */ }
 
+// The fixture export holds about 4,400 characters of its own writing, under
+// the 20,000 a run needs (MIN_OWN_WRITING in server.js), so every server here
+// runs with the floor off, except the one that checks it.
+process.env.PSYCHEAI_MIN_WRITING = '0';
+
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
   env: {
@@ -1309,9 +1314,9 @@ try {
         .classList.contains('is-added'), null, { timeout: 30000 });
       await thinPage.click('#datasources-continue');
       await thinPage.waitForSelector('#more-data-dialog[open], #review-dialog[open]', { timeout: 30000 });
-      check('an Instagram with almost no writing is told, before the review, that more data would help',
+      check('an Instagram with little in it is told, before the review, that more data would help',
         (await thinPage.locator('#more-data-dialog[open]').count()) === 1 &&
-          (await thinPage.locator('#more-data-title').innerText()) === 'Your data has little writing in it' &&
+          (await thinPage.locator('#more-data-title').innerText()) === 'Your data is on the thin side' &&
           /WhatsApp chats with close friends, your Google data or your Facebook data/.test(await thinPage.locator('#more-data-text').innerText()) &&
           /once per Instagram account/.test(await thinPage.locator('#more-data-text').innerText()) &&
           (await thinPage.locator('#more-data-continue').innerText()).trim() === 'Add more data',
@@ -13352,6 +13357,86 @@ try {
       } finally {
         await gp.close();
         guessServer.kill();
+      }
+
+      // Too little of their own writing (October 2026): no run, on the page
+      // and on the server. The fixture has about 4,400 characters of it.
+      const thinPort = PORT + 1;
+      const thinServer = spawn(process.execPath, [join(root, 'server.js')], {
+        env: {
+          ...process.env, PORT: String(thinPort), PSYCHEAI_MOCK: '1', PSYCHEAI_MIN_WRITING: '20000',
+          PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-thin-budget.jsonl'),
+          PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-thin-usage.jsonl'),
+        },
+        stdio: 'ignore',
+      });
+      const tp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+      const thinPosts = [];
+      tp.on('request', request => { if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) thinPosts.push(request.url()); });
+      try {
+        await waitForServer(thinPort);
+        await tp.goto('http://localhost:' + thinPort + '/', { waitUntil: 'load' });
+        await tp.evaluate(() => localStorage.clear());
+        await tp.reload({ waitUntil: 'load' });
+        await booted(tp);
+        await tp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+        await tp.waitForSelector('#supplement-dialog[open], #more-data-dialog[open]', { timeout: 30000 });
+        await passSupplement(tp);
+        await tp.waitForSelector('#more-data-dialog[open]', { timeout: 30000 });
+        const said = await tp.evaluate(() => ({ text: document.querySelector('#more-data-dialog').innerText }));
+        check('an export with too little of their own writing is stopped before the review, with only the way to add data',
+          /Not enough of your own writing to read/.test(said.text) && /less than 20,000 characters/.test(said.text) &&
+            /Add more data/.test(said.text), JSON.stringify(said));
+        await tp.click('#more-data-back');
+        await tp.waitForFunction(() => !document.querySelector('#more-data-dialog').open, null, { timeout: 10000 });
+        await frames(tp);
+        check('and Back leaves them where they were, with nothing sent',
+          thinPosts.length === 0 && !(await tp.locator('#review-dialog[open]').count()) &&
+            !(await tp.locator('#view-working:not([hidden])').count()), String(thinPosts.length));
+        const refused = await tp.evaluate(async () => {
+          const nonce = (await (await fetch('api/nonce')).json()).nonce;
+          const r = await fetch('api/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
+            body: JSON.stringify({ digest: { samples: { captions: ['[2024] short'] } }, account: 'a'.repeat(64) }) });
+          return { status: r.status, body: await r.json().catch(() => ({})) };
+        });
+        check('and the server refuses a digest under the floor itself', refused.status === 422 && refused.body.tooThin === true,
+          JSON.stringify(refused));
+
+        // Signal strength under 80 with the report in hand: a bar over the
+        // page, on My Psyche and on My Report, to add data and re-run.
+        const sample = await tp.evaluate(() => fetch('sample.json').then(r => r.json()));
+        const seed = score => tp.evaluate(([report, score]) => {
+          const r = JSON.parse(JSON.stringify(report));
+          r.confidence = Object.assign({}, r.confidence, { score });
+          localStorage.setItem('psycheai_profile', JSON.stringify({ report: r, card: r.card, payload: 'x', model: 'mock',
+            explained: true, createdAt: new Date().toISOString() }));
+        }, [sample, score]);
+        await seed(72);
+        await tp.reload({ waitUntil: 'load' });
+        await tp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 20000 });
+        await frames(tp);
+        const bar = await tp.evaluate(() => ({
+          shown: !document.querySelector('#signal-bar').hidden,
+          text: document.querySelector('#signal-bar').innerText.replace(/\s+/g, ' ').trim(),
+          promo: !document.querySelector('#report-promo').hidden,
+          nudge: document.querySelectorAll('#profile-body .hub-nudge').length,
+          gap: Math.round(document.querySelector('#view-profile .profile-top, #view-profile .card').getBoundingClientRect().top -
+            document.querySelector('#signal-bar').getBoundingClientRect().bottom),
+        }));
+        check('signal strength under 80 with the report in hand: a bar over My Psyche, with the price, close over the card, and no second nudge in the hub',
+          bar.shown && /^72 Signal strength 72%\. Add more data for a sharper read\. Add data & re-run – \S+5 →$/.test(bar.text) &&
+            !bar.promo && bar.nudge === 0 && bar.gap >= 0 && bar.gap <= 16, JSON.stringify(bar));
+        await tp.click('.hub-tile[data-hub="report"] [data-hub-go="report"]');
+        await tp.waitForSelector('.report-hero', { timeout: 10000 });
+        check('and on My Report too', await tp.evaluate(() => !document.querySelector('#signal-bar').hidden));
+        await seed(80);
+        await tp.reload({ waitUntil: 'load' });
+        await tp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+        await frames(tp);
+        check('and at 80 it is gone', await tp.evaluate(() => document.querySelector('#signal-bar').hidden));
+      } finally {
+        await tp.close();
+        thinServer.kill();
       }
     } finally {
       await up.close();

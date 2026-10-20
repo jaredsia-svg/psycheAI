@@ -2245,7 +2245,8 @@
     const H = Copy.STRUCTURED.hub;
     const missing = sources.filter(([key, , loaded]) => key !== 'instagram' && !loaded).map(([key]) => H.sourceNames[key]);
     const made = state.profile && String(state.profile.premiumAt || state.profile.createdAt || '');
-    if (score >= 80 || !missing.length || store.read(KEYS.dataNudge, '') === made) return '';
+    // The bar at the top of the page says it once the report is in hand.
+    if (score >= 80 || !missing.length || store.read(KEYS.dataNudge, '') === made || signalBarOffered()) return '';
     const names = missing.length > 1 ? missing.slice(0, -1).join(', ') + ' ' + H.nudgeOr + ' ' + missing[missing.length - 1] : missing[0];
     return '<p class="hub-nudge"><button type="button" class="hub-nudge-go" data-hub-change data-nudge data-flow="' + flow + '">' +
       hubIcon('spark') + '<span>' + esc(H.nudge(names)) + '</span></button>' +
@@ -4085,7 +4086,13 @@
         continue;
       }
 
-      // Little writing to read: said once a session, with the way back to the popout.
+      // Too little of their own writing: no run, only the way back to add data.
+      if (tooThin(digest)) {
+        if (await sayTooThin()) continue;
+        abandonUpload(scrollBefore);
+        return;
+      }
+      // Little to read in all: said once a session, with the way back to the popout.
       if (!thinWarned && !thinSaid() && thinDigest(digest)) {
         thinWarned = true;
         markThinSaid();
@@ -5424,7 +5431,13 @@
         await new Promise(resolve => setTimeout(resolve, 30));
         digest = Digest.build(signals, { includeMessages: true });
 
-        // Little writing to read: said once a session, with the way back to the offer.
+        // Too little of their own writing: no run, only the way back to add data.
+        if (tooThin(digest)) {
+          if (await sayTooThin()) continue;
+          abandonUpload(scrollBeforeUpload);
+          return;
+        }
+        // Little to read in all: said once a session, with the way back to the offer.
         if (!thinWarned && !thinSaid() && thinDigest(digest)) {
           thinWarned = true;
           markThinSaid();
@@ -6083,6 +6096,9 @@
       premium = premiumDigestFrom(base, extraSupplements, signals);
       if (!premium || !premium.__deep) premium = null;
     }
+
+    // A re-run is held to the same floor, before any payment.
+    if (tooThin(digest)) return (await sayTooThin()) ? REVIEW_BACK : undefined;
 
     let decision;
     try {
@@ -9170,32 +9186,20 @@
   // review, once, with the way back to "Add your data" (late October 2026;
   // until then only fewer than 10 captions and 50 messages, with no second
   // source, counted).
-  const THIN_OWN_CHARS = 20000;
   const THIN_DIGEST_CHARS = 50000;
-  function ownWritingChars(digest) {
-    const d = digest || {};
-    const lists = [
-      d.samples && d.samples.captions, d.samples && d.samples.comments,
-      d.directMessages && d.directMessages.ownMessageSample,
-      d.whatsapp && d.whatsapp.ownMessageSample,
-      d.facebook && d.facebook.postSample, d.facebook && d.facebook.commentSample,
-      d.facebook && d.facebook.ownMessageSample,
-    ];
-    let total = 0;
-    for (const list of lists) {
-      if (!Array.isArray(list)) continue;
-      for (const line of list) {
-        // The reader's own words only: not the «them: …» line they answered,
-        // nor the year and chat tags.
-        const text = String(typeof line === 'string' ? line : (line && line.text) || '')
-          .replace(/«[^»]*»/g, '').replace(/^(\s*\[[^\]]{1,12}\])+\s*/, '');
-        total += text.trim().length;
-      }
-    }
-    return total;
+  // Below this much of their own writing a run is not made at all (October
+  // 2026): the card would be mostly guesswork, and the server refuses it too.
+  // The server's number, from /api/status; this until it lands.
+  const minWriting = () => (state.server && Number.isFinite(state.server.minWriting) ? state.server.minWriting : 20000);
+  const ownWritingChars = digest => Digest.ownWritingChars(digest);
+  function tooThin(digest) { return ownWritingChars(digest) < minWriting(); }
+  // Said every time, with only the way back to add data.
+  function sayTooThin() {
+    return noteDialog(TEXT.tooThinTitle, TEXT.tooThinText(Math.round(minWriting() / 1000)), TEXT.thinDataAdd, TEXT.tooThinBack);
   }
+  // Over the floor but a small digest in all: warned, not stopped.
   function thinDigest(digest) {
-    return ownWritingChars(digest) < THIN_OWN_CHARS || Digest.evidenceChars(digest || {}) < THIN_DIGEST_CHARS;
+    return Digest.evidenceChars(digest || {}) < THIN_DIGEST_CHARS;
   }
   // Said once a browser session, not on every attempt: a reader who has been
   // told and carried on is not told again until they come back another day.
@@ -12082,7 +12086,43 @@
   function prizeShowing() {
     return giftBannerShowing();
   }
+  // Signal strength under 80 once the report is in hand (October 2026): a
+  // bar like the Psyche Report's offer, on every page that has one and on My
+  // Report too, to add data and re-run. Not closable: it goes when the score
+  // is 80 or more.
+  const SIGNAL_BAR_BELOW = 80;
+  function signalScore() {
+    const conf = state.profile && state.profile.report && state.profile.report.confidence;
+    const score = Math.round(Number(conf && conf.score));
+    return Number.isFinite(score) ? score : null;
+  }
+  function signalBarOffered() {
+    const score = signalScore();
+    return Boolean(state.profile) && score !== null && score < SIGNAL_BAR_BELOW &&
+      (hasExplanations(state.profile) || Object.keys(paidAnalysis()).length > 0);
+  }
+  function refreshSignalBar() {
+    const bar = $('#signal-bar');
+    if (!bar) return;
+    const view = VIEWS.find(name => !$('#view-' + name).hidden);
+    bar.hidden = !signalBarOffered() || !PROMO_VIEWS.includes(view) || syncInviteShowing() || prizeShowing() ||
+      Boolean($('#synced-dialog') && $('#synced-dialog').open);
+    if (bar.hidden) return;
+    const score = signalScore();
+    $('#signal-bar-go').innerHTML = '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
+      '<span class="signal-bar-words"><span class="report-promo-text">' + esc(TEXT.signalBarText(score)) + '</span> ' +
+      '<strong class="report-promo-cta">' + esc(TEXT.signalBarCta(Prices.label(CURRENCY, 'unlock'))) + '</strong></span>';
+    const ring = bar.querySelector('.hub-ring');
+    ring.style.setProperty('--p', ring.dataset.p);
+  }
+  $('#signal-bar-go').addEventListener('click', () => {
+    if (!state.profile) return;
+    if ($('#view-profile').hidden) go('profile');
+    startRerun();
+  });
+
   function refreshReportPromo() {
+    refreshSignalBar();
     const bar = $('#report-promo');
     if (!bar) return;
     const view = VIEWS.find(name => !$('#view-' + name).hidden);

@@ -2648,6 +2648,33 @@
 
   /** How long the evidence is as the model reads it: the number every budget here counts. */
   function evidenceChars(digest) { return renderEvidence(digest).length; }
+
+  // Characters the reader wrote themselves: captions, comments, their own
+  // messages on Instagram, WhatsApp and Facebook, Facebook posts. The page and
+  // the server hold a run to a floor of it (MIN_OWN_WRITING in server.js).
+  function ownWritingChars(digest) {
+    const d = digest || {};
+    const lists = [
+      d.samples && d.samples.captions, d.samples && d.samples.comments,
+      d.directMessages && d.directMessages.ownMessageSample,
+      d.whatsapp && d.whatsapp.ownMessageSample,
+      d.facebook && d.facebook.postSample, d.facebook && d.facebook.commentSample,
+      d.facebook && d.facebook.ownMessageSample,
+    ];
+    let total = 0;
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (const line of list) {
+        // The reader's own words only: not the «them: …» line they answered,
+        // nor the year and chat tags.
+        const text = String(typeof line === 'string' ? line : (line && line.text) || '')
+          .replace(/«[^»]*»/g, '').replace(/^(\s*\[[^\]]{1,12}\])+\s*/, '');
+        total += text.trim().length;
+      }
+    }
+    return total;
+  }
+
   // One list as it is written out, for the trim loop's "which costs most".
   function listChars(list) { return groupedLines(list.map(evidenceLine)).length; }
 
@@ -3226,7 +3253,7 @@
   }
 
   root.PsycheDigest = {
-    build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
+    build, addSupplements, forModel, renderEvidence, evidenceChars, ownWritingChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
     MERGED_FIXED_INPUT_TOKENS, MERGED_MAX_OUTPUT_TOKENS, MERGED_COST_CAP,
     EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize,
     POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes, SHORT_MESSAGE_FLOORS,

@@ -6383,7 +6383,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the status route gives the release number and nothing about what runs behind it',
     Boolean(routes.status && routes.status.build) && /^\d+\.\d+\.\d+$/.test(routes.status.build.version) &&
       Object.keys(routes.status.build).join() === 'version' &&
-      Object.keys(routes.status).sort().join() === 'build,firstRun,freeAnalyses,mock,ready,shortLinks' &&
+      Object.keys(routes.status).sort().join() === 'build,firstRun,freeAnalyses,minWriting,mock,ready,shortLinks' &&
       !/gemini|claude|anthropic|grok|render|commit|branch|stripe|pk_|sk_|_KEY/i.test(JSON.stringify(routes.status)),
     JSON.stringify(routes.status));
   check('a free request gets the card: conclusions, the roast, and no other writing',
@@ -7145,6 +7145,16 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       prompts.RETIRED_CHARACTERS.every(([name]) => !prompts.CHARACTER_NAMES.includes(name)),
     prompts.CHARACTER_NAMES.join(', '));
   check('the sample\'s character is in the catalogue', prompts.CHARACTER_NAMES.includes(sample.essence.character));
+  {
+    const serverSrc = readFileSync(join(root, 'server.js'), 'utf8');
+    const D = (await import('../docs/digest.js'), globalThis.PsycheDigest);
+    const own = D.ownWritingChars({ samples: { captions: ['[2024] hello there', '[2023] «them: hi» mine'] },
+      whatsapp: { ownMessageSample: [{ text: 'abc' }] } });
+    check('a run needs 20,000 characters of the reader\'s own writing, counted the same on the page and the server, and refused there too',
+      own === 'hello there'.length + 'mine'.length + 3 &&
+        /: 20000;/.test(serverSrc) && /if \(!anchor && Digest\.ownWritingChars\(sent\) < MIN_OWN_WRITING\)/.test(serverSrc) &&
+        /tooThin: true/.test(serverSrc), String(own));
+  }
   {
     const appSource = readFileSync(join(root, 'docs', 'app.js'), 'utf8');
     const pdfSource = readFileSync(join(root, 'docs', 'pdf.js'), 'utf8');
