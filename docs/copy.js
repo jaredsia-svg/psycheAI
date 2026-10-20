@@ -257,6 +257,8 @@
     // reader's link, on either first-run path.
     guessGameTitle: 'While you wait: guess which character you are',
     guessGameNote: 'Tap the character you think your card will name, then lock it in. A right guess wins a free credit.',
+    // A run that cannot win (a paid card, a re-run, a device past its free card).
+    guessGameNoteForFun: 'Tap the character you think your card will name, then lock it in. Just for fun this time: credits come with a first free card.',
     guessLockPick: 'Pick a character',
     guessLock: (name) => 'Lock in ' + name,
     guessLocked: (name) => 'Locked in: ' + name + '. Your card will tell you if you\u2019re right.',
@@ -278,6 +280,13 @@
       guessed: 'Each Instagram account gets one guess, and this one has already had it.',
       account: 'Your Instagram data has no username in it, so the guess could not be tied to an account.',
       firstCard: 'Guesses count only on an Instagram account\u2019s first free Psyche Card, and this account has had one before.',
+    },
+    // A guess that could not win, told how it went anyway: the line under it says why no credit.
+    guessRightForFun: (name) => 'You said ' + name + ', and your Psyche Card agrees.',
+    guessNoCredit: {
+      guessed: 'This Instagram account has had its one guess for a credit, so this one was just for fun.',
+      account: 'Your data has no username in it, so this guess couldn\u2019t earn a credit.',
+      forFun: 'Credits come with a first free card, so this one was just for fun.',
     },
     guessYours: 'Your guess',
     guessCard: 'Your card',
@@ -330,6 +339,9 @@
     // app.js): the same link for a bio, an invite and a comparison.
     cardShareText: (character, url) => (character ? 'I got ' + character + ' for my Psyche Card. ' : 'My Psyche Card. ') +
       'Get yours now for free: ' + (url || 'https://psycheai.io'),
+    // The hub's Psyche Sync Share: the same, asking them to sync.
+    syncInviteText: (character, url) => (character ? 'I got ' + character + ' for my Psyche Card. ' : 'My Psyche Card. ') +
+      'Get yours now for free and sync with me: ' + (url || 'https://psycheai.io'),
     cardHint: 'Tap to open full screen',
     // The QR code in the foot of the reader's own card: their one link.
     cardQrCall: 'Scan to see how in sync we are',
@@ -477,6 +489,8 @@
         : 'The sync runs on the side of whoever opens the link, so ' + name +
           ' does not have this report. Send them your link and they get their own, free.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
+    // Copy link copies the link alone (October 2026); Share still sends the message.
+    linkCopied: 'Link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
     shortLinkUnreadable: 'That link couldn\u2019t be opened. It may have expired or been cut short – ask for it again.',
     linkCopyPrompt: 'Copy this and send it to them:',
@@ -802,7 +816,7 @@
     // card earns a credit, for a question or a gift.
     referral: {
       title: 'Your Referral',
-      blurb: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for a question to PsycheAI, or for a Psyche Report to gift.',
+      blurb: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for 5 questions to PsycheAI, or for a Psyche Report to gift.',
       shareHint: 'Share your card or link to start.',
       // The small button at the head's right: the same share message and
       // link as the card's own Copy link.
@@ -1314,7 +1328,7 @@
       newCount: n => n + ' new',
       sync: 'See list',
       share: 'Share',
-      link: 'Your Link',
+      link: 'Share Your Link',
       linkMore: 'Credits and gifts',
       data: 'Your data',
       // The source chips' own short names.
@@ -1346,15 +1360,15 @@
       copyLink: 'Copy your link',
       statOpened: 'opened',
       statCards: 'cards',
-      linkNote: '1 card = 1 credit = 1 question or report to gift',
-      linkRule: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for a question to PsycheAI, or for a Psyche Report to gift.',
+      linkNote: '1 card made = 1 credit = 5 questions or report to gift',
+      linkRule: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for 5 questions to PsycheAI, or for a Psyche Report to gift.',
       statCredits: 'credits',
       // One or two plain lines for each part of the hub, behind its "i".
       tips: {
         report: 'Your full Psyche Report: every result explained, with the evidence behind it. Read it here or download the PDF.',
         reportLocked: 'Your full Psyche Report: every result explained, with the evidence. It unlocks free when 1 person makes their card from your link.',
         reportBuy: 'Your full Psyche Report: every result explained, with the evidence behind it.',
-        link: 'Your personal link to share. Every connection who makes a card from it earns you 1 credit, for a question or a report to gift.',
+        link: 'Your personal link to share. Every connection who makes a card from it earns you 1 credit, for 5 questions or a report to gift.',
         data: 'How well your data supports your reading. Tap the score for what was read; Add / change data to add a source and re-run.',
         keep: 'Your profile lives only in this browser. Save a backup to bring it back, take your AI Personal Context, or delete it all.',
         card: 'Your Psyche Card: who you are at a glance. Read it full size or download it to share.',

@@ -8665,13 +8665,20 @@ check('the schema requires evidence on where they align and differ',
     // One friend's card: one referral credit, usable as a question once the bought ones are gone.
     for (let n = 1; n <= 1; n++) await referral.afterFreeCard({ account: sha('psycheai:askfriend' + n), ref: referral.codeOf(askSecret), client: '10.7.0.' + n });
     now = await askCredits.balance(askSecret);
-    check('the link\'s credits count as questions too', now.paid === 5 && now.referral === 1 && now.total === 6, JSON.stringify(now));
+    check('the link\'s credit counts as five questions', now.paid === 5 && now.referral === 5 && now.total === 10 && now.perCredit === 5, JSON.stringify(now));
     for (let i = 0; i < 5; i++) await askCredits.spend(askSecret);
     now = await askCredits.balance(askSecret);
-    check('bought questions are spent before the link\'s credit', now.paid === 0 && now.referral === 1, JSON.stringify(now));
-    await askCredits.spend(askSecret);
+    check('bought questions are spent before the link\'s credit', now.paid === 0 && now.referral === 5, JSON.stringify(now));
+    const fromCredit = await askCredits.spend(askSecret);
     now = await askCredits.balance(askSecret);
-    check('then the link\'s credit, and then none', now.total === 0 && (await askCredits.spend(askSecret)) === null, JSON.stringify(now));
+    check('then the link\'s credit becomes five questions, one of them taken',
+      typeof fromCredit === 'function' && now.referral === 0 && now.paid === 4 && now.total === 4, JSON.stringify(now));
+    fromCredit();
+    await new Promise(r => setTimeout(r, 10));
+    check('and a failed answer gives that question back, not the credit',
+      (await askCredits.balance(askSecret)).paid === 5 && (await askCredits.balance(askSecret)).referral === 0);
+    for (let i = 0; i < 5; i++) await askCredits.spend(askSecret);
+    check('and then none', (await askCredits.balance(askSecret)).total === 0 && (await askCredits.spend(askSecret)) === null);
     check('a code alone cannot see or spend questions', (await askCredits.balance(referral.codeOf(askSecret))) === null);
     // Free questions: one per code, with the card (given above). A Psyche Report brings none.
     const giftCode = referral.codeOf(askSecret);
@@ -8721,8 +8728,9 @@ check('the schema requires evidence on where they align and differ',
     check('a wrong guess is told so, with no grant', miss && miss.won === false && miss.token === null &&
       miss.guess === 'Po' && miss.character === 'Hulk', JSON.stringify(miss));
     const second = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(1), names, client: '10.1.0.1' });
-    check('and the same account cannot guess again, right or not, and is told why',
-      second && second.counted === false && second.reason === 'guessed' && !second.token, JSON.stringify(second));
+    check('and the same account cannot guess again, right or not, and is told why, with how it went',
+      second && second.counted === false && second.reason === 'guessed' && !second.token && second.character === 'Hulk' && second.won === true,
+      JSON.stringify(second));
     const win = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(2), names, client: '10.1.0.2' });
     check('a right guess wins a grant that unlocks one Psyche Report',
       win && win.won && /^[0-9a-f]{48}$/.test(win.token || '') && (await referral.grantRefusal(win.token, { mine: 1 })) === null,
@@ -8748,7 +8756,8 @@ check('the schema requires evidence on where they align and differ',
       (serverSource.match(/body\.guess/g) || []).length === 5 && /referral\.judgeGuess\(\{\s*guess: guessed,/.test(serverSource) &&
         (serverSource.match(/await judgeFor\(/g) || []).length === 1 &&
         /const guessed = takeLockedGuess\(results\.keyFor\(kind, key\)\) \|\| body\.guess;/.test(serverSource) &&
-        /const guess = \(made === 'card' \|\| firstFull\) && guessed \? await judgeFor\(body, guessed, result, request\) : null;/.test(serverSource) &&
+        /: made === 'card' \|\| firstFull \? await judgeFor\(body, guessed, result, request\) : forFun\(guessed, result\);/.test(serverSource) &&
+        /reason: 'forFun'/.test(serverSource) &&
         /creditTo: String\(body\.myRef \|\| ''\),/.test(serverSource));
     // A card already made has been seen: a guess sent with it again is not
     // judged (it was a free report on demand, with a fresh account each time),

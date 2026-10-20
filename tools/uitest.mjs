@@ -5860,8 +5860,8 @@ try {
   await clickClear(page, '#profile-body .hub-card [data-hub-go="share"]');
   await page.waitForFunction(() => window.__shared !== null, null, { timeout: 5000 }).catch(() => {});
   const sharedData = await page.evaluate(() => window.__shared);
-  check('the hub\'s Share opens the share sheet with the one share message, carrying the link',
-    Boolean(sharedData) && /^I got .+ for my Psyche Card\. Get yours now for free: /.test(sharedData.text) &&
+  check('the hub\'s Psyche Sync Share opens the share sheet with the sync message, carrying the link',
+    Boolean(sharedData) && /^I got .+ for my Psyche Card\. Get yours now for free and sync with me: /.test(sharedData.text) &&
       sharedData.text.endsWith(myLink) && !/compare/i.test(sharedData.text), JSON.stringify(sharedData).slice(0, 200));
   await page.evaluate(() => {
     navigator.share = undefined;
@@ -5870,9 +5870,9 @@ try {
   });
   await clickClear(page, '#profile-body .hub-card [data-hub-go="copy"]');
   await page.waitForFunction(() => window.__copied !== null, null, { timeout: 5000 }).catch(() => {});
-  check('and the copy button beside the link copies the same message, and says so',
-    (await page.evaluate(() => window.__copied)) === sharedData.text &&
-      /copied/i.test(await page.locator('#profile-side .cx-status').innerText()),
+  check('and the copy button beside the link copies the link alone, and says so',
+    (await page.evaluate(() => window.__copied)) === myLink &&
+      /^Link copied\./.test(await page.locator('#profile-side .cx-status').innerText()),
     await page.locator('#profile-side .cx-status').innerText());
 
   {
@@ -10660,9 +10660,8 @@ try {
     navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
   });
   await page.click('#copy-link-scan');
-  check('"Copy link" on My Syncs copies the share message with this person\'s actual link',
-    /^(I got .+ for my|My) Psyche Card\. Get yours now for free: /.test(await page.evaluate(() => window.__copied)) &&
-      (await page.evaluate(() => window.__copied)).endsWith(ownLink),
+  check('"Copy link" on My Syncs copies this person\'s actual link, and only the link',
+    (await page.evaluate(() => window.__copied)) === ownLink,
     await page.evaluate(() => window.__copied));
   check('the button confirms the copy', (await page.locator('#copy-link-scan').innerText()) === 'Copied ✓',
     await page.locator('#copy-link-scan').innerText());
@@ -11518,7 +11517,7 @@ try {
           await sp.click('.hub-keep .hub-rl').then(() => sp.evaluate(() => getComputedStyle(document.querySelector('#hub-tip-syncs')).display === 'none')));
       check('Your Link is a row of its own: its counts and what a credit is for, with no popout',
         await sp.evaluate(() => document.querySelectorAll('#profile-body .hub-linkrow .referral-n').length === 3 &&
-          document.querySelector('.hub-linkrow .hub-linknote').textContent === '1 card = 1 credit = 1 question or report to gift' &&
+          document.querySelector('.hub-linkrow .hub-linknote').textContent === '1 card made = 1 credit = 5 questions or report to gift' &&
           !document.querySelector('.hub-card [data-hub-go="link"]')));
       {
         let early = false;
@@ -12841,8 +12840,8 @@ try {
       });
       await sp.click('#profile-side .cx-tool[data-act="copy"]');
       await sp.waitForFunction(() => window.__copied !== null, null, { timeout: 5000 });
-      check('structured: Copy link copies the one share message, "I got <character> for my Psyche Card. Get yours now for free: <link>"',
-        await sp.evaluate(() => /^I got .+ for my Psyche Card\. Get yours now for free: https?:\/\/\S+$/.test(window.__copied) &&
+      check('structured: Copy link copies the link alone, not the share message',
+        await sp.evaluate(() => /^https?:\/\/\S+$/.test(window.__copied) &&
           /Copied/.test(document.querySelector('#profile-side .cx-tool[data-act="copy"]').textContent)),
         await sp.evaluate(() => window.__copied));
       // Its "Add / change data" is the US$5 unlock — data first, then payment —
@@ -13320,6 +13319,33 @@ try {
         check('a guess for a card already written, or for no running card, is refused as too late; a bad job or name outright',
           late[0].status === 409 && late[0].body.tooLate === true && late[1].status === 409 && late[1].body.tooLate === true &&
             late[2].status === 400 && late[3].status === 400, JSON.stringify(late));
+        // A device that has made its free card already, with another account's
+        // export (October 2026): its run is still a free first card, which only
+        // the server can judge, so the game is offered as usual. It was hidden
+        // on any device past its free run.
+        await gp.evaluate(() => { localStorage.clear(); localStorage.setItem('psycheai_runs', '1'); });
+        await gp.reload({ waitUntil: 'load' });
+        await gp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip({ silent: true }) });
+        await chooseDepth(gp);
+        await answerReview(gp);
+        await gp.waitForSelector('#working-guess:not([hidden]) .guess-tile[data-name="Po"]', { timeout: 20000 });
+        const againNote = await gp.locator('#working-guess-note').textContent();
+        check('a device past its free card still gets the game on a free run, with a credit to win',
+          /A right guess wins a free credit\./.test(againNote), againNote);
+        await gp.click('.guess-tile[data-name="Po"]');
+        await gp.click('#guess-lock');
+        await gp.waitForSelector('#working-guess.is-locked', { timeout: 10000 });
+        await gp.waitForSelector('#guess-dialog[open]', { timeout: 60000 });
+        const missed = await gp.evaluate(() => ({
+          title: document.querySelector('#guess-title').textContent,
+          text: document.querySelector('#guess-text').textContent,
+          faces: document.querySelectorAll('#guess-faces .guess-face').length,
+          later: !document.querySelector('#guess-later-row').hidden,
+        }));
+        check('and a wrong guess is told with both characters: Po against the card\'s Hulk',
+          missed.title === 'Not this time' && /^You guessed Po, and your card says Hulk\./.test(missed.text) && missed.faces === 2 && !missed.later,
+          JSON.stringify(missed));
+        await gp.click('#guess-go');
         check('the guessing game runs with no page errors', gpErrors.length === 0, gpErrors.join(' | '));
       } finally {
         await gp.close();
@@ -13384,7 +13410,7 @@ try {
         card.stats === 3 && !card.ready &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,credits') &&
           /0\s*opened/.test(card.text) && /0\s*cards/.test(card.text) && !/syncs/.test(card.text) && /0\s*credits/.test(card.text) &&
-          /1 card = 1 credit = 1 question or report to gift/.test(card.text) &&
+          /1 card made = 1 credit = 5 questions or report to gift/.test(card.text) && /^Share Your Link/.test(card.text) &&
           await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&
             !document.querySelector('#profile-body .referral-card:not(.hub-linkrow)')) &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button:not(.hub-tip)')].filter(b => !b.closest('[hidden]'))
@@ -13396,9 +13422,8 @@ try {
       await rp.click('#profile-side .cx-tool[data-act="copy"]');
       await rp.waitForFunction(() => document.querySelector('#profile-side .cx-tool[data-act="copy"] span').textContent === window.PsycheCopy.TEXT.linkMessageCopiedShort, null, { timeout: 5000 }).catch(() => {});
       const copiedMessage = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
-      const copied = copiedMessage.replace(/^.*: /, '');
-      check('Copy link beside the card copies the one share message, ending in the short personal link, /c/<id>#<key>',
-        /^I got .+ for my Psyche Card\. Get yours now for free: /.test(copiedMessage) &&
+      const copied = copiedMessage;
+      check('Copy link beside the card copies the short personal link alone, /c/<id>#<key>',
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
       await openLink(rp);
@@ -13406,7 +13431,7 @@ try {
       await rp.click('#profile-body .hub-linkrow .hub-linkcopy');
       await rp.waitForSelector('#profile-body .hub-linkrow .hub-linkcopy.is-done', { timeout: 5000 }).catch(() => {});
       const refCopied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
-      check('Your Link\'s copy icon copies the same share message and link as the card\'s Copy link, and turns to a tick',
+      check('Share Your Link\'s copy icon copies the same link as the card\'s Copy link, and turns to a tick',
         refCopied === copiedMessage &&
           await rp.evaluate(() => document.querySelector('#profile-body .hub-linkrow .hub-linkcopy').classList.contains('is-done')), refCopied);
       await closeLink(rp);

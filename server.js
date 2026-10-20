@@ -927,7 +927,10 @@ async function handleAnalyse(request, response) {
       // beside the digest, never inside it, so the model never saw it.
       // A free first read with its report judges it too, against the card it
       // wrote. A right guess is one credit on the reader's link, on either path.
-      const guess = (made === 'card' || firstFull) && guessed ? await judgeFor(body, guessed, result, request) : null;
+      // Any other run that writes a card (a paid one, a re-run) has the game
+      // too, for fun: told how it went, with nothing to win.
+      const guess = !guessed ? null
+        : made === 'card' || firstFull ? await judgeFor(body, guessed, result, request) : forFun(guessed, result);
 
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
@@ -988,6 +991,16 @@ async function handleGuess(request, response) {
   lockedGuesses.set(job, guess);
   stats.count('guess_locked');
   sendJson(response, 200, { locked: true, guess });
+}
+
+/** A guess on a run that cannot win (a paid card, a re-run): how it went, and nothing more. */
+function forFun(guessed, result) {
+  const data = result && result.data;
+  const card = (data && data.freeCard) || data;
+  const character = String(card && card.essence && card.essence.character || '');
+  if (!prompts.CHARACTER_NAMES.includes(guessed) || !character) return null;
+  stats.count('guess_for_fun');
+  return { guess: guessed, character, won: guessed === character, counted: false, reason: 'forFun' };
 }
 
 /** A guess judged against the card it came with (lib/referral.js, judgeGuess), and counted. */

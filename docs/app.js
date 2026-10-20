@@ -2025,8 +2025,8 @@
   });
 
   /** The share message with the link: the share sheet where there is one, else copied. */
-  async function shareMyLink(button, say) {
-    const text = shareMessage();
+  async function shareMyLink(button, say, message) {
+    const text = message || shareMessage();
     if (navigator.share) {
       try { await navigator.share({ text }); return; }
       catch (error) { if (error && error.name === 'AbortError') return; }
@@ -2421,18 +2421,20 @@
       case 'card': openPsycheCard(); break;
       // Without a share sheet the link is copied, and said so as Copy says it
       // (October 2026: it called an absent callback and threw after copying).
-      case 'share': shareMyLink(button, flashCardStatus); break;
+      // Psyche Sync's Share asks them to sync, not only to make a card.
+      case 'share': shareMyLink(button, flashCardStatus, syncShareMessage()); break;
       case 'card-download': downloadCardImage({ currentTarget: button }); break;
       case 'asked': leaveHub(); openAskAppendix(); break;
       case 'unlock': openPremiumDialog(button, 'unlock'); break;
       case 'ask': openAsk(undefined, { ideas: true }); break;
       case 'syncs': leaveHub(); go('scan'); break;
+      // The link alone (October 2026): Share sends the message.
       case 'copy': {
-        const text = shareMessage();
+        const text = myLinkUrl();
         writeClipboard(text).then(() => {
           button.innerHTML = hubIcon('tick');
           button.classList.add('is-done');
-          flashCardStatus(TEXT.linkMessageCopied);
+          flashCardStatus(TEXT.linkCopied);
           setTimeout(() => { button.innerHTML = hubIcon('copy'); button.classList.remove('is-done'); }, 2000);
         }, () => window.prompt(TEXT.linkCopyPrompt, text));
         break;
@@ -2955,10 +2957,6 @@
     return guess && typeof guess.name === 'string' && Object.prototype.hasOwnProperty.call(Copy.CHARACTER_SYNCS, guess.name)
       ? guess : null;
   }
-  // Only before a first free card: a device that has spent its free run
-  // (runCount survives Delete everything) makes paid runs, which never
-  // carry a guess, so it is not offered one to lose.
-  const canGuess = () => !state.profile && runCount() < freeAnalyses;
   // A new reader's first free run writes the card and its report together
   // (PSYCHEAI_FIRST_RUN on the server, served as firstRun). 'card' is the
   // path before: the card alone, the report unlocked after.
@@ -2977,10 +2975,13 @@
     const answer = outcome && typeof outcome.guess === 'string' ? outcome : { guess: guess.name, counted: false, reason: 'firstCard' };
     const token = /^[0-9a-f]{48}$/.test(String(answer.token || '')) ? answer.token : '';
     const counted = answer.counted !== false;
-    store.write(KEYS.guess, { name: answer.guess, at: Date.now(), outcome: counted
+    store.write(KEYS.guess, { name: answer.guess, at: Date.now(), job: guess.job, outcome: counted
       ? { character: String(answer.character || ''), won: Boolean(answer.won), limited: Boolean(answer.limited),
         credit: Boolean(answer.credit) || (Boolean(answer.won) && answer.credit === false), told: false }
-      : { counted: false, reason: String(answer.reason || 'firstCard'), told: false } });
+      // Not counted, but with the card's character when the server sent it:
+      // how it went is still told, with why there is no credit.
+      : { counted: false, reason: String(answer.reason || 'firstCard'), told: false,
+        character: String(answer.character || ''), won: Boolean(answer.won) } });
     if (token && !giftWaiting()) store.write(KEYS.gift, { token, at: Date.now(), won: true });
   }
   // A tile of the cast image for one character, as the strip draws it.
@@ -3003,9 +3004,19 @@
       art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
     });
   }
-  function openGuessGame(job) {
+  // Every run that writes a card has the game (October 2026); only a free
+  // first card's can win a credit, so the rest are told it is for fun.
+  let guessForFun = false;
+  function openGuessGame(job, auth) {
     const panel = $('#working-guess');
-    if (!panel || !job || !canGuess()) return;
+    if (!panel || !job) return;
+    // A guess from an earlier card, already told, makes way for this one.
+    const before = store.read(KEYS.guess, null);
+    if (before && (before.outcome || (before.job && before.job !== job))) store.remove(KEYS.guess);
+    // Known in advance only for a paid run. A free one asks for the free card
+    // whatever this device has made before, and the server knows whether
+    // this account's guess can still win (judgeGuess says why if not).
+    guessForFun = Boolean(auth);
     guessJob = job;
     guessPick = '';
     guessNote = '';
@@ -3041,7 +3052,7 @@
     lock.hidden = shut;
     lock.disabled = !guessPick;
     lock.textContent = guessPick ? TEXT.guessLock(guessPick) : TEXT.guessLockPick;
-    $('#working-guess-note').textContent = guessNote || (held ? TEXT.guessLocked(held) : TEXT.guessGameNote);
+    $('#working-guess-note').textContent = guessNote || (held ? TEXT.guessLocked(held) : guessForFun ? TEXT.guessGameNoteForFun : TEXT.guessGameNote);
   }
   $('#guess-grid').addEventListener('click', event => {
     const tile = event.target.closest('.guess-tile');
@@ -3059,7 +3070,7 @@
     if (job !== guessJob) return;
     if (answer.locked) {
       const made = guessMade();
-      if (!(made && made.outcome && made.name === answer.guess)) store.write(KEYS.guess, { name: answer.guess, at: Date.now(), job });
+      if (!(made && made.outcome && made.job === job)) store.write(KEYS.guess, { name: answer.guess, at: Date.now(), job });
       guessPick = '';
     } else if (answer.tooLate) {
       guessJob = '';
@@ -3079,20 +3090,27 @@
     // Booleans: classList.toggle reads an undefined second argument as "flip".
     const won = Boolean(outcome.won && !outcome.limited);
     const notCounted = outcome.counted === false;
+    // Not counted but told how it went: a run that could not win (forFun),
+    // or an account that has had its guess.
+    const told = notCounted && Boolean(outcome.character);
     const faces = [castFace(guess.name, TEXT.guessYours)];
-    if (!notCounted && !outcome.won && outcome.character) faces.push(castFace(outcome.character, TEXT.guessCard));
+    if ((!notCounted || told) && !outcome.won && outcome.character) faces.push(castFace(outcome.character, TEXT.guessCard));
     $('#guess-faces').innerHTML = faces.join('');
     $('#guess-faces').querySelectorAll('.cast-art').forEach(art => {
       art.style.backgroundSize = (Number(art.dataset.count) * 100) + '% 100%, cover';
       art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
     });
-    $('#guess-title').textContent = notCounted ? TEXT.guessNotCountedTitle : outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle;
-    $('#guess-text').textContent = notCounted ? (TEXT.guessNotCounted[outcome.reason] || TEXT.guessNotCounted.firstCard)
+    $('#guess-title').textContent = told ? (outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle)
+      : notCounted ? TEXT.guessNotCountedTitle : outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle;
+    $('#guess-text').textContent = told
+      ? (outcome.won ? TEXT.guessRightForFun(guess.name) : TEXT.guessMissed(guess.name, outcome.character)) + ' ' +
+        (TEXT.guessNoCredit[outcome.reason] || TEXT.guessNoCredit.forFun)
+      : notCounted ? (TEXT.guessNotCounted[outcome.reason] || TEXT.guessNotCounted.firstCard)
       : outcome.credit ? (won ? TEXT.guessWonCredit : TEXT.guessWonCreditLimited)(guess.name)
       : won ? TEXT.guessWonText(guess.name) : outcome.won ? TEXT.guessWonLimited(guess.name) : TEXT.guessMissed(guess.name, outcome.character);
     dialog.classList.toggle('is-won', won);
     // A credit won needs nothing doing: the hub's link row already counts it.
-    const unlocks = won && !outcome.credit;
+    const unlocks = won && !notCounted && !outcome.credit;
     const go = $('#guess-go');
     go.textContent = unlocks ? TEXT.guessWonUse : TEXT.guessOk;
     $('#guess-later').textContent = TEXT.guessLater;
@@ -6186,7 +6204,7 @@
       const body = await withAttribution(bundle ? bundledAuth(auth) : auth);
       if (first) body.product = 'first';
       const result = await LLM.analyseProfile(sent, body,
-        { onJob: key => { rememberJob(key, 'analysis', auth); if (!auth) openGuessGame(key); } });
+        { onJob: key => { rememberJob(key, 'analysis', auth); openGuessGame(key, auth); } });
       if (bundle || withCard(result)) await adoptBundle(result);
       else {
         if (first) store.remove(KEYS.reportDigestNext);
@@ -6373,7 +6391,7 @@
     }
     // A free first read picked up after a reload: its guess still open, or
     // the one locked in before.
-    if (job.kind === 'analysis' && !job.auth) openGuessGame(job.key);
+    if (job.kind === 'analysis') openGuessGame(job.key, job.auth);
     try {
       const result = await LLM.resumeJob(job.key);
       clearJob();
@@ -6642,6 +6660,11 @@
   function shareMessage() {
     const report = state.profile && state.profile.report;
     return TEXT.cardShareText(report && report.essence && report.essence.character, myLinkUrl());
+  }
+  /** The hub's Psyche Sync Share: the same message, asking them to sync with you. */
+  function syncShareMessage() {
+    const report = state.profile && state.profile.report;
+    return TEXT.syncInviteText(report && report.essence && report.essence.character, myLinkUrl());
   }
 
   // ---------- section bodies ----------
@@ -8381,14 +8404,14 @@
       () => window.prompt(TEXT.linkCopyPrompt, text));
   }
 
-  // Copy link: the same message Share Card sends, link and all.
+  // Copy link: the link alone (October 2026; it was the share message).
   function copyMyLink(button, statusSelector) {
-    const url = shareMessage();
+    const url = myLinkUrl();
     writeClipboard(url).then(() => {
       const label = button.textContent;
       button.textContent = 'Copied ✓';
       setTimeout(() => { button.textContent = label; }, 2000);
-      linkStatus(statusSelector, TEXT.linkMessageCopied);
+      linkStatus(statusSelector, TEXT.linkCopied);
     }, () => window.prompt(TEXT.linkCopyPrompt, url));
   }
   $('#share-link-report').addEventListener('click', () => sendMyLink('#share-link-report-status'));
@@ -8800,15 +8823,16 @@
   // Shared by both icon buttons: neither carries visible text of its own any
   // more for a failure to borrow, so an error from either one shows up here
   // instead of inside the button.
-  // The card's Copy link: the share message, link and all, on the clipboard.
+  // The card's Copy link: the link alone on the clipboard (October 2026; it
+  // was the share message, which Share still sends).
   function copyShareMessage(button) {
-    const text = shareMessage();
+    const text = myLinkUrl();
     writeClipboard(text).then(() => {
       const label = button.querySelector('span');
       const was = label.textContent;
       label.textContent = TEXT.linkMessageCopiedShort;
       setTimeout(() => { label.textContent = was; }, 2000);
-      flashCardStatus(TEXT.linkMessageCopied);
+      flashCardStatus(TEXT.linkCopied);
     }, () => window.prompt(TEXT.linkCopyPrompt, text));
   }
 
@@ -12344,8 +12368,10 @@
     const by = referredBy();
     if (by) out.ref = by;
     // A guess at the character, for the first free card only (judgeGuess).
+    // Only one picked on the old front-page strip: one from the waiting
+    // screen is locked onto its job instead (/api/guess).
     const guess = !auth && !state.profile ? guessMade() : null;
-    if (guess && !guess.outcome) out.guess = guess.name;
+    if (guess && !guess.outcome && !guess.job) out.guess = guess.name;
     return out;
   }
 

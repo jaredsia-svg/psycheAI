@@ -2787,6 +2787,43 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
 
+### Copy link copies the link; a credit is five questions (October 2026)
+
+- **Copy link is the link alone.** The card's Copy link, the hub row's copy icon and My Syncs' Copy link each put
+  only the reader's link on the clipboard, and say *Link copied*. They used to copy the whole share message, which
+  a reader pasting into their own text had to delete. Share still sends the message.
+- **Psyche Sync's Share asks them to sync:** *I got Iron Man for my Psyche Card. Get yours now for free and sync
+  with me: <link>* (`syncInviteText`). The card's own share message is unchanged.
+- **"Your Link" is "Share Your Link"**, and its rule reads *1 card made = 1 credit = 5 questions or report to
+  gift*.
+- **A link credit is worth five questions.** A credit buys a Psyche Report to gift, and a report costs what five
+  questions cost, so one credit spent on Ask PsycheAI now turns into five questions (`PER_CREDIT` in
+  `lib/askcredits.js`; it was one). Bought questions still go first. When none are left, `spend` takes one credit,
+  adds five questions and spends one of them. A failed answer gives that question back, not the credit. The
+  balance counts the link's credits in questions (`referral` = credits × 5), so *Includes 5 questions from your
+  Referral credits* reads right. The FAQ says *five questions for PsycheAI*.
+
+### The guessing game on every card's wait (October 2026)
+
+**What went wrong.** A reader loaded their data and ran their card and report, and there was no game. It
+opened only while `canGuess()` held: no card on the device, and the device's free run unspent. The run
+counter survives Delete everything, so any device that had made a card before never saw it. Yet every first
+upload asks for a free card whatever the device has made (the server decides by Instagram account), so those
+runs could still have won.
+
+**What changed.**
+- **Every run that writes a card shows the game:** a free first read, a paid card and report, a re-run.
+- **On a free run** the note offers the credit as before. Only the server knows whether this account's guess
+  can still win, and `judgeGuess` now says how a guess that cannot count went: the card's character and
+  whether it was right, beside the reason.
+- **On a paid run** the note says *Just for fun this time: credits come with a first free card*, and the
+  server answers it with `forFun`: how it went, nothing to win (`guess_for_fun` in the stats).
+- **The popout** for a guess that could not win reads like the others (*You guessed right!* or *Not this
+  time*, both characters when they differ), then one line on why there was no credit. It never offers
+  *Unlock it free*.
+- **One guess per card:** a stored guess from an earlier card, once told, makes way for the next one, and a
+  guess locked on the waiting screen is never resent with a request.
+
 ### The words they choose to pass on: a weak row on N/S and T/F (October 2026)
 
 A reader whose posts were mostly photos, not her own writing, shared book pages (*Just Mercy*, a passage
