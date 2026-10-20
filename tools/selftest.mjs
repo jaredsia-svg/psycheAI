@@ -7145,6 +7145,14 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       prompts.RETIRED_CHARACTERS.every(([name]) => !prompts.CHARACTER_NAMES.includes(name)),
     prompts.CHARACTER_NAMES.join(', '));
   check('the sample\'s character is in the catalogue', prompts.CHARACTER_NAMES.includes(sample.essence.character));
+  {
+    const appSource = readFileSync(join(root, 'docs', 'app.js'), 'utf8');
+    const pdfSource = readFileSync(join(root, 'docs', 'pdf.js'), 'utf8');
+    check('attachment style and how they deal with conflict carry a Tentative pill, on the page and in the PDF, and only they do',
+      globalThis.PsycheCopy.STRUCTURED.tentative === 'Tentative' && (appSource.match(/tentativePill\(\) \+ '<\/h3>/g) || []).length === 2 &&
+        /esc\(S\.howYouAttach\) \+ tentativePill\(\)/.test(appSource) && /esc\(TEXT\.attachmentConflict\) \+ tentativePill\(\)/.test(appSource) &&
+        (pdfSource.match(/, undefined, S\.tentative\)/g) || []).length === 2);
+  }
   check('the structured card\'s write-up is two sentences on why they are like the character',
     /Exactly two sentences/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
     prompts.STRUCTURED_FULL_SCHEMA.properties.cardHighlights === prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights &&

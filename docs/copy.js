@@ -1502,6 +1502,10 @@
     nothingYet: 'Nothing here yet.',
     // The merged sections' own headings.
     howYouAttach: 'Attachment style',
+    // A pill on the reads that rest on the least direct evidence (October
+    // 2026): attachment style and how they deal with conflict.
+    tentative: 'Tentative',
+    tentativeTip: 'A careful guess from behaviour, and the most likely read here to change with more data.',
     // How they handle disagreement: the card's conflict style, which the
     // attachment read explains (attachment.conflict). A chip and an unlock row.
     conflictStyle: 'Conflict style',

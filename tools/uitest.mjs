@@ -12326,12 +12326,14 @@ try {
         merged.planFrom.length === 5 && merged.planFrom.filter(f => f === 'How you work').length === 2 &&
         merged.planFrom.filter(f => f === 'Wellbeing').length === 1, merged.planFrom.join(', '));
       check('structured: wellbeing no longer has its own list of suggestions', !merged.wellnessHelp);
-      check('structured: How you deal with conflict is its own subsection after attachment, its first sentence in bold',
+      check('structured: How you deal with conflict is its own subsection after attachment, its first sentence in bold, both marked Tentative',
         await sp.evaluate(() => {
           const card = document.querySelector('#profile-body .relationships-card');
-          const head = [...card.querySelectorAll('h3')].find(h => h.textContent === 'How you deal with conflict');
+          const head = [...card.querySelectorAll('h3')].find(h => h.firstChild && h.firstChild.textContent.trim() === 'How you deal with conflict');
           const para = head && head.nextElementSibling;
+          const tentative = [...card.querySelectorAll('h3 .pill-tentative')].map(p => p.parentElement.firstChild.textContent.trim()).join('|');
           return Boolean(head && para && para.matches('p.attach-conflict') && para.querySelector('strong') &&
+            tentative === 'Attachment style|How you deal with conflict' && !/\(tentative\)/i.test(para.textContent) &&
             para.textContent.startsWith(para.querySelector('strong').textContent) &&
             !card.querySelector('.attach-top .attach-conflict') && !/In conflict/.test(card.textContent));
         }));

@@ -7195,6 +7195,16 @@
    * where it gets hard, how they give and want care, and who suits them —
    * three sections, a page apart, that kept restating each other.
    */
+  /** The Tentative pill beside a heading whose read rests on the least direct evidence. */
+  function tentativePill() {
+    const S = Copy.STRUCTURED;
+    return ' <span class="pill pill-tentative" title="' + esc(S.tentativeTip) + '">' + esc(S.tentative) + '</span>';
+  }
+  /** Text without the model's own "(tentative)", which the pill now says. */
+  function untentative(text) {
+    return String(text || '').replace(/\s*\(tentative\)/gi, '');
+  }
+
   function relationshipsStructuredBody(relationship, source, idealPartner) {
     const S = Copy.STRUCTURED;
     const attachment = source ? gentleAttachmentOf(source) : source;
@@ -7205,15 +7215,16 @@
     if (attachment) {
       // The model's own caveat is left out: the map is labelled a leaning,
       // and the about card already says none of this is a clinical read.
-      html += '<h3>' + esc(S.howYouAttach) + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
+      html += '<h3>' + esc(S.howYouAttach) + tentativePill() + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
         '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
         (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
         readingFull(attachment.why, attachment.derivedFrom) + '</div></div>';
       // How they handle disagreement: its own subsection, the card's conflict
       // style (its first sentence) in bold, then what it does to the other person.
       if (attachment.conflict) {
-        const [lead, rest] = Copy.leadSentence(attachment.conflict);
-        html += '<h3>' + esc(TEXT.attachmentConflict) + '</h3><p class="attach-conflict"><strong>' + esc(lead) + '</strong>' +
+        // The pill says it is tentative, so the model's "(tentative)" goes.
+        const [lead, rest] = Copy.leadSentence(untentative(attachment.conflict));
+        html += '<h3>' + esc(TEXT.attachmentConflict) + tentativePill() + '</h3><p class="attach-conflict"><strong>' + esc(lead) + '</strong>' +
           (rest ? ' ' + esc(rest) : '') + '</p>';
       }
       // No "In practice": what the style gives and costs is under what they

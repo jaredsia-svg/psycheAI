@@ -1554,6 +1554,10 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 .axis p { margin: .2rem 0 0; font-size: .92rem; }
 /* A slight lean should look slighter than a clear one at a glance. */
 .pill-slight { opacity: .6; }
+/* Tentative: the reads that rest on the least direct evidence (attachment
+   style, how they deal with conflict), beside their heading. */
+.pill-tentative { margin-left: .4rem; border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: var(--accent-soft);
+  color: var(--accent); font-size: .68rem; letter-spacing: .02em; text-transform: none; position: relative; top: -.1em; }
 .pill-clear { border-color: var(--accent); color: var(--accent); }
 
 .takeaways { margin: .4rem 0 0; padding-left: 1.1rem; }

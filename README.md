@@ -2787,6 +2787,15 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
 
+### Tentative: attachment style and conflict style (October 2026)
+
+Two reads rest on the least direct evidence: attachment style (already described as *a guess from behaviour,
+and the most changeable read here*) and how they deal with conflict (which the model wrote with "(tentative)"
+on the end). Each heading now carries a **Tentative** pill, on the page (`tentativePill`, with a tooltip) and in
+the PDF (`subhead`'s new tag). The model's own "(tentative)" is taken off the conflict line, since the pill says
+it. Nothing else is labelled: the Big Five, MBTI (whose letters already show *slight*), motivators, interests,
+values and work rest on many direct signals.
+
 ### My Report's header on a phone: the pills beside the emblem (October 2026)
 
 On a phone the header stacked the emblem, the *6 parts · 16 pages* pill and the Signal strength pill on three

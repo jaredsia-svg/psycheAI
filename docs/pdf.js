@@ -1310,17 +1310,25 @@
   let blockWidth = COLUMN;
 
   /** A subsection heading inside a section: a short bar of colour and the title. */
-  Report.prototype.subhead = function (text, color) {
+  Report.prototype.subhead = function (text, color, tag) {
     this.titled = true;
     const style = { size: 12.4, bold: true, color: INK };
-    const lines = wrap(toWinAnsi(text), COLUMN - 14, style);
+    // A tag (Tentative) is a small pill after the title, on its last line.
+    const pill = tag ? { text: toWinAnsi(tag), style: { size: 8, bold: true, color: ACCENT } } : null;
+    const pillW = pill ? measure(pill.text, 8, true) + 12 : 0;
+    const lines = wrap(toWinAnsi(text), COLUMN - 14 - (pill ? pillW + 8 : 0), style);
     this.need(48 + lines.length * 16);
     this.space(14);
     this.doc.roundRect(MARGIN, this.doc.y + 1, 4, 13, 2, color || ACCENT);
-    for (const line of lines) {
+    lines.forEach((line, i) => {
       this.doc.draw(line, MARGIN + 12, this.doc.y + 11.5, style);
+      if (pill && i === lines.length - 1) {
+        const x = MARGIN + 12 + measure(line, style.size, true) + 8;
+        this.doc.roundRect(x, this.doc.y + 1, pillW, 13, 6.5, WASH);
+        this.doc.draw(pill.text, x + 6, this.doc.y + 10.4, pill.style);
+      }
       this.doc.y += 16;
-    }
+    });
     this.space(6);
     return this.markHead();
   };
@@ -2107,7 +2115,7 @@
     });
     if (attachment) {
       out.keep(() => {
-        out.subhead(S.howYouAttach);
+        out.subhead(S.howYouAttach, undefined, S.tentative);
         out.panel([
           attachment.style && { text: attachment.style, style: { size: 12, bold: true, color: ACCENT }, leading: 16 },
           attachment.styleTone && { text: attachment.styleTone, style: { size: 10, bold: true, color: INK }, leading: 14, before: 4 },
@@ -2118,9 +2126,9 @@
       // How they deal with conflict: its own subsection, as on the page, the
       // first sentence (the card's conflict style) in bold.
       if (attachment.conflict) {
-        const [lead, rest] = Copy.leadSentence(attachment.conflict);
+        const [lead, rest] = Copy.leadSentence(String(attachment.conflict).replace(/\s*\(tentative\)/gi, ''));
         out.keep(() => {
-          out.subhead(TEXT.attachmentConflict);
+          out.subhead(TEXT.attachmentConflict, undefined, S.tentative);
           out.panel([
             { text: lead, style: { size: 10.6, bold: true, color: INK }, leading: 14.5 },
             rest && { text: rest, style: T_BODY, leading: 13.8, before: 4 },
