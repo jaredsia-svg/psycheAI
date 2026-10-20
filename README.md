@@ -2787,6 +2787,15 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
 
+### Signal strength over My Report's actions, and as text in its header (October 2026)
+
+My Report's header carried Signal strength as a button beside the *6 parts · 16 pages* pill. The pill now reads
+*6 parts · 16 pages · 84% signal strength* as plain text, and on a phone the signal strength takes its own line.
+The ring that opens the Signal strength popout moved to a row over the page's actions (Back, Report, Add data):
+in the side column on a laptop and over the bottom row on a phone (`refreshReportSignal`). The score is in the
+ring, so the row says only *Signal strength*, with a chevron: the whole row opens the full read. The side nav
+leaves room for the taller box.
+
 ### A floor of their own writing; a signal-strength bar under 80 (October 2026)
 
 **The floor.** A card read from an export with almost no writing of the reader's own is mostly guesswork, and
@@ -2825,7 +2834,8 @@ values and work rest on many direct signals.
 
 On a phone the header stacked the emblem, the *6 parts · 16 pages* pill and the Signal strength pill on three
 lines of their own above the title. The two pills now sit one over the other beside the emblem (a two-column
-grid under 640px), with the title and lede full width below. At 390px wide the header is 238px tall instead of
+grid under 640px), with the title and lede full width below. (Since the signal strength became text in the pill,
+the one pill sits there, on two lines.) At 390px wide the header is 238px tall instead of
 311px.
 
 ### Copy link copies the link; a credit is five questions (October 2026)

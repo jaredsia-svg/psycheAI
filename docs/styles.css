@@ -794,9 +794,11 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    screen, each an icon over a small label, in the card tools' own style. */
 @media (max-width: 719px) {
   #view-profile.profile-paid .cta-row {
-    /* A column per visible action, however many there are. */
-    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .5rem; align-items: stretch;
+    /* An equal share per visible action, however many there are, with the
+       signal strength row over them. */
+    display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch;
   }
+  #view-profile.profile-paid .cta-row .btn { flex: 1 1 0; }
   /* The same height whichever label wraps, icons on one line along the top. */
   #view-profile.profile-paid .cta-row .btn {
     flex-direction: column; justify-content: flex-start; gap: .35rem; min-width: 0; margin: 0;
@@ -3698,6 +3700,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   .report-hero { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .9rem; align-items: center; }
   .report-hero > :not(.report-hero-mark):not(.report-hero-meta) { grid-column: 1 / -1; }
   .report-hero .report-hero-meta { flex-direction: column; align-items: flex-start; gap: .4rem; margin: 0 0 .8rem; }
+  .report-hero #report-hero-pill { border-radius: 14px; line-height: 1.5; }
+  .report-hero .hero-pill-signal { display: block; }
+  .report-hero .hero-pill-dot { display: none; }
 }
 /* Every name in full: the nav wraps rather than scrolling one off the end.
    On a phone it stays where it is rather than following the reader down, so
@@ -3765,13 +3770,13 @@ details.more[open] > summary::after { content: ' ▴'; }
    scrolling on its own if a short screen cannot hold all of it, and the
    page's three actions under it. */
 @media (min-width: 1000px) and (min-height: 520px) {
-  #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - var(--side-nav-top, 6.5rem) - 5.2rem); overflow-y: auto; }
+  #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - var(--side-nav-top, 6.5rem) - 7.8rem); overflow-y: auto; }
   /* The page's actions, under the nav: quiet icons in the nav's own box
      style, each with its small label under it. Its top is the nav's measured foot
      (--side-nav-bottom, set by layoutPsycheCard). */
   #view-profile.profile-paid .cta-row {
     position: fixed; z-index: 10; top: var(--side-nav-bottom, 760px); left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px));
-    width: 232px; margin: 0; padding: .35rem; gap: .25rem; justify-content: space-around; flex-wrap: nowrap;
+    width: 232px; margin: 0; padding: .35rem; gap: .25rem; justify-content: space-around; flex-wrap: wrap;
     border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow);
     background: color-mix(in srgb, var(--bg-alt) 92%, transparent); backdrop-filter: blur(8px);
   }
@@ -5167,13 +5172,19 @@ details.more[open] > summary::after { content: ' ▴'; }
    score in the hub's ring; a tap opens the Signal strength popout. */
 .report-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .6rem; margin-bottom: .7rem; }
 .report-hero-meta .scan-eyebrow { margin: 0; }
-.report-hero-signal { display: inline-flex; align-items: center; gap: .45rem; padding: .18rem .7rem .18rem .2rem; border-radius: 999px; cursor: pointer;
-  font: inherit; font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-alt)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
-.report-hero-signal:hover { background: color-mix(in srgb, var(--accent) 14%, var(--bg-alt)); }
-.report-hero-signal .hub-ring { width: 28px; height: 28px; }
-.report-hero-signal .hub-ring b { width: 22px; height: 22px; font-size: .64rem; letter-spacing: 0; background: color-mix(in srgb, var(--accent) 8%, var(--bg-alt)); }
-@media print { .report-hero-signal { display: none; } }
+/* My Report's signal strength, a row over its actions (app.js,
+   refreshReportSignal): the hub's ring and the score, opening Signal strength. */
+.cta-row .cta-signal {
+  display: flex; align-items: center; justify-content: center; gap: .5rem; flex: 0 0 100%; width: 100%; margin: 0;
+  font: inherit; font-size: .8rem; font-weight: 700; color: var(--accent); cursor: pointer;
+  background: var(--accent-soft); border: 0; border-radius: 12px; padding: .35rem .6rem;
+}
+.cta-row .cta-signal[hidden] { display: none; }
+.cta-row .cta-signal:hover, .cta-row .cta-signal:focus-visible { background: color-mix(in srgb, var(--accent) 16%, var(--bg-alt)); outline: none; }
+.cta-signal .hub-ring { width: 26px; height: 26px; flex: none; }
+.cta-signal .cta-signal-go { width: 14px; height: 14px; flex: none; margin-left: auto; }
+.cta-signal .cta-signal-words { flex: 1 1 auto; text-align: left; }
+.cta-signal .hub-ring b { width: 20px; height: 20px; font-size: .6rem; letter-spacing: 0; background: var(--accent-soft); }
 
 /* Part 02 as one box (October 2026): under the motivators, what they stand
    for and three interests, a bold name and one line each. */

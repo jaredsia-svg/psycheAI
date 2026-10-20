@@ -6772,24 +6772,46 @@
     const R = Copy.STRUCTURED.reportPage;
     const name = essenceName(report.essence || {});
     const emblem = name ? Copy.emblemSvg(name, 'report-hero-emblem') : '';
-    const parts = PART_ORDER.length;
     return '<header class="scan-hero report-hero">' +
       (emblem ? '<span class="report-hero-mark" aria-hidden="true">' + emblem + '</span>' : '') +
-      // The parts and pages, then how well the data supports it: the score in
-      // the hub's ring, opening Signal strength.
-      '<div class="report-hero-meta"><p class="scan-eyebrow" id="report-hero-pill">' + esc(R.pill(parts, reportPdfPages())) + '</p>' +
-        reportSignalHtml(report) + '</div>' +
+      // The parts and pages, then how well the data supports it, as text: the
+      // ring that opens Signal strength is over the page's actions.
+      '<div class="report-hero-meta"><p class="scan-eyebrow" id="report-hero-pill">' + heroPillHtml(report, reportPdfPages()) + '</p></div>' +
       '<h2 class="report-hero-title">' + titleMark('report', 'report-title-grad') + esc(R.pageTitle) + '</h2>' +
       '<p class="scan-lede">' + esc(R.lede) + '</p></header>';
   }
   // My Report's actions: Add data in Save a backup's place (the hub keeps Save Backup).
   document.getElementById('report-rerun').addEventListener('click', () => startRerun());
-  function reportSignalHtml(report) {
-    const H = Copy.STRUCTURED.hub;
-    const conf = (report && report.confidence) || {};
-    const score = Math.max(0, Math.min(100, Math.round(Number(conf.score) || 0)));
-    return '<button type="button" class="report-hero-signal" data-report-signal aria-label="' + esc(H.signalOf(score)) + '">' +
-      '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span><span>' + esc(H.methodDialogTitle) + '</span></button>';
+  // "6 parts · 16 pages · 84% signal strength": on a phone the signal strength
+  // takes a line of its own (styles.css, .hero-pill-signal).
+  function heroPillHtml(report, pages) {
+    const R = Copy.STRUCTURED.reportPage;
+    const score = heroScore(report);
+    return '<span>' + esc(R.pill(PART_ORDER.length, pages)) + '</span>' + (score === null ? ''
+      : '<span class="hero-pill-signal"><span class="hero-pill-dot"> · </span>' + esc(R.signalRow(score)) + '</span>');
+  }
+  /** The report's signal strength, 0 to 100, or null when it has none. */
+  function heroScore(report) {
+    const conf = report && report.confidence;
+    const score = Math.round(Number(conf && conf.score));
+    return Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : null;
+  }
+  // Signal strength over My Report's actions (October 2026; it was a button in
+  // the header): the hub's ring and the score, opening Signal strength.
+  function refreshReportSignal(on) {
+    const button = $('#report-signal');
+    if (!button) return;
+    const score = on && state.profile ? heroScore(state.profile.report) : null;
+    button.hidden = score === null;
+    if (score === null) return;
+    button.setAttribute('aria-label', Copy.STRUCTURED.hub.signalOf(score));
+    // The score is in the ring, so the words are only the name; the chevron
+    // says the row opens the full read.
+    button.innerHTML = '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
+      '<span class="cta-signal-words">' + esc(Copy.STRUCTURED.hub.methodDialogTitle) + '</span>' +
+      '<svg class="cta-signal-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg>';
+    button.querySelector('.hub-ring').style.setProperty('--p', String(score));
   }
   document.addEventListener('click', event => {
     if (event.target.closest('[data-report-signal]') && state.profile) openMethodDialog(state.profile.report);
@@ -6812,7 +6834,7 @@
             reportPages = (text.match(/\/Type \/Page[^s]/g) || []).length;
             const pill = $('#report-hero-pill');
             if (pill && reportPages) {
-              pill.textContent = Copy.STRUCTURED.reportPage.pill(PART_ORDER.length, reportPages);
+              pill.innerHTML = heroPillHtml(state.profile.report, reportPages);
             }
           }).catch(() => {});
         } catch (error) { /* the pill keeps the parts alone */ }
@@ -8231,6 +8253,7 @@
     // My Report starts at Part 00: the card is on My Psyche, one tap back.
     $('#profile-top').hidden = reportPage;
     $('#report-back').hidden = !reportPage;
+    refreshReportSignal(reportPage);
     // Delete everything is on My Psyche only, at its foot: never beside the report.
     $('#delete-profile').hidden = reportPage;
     // On My Psyche the hub carries Save a backup and Delete everything

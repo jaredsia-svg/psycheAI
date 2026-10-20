@@ -1419,6 +1419,8 @@
       pageTitle: 'Psyche Report',
       // The header's pill: the parts, and the PDF's pages once counted.
       pill: (parts, pages) => parts + ' parts' + (pages ? ' · ' + pages + ' pages' : ''),
+      // After the pill, as plain text (October 2026; it was a button beside it).
+      signalRow: (score) => score + '% signal strength',
       lede: 'The working behind your Psyche Card: what each result means, the evidence for it in your own data, and what to do with it.',
       open: 'See Psyche Report',
       // Until the reader has saved the PDF once: where the report lives, and

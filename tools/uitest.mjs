@@ -5947,7 +5947,7 @@ try {
 
   const profileText = await page.locator('#profile-body').innerText();
   for (const [label, needle] of [
-    ['a signal strength figure', /\b\d{1,3}\s+Signal strength/i],
+    ['a signal strength figure', /\b\d{1,3}% signal strength/i],
     ['the Big Five', /Big Five/],
     ['an MBTI reading', /MBTI\s[\s\S]{0,200}\b[EI][NS][FT][JP]\b/],
     ['interests', /Interests/],
@@ -11340,8 +11340,8 @@ try {
             !nav.querySelector('.part-nav-title') && !/Your Psyche Report/.test(nav.textContent) &&
             !/linear-gradient/.test(getComputedStyle(nav).backgroundImage) && getComputedStyle(nav, '::before').content === 'none';
         }));
-      await sp.waitForFunction(() => /^6 parts · \d+ pages$/.test(document.querySelector('#report-hero-pill').textContent), null, { timeout: 15000 });
-      check('structured: and once counted, the pill gives the PDF\'s pages too', true);
+      await sp.waitForFunction(() => /^6 parts · \d+ pages · \d+% signal strength$/.test(document.querySelector('#report-hero-pill').textContent), null, { timeout: 15000 });
+      check('structured: and once counted, the pill gives the PDF\'s pages too, then the signal strength as text', true);
       check('structured: the part heads are smaller than a page heading',
         await sp.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#profile-body .part-card .part-title')).fontSize) <= 19 &&
           parseFloat(getComputedStyle(document.querySelector('#profile-body .part-card .part-num')).fontSize) <= 34));
@@ -11366,17 +11366,18 @@ try {
             .map(b => b.querySelector('.cta-label').textContent).join('|')));
         }
         if (wide) await sp.setViewportSize(wide);
-        const heroButtons = await sp.locator('#profile-body .report-hero button:not([data-report-signal])').count();
-        const signal = await sp.evaluate(() => { const b = document.querySelector('#profile-body .report-hero [data-report-signal]');
-          return b ? b.textContent.trim() + '|' + b.getAttribute('aria-label') : ''; });
-        await sp.click('#profile-body .report-hero [data-report-signal]');
+        const heroButtons = await sp.locator('#profile-body .report-hero button').count();
+        const signal = await sp.evaluate(() => { const b = document.querySelector('#report-signal');
+          const top = b && document.querySelector('#report-back').getBoundingClientRect().top;
+          return b && !b.hidden ? b.textContent.trim() + '|' + b.getAttribute('aria-label') + '|' + (b.getBoundingClientRect().bottom <= top + 1) : ''; });
+        await sp.click('#report-signal');
         const signalOpens = await sp.locator('#hub-method-dialog[open]').count() === 1;
         await sp.keyboard.press('Escape');
         check('structured: My Report\'s actions are Back, Report, Add data on a laptop and a phone, the header has no button, and its foot says who wrote it',
           rows.every(row => row === 'Back|Report|Add data') && heroButtons === 0 && await sp.locator('#analysed-by').isVisible(),
           JSON.stringify({ rows, heroButtons }));
-        check('structured: My Report\'s header shows Signal strength with its score, opening the Signal strength popout',
-          /^\d+Signal strength\|Signal strength: \d+ out of 100$/.test(signal) && signalOpens, JSON.stringify({ signal, signalOpens }));
+        check('structured: My Report\'s signal strength sits over its actions, with its score, opening the Signal strength popout',
+          /^(\d+)Signal strength\|Signal strength: \1 out of 100\|true$/.test(signal) && signalOpens, JSON.stringify({ signal, signalOpens }));
       }
       // My Psyche, unlocked: the card, then the hub (October 2026), which
       // opens Evidence and method and the link's credits in popouts.
