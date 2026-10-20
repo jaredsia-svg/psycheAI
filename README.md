@@ -2866,6 +2866,19 @@ the one pill sits there, on two lines.) At 390px wide the header is 238px tall i
   balance counts the link's credits in questions (`referral` = credits × 5), so *Includes 5 questions from your
   Referral credits* reads right. The FAQ says *five questions for PsycheAI*.
 
+### The link preview says the current tagline (October 2026)
+
+A pasted link still showed the old line, *Your personality, read from your Instagram*, while the front page had
+moved on to *A full personality study. No questions asked.* The preview now says what the hero says:
+- **The image** (`promo/og.mjs`, redrawn into `og-card.jpg`): the brand, *A full personality study.* with *No
+  questions asked.* on its own line in the gradient, then *Your personal AI coach that already knows you, built
+  from your Instagram data.*, the free-card pill and the sample card.
+- **The text:** `og:title` and `twitter:title` are *PsycheAI – A full personality study. No questions asked.*,
+  and the descriptions open with the AI-coach line. The app manifest's description follows. The page `<title>`
+  and meta description stay keyword-led, for search.
+- **`?v=2`** on the image address in every page's `og:image` and `twitter:image`: WhatsApp, iMessage and
+  Facebook keep a preview cached against its address, so a new address is what makes them fetch the new one.
+
 ### The guessing game on every card's wait (October 2026)
 
 **What went wrong.** A reader loaded their data and ran their card and report, and there was no game. It

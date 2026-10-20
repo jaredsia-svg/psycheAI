@@ -63,9 +63,9 @@ function page({ slug, title, description, h1, lede, body, crumbs, schema, image 
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
-<meta property="og:image" content="${SITE}/media/og-card.jpg">
+<meta property="og:image" content="${SITE}/media/og-card.jpg?v=2">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="${SITE}/media/og-card.jpg">
+<meta name="twitter:image" content="${SITE}/media/og-card.jpg?v=2">
 <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -322,7 +322,7 @@ for (const slug of LEGAL) {
 <meta property="og:url" content="${SITE}/${slug}">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${description}">
-<meta property="og:image" content="${SITE}/media/og-card.jpg">
+<meta property="og:image" content="${SITE}/media/og-card.jpg?v=2">
 <meta name="twitter:card" content="summary_large_image">
 `);
   }

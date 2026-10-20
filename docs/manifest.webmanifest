@@ -1,7 +1,7 @@
 {
   "name": "PsycheAI",
   "short_name": "PsycheAI",
-  "description": "Your personality, read from your own Instagram data. No questionnaire.",
+  "description": "A full personality study. No questions asked. Your personal AI coach, built from your Instagram data.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fdf7fc",

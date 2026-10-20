@@ -7901,8 +7901,10 @@ check('the schema requires evidence on where they align and differ',
   const index = readFileSync(join(root, 'docs', 'index.html'), 'utf8');
   check('the front page names its one canonical address',
     /<link rel="canonical" href="https:\/\/psycheai\.io\/">/.test(index));
+  // A ?v= on the address makes WhatsApp and the rest fetch a redrawn image
+  // rather than the one they cached for the old address.
   check('and a share image at an absolute address, with its size',
-    /<meta property="og:image" content="https:\/\/psycheai\.io\/media\/og-card\.jpg">/.test(index) &&
+    /<meta property="og:image" content="https:\/\/psycheai\.io\/media\/og-card\.jpg(\?v=\d+)?">/.test(index) &&
       /og:image:width" content="1200"/.test(index) && /twitter:card" content="summary_large_image"/.test(index));
   // The front page in one <h1>: every other view's title is a role="heading"
   // div, so screen readers still get a level-1 heading per view.
