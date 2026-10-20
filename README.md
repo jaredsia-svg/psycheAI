@@ -2892,6 +2892,10 @@ enough of their own writing. Section 6, *What is free, and what you pay for*:
   wins a credit.
 - **No cash value, and refunds.**
 
+**Refunds:** a re-run is refunded in full within 24 hours; **Ask PsycheAI question packs are non-refundable**. The
+refund policy, the FAQ's contact answer and the payment sheet say so; the sheet shows the line that fits what is
+being bought (`#premium-refund`, `#premium-refund-ask`).
+
 It had gone stale: a credit was one question, the report brought a second free question, the first report needed a
 friend's card, and a right guess won a report.
 

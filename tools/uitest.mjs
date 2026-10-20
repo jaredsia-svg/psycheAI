@@ -11608,9 +11608,12 @@ try {
         await sp.waitForSelector('#premium-dialog[open] #premium-mock-pay:not([hidden])', { timeout: 15000 });
         const sheet = await sp.evaluate(() => ({ title: document.querySelector('#premium-dialog-title').textContent,
           price: document.querySelector('#premium-price').textContent, promo: document.querySelector('#premium-dialog .premium-promo').hidden,
-          share: document.querySelector('#premium-share').hidden }));
+          share: document.querySelector('#premium-share').hidden,
+          refund: [...document.querySelectorAll('#premium-dialog .premium-legal > span')].filter(n => !n.hidden).map(n => n.textContent.trim()).join('|') }));
         check('Ask PsycheAI: the payment sheet sells five questions at the report\'s price, with a promo code and no share box',
           sheet.title === 'Get 5 questions for Ask PsycheAI' && /US\$5/.test(sheet.price) && !sheet.promo && sheet.share, JSON.stringify(sheet));
+        check('and says question packs are non-refundable, not the 24-hour refund',
+          sheet.refund === 'Question packs are non-refundable.', JSON.stringify(sheet));
         // A discount code re-prices the five questions; paying that is enough.
         await sp.fill('#premium-promo-input', 'UIHALF');
         await sp.click('#premium-promo-apply');

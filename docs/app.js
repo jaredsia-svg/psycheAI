@@ -9862,6 +9862,9 @@
     const dialog = $('#premium-dialog');
     if (dialog.open) return;
     premiumKind = kind;
+    // The refund line under the button: question packs are non-refundable.
+    $('#premium-refund').hidden = kind === 'ask';
+    $('#premium-refund-ask').hidden = kind !== 'ask';
 
     // Data first, review second, money last.
     //
