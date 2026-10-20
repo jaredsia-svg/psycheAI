@@ -8909,7 +8909,7 @@ try {
   }
   check('the list is titled "Your data", with the one way to change it beside the title',
     /^Your data/i.test((await page.locator('#hub-method-dialog .sources-read-title').innerText()).trim()) &&
-    (await page.locator('#hub-method-dialog .sources-read-change').innerText()).trim() === 'Add / change data ›');
+    (await page.locator('#hub-method-dialog .sources-read-change').innerText()).trim() === 'Add / change data');
   await closeMethod(page);
   check('the hub\'s button reads "Add / change data"',
     (await page.locator(CHANGE_DATA).innerText()).trim() === 'Add / change data');
@@ -11460,7 +11460,7 @@ try {
           return body.querySelectorAll('.source-read').length === 4 && !body.querySelector('.source-read-action, .source-read-hint') &&
             [...body.querySelectorAll('.source-read-more')].every(m => !m.hidden) &&
             body.querySelectorAll('.sources-read-title .sources-read-change').length === 1 &&
-            body.querySelector('.sources-read-change').textContent === 'Add / change data ›';
+            body.querySelector('.sources-read-change').textContent === 'Add / change data' && body.querySelector('.sources-read-change').classList.contains('hub-change');
         }));
       await sp.click('#hub-method-dialog .hub-dialog-close');
       check('structured: paid, the way into My Report is "See Psyche Report" with an arrow to the right, one button across the card\'s three tools',

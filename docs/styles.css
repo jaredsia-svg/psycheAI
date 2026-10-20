@@ -5163,6 +5163,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: linear-gradient(90deg, #7b3fa0, #d1477a); box-shadow: 0 4px 10px rgba(209, 71, 122, .25); }
 .hub-change .hub-svg { width: 13px; height: 13px; stroke-width: 2.2; }
 .hub-change:hover { filter: brightness(1.06); }
+/* In the Signal strength popout, beside Your data: a size up. */
+.hub-change.sources-read-change { padding: .55rem 1.05rem; font-size: .86rem; text-transform: none; letter-spacing: 0; }
+.hub-change.sources-read-change .hub-svg { width: 15px; height: 15px; }
+/* Its own width on a phone too: the hub's full-row rule is for Your Data's row. */
+.hub-dialog-body .sources-read-title .hub-change.sources-read-change { flex: none; flex-basis: auto; min-height: 0; }
+.hub-dialog-body .sources-read-title { flex-wrap: nowrap; white-space: nowrap; }
 /* Below 80, a one-line tip under the row naming the sources not yet added. */
 .hub-nudge { flex-basis: 100%; display: flex; align-items: center; gap: .3rem; margin: 0; }
 .hub-nudge-go { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .6rem; border-radius: 10px;

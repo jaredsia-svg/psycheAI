@@ -2797,6 +2797,9 @@ ring, so the row says only *Signal strength*, with a chevron: the whole row open
 leaves room for the taller box. On a phone the row and the three buttons take the hub's pressable look
 (white, a soft purple shadow, no outline), so each reads as a button.
 
+In the Signal strength popout, *Add / change data* beside Your data was a small text link the eye slid past. It
+is now the hub's filled purple-to-pink button, a size up, with its re-run icon.
+
 ### A floor of their own writing; a signal-strength bar under 80 (October 2026)
 
 **The floor.** A card read from an export with almost no writing of the reader's own is mostly guesswork, and

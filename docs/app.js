@@ -2496,9 +2496,11 @@
     if (title) {
       const change = document.createElement('button');
       change.type = 'button';
-      change.className = 'hub-textlink sources-read-change';
+      // The hub's own filled button, a size up (October 2026; it was a small
+      // text link the eye slid past).
+      change.className = 'hub-change sources-read-change';
       change.dataset.flow = explained ? 'rerun' : 'unlock';
-      change.textContent = H.changeData + ' ›';
+      change.innerHTML = hubIcon('redo') + '<span>' + esc(H.changeData) + '</span>';
       title.append(change);
     }
   }
