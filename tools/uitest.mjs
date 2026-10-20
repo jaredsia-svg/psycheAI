@@ -10318,12 +10318,12 @@ try {
     /no sign-up, no password to create/i.test(about) &&
     /never stored by PsycheAI, so there is no collection of them for anyone to take/i.test(about));
   check('the page names both model providers as the party that reads the digest',
-    /Google Gemini or Anthropic Claude/.test(about) && !/Grok/i.test(about));
+    /Google Gemini \(or Anthropic Claude\)/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
-    /keeps no copy of the zip, the digest or the report/i.test(about));
+    /keeps no copy of your data, digest or report/i.test(about));
   check('the page is honest that hosting and payment providers see something',
-    /hosting and payment providers can see/i.test(about) &&
-    /they never receive your data/i.test(about));
+    /hosting and payment providers can see only/i.test(about) &&
+    /never your data/i.test(about));
 
   // The two claims most likely to be quietly overstated later.
   check('the page does not claim the digest skips the PsycheAI server',
@@ -10341,11 +10341,13 @@ try {
     await page.evaluate(() => {
       const text = document.querySelector('#view-about').innerText;
       const never = text.indexOf('never leave this');
-      const sent = text.indexOf('The only thing sent to make your card and report is a short digest');
+      const sent = text.indexOf('The only thing sent is a short digest');
       return never > -1 && sent > never && /can review it before anything goes/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
-  check('the media and the zip never leave, and the card or report only for Ask PsycheAI, which is named',
-    /Your Instagram zip file and your photos and videos never leave this device\. Your finished report\s+stays on it too, unless you use Ask PsycheAI: then your card or report, the digest it was written\s+from and your question go to Google Gemini/i.test(about),
+  check('the media and the zip never leave; the de-identified digest goes to the model, Ask PsycheAI included, and PsycheAI keeps no copy',
+    /Your Instagram zip file and your photos and videos never leave this device\. They are read in your browser\./.test(about) &&
+      /taken out first\. You can review it before anything goes\.\s+It goes to Google Gemini \(or Anthropic Claude\) to write your card and report and to answer Ask PsycheAI/.test(about) &&
+      /PsycheAI keeps no copy of your data, digest or report\./.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
