@@ -3938,9 +3938,9 @@ try {
         .every(node => node.textContent.trim() === label) && /US\$5/.test(label);
     }),
     (await page.locator('.premium-tier-price').allInnerTexts()).join(' | '));
-  check('and it carries the same "Premium" badge the report sections do',
-    await page.evaluate(() => [...document.querySelectorAll('.premium-tier-head .mode-badge')]
-      .every(node => node.textContent.trim() === window.PsycheCopy.TEXT.premiumBadge)));
+  check('and Your Psyche Report stands alone in its head, with no "Premium" badge, and its blurb is the five parts alone',
+    await page.evaluate(() => document.querySelectorAll('.premium-tier-head .mode-badge').length === 0 &&
+      document.querySelector('.premium-tier .tier-blurb').textContent === 'Every part of your card explained with the evidence behind it, in five parts.'));
   // ---- "See sample report" closes the premium tier ----
   //
   // It sat beside "What insights will I get?" for a while; it now closes the

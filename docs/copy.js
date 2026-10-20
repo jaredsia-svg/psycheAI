@@ -949,6 +949,8 @@
     // included, without starting the whole report over.
     dataSourcesTitle: 'Add or change your data',
     dataSourcesBlurb: 'Add or replace a source. Before anything is sent, you review exactly what it contains and can untick anything.',
+    // The same popout reached to re-run a card and report already made (October 2026).
+    rerunSourcesBlurb: (price) => 'Add more data to improve your signal strength. A re-run costs ' + price + ', and you review what is sent first.',
     // The same popout opened from the welcome page, where there is nothing to
     // change yet — "Add or change" describes a report that does not exist and
     // offers to replace data nobody has loaded.
@@ -1197,7 +1199,7 @@
       galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
-      premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts – plus the sections only the Psyche Report has.',
+      premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts.',
       // Beside the price in the head: the first one free with the first card
       // (PSYCHEAI_FIRST_RUN merged), then the price for a re-run.
       premiumFree: 'Your first one is free!',

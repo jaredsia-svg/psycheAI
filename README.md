@@ -2800,6 +2800,13 @@ leaves room for the taller box. On a phone the row and the three buttons take th
 In the Signal strength popout, *Add / change data* beside Your data was a small text link the eye slid past. It
 is now the hub's filled purple-to-pink button, a size up, with its re-run icon.
 
+Reached from there (or any *Add data*), the *Add or change your data* popout now says why and what it costs:
+*Add more data to improve your signal strength. A re-run costs US$5, and you review what is sent first.* (the
+local price; `rerunSourcesBlurb`). A first upload keeps its own line.
+
+On the front page, *Your Psyche Report* no longer carries a *Premium* badge, and its line ends at *in five
+parts*: "plus the sections only the Psyche Report has" said nothing a reader could picture.
+
 ### A floor of their own writing; a signal-strength bar under 80 (October 2026)
 
 **The floor.** A card read from an export with almost no writing of the reader's own is mostly guesswork, and

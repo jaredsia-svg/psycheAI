@@ -2900,7 +2900,6 @@
     '</div>' +
     '<div class="insight-tier insight-premium premium-tier">' +
       '<div class="premium-tier-head">' +
-        '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
         '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
         // The first one free, then the price of a re-run, on one line.
         '<span class="premium-tier-pricebox">' +
@@ -5983,7 +5982,7 @@
     for (;;) {
       let collected;
       try {
-        collected = await askDataSources({ cardNote: true });
+        collected = await askDataSources({ cardNote: true, blurb: TEXT.rerunSourcesBlurb(Prices.label(CURRENCY, 'unlock')) });
       } catch (error) {
         flash('#profile-alert', (error && error.message) || 'Could not read that file.');
         return;
