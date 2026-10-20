@@ -680,7 +680,7 @@ try {
   // The tab title is also the search result's headline, so it says what
   // people search for rather than repeating the page's tagline.
   check('the tab title names the app and what people search for',
-    /^PsycheAI – free personality test from your Instagram data/.test(await page.title()));
+    /^PsycheAI – Psyche personality test and AI coach$/.test(await page.title()));
   check('mock mode is disclosed to the user',
     (await page.locator('#server-status').innerText()).includes('Mock mode'));
   check('the status endpoint says mock mode, and does not name the provider or the model',

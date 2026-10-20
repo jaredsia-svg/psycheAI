@@ -2262,6 +2262,16 @@ without JavaScript: the landing section was `hidden` until `app.js` ran. What ch
 
 Submitting the sitemap to Google Search Console and Bing Webmaster Tools is done by hand, once.
 
+**Two phrases to rank for** (20 October 2026): "psyche personality test" and "AI coach". Neither was in
+a title or heading. The front page's title is now "PsycheAI – Psyche personality test and AI coach"
+(its description leads with the same phrase), and its WebApplication data gains `alternateName`
+("Psyche AI", "Psyche personality test") and Ask PsycheAI in its description. Two topic pages:
+`/psyche-personality-test` (what the test measures, linking the MBTI, Big Five, love language and
+character pages) and `/ai-personality-coach` (Ask PsycheAI: what it knows, questions to ask, an
+example from the sample's *Bursts, then recovery* pattern, and its price). "AI coach" alone belongs to
+funded apps; the page goes for the longer "AI personality coach" and "AI coach that knows you". Both
+are linked from the guides' footer on the front page and every generated page. 63 pages in the sitemap.
+
 ## Kept across deploys (Upstash)
 
 `lib/store.js` talks to Upstash Redis over its REST API (`UPSTASH_REDIS_REST_URL`,

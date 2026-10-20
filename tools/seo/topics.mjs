@@ -3,6 +3,44 @@
 // JavaScript. Claims here must stay true to what the app does.
 export const TOPICS = [
   {
+    slug: 'psyche-personality-test',
+    title: 'Psyche personality test: free, no questions | PsycheAI',
+    description: 'The Psyche personality test reads your MBTI, Big Five, love languages, values and the character you are most like from your own Instagram data. No quiz.',
+    h1: 'The Psyche personality test',
+    lede: 'Most personality tests ask you questions about yourself. The Psyche personality test asks none: it reads how you actually behave in your own Instagram data, and shows the evidence for every result.',
+    sections: [
+      ['What it measures', '<ul class="ticks"><li><strong>MBTI</strong>: your four letters, each with how clearly it showed (slight, moderate or clear). <a href="/mbti-types">The 16 types</a>.</li><li><strong>The Big Five</strong>: openness, conscientiousness, extraversion, agreeableness and emotional sensitivity, each scored 0 to 100. <a href="/big-five-personality-test">More on the Big Five</a>.</li><li><strong>Love languages</strong>: how you show care, and in the Psyche Report how you like to receive it. <a href="/love-language-test">More on love languages</a>.</li><li><strong>Values, motivations and interests</strong>: what you stand for and what you keep coming back to.</li><li><strong>Your patterns</strong>: three habits of yours, named, with the evidence behind each.</li><li><strong>The character you are most like</strong>, by temperament, never by looks. <a href="/characters">Which character are you?</a></li></ul>'],
+      ['How it works', '<ol class="guide-steps"><li>Request your data from Instagram. It takes about 30 seconds, and the file usually arrives within 1–2 hours. <a href="/download-instagram-data">Step-by-step guide</a>.</li><li>Load the file in PsycheAI. It is read in your own browser and reduced to a short, de-identified digest of your own activity, which you can review.</li><li>Your Psyche Card is written from that digest, with a signal strength score saying how much evidence there was.</li></ol>'],
+      ['Why no questions', '<p>A questionnaire measures how you see yourself on the day you answer it. Years of your own posts, comments and messages show what you actually do. That is harder to fake and often more interesting, because it can show the patterns you would not think to mention.</p>'],
+      ['Card, report and coach', '<p>Your free <strong>Psyche Card</strong> is a shareable summary of all of the above. The <strong>Psyche Report</strong> explains every part with the evidence, and adds your wellbeing, attachment style, career strengths and a development plan. <a href="/ai-personality-coach">Ask PsycheAI</a> then answers your own questions about it, as a coach that has read your report.</p>'],
+    ],
+    faq: [
+      ['Is the Psyche personality test free?', 'Yes. Your first Psyche Card and Psyche Report are free, together.'],
+      ['How long does it take?', 'About a minute once your Instagram data has arrived. Requesting it takes about 30 seconds.'],
+      ['Is it accurate?', 'It is an inference from behaviour, not a clinical measurement, and it says how confident it is. More of your own writing gives a stronger signal; you can add WhatsApp chats or Google and Facebook data to sharpen it.'],
+      ['Do I need an account?', 'No. There is no account. Your results stay in your browser until you delete them.'],
+    ],
+  },
+  {
+    slug: 'ai-personality-coach',
+    title: 'AI personality coach that already knows you | PsycheAI',
+    description: 'Ask PsycheAI is an AI coach that has read your personality report, built from your own Instagram data. Ask about your work, friendships and habits.',
+    h1: 'An AI coach that already knows you',
+    lede: 'A coach is only as good as what they know about you. Ask PsycheAI starts with your Psyche Report, read from your own Instagram data, so you can skip the background and ask the real question.',
+    sections: [
+      ['What it knows', '<p>Ask PsycheAI answers from your Psyche Card and Psyche Report and the de-identified digest they were written from: your type, your Big Five scores, your patterns, your values and the evidence behind each. It does not have your Instagram file, your photos or your full messages.</p>'],
+      ['What you can ask', '<ul class="ticks"><li>Why do I go quiet after a busy week?</li><li>What kind of work suits the way I plan?</li><li>How do I tell a friend I need more space without hurting them?</li><li>Which of my patterns is most likely to hold me back, and what is one thing to try?</li><li>How can I show care to someone whose love language is different from mine?</li></ul>'],
+      ['An example', '<p>One of the sample report’s three patterns is <em>Bursts, then recovery</em>: posts in clusters around events the reader arranged, then a quiet fortnight. Asked “Why do I go quiet after a busy week?”, the coach would start there: the quiet is recovery, not withdrawal, and the useful move is to plan for it, for example by telling the people who rely on you when a quiet stretch is coming, rather than to fight it. <a href="/sample-report">See the sample report</a>.</p>'],
+      ['How it is different', '<p>A general chatbot knows only what you type into it. Ask PsycheAI begins from a full personality study of your own behaviour, so its answers are tied to evidence about you, and it says when the evidence is thin.</p>'],
+    ],
+    faq: [
+      ['How much does Ask PsycheAI cost?', 'Your first question is free with your Psyche Card. After that, five questions are US$5, and each friend who makes their card from your link earns you five more.'],
+      ['Is it therapy?', 'No. Answers are coaching and general information, not medical, psychological or professional advice.'],
+      ['Is what I ask kept?', 'Your questions and answers are kept in your browser, not by PsycheAI. To answer, the question goes to Google Gemini with your report and digest, on Google Cloud’s enterprise tier, where they are not used to train AI.'],
+      ['Do I need to pay first?', 'No. Your first Psyche Card and Psyche Report are free, and your first question comes with them.'],
+    ],
+  },
+  {
     slug: 'love-language-test',
     title: 'Love language test without questions | PsycheAI',
     description: 'Find your love languages without a quiz: how you like to receive care and how you show it, read from your own Instagram messages and posts.',
