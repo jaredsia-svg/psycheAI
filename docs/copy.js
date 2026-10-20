@@ -309,8 +309,10 @@
     reportPromoCta: 'Unlock your Psyche Report →',
     // The bar in its place once the report is in hand and signal strength is
     // under 80 (app.js, refreshSignalBar).
-    signalBarText: (score) => 'Signal strength ' + score + '%. Add more data for a sharper read.',
-    signalBarCta: (price) => 'Add data & re-run – ' + price + ' →',
+    // The score is in the ring beside it, so the line is only the ask.
+    signalBarCta: (price) => 'Add more data to improve your signal strength – ' + price + ' →',
+    // On a phone, short enough for one line.
+    signalBarShort: (price) => 'Add data for a stronger signal – ' + price + ' →',
     // Opening a friend's link that was already synced on this device.
     // The reader's own link, opened or pasted by them.
     syncOwnLink: 'This is your own link. Send it to friends to sync with them.',

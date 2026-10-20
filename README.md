@@ -2794,7 +2794,8 @@ My Report's header carried Signal strength as a button beside the *6 parts · 16
 The ring that opens the Signal strength popout moved to a row over the page's actions (Back, Report, Add data):
 in the side column on a laptop and over the bottom row on a phone (`refreshReportSignal`). The score is in the
 ring, so the row says only *Signal strength*, with a chevron: the whole row opens the full read. The side nav
-leaves room for the taller box.
+leaves room for the taller box. On a phone the row and the three buttons take the hub's pressable look
+(white, a soft purple shadow, no outline), so each reads as a button.
 
 ### A floor of their own writing; a signal-strength bar under 80 (October 2026)
 
@@ -2816,8 +2817,9 @@ server alike.
 
 **The bar.** After the merged run the report is in hand, so the only nudge to add data was one dismissible line
 in the hub. Now, while signal strength is under 80, a bar sits under the navigation on every page the Psyche
-Report's offer uses, and on My Report as well: the hub's ring, *Signal strength 72%. Add more data for a sharper
-read.* and **Add data & re-run – US$5 →** (the local price), which opens the re-run. It cannot be closed, goes
+Report's offer uses, and on My Report as well: the hub's ring with the score, then **Add more data to improve your signal strength – US$5 →** (the
+local price; on a phone, *Add data for a stronger signal – US$5 →*, to keep it on one line), which opens the
+re-run. It cannot be closed, goes
 at 80, never shows with the unlock bar (it needs the report unlocked), and replaces the hub's line while it
 shows.
 

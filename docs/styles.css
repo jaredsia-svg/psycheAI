@@ -799,6 +799,20 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
     display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch;
   }
   #view-profile.profile-paid .cta-row .btn { flex: 1 1 0; }
+  /* The hub's pressable look (white, a soft purple shadow, no outline) on
+     every action here, the signal strength row included, so each reads as a
+     button. */
+  #view-profile.profile-paid .cta-row {
+    --cta-press: 0 1px 2px rgba(36, 26, 46, .14), 0 4px 12px rgba(123, 63, 160, .22);
+  }
+  #view-profile.profile-paid .cta-row .btn, #view-profile.profile-paid .cta-row .cta-signal {
+    border: 0 !important; background: var(--cta-button, var(--bg-alt)) !important; box-shadow: var(--cta-press) !important;
+  }
+  #view-profile.profile-paid .cta-row .cta-signal {
+    justify-content: flex-start; padding: .65rem .9rem .65rem .6rem; border-radius: 14px; font-size: .86rem;
+  }
+  #view-profile.profile-paid .cta-row .cta-signal .hub-ring { width: 30px; height: 30px; }
+  #view-profile.profile-paid .cta-row .cta-signal .hub-ring b { width: 24px; height: 24px; font-size: .66rem; }
   /* The same height whichever label wraps, icons on one line along the top. */
   #view-profile.profile-paid .cta-row .btn {
     flex-direction: column; justify-content: flex-start; gap: .35rem; min-width: 0; margin: 0;
@@ -809,7 +823,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   #view-profile.profile-paid .cta-row .cta-icon { width: 22px; height: 22px; color: var(--accent); }
   #view-profile.profile-paid .cta-row .btn.danger { color: #b3261e; }
   #view-profile.profile-paid .cta-row .btn.danger .cta-icon { color: #b3261e; }
-  #view-profile.profile-paid .cta-row .btn:active { transform: translateY(1px); }
+  #view-profile.profile-paid .cta-row .btn:active, #view-profile.profile-paid .cta-row .cta-signal:active { transform: translateY(1px); }
   /* Back to card first, on the left; Download on the right. */
   #view-profile.profile-paid .cta-row #export-pdf-bottom { order: 1; }
   #view-profile.profile-paid .cta-row #save-backup { order: 2; }
@@ -4542,10 +4556,13 @@ details.more[open] > summary::after { content: ' ▴'; }
 .signal-bar-go { align-items: center; gap: .55rem; padding: .28rem .95rem .28rem .3rem; border-radius: 22px; text-align: left; flex-wrap: nowrap; }
 .signal-bar-go .hub-ring { width: 28px; height: 28px; flex: none; }
 .signal-bar-go .hub-ring b { width: 22px; height: 22px; font-size: .62rem; letter-spacing: 0; background: var(--accent-soft); }
-.signal-bar-words { display: inline; }
+.signal-bar .signal-bar-words { white-space: normal; }
+.signal-bar .signal-bar-short { display: none; }
 @media (max-width: 520px) {
-  .signal-bar .report-promo-text { display: inline; }
   .signal-bar .report-promo-cta::before { content: none; }
+  /* One line on a phone: the short wording. */
+  .signal-bar .signal-bar-long { display: none; }
+  .signal-bar .signal-bar-short { display: inline; white-space: nowrap; }
   .signal-bar-go { font-size: .78rem; }
 }
 /* Reached from the bar above: clear of the sticky navigation. */
@@ -5023,6 +5040,8 @@ details.more[open] > summary::after { content: ' ▴'; }
    figures, not buttons. */
 .hub-card { --hub-press: 0 1px 2px rgba(36, 26, 46, .14), 0 4px 12px rgba(123, 63, 160, .22); }
 @media (prefers-color-scheme: dark) {
+  #view-profile.profile-paid .cta-row { --cta-press: 0 1px 2px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .45);
+    --cta-button: color-mix(in srgb, var(--accent) 12%, var(--bg-alt)); }
   .hub-card { --hub-press: 0 1px 2px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .45);
     --hub-button: color-mix(in srgb, var(--accent) 12%, var(--bg-alt)); }
 }

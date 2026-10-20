@@ -13425,7 +13425,7 @@ try {
             document.querySelector('#signal-bar').getBoundingClientRect().bottom),
         }));
         check('signal strength under 80 with the report in hand: a bar over My Psyche, with the price, close over the card, and no second nudge in the hub',
-          bar.shown && /^72 Signal strength 72%\. Add more data for a sharper read\. Add data & re-run – \S+5 →$/.test(bar.text) &&
+          bar.shown && /^72 Add more data to improve your signal strength – \S+5 →$/.test(bar.text) &&
             !bar.promo && bar.nudge === 0 && bar.gap >= 0 && bar.gap <= 16, JSON.stringify(bar));
         await tp.click('.hub-tile[data-hub="report"] [data-hub-go="report"]');
         await tp.waitForSelector('.report-hero', { timeout: 10000 });

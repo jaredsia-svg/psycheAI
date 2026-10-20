@@ -12133,8 +12133,8 @@
     if (bar.hidden) return;
     const score = signalScore();
     $('#signal-bar-go').innerHTML = '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
-      '<span class="signal-bar-words"><span class="report-promo-text">' + esc(TEXT.signalBarText(score)) + '</span> ' +
-      '<strong class="report-promo-cta">' + esc(TEXT.signalBarCta(Prices.label(CURRENCY, 'unlock'))) + '</strong></span>';
+      '<strong class="report-promo-cta signal-bar-words"><span class="signal-bar-long">' + esc(TEXT.signalBarCta(Prices.label(CURRENCY, 'unlock'))) +
+      '</span><span class="signal-bar-short">' + esc(TEXT.signalBarShort(Prices.label(CURRENCY, 'unlock'))) + '</span></strong>';
     const ring = bar.querySelector('.hub-ring');
     ring.style.setProperty('--p', ring.dataset.p);
   }
