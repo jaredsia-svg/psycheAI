@@ -10317,8 +10317,8 @@ try {
   check('the page says there is no account, and no collection of exports or reports to breach',
     /no sign-up, no password to create/i.test(about) &&
     /never stored by PsycheAI, so there is no collection of them for anyone to take/i.test(about));
-  check('the page names both model providers as the party that reads the digest',
-    /Google Gemini \(or Anthropic Claude\)/.test(about) && !/Grok/i.test(about));
+  check('the page names Google Gemini, the provider the site runs on, as the party that reads the digest',
+    /It goes to Google Gemini/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
     /keeps no copy of your data, digest or report/i.test(about));
   check('the page is honest that hosting and payment providers see something',
@@ -10342,11 +10342,11 @@ try {
       const text = document.querySelector('#view-about').innerText;
       const never = text.indexOf('never leave this');
       const sent = text.indexOf('The only thing sent is a short digest');
-      return never > -1 && sent > never && /can review it before anything goes/.test(text);
+      return never > -1 && sent > never && /can review\s+it before anything is sent for analysis/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
   check('the media and the zip never leave; the de-identified digest goes to the model, Ask PsycheAI included, and PsycheAI keeps no copy',
     /Your Instagram zip file and your photos and videos never leave this device\. They are read in your browser\./.test(about) &&
-      /taken out first\. You can review it before anything goes\.\s+It goes to Google Gemini \(or Anthropic Claude\) to write your card and report and to answer Ask PsycheAI/.test(about) &&
+      /emails and phone numbers\. You can review\s+it before anything is sent for analysis\. It goes to Google Gemini to write your card and report and to\s+answer Ask PsycheAI questions on the enterprise paid tier\./.test(about) &&
       /PsycheAI keeps no copy of your data, digest or report\./.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 

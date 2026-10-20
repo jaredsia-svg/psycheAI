@@ -2873,8 +2873,8 @@ the finished report stays on the device *unless you use Ask PsycheAI*, when the 
 the question go to Gemini. True, but Gemini wrote that report from that digest in the first place, so it read as
 a second, alarming disclosure. Now:
 - **The FAQ** says it in three short paragraphs: the zip and media never leave (read in the browser); the only
-  thing sent is a short, de-identified digest, reviewed first, which goes to Gemini (or Claude) for the card,
-  the report and Ask PsycheAI, on paid services that do not train on it; and PsycheAI keeps no copy, with no
+  thing sent is a short digest (about 100–200 KB of text) with personal details removed, reviewed first, which
+  goes to Google Gemini, on the enterprise paid tier, for the card, the report and Ask PsycheAI; and PsycheAI keeps no copy, with no
   account to create. Hosting and payment providers see only that the site was used or a payment made.
 - **The privacy page** keeps its full detail, with Ask PsycheAI named once, under *Who receives it?*, beside the
   card and report. Its date moved to 20 October 2026.
