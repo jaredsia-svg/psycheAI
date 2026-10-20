@@ -2787,6 +2787,21 @@ border, a shadow, a purple border plus shadow) and chose the shadow:
 **What stays.** "Add / change data" keeps its gradient. The link's counts (opened, cards, credits) keep
 their dashed outline, because they are figures, not buttons.
 
+### The words they choose to pass on: a weak row on N/S and T/F (October 2026)
+
+A reader whose posts were mostly photos, not her own writing, shared book pages (*Just Mercy*, a passage
+on the love you deserve) and loved *The Little Prince*. What someone chooses to pass on is a form of
+self-expression, so `shared-words` is now a row on two axes:
+- **N/S:** symbol, meaning, what lies under the surface, a fable (N), against practical, factual, step by
+  step (S).
+- **T/F:** argument, systems, how things work (T), against feeling, worth, how people are treated (F).
+
+It is weak, entered once for all of it, and their own writing outranks it: taste is not how somebody
+thinks, and the rubric already says a topic is not a thinking style. It only counts what reaches the
+digest: captions that name a book or quote one, searches, saved and liked captions. Text inside a photo
+(a book page in a story) does not reach it; reading it in the browser is being prototyped separately.
+**Cost:** `FREE_FIXED_INPUT_TOKENS` is 14,250 (14,216 measured), inside the 8.7¢ cap.
+
 ### Totoro retired: 28 characters, every sync mutual (October 2026)
 
 **Why Totoro.** Of the characters drawn as neither woman nor man, Totoro (calm, comforting, at home in

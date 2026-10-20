@@ -1556,6 +1556,11 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
     S.computedPieces({ google: { counts: { searchShapes: { conceptual: 509, practical: 7330 } } } })['N/S'].length === 0 &&
     !S.COMPUTED.includes('search-shapes') &&
     /a search history that is mostly practical \(Google's `searchShapes`\) is everyone's too, not S/.test(prompts.MBTI_LEDGER_RULES));
+  check('ledger: the words they choose to pass on (quotes, passages, books) are a weak row on N/S and on T/F, once, under their own writing',
+    ['N/S', 'T/F'].every(axis => S.RUBRIC[axis]['shared-words'] && S.RUBRIC[axis]['shared-words'].weight === 'weak' &&
+      /Once for all of it; their own writing outranks it/.test(S.RUBRIC[axis]['shared-words'].text)) &&
+      /The Little Prince \(N\)/.test(S.RUBRIC['N/S']['shared-words'].text) && /how people are treated \(F\)/.test(S.RUBRIC['T/F']['shared-words'].text) &&
+      prompts.MBTI_LEDGER_RULES.includes('`shared-words`'));
   check('ledger: the S rows for comparing figures and practical craft are weak, and leave out work and sport',
     S.RUBRIC['N/S']['compares-tracks'].weight === 'weak' && /outside their job/.test(S.RUBRIC['N/S']['compares-tracks'].text) &&
     S.RUBRIC['N/S']['practical-craft'].weight === 'weak' && /A sport's technique does not count/.test(S.RUBRIC['N/S']['practical-craft'].text));

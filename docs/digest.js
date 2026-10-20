@@ -986,8 +986,9 @@
   // axis slight (13,547 measured), with the cap at 8.7 cents.
   // 13,750 once the MBTI rubric became a guide the model weighs (13,710).
   // 14,100 once J/P was read by area and an uncounted note counted as weak
-  // (14,074 measured).
-  const FREE_FIXED_INPUT_TOKENS = 14100;
+  // (14,074 measured). 14,250 with the shared-words rows on N/S and T/F
+  // (14,216 measured).
+  const FREE_FIXED_INPUT_TOKENS = 14250;
 
   // ---------- what the premium read can cost, at most ----------
   //
