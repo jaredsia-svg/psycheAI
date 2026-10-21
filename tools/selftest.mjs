@@ -1776,7 +1776,9 @@ const sampleSchema = {
 {
   const essence = prompts.PROFILE_SCHEMA.properties.essence;
   const { franchise, ...kept } = essence.properties;
-  sampleSchema.properties = Object.assign({}, sampleSchema.properties, { essence: { ...essence,
+  // Nor is `sampleSyncs`: the sample's own three most in sync, the marketing five.
+  sampleSchema.properties = Object.assign({}, sampleSchema.properties, {
+    sampleSyncs: { type: 'array', items: { type: 'string' } }, essence: { ...essence,
     required: essence.required.filter(key => key !== 'franchise'),
     properties: { ...kept, source: { type: 'string' } } } });
 }
@@ -7128,7 +7130,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   }
   check('the card picks a character on the reader\'s likely side or the neither group, and only the neither group when unsure',
     prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 &&
-      prompts.CHARACTER_SIDES.neither.join() === 'Baymax,WALL-E,Remy,Pikachu' &&
+      prompts.CHARACTER_SIDES.neither.join() === 'Baymax,The Tin Man,Remy,Pikachu' &&
       prompts.STRUCTURED_FREE_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) &&
       prompts.CHARACTER_SIDES.women.concat(prompts.CHARACTER_SIDES.men, prompts.CHARACTER_SIDES.neither)
         .every(name => prompts.CHARACTER_SIDE_RULE.includes(name)) &&
@@ -8139,19 +8141,20 @@ check('the schema requires evidence on where they align and differ',
       spriteFresh && JSON.stringify(spriteIndex.names) === JSON.stringify(Object.keys(table)) &&
         statSync(join(root, 'docs', 'media', 'cast-sprite.webp')).size > 10000);
     // Retired characters: no page of their own, and each old address sent on
-    // to the character that took the slot (Totoro to Baymax; Woody, Iron Man
-    // and Batman to their public-domain replacements).
-    const retiredTo = { woody: 'dr-watson', 'iron-man': 'odysseus', batman: 'sherlock-holmes' };
+    // to the public-domain character that took the slot, where it has a page
+    // (Iron Man to Odysseus, Batman to Sherlock Holmes, WALL-E to The Tin Man);
+    // Totoro and Woody, whose heirs have no page, go to the list.
+    const retiredTo = { 'iron-man': 'odysseus', batman: 'sherlock-holmes', 'wall-e': 'the-tin-man' };
     const serverText = readFileSync(join(root, 'server.js'), 'utf8');
     check('retired characters have no page of their own, and their old addresses are sent on',
-      ['Totoro', 'Woody', 'Iron Man', 'Batman'].every(name => !(name in table) && prompts.RETIRED_CHARACTERS.some(([n]) => n === name)) &&
+      ['Totoro', 'Woody', 'Iron Man', 'Batman', 'WALL-E'].every(name => !(name in table) && prompts.RETIRED_CHARACTERS.some(([n]) => n === name)) &&
         Object.entries(retiredTo).every(([from, to]) => !existsSync(join(root, 'docs', from + '-personality.html')) &&
           existsSync(join(root, 'docs', to + '-personality.html')) &&
           serverText.includes("'" + from + "-personality': '" + to + "-personality'")) &&
-        serverText.includes("'totoro-personality': 'characters'"));
+        serverText.includes("'totoro-personality': 'characters'") && serverText.includes("'woody-personality': 'characters'"));
     // Only the five the marketing shows keep a page; the rest of the
     // catalogue's addresses go to the list.
-    const marketed = ['mulan', 'rapunzel', 'sherlock-holmes', 'dr-watson', 'odysseus'];
+    const marketed = ['mulan', 'odysseus', 'rapunzel', 'sherlock-holmes', 'the-tin-man'];
     const unlisted = names.map(n => n.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).filter(s => !marketed.includes(s));
     check('only the five marketed characters have a page, and the others\' addresses go to /characters',
       marketed.every(s => existsSync(join(root, 'docs', s + '-personality.html'))) && unlisted.length === 23 &&
@@ -8175,7 +8178,7 @@ check('the schema requires evidence on where they align and differ',
   const gallery = JSON.parse(readFileSync(join(root, 'docs', 'sample-cards.json'), 'utf8')).cards || [];
   const catalogue = new Map(prompts.CHARACTER_CATALOGUE);
   // Each sample names the public-domain story it is from, never a studio.
-  const SOURCES = { Rapunzel: 'Grimm’s Fairy Tales', 'Sherlock Holmes': 'Arthur Conan Doyle', 'Dr Watson': 'Arthur Conan Doyle', Odysseus: 'Homer’s Odyssey' };
+  const SOURCES = { Rapunzel: 'Grimm’s Fairy Tales', 'Sherlock Holmes': 'Arthur Conan Doyle', 'The Tin Man': 'The Wonderful Wizard of Oz', Odysseus: 'Homer’s Odyssey' };
   const motives = ['self-direction', 'stimulation', 'hedonism', 'achievement', 'power', 'security', 'conformity', 'tradition', 'benevolence', 'universalism'];
   const languages = ['Words of affirmation', 'Acts of service', 'Quality time', 'Receiving gifts', 'Physical touch'];
   const faults = gallery.flatMap((c, i) => {
@@ -8195,11 +8198,17 @@ check('the schema requires evidence on where they align and differ',
   });
   check('the gallery\'s sample cards each have what a card reads', gallery.length === 4 && faults.length === 0, faults.join(', '));
   check('the gallery is the four public-domain characters the marketing shows beside Mulan',
-    gallery.map(c => c.essence.character).join() === 'Rapunzel,Sherlock Holmes,Dr Watson,Odysseus');
+    gallery.map(c => c.essence.character).join() === 'Odysseus,Rapunzel,Sherlock Holmes,The Tin Man');
   // The full sample, the face of the marketing, names no studio either: its
   // Mulan is pinned to the public-domain legend instead. Real reports get no
   // source, since the schema has no such field (pinned above).
   const sampleEssence = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8')).essence || {};
+  // The samples show the marketing five's own pairings; a real card the full table's.
+  const M = globalThis.PsycheCopy.MARKETING_SYNCS;
+  check('each sample card names only the marketing five as most in sync, as MARKETING_SYNCS has them',
+    [sample].concat(gallery).every(c => JSON.stringify(c.sampleSyncs) === JSON.stringify(M[c.essence.character])) &&
+      Object.values(M).flat().every(n => n in M) &&
+      JSON.stringify(globalThis.PsycheCopy.syncsOf('Mulan')) === JSON.stringify(['Baymax', 'Po', 'Hermione Granger']));
   check('the sample\'s Mulan names the Ballad of Mulan and no studio',
     sampleEssence.character === 'Mulan' && sampleEssence.source === 'The Ballad of Mulan' && !('franchise' in sampleEssence));
   const studios = /\b(Disney|Pixar|Marvel|DreamWorks|Nintendo|Sanrio|Ghibli)\b/;

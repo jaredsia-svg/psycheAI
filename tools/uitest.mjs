@@ -7111,7 +7111,7 @@ try {
     await page.evaluate(() => [...document.querySelectorAll('.psyche-card')].every(card =>
       !card.querySelector('.pc-sfranchise') && !/\bMarvel\b/.test(card.textContent) &&
       // Only the samples carry a source line, and it names a public-domain story.
-      (!card.querySelector('.pc-ssource') || ['The Ballad of Mulan', 'Grimm’s Fairy Tales', 'Arthur Conan Doyle', 'Homer’s Odyssey']
+      (!card.querySelector('.pc-ssource') || ['The Ballad of Mulan', 'Grimm’s Fairy Tales', 'Arthur Conan Doyle', 'Homer’s Odyssey', 'The Wonderful Wizard of Oz']
         .includes(card.querySelector('.pc-ssource').textContent)))));
   // A catalogue character carries its emblem; anything else keeps an emoji.
   check('the character carries an icon',
@@ -11265,7 +11265,10 @@ try {
       delete samplePremium._comment;
       await sp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       const seed = async (explained) => {
-        await sp.evaluate(([report, premium, explained]) => {
+        await sp.evaluate(([sample, premium, explained]) => {
+          // The reader's own card, made from the sample: without the sample's
+          // own most-in-sync three, which a real report never carries.
+          const report = Object.assign({}, sample); delete report.sampleSyncs;
           localStorage.clear();
           localStorage.setItem('psycheai_profile', JSON.stringify(Object.assign({
             report, card: report.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString(),

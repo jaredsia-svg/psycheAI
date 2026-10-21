@@ -592,7 +592,7 @@
       ? '<span class="pc-sstrength pc-sstrength-' + esc(strength) + '">' + esc(strength) + '</span>' : '');
     const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1)).slice(0, 4);
     const into = titlesOf(report.interests, 3);
-    const syncs = name ? Copy.syncsOf(name) : [];
+    const syncs = name ? Copy.cardSyncs(report, name) : [];
     const motives = cardMotivators(report);
     const chips = list => '<div class="pc-schips">' + list.map(item => '<span>' + esc(item) + '</span>').join('') + '</div>';
     const loveList = side => (side || []).slice(0, 2).filter(l => l && l.language).map(l =>
@@ -7870,7 +7870,7 @@
       value: titlesOf(report.values, 1)[0] || titlesOf(report.beliefs, 1)[0] || '',
       interest: titlesOf(report.interests, 1)[0] || '',
       loveIn: first(love.receiving), loveOut: first(Copy.givingLove(love.giving)),
-      syncs: Copy.syncsOf(essenceName(essence)),
+      syncs: Copy.cardSyncs(report, essenceName(essence)),
     };
   }
 

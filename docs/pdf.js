@@ -1752,7 +1752,7 @@
       });
       // As on the card: with a catalogue character, giving beside the three
       // characters theirs is most in sync with; otherwise receiving and giving.
-      const syncs = Copy.syncsOf(name);
+      const syncs = Copy.cardSyncs(report, name);
       if (syncs.length) {
         panels.push({ label: TEXT.cardLoveOut, color: ACCENT, block: list(loveOut) });
         panels.push({ label: TEXT.cardSyncs, color: ACCENT_2, block: list(syncs) });

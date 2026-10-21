@@ -10,6 +10,7 @@
       "complete hour-of-day and month-by-month histograms"
     ]
   },
+  "sampleSyncs": ["Rapunzel", "Odysseus", "The Tin Man"],
   "essence": {
     "character": "Mulan",
     "source": "The Ballad of Mulan",

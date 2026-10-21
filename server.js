@@ -1849,11 +1849,13 @@ function applySecurityHeaders(request, response) {
 // Pages of retired characters and where they now point (see above the short links).
 const RETIRED_PAGES = {
   'totoro-personality': 'characters',
-  // Their public-domain replacements in the same slots (21 October 2026).
-  'woody-personality': 'dr-watson-personality', 'iron-man-personality': 'odysseus-personality',
+  // Their public-domain replacements in the same slots (21 October 2026);
+  // Woody's went to Dr Watson, who has since left the five with a page.
+  'woody-personality': 'characters', 'iron-man-personality': 'odysseus-personality',
   'batman-personality': 'sherlock-holmes-personality',
   // Only the five the marketing shows keep a page (21 October 2026); the rest
   // of the catalogue's pages go to the list.
+  'dr-watson-personality': 'characters',
   'elsa-personality': 'characters',
   'moana-personality': 'characters',
   'simba-personality': 'characters',
@@ -1861,7 +1863,7 @@ const RETIRED_PAGES = {
   'nick-wilde-personality': 'characters',
   'baymax-personality': 'characters',
   'buzz-lightyear-personality': 'characters',
-  'wall-e-personality': 'characters',
+  'wall-e-personality': 'the-tin-man-personality',
   'remy-personality': 'characters',
   'joy-personality': 'characters',
   'captain-america-personality': 'characters',

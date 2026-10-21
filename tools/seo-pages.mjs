@@ -127,7 +127,8 @@ const byName = new Map(CHARACTERS.map(c => [c.name, c]));
 for (const c of CHARACTERS) {
   const art = Copy.characterArt(c.name, 'seo-art');
   const types = c.types.map(t => `<a class="chip" href="/${typeSlug(t)}">${t}</a>`).join(' ');
-  const links = Copy.syncsOf(c.name).filter(n => byName.has(n)).map(n => `<a href="/${characterSlug(byName.get(n))}">${esc(n)}</a>`);
+  // The pages show the marketing five's own pairings, so only they are named.
+  const links = (Copy.MARKETING_SYNCS[c.name] || []).filter(n => byName.has(n)).map(n => `<a href="/${characterSlug(byName.get(n))}">${esc(n)}</a>`);
   const syncs = links.slice(0, -1).join(', ') + ' and ' + links[links.length - 1];
   const faq = [
     [`How do I find out if I am most like ${c.name}?`, `Make your free Psyche Card from your Instagram data. It names the character whose temperament is closest to yours, with the reasons from your own data.`],

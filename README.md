@@ -7464,8 +7464,8 @@ anything we advertise with.
 - **Three swaps in the catalogue, same slots:** Woody → **Dr Watson**, Iron Man → **Odysseus**,
   Batman → **Sherlock Holmes** (12 women, 12 men, 4 neither, as before). The three join the retired
   list, so old cards still draw them, and their pages 301 to their replacements'.
-- **The samples:** Mulan (the full sample) and a gallery of four, Rapunzel, Sherlock Holmes, Dr Watson
-  and Odysseus, each with `essence.source` (Grimm's Fairy Tales, Arthur Conan Doyle, Homer's Odyssey)
+- **The samples:** Mulan (the full sample) and a gallery of four, Odysseus (second, after Mulan),
+  Rapunzel, Sherlock Holmes and Dr Watson, each with `essence.source` (Grimm's Fairy Tales, Arthur Conan Doyle, Homer's Odyssey)
   where the studio used to be. The five sync with each other wherever they can (five cannot all pair
   off three ways, so Rapunzel's third is Remy); every other pairing stays mutual and balanced.
 - **Rapunzel redrawn** from the Grimm tale: moon, braid and rampion, without the floating lanterns,
@@ -7508,6 +7508,26 @@ anything we advertise with.
   `promo/audio.py`). A bigger lift, up a tone with sixteenths, was tried and stood apart from the rest.
   The pulse in the animation and the kick share one 118 BPM grid from 0 s, every scene cut lands on
   it, and the encoded audio lines up with the mix to the sample.
+
+**The five, final (21 October 2026).** The marketing five are now Mulan, Odysseus, Rapunzel, Sherlock
+Holmes and The Tin Man, in that order in the gallery (Odysseus second).
+- **The Tin Man replaces WALL-E** in the catalogue (the four neither stay four); WALL-E is retired and its
+  page 301s to his. He is drawn as a figure, from W. W. Denslow's 1900 illustrations for Baum's book,
+  which are public domain (funnel cap, riveted tin), never MGM's 1939 film look, which Warner Bros.
+  still enforces. Sample: Maya Ibrahim, source "The Wonderful Wizard of Oz".
+- **Dr Watson leaves the samples** and loses his page (it and Woody's old address go to /characters);
+  he stays in the catalogue.
+- **Two sets of pairings.** A real card's three most in sync are `CHARACTER_SYNCS`: the original table,
+  with each public-domain heir taking over its predecessor's pairings as they were (Woody's to Dr
+  Watson, Iron Man's to Odysseus, Batman's to Sherlock Holmes, WALL-E's to The Tin Man), so a real Mulan
+  card shows Baymax, Po and Hermione Granger. The samples and the five search pages show
+  `MARKETING_SYNCS` instead, the five naming each other: each sample carries its three as
+  `sampleSyncs`, which `cardSyncs()` in `docs/copy.js` prefers; the model's schema has no such field.
+- **Redrawn, epic** (`tools/art/`): Mulan as the Ballad's lone rider galloping before the moon, a
+  faceless silhouette with spear and red pennant, plum blossom and the Great Wall (no Disney cues; a
+  drawn face and armour would invite the comparison); Rapunzel's tower with a three-strand braid woven
+  with flowers; Sherlock Holmes's London night with the clock tower and a brass glass over footprints;
+  Dr Watson's study by lamplight. `tools/character-art-mulan.txt` is gone: every scene is built.
 
 ### Let us roast you
 

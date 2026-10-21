@@ -3,6 +3,136 @@
   "cards": [
     {
       "card": {
+        "name": "Lucas Moreau",
+        "confidence": 83,
+        "headline": "Resourceful planner with a way out of every corner"
+      },
+      "confidence": {
+        "score": 83,
+        "level": "high"
+      },
+      "essence": {
+        "character": "Odysseus",
+        "source": "Homer’s Odyssey",
+        "icon": ""
+      },
+      "cardHighlights": "Like him, you meet a problem with a plan, and a better one when the first fails: four years of side projects, each rescued at least once by a clever workaround. However far your plans take you, the same few friends hear about every one of them first.",
+      "patterns": [
+        {
+          "id": "p1",
+          "name": "A plan B for every plan"
+        },
+        {
+          "id": "p2",
+          "name": "Talks a room round"
+        },
+        {
+          "id": "p3",
+          "name": "Always heading home"
+        }
+      ],
+      "topMotivators": [
+        "stimulation",
+        "achievement",
+        "self-direction"
+      ],
+      "mbti": {
+        "type": "ENTP",
+        "letters": [
+          {
+            "axis": "E/I",
+            "choice": "E",
+            "strength": "moderate"
+          },
+          {
+            "axis": "N/S",
+            "choice": "N",
+            "strength": "clear"
+          },
+          {
+            "axis": "T/F",
+            "choice": "T",
+            "strength": "moderate"
+          },
+          {
+            "axis": "J/P",
+            "choice": "P",
+            "strength": "moderate"
+          }
+        ]
+      },
+      "bigFive": {
+        "openness": {
+          "score": 84
+        },
+        "conscientiousness": {
+          "score": 56
+        },
+        "extraversion": {
+          "score": 72
+        },
+        "agreeableness": {
+          "score": 58
+        },
+        "neuroticism": {
+          "score": 40
+        }
+      },
+      "values": [
+        {
+          "value": "Ingenuity"
+        },
+        {
+          "value": "Adventure"
+        },
+        {
+          "value": "Loyalty"
+        }
+      ],
+      "beliefs": [
+        {
+          "belief": "There is always a way through"
+        }
+      ],
+      "interests": [
+        {
+          "name": "Sailing"
+        },
+        {
+          "name": "Start-ups"
+        },
+        {
+          "name": "Strategy games"
+        }
+      ],
+      "relationship": {
+        "loveLanguages": {
+          "receiving": [
+            {
+              "language": "Words of affirmation"
+            },
+            {
+              "language": "Quality time"
+            }
+          ],
+          "giving": [
+            {
+              "language": "Words of affirmation"
+            },
+            {
+              "language": "Acts of service"
+            }
+          ]
+        }
+      },
+      "sampleSyncs": [
+        "Sherlock Holmes",
+        "Mulan",
+        "The Tin Man"
+      ]
+    },
+    {
+      "card": {
         "name": "Sofia Reyes",
         "confidence": 84,
         "headline": "Hopeful maker who turns a small room into a studio"
@@ -124,7 +254,12 @@
             }
           ]
         }
-      }
+      },
+      "sampleSyncs": [
+        "Mulan",
+        "Sherlock Holmes",
+        "The Tin Man"
+      ]
     },
     {
       "card": {
@@ -249,257 +384,142 @@
             }
           ]
         }
-      }
+      },
+      "sampleSyncs": [
+        "Odysseus",
+        "Rapunzel",
+        "Mulan"
+      ]
     },
     {
       "card": {
-        "name": "Arjun Mehta",
-        "confidence": 85,
-        "headline": "Steady friend who keeps everyone going"
+        "name": "Maya Ibrahim",
+        "confidence": 84,
+        "headline": "Gentle keeper of people, with more heart than they admit"
       },
       "confidence": {
-        "score": 85,
+        "score": 84,
         "level": "high"
       },
       "essence": {
-        "character": "Dr Watson",
-        "source": "Arthur Conan Doyle",
+        "character": "The Tin Man",
+        "source": "The Wonderful Wizard of Oz",
         "icon": ""
       },
-      "cardHighlights": "Like him, you are the one people lean on without having to ask: the check-in when someone goes quiet, the lift home, the photos from every trip. You are calm when plans go sideways, and you are the one who tells the story afterwards.",
+      "cardHighlights": "Like the Tin Man, you care through what you do: three years of messages checking in on friends who went quiet, and a camera roll full of other people's good days. You wonder sometimes whether you feel enough, and everything you keep says that you do.",
       "patterns": [
         {
           "id": "p1",
-          "name": "First to check in"
+          "name": "Quietly checks in"
         },
         {
           "id": "p2",
-          "name": "Keeper of the group’s story"
+          "name": "Keeps what matters"
         },
         {
           "id": "p3",
-          "name": "Calm when plans go sideways"
+          "name": "Deep, not wide"
         }
       ],
       "topMotivators": [
         "benevolence",
-        "security",
-        "tradition"
+        "universalism",
+        "security"
       ],
       "mbti": {
-        "type": "ISFJ",
+        "type": "ISFP",
         "letters": [
           {
             "axis": "E/I",
             "choice": "I",
-            "strength": "slight"
+            "strength": "moderate"
           },
           {
             "axis": "N/S",
             "choice": "S",
-            "strength": "moderate"
+            "strength": "slight"
           },
           {
             "axis": "T/F",
             "choice": "F",
-            "strength": "moderate"
-          },
-          {
-            "axis": "J/P",
-            "choice": "J",
             "strength": "clear"
-          }
-        ]
-      },
-      "bigFive": {
-        "openness": {
-          "score": 58
-        },
-        "conscientiousness": {
-          "score": 82
-        },
-        "extraversion": {
-          "score": 48
-        },
-        "agreeableness": {
-          "score": 84
-        },
-        "neuroticism": {
-          "score": 46
-        }
-      },
-      "values": [
-        {
-          "value": "Loyalty"
-        },
-        {
-          "value": "Reliability"
-        },
-        {
-          "value": "Family"
-        }
-      ],
-      "beliefs": [
-        {
-          "belief": "Look after your people"
-        }
-      ],
-      "interests": [
-        {
-          "name": "Cricket"
-        },
-        {
-          "name": "Cooking for friends"
-        },
-        {
-          "name": "Travel journals"
-        }
-      ],
-      "relationship": {
-        "loveLanguages": {
-          "receiving": [
-            {
-              "language": "Words of affirmation"
-            },
-            {
-              "language": "Quality time"
-            }
-          ],
-          "giving": [
-            {
-              "language": "Acts of service"
-            },
-            {
-              "language": "Quality time"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "card": {
-        "name": "Lucas Moreau",
-        "confidence": 83,
-        "headline": "Resourceful planner with a way out of every corner"
-      },
-      "confidence": {
-        "score": 83,
-        "level": "high"
-      },
-      "essence": {
-        "character": "Odysseus",
-        "source": "Homer’s Odyssey",
-        "icon": ""
-      },
-      "cardHighlights": "Like him, you meet a problem with a plan, and a better one when the first fails: four years of side projects, each rescued at least once by a clever workaround. However far your plans take you, the same few friends hear about every one of them first.",
-      "patterns": [
-        {
-          "id": "p1",
-          "name": "A plan B for every plan"
-        },
-        {
-          "id": "p2",
-          "name": "Talks a room round"
-        },
-        {
-          "id": "p3",
-          "name": "Always heading home"
-        }
-      ],
-      "topMotivators": [
-        "stimulation",
-        "achievement",
-        "self-direction"
-      ],
-      "mbti": {
-        "type": "ENTP",
-        "letters": [
-          {
-            "axis": "E/I",
-            "choice": "E",
-            "strength": "moderate"
-          },
-          {
-            "axis": "N/S",
-            "choice": "N",
-            "strength": "clear"
-          },
-          {
-            "axis": "T/F",
-            "choice": "T",
-            "strength": "moderate"
           },
           {
             "axis": "J/P",
             "choice": "P",
-            "strength": "moderate"
+            "strength": "slight"
           }
         ]
       },
       "bigFive": {
         "openness": {
-          "score": 84
-        },
-        "conscientiousness": {
-          "score": 56
-        },
-        "extraversion": {
           "score": 72
         },
+        "conscientiousness": {
+          "score": 64
+        },
+        "extraversion": {
+          "score": 36
+        },
         "agreeableness": {
-          "score": 58
+          "score": 88
         },
         "neuroticism": {
-          "score": 40
+          "score": 58
         }
       },
       "values": [
         {
-          "value": "Ingenuity"
-        },
-        {
-          "value": "Adventure"
+          "value": "Kindness"
         },
         {
           "value": "Loyalty"
+        },
+        {
+          "value": "Gentleness"
         }
       ],
       "beliefs": [
         {
-          "belief": "There is always a way through"
+          "belief": "Small kindnesses add up"
         }
       ],
       "interests": [
         {
-          "name": "Sailing"
+          "name": "Film photography"
         },
         {
-          "name": "Start-ups"
+          "name": "Woodwork"
         },
         {
-          "name": "Strategy games"
+          "name": "Volunteering"
         }
       ],
       "relationship": {
         "loveLanguages": {
           "receiving": [
             {
-              "language": "Words of affirmation"
+              "language": "Quality time"
             },
             {
-              "language": "Quality time"
+              "language": "Words of affirmation"
             }
           ],
           "giving": [
             {
-              "language": "Words of affirmation"
+              "language": "Acts of service"
             },
             {
-              "language": "Acts of service"
+              "language": "Receiving gifts"
             }
           ]
         }
-      }
+      },
+      "sampleSyncs": [
+        "Mulan",
+        "Rapunzel",
+        "Odysseus"
+      ]
     }
   ]
 }

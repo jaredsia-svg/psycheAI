@@ -10,7 +10,7 @@
 // samples and marketing show (21 October 2026). The rest stay in the
 // catalogue, and in this file for when they are wanted, but have no page; their
 // old addresses are sent on to /characters (server.js, RETIRED_PAGES).
-export const MARKETED = ['Mulan', 'Rapunzel', 'Sherlock Holmes', 'Dr Watson', 'Odysseus'];
+export const MARKETED = ['Mulan', 'Odysseus', 'Rapunzel', 'Sherlock Holmes', 'The Tin Man'];
 export const CHARACTERS = [
   {
     name: 'Mulan', franchise: 'Disney',
@@ -133,15 +133,15 @@ export const CHARACTERS = [
     types: ['ESTJ', 'ENTJ'],
   },
   {
-    name: 'WALL-E', franchise: 'Pixar',
-    tagline: 'Curious, gentle and quietly devoted to the things and people they love.',
-    about: 'A WALL-E reading is someone who finds wonder in small things and keeps them close. They are patient, a little shy and very loyal, and they show care through what they do rather than what they say. They keep collections, memories and habits that mean a lot to them.',
-    signs: ['You save and keep things others would scroll past.',
-      'You post rarely but meaningfully.',
-      'You stay in touch with a small, steady circle.',
+    name: 'The Tin Man', franchise: 'L. Frank Baum',
+    tagline: 'Gentle, devoted and all heart, even when they doubt it.',
+    about: 'A Tin Man reading is someone whose kindness runs deeper than they give themselves credit for. They are patient and steady, show care through what they do, and stay loyal to the people and things that matter to them. They often worry about whether they feel enough, which is usually the surest sign that they do.',
+    signs: ['You check on friends quietly, without making a show of it.',
+      'You keep things that remind you of people.',
+      'You stay in touch with a small, steady circle for years.',
       'Your interests run deep rather than wide.'],
-    strengths: ['Patient and gentle', 'Deeply loyal', 'Sees beauty in small things'],
-    growth: ['Speaking up for what they want', 'Trying new things a little sooner'],
+    strengths: ['Kind and patient', 'Deeply loyal', 'Shows care through action'],
+    growth: ['Trusting their own heart', 'Asking for what they need'],
     types: ['ISFP', 'INFP'],
   },
   {

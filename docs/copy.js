@@ -1667,13 +1667,14 @@
     bag: '<path d="M6 18h36l3 20c0 3-2 5-5 5H8c-3 0-5-2-5-5z" fill="currentColor" fill-opacity=".18"/><path d="M6 18h36l3 20c0 3-2 5-5 5H8c-3 0-5-2-5-5z"/><path d="M16 18v-5c0-4 3-6 8-6s8 2 8 6v5"/><path d="M4 18c6-4 34-4 40 0"/><path d="M24 25v12M18 31h12"/>',
     horse: '<path d="M10 20c0-3 2-5 5-5h14l5-10h5l3 2-3 5-5 2-2 14H10z" fill="currentColor" fill-opacity=".18"/><path d="M10 20c0-3 2-5 5-5h14l5-10h5l3 2-3 5-5 2-2 14H10z"/><path d="M12 28v8M18 28v8M27 28v8M32 28v8"/><path d="M8 36h28"/><circle cx="12" cy="41" r="3"/><circle cx="32" cy="41" r="3"/><path d="M8 20l-3 8"/><path d="M18 19h8v6h-8z"/>',
     tower: '<path d="M14 18h14v26H14z" fill="currentColor" fill-opacity=".18"/><path d="M14 18h14v26H14z"/><path d="M11 18L21 3l10 15z" fill="currentColor" fill-opacity=".18"/><path d="M11 18L21 3l10 15z"/><path d="M18 27v-3a3 3 0 0 1 6 0v3z"/><path d="M24 27c6 3 2 8 8 11s4 6 10 6"/><path d="M14 33h14M14 39h14"/><path d="M40 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" fill="currentColor" stroke="none"/>',
+    tinheart: '<path d="M24 40C12 32 6 25 6 17c0-6 4-10 9-10 4 0 7 3 9 6 2-3 5-6 9-6 5 0 9 4 9 10 0 8-6 15-18 23z" fill="currentColor" fill-opacity=".18"/><path d="M24 40C12 32 6 25 6 17c0-6 4-10 9-10 4 0 7 3 9 6 2-3 5-6 9-6 5 0 9 4 9 10 0 8-6 15-18 23z"/><path d="M24 2v5"/><path d="M36 30l8 14"/><path d="M38 33c3-3 7-3 8 0-3 1-5 3-6 5z" fill="currentColor" fill-opacity=".45"/>',
     flame: '<path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z" fill="currentColor" fill-opacity=".18"/><path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z"/><path d="M24 45c-5 0-7-3-7-7 0-5 4-7 5-12 3 3 6 6 6 10 1-1 2-2 2-4 2 2 3 4 3 6 0 4-3 7-9 7z" fill="currentColor" stroke="none" fill-opacity=".45"/>',
   };
   const CHARACTER_EMBLEMS = {
     'Mulan': 'sword', 'Elsa': 'snowflake', 'Moana': 'wave', 'Simba': 'crown', 'Rapunzel': 'tower',
     'Sherlock Holmes': 'magnifier', 'Dr Watson': 'bag', 'Odysseus': 'horse',
     'Judy Hopps': 'rabbit', 'Nick Wilde': 'fox', 'Baymax': 'heart',
-    'Buzz Lightyear': 'rocket', 'WALL-E': 'seedling', 'Remy': 'whisk', 'Joy': 'arcade',
+    'Buzz Lightyear': 'rocket', 'The Tin Man': 'tinheart', 'Remy': 'whisk', 'Joy': 'arcade',
     'Captain America': 'shield', 'Spider-Man': 'web', 'Hulk': 'mountain',
     'Wonder Woman': 'lasso',
     'Pikachu': 'bolt', 'Totoro': 'leaf',
@@ -1682,7 +1683,7 @@
     // Retired from the catalogue (lib/prompts.js, RETIRED_CHARACTERS), kept so
     // a card written before they were retired still draws its emblem.
     'Black Panther': 'claw', 'Doctor Strange': 'eye', 'Mario': 'mushroom', 'Link': 'compass',
-    'Woody': 'star', 'Iron Man': 'wrench', 'Batman': 'moon',
+    'Woody': 'star', 'Iron Man': 'wrench', 'Batman': 'moon', 'WALL-E': 'seedling',
   };
 
   // A full scene for the card's purple box, for every catalogue character:
@@ -1702,7 +1703,7 @@
   // upper right: Woody's boot stands on the ground, and the usual square
   // showed only its shaft; Dr Watson's bag sits under the window, and
   // Odysseus's horse rears its head to the top of the scene.
-  const ART_CROPS = { Woody: '200 94 336 336', 'Dr Watson': '236 84 300 300', Odysseus: '300 0 220 220' };
+  const ART_CROPS = { Mulan: '320 90 200 200', Woody: '200 94 336 336', 'Dr Watson': '300 110 220 220', Odysseus: '300 0 220 220', 'Sherlock Holmes': '310 50 210 210', Rapunzel: '330 110 190 190', 'The Tin Man': '320 60 190 190' };
   function characterArt(character, className, crop) {
     // Own properties only: a name such as "toString" from someone else's card
     // must find nothing, not a function.
@@ -1726,45 +1727,70 @@
   // Every pairing is mutual (October 2026: with Totoro retired the catalogue
   // is an even 28, and the one loop of three it forced is gone).
   // Retired characters have none, and their cards show the old layout.
+  // Woody, Iron Man, Batman and WALL-E's public-domain heirs (Dr Watson,
+  // Odysseus, Sherlock Holmes, The Tin Man) take over their pairings as they
+  // were, since each was chosen for the same temperament (21 October 2026).
   const CHARACTER_SYNCS = {
-    // The five the marketing shows (the sample card and the gallery) name
-    // each other wherever they can: five cannot all pair off three ways, so
-    // Rapunzel's third is Remy.
-    'Mulan': ['Rapunzel', 'Odysseus', 'Dr Watson'],
-    'Rapunzel': ['Mulan', 'Sherlock Holmes', 'Remy'],
-    'Sherlock Holmes': ['Dr Watson', 'Odysseus', 'Rapunzel'],
-    'Dr Watson': ['Sherlock Holmes', 'Odysseus', 'Mulan'],
-    'Odysseus': ['Sherlock Holmes', 'Dr Watson', 'Mulan'],
-    'Elsa': ['Moana', 'Captain America', 'Hermione Granger'],
+    'Mulan': ['Baymax', 'Po', 'Hermione Granger'],
+    'Elsa': ['Rapunzel', 'Moana', 'Odysseus'],
     'Moana': ['Hiccup', 'Elsa', 'Joy'],
     'Simba': ['Po', 'Judy Hopps', 'Princess Peach'],
+    'Rapunzel': ['Elsa', 'Remy', 'Hulk'],
     'Judy Hopps': ['Nick Wilde', 'Simba', 'Wonder Woman'],
     'Nick Wilde': ['Judy Hopps', 'Shrek', 'Kuromi'],
-    'Baymax': ['WALL-E', 'Hiccup', 'Remy'],
-    'Buzz Lightyear': ['Wonder Woman', 'Captain America', 'WALL-E'],
-    'WALL-E': ['Baymax', 'Remy', 'Buzz Lightyear'],
-    'Remy': ['Rapunzel', 'WALL-E', 'Baymax'],
-    'Joy': ['Pikachu', 'Moana', 'Hulk'],
-    'Captain America': ['Wonder Woman', 'Buzz Lightyear', 'Elsa'],
-    'Spider-Man': ['Hermione Granger', 'Sailor Moon', 'Po'],
-    'Hulk': ['Hiccup', 'Hermione Granger', 'Joy'],
+    'Baymax': ['Mulan', 'The Tin Man', 'Hiccup'],
+    'Dr Watson': ['Buzz Lightyear', 'Joy', 'The Tin Man'],
+    'Buzz Lightyear': ['Dr Watson', 'Wonder Woman', 'Captain America'],
+    'The Tin Man': ['Baymax', 'Remy', 'Dr Watson'],
+    'Remy': ['Rapunzel', 'The Tin Man', 'Sherlock Holmes'],
+    'Joy': ['Dr Watson', 'Pikachu', 'Moana'],
+    'Odysseus': ['Captain America', 'Spider-Man', 'Elsa'],
+    'Captain America': ['Odysseus', 'Wonder Woman', 'Buzz Lightyear'],
+    'Spider-Man': ['Odysseus', 'Hermione Granger', 'Sailor Moon'],
+    'Hulk': ['Sherlock Holmes', 'Hiccup', 'Rapunzel'],
     'Wonder Woman': ['Captain America', 'Buzz Lightyear', 'Judy Hopps'],
+    'Sherlock Holmes': ['Hermione Granger', 'Hulk', 'Remy'],
     'Pikachu': ['Joy', 'Sailor Moon', 'Shrek'],
     'Princess Peach': ['Hello Kitty', 'Sailor Moon', 'Simba'],
     'Shrek': ['Nick Wilde', 'Kuromi', 'Pikachu'],
-    'Po': ['Simba', 'Hello Kitty', 'Spider-Man'],
+    'Po': ['Mulan', 'Simba', 'Hello Kitty'],
     'Hiccup': ['Moana', 'Hulk', 'Baymax'],
-    'Hermione Granger': ['Spider-Man', 'Elsa', 'Hulk'],
+    'Hermione Granger': ['Spider-Man', 'Sherlock Holmes', 'Mulan'],
     'Sailor Moon': ['Pikachu', 'Princess Peach', 'Spider-Man'],
     'Hello Kitty': ['Kuromi', 'Princess Peach', 'Po'],
     'Kuromi': ['Hello Kitty', 'Shrek', 'Nick Wilde'],
   };
+
+  // The sample cards' own pairings: the five the marketing shows (the sample
+  // card, the gallery, the link preview, the search pages) name only each
+  // other. A real card always uses CHARACTER_SYNCS above; a sample carries its
+  // three as `sampleSyncs`, read by cardSyncs() below.
+  const MARKETING_SYNCS = {
+    'Mulan': ['Rapunzel', 'Odysseus', 'The Tin Man'],
+    'Odysseus': ['Sherlock Holmes', 'Mulan', 'The Tin Man'],
+    'Rapunzel': ['Mulan', 'Sherlock Holmes', 'The Tin Man'],
+    'Sherlock Holmes': ['Odysseus', 'Rapunzel', 'Mulan'],
+    'The Tin Man': ['Mulan', 'Rapunzel', 'Odysseus'],
+  };
+
+
+
 
 
   /** The three characters a catalogue character is most in sync with, or none. */
   function syncsOf(character) {
     const name = String(character || '').trim();
     return Object.prototype.hasOwnProperty.call(CHARACTER_SYNCS, name) ? CHARACTER_SYNCS[name].slice() : [];
+  }
+
+  /**
+   * The three a card shows: a sample's own `sampleSyncs` (catalogue names
+   * only), else the character's real three.
+   */
+  function cardSyncs(report, character) {
+    const own = report && report.sampleSyncs;
+    if (Array.isArray(own) && own.length === 3 && own.every(n => typeof n === 'string' && Object.prototype.hasOwnProperty.call(CHARACTER_SYNCS, n))) return own.slice();
+    return syncsOf(character);
   }
 
   // One line-icon set for the app's own interface, in place of the emoji
@@ -1849,6 +1875,6 @@
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, leadSentence, planPick, PLAN_STEPS, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
-    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, CHARACTER_SYNCS, syncsOf, LINE_ICONS, lineIcon, iconHtml, gentleAttachment,
+    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, CHARACTER_SYNCS, MARKETING_SYNCS, syncsOf, cardSyncs, LINE_ICONS, lineIcon, iconHtml, gentleAttachment,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
