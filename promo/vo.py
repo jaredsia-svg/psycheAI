@@ -179,8 +179,10 @@ def write(name, phrases, ls, split, pause=0.06):
     return [0.0] + cuts
 
 # Lines 1-9 are shared; the closing line is spoken once per version in config.json.
+# (privacy.py imports this file for the voice and writes its own lines.)
 word_marks = {}
-marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}, 'words': word_marks}
-for version, settings in CONFIG.items():
-    marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [END, settings['spoken']], 0.9, True)
-json.dump(marks, open(OUT + '/marks.json', 'w'))
+if __name__ == '__main__':
+    marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}, 'words': word_marks}
+    for version, settings in CONFIG.items():
+        marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [END, settings['spoken']], 0.9, True)
+    json.dump(marks, open(OUT + '/marks.json', 'w'))

@@ -11,3 +11,4 @@ promo/out/
 promo/stage-built.html
 # compare:unlock's answers: a real person's reading.
 compare-unlock-out/
+promo/__pycache__/

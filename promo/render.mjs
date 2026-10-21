@@ -3,7 +3,7 @@
 //   node promo/render.mjs reel --video <ffmpeg>       build/reel/video.mp4, with build/reel/mix.wav
 //   node promo/render.mjs site --stills '[1.5, 20]'   build/site/still-1_5.png, build/site/still-20.png
 //
-// The first argument is a version in config.json.
+// The first argument is a version in config.json, or privacy for the privacy reel (privacy-stage.html).
 //
 // The stage reads the timeline audio.py wrote, the card parts capture.mjs measured,
 // the brand mark from docs/copy.js, the closing link from config.json and the
@@ -22,14 +22,17 @@ const tl = readFileSync(out + '/timeline.json', 'utf8');
 const png = readFileSync(dir + '/assets/card.png');
 const parts = JSON.stringify({ ...JSON.parse(readFileSync(dir + '/assets/card-parts.json', 'utf8')),
   aspect: png.readUInt32BE(20) / png.readUInt32BE(16) });
-const config = JSON.stringify(JSON.parse(readFileSync(dir + '/config.json', 'utf8'))[version]);
+// The privacy reel (privacy.py) has its own stage and ends with the reel's button.
+const configs = JSON.parse(readFileSync(dir + '/config.json', 'utf8'));
+const config = JSON.stringify(configs[version] || configs.reel);
+const stage = version === 'privacy' ? 'privacy-stage.html' : 'stage.html';
 const sandbox = { window: {} };
 sandbox.self = sandbox.window;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(readFileSync(dir + '/../docs/copy.js', 'utf8'), sandbox);
 const mark = JSON.stringify((sandbox.PsycheCopy || sandbox.window.PsycheCopy).BRAND_MARK);
-const html = readFileSync(dir + '/stage.html', 'utf8').replace('__TIMELINE__', tl).replace('__PARTS__', parts)
+const html = readFileSync(dir + '/' + stage, 'utf8').replace('__TIMELINE__', tl).replace('__PARTS__', parts)
   .replace('__MARK__', mark).replace('__CONFIG__', config)
   // The site's character strip (tools/cast-sprite.mjs), for the end card's roll and the Sync scene.
   .replace('__CAST__', readFileSync(dir + '/../docs/media/cast-sprite.json', 'utf8'));
