@@ -7532,6 +7532,16 @@ Holmes and The Tin Man, in that order in the gallery (Odysseus second).
   with flowers; Sherlock Holmes's London night with the clock tower and a brass glass over footprints;
   Dr Watson's study by lamplight. `tools/character-art-mulan.txt` is gone: every scene is built.
 
+**Instagram, so a share can tag us (21 October 2026).**
+- Every footer (front page, search pages, policies, 404) links Instagram @psycheai.io beside the email,
+  and the front page's Organization data lists it in `sameAs`.
+- The card image's foot line reads "psycheai.io · tag us @psycheai.io" (`cardFooter`); on a reader's own
+  card it sits under the QR code instead. Samples carry no QR: it is the reader's own link.
+- Share card's message is now "My Psyche Card from @psycheai.io. I got Mulan. Get yours here: [link]"
+  (`cardShareText`). Instagram keeps a shared image but drops its text, so the tap also copies the
+  caption and says so ("Caption copied. Paste it into your post to tag @psycheai.io.").
+- The link's credit note: "1 card made = 1 credit = 5 questions or 1 report to gift".
+
 ### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the

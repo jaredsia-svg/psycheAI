@@ -343,8 +343,11 @@
     // The one share message, everywhere: Share Card, Copy link, a sync's
     // result, the roast. It carries the reader's one link (myLinkUrl in
     // app.js): the same link for a bio, an invite and a comparison.
-    cardShareText: (character, url) => (character ? 'I got ' + character + ' for my Psyche Card. ' : 'My Psyche Card. ') +
-      'Get yours now for free: ' + (url || 'https://psycheai.io'),
+    // Led by the Instagram handle, so a post made from it tags PsycheAI (the
+    // caption is also copied, since Instagram drops shared text).
+    cardShareText: (character, url) => 'My Psyche Card from @psycheai.io. ' +
+      (character ? 'I got ' + character + '. ' : '') + 'Get yours here: ' + (url || 'https://psycheai.io'),
+    cardCaptionCopied: 'Caption copied. Paste it into your post to tag @psycheai.io.',
     // The hub's Psyche Sync Share: the same, asking them to sync.
     syncInviteText: (character, url) => (character ? 'I got ' + character + ' for my Psyche Card. ' : 'My Psyche Card. ') +
       'Get yours now for free and sync with me: ' + (url || 'https://psycheai.io'),
@@ -1374,7 +1377,7 @@
       copyLink: 'Copy your link',
       statOpened: 'opened',
       statCards: 'cards',
-      linkNote: '1 card made = 1 credit = 5 questions or report to gift',
+      linkNote: '1 card made = 1 credit = 5 questions or 1 report to gift',
       linkRule: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for 5 questions to PsycheAI, or for a Psyche Report to gift.',
       statCredits: 'credits',
       // One or two plain lines for each part of the hub, behind its "i".
@@ -1512,7 +1515,7 @@
     cardStandFor: 'Values & Beliefs',
     cardInto: 'Interests',
     // Every card that is shared says where to get one: the address, not just the name.
-    cardFooter: 'psycheai.io · your personality, read from your own data',
+    cardFooter: 'psycheai.io · tag us @psycheai.io',
     cardTraitShort: { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
       agreeableness: 'Agreeable', neuroticism: 'Sensitivity' },
     nothingYet: 'Nothing here yet.',

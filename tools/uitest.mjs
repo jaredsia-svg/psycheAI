@@ -10224,7 +10224,7 @@ try {
   check('"Share PDF" hands the share sheet the same PDF as Download PDF, with the one share message carrying the address',
     Boolean(compatShared) && compatShared.type === 'application/pdf' && compatShared.head.startsWith('%PDF-1.') &&
       compatShared.name === compatDownload.suggestedFilename() &&
-      /^I got .+ for my Psyche Card\. Get yours now for free: /.test(compatShared.text) &&
+      /^My Psyche Card from @psycheai\.io\. I got .+\. Get yours here: /.test(compatShared.text) &&
       compatShared.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatShared).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
@@ -11527,7 +11527,7 @@ try {
           await sp.click('.hub-keep .hub-rl').then(() => sp.evaluate(() => getComputedStyle(document.querySelector('#hub-tip-syncs')).display === 'none')));
       check('Your Link is a row of its own: its counts and what a credit is for, with no popout',
         await sp.evaluate(() => document.querySelectorAll('#profile-body .hub-linkrow .referral-n').length === 3 &&
-          document.querySelector('.hub-linkrow .hub-linknote').textContent === '1 card made = 1 credit = 5 questions or report to gift' &&
+          document.querySelector('.hub-linkrow .hub-linknote').textContent === '1 card made = 1 credit = 5 questions or 1 report to gift' &&
           !document.querySelector('.hub-card [data-hub-go="link"]')));
       {
         let early = false;
@@ -13505,7 +13505,7 @@ try {
         card.stats === 3 && !card.ready &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,credits') &&
           /0\s*opened/.test(card.text) && /0\s*cards/.test(card.text) && !/syncs/.test(card.text) && /0\s*credits/.test(card.text) &&
-          /1 card made = 1 credit = 5 questions or report to gift/.test(card.text) && /^Share Your Link/.test(card.text) &&
+          /1 card made = 1 credit = 5 questions or 1 report to gift/.test(card.text) && /^Share Your Link/.test(card.text) &&
           await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&
             !document.querySelector('#profile-body .referral-card:not(.hub-linkrow)')) &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button:not(.hub-tip)')].filter(b => !b.closest('[hidden]'))

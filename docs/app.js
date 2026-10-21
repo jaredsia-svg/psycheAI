@@ -8925,6 +8925,11 @@
     const button = event.currentTarget;
     if (button.disabled) return;
     button.disabled = true;
+    // The caption, with the @psycheai.io handle, goes to the clipboard first,
+    // while the tap still counts as the reader's own gesture: Instagram keeps
+    // the image from a share sheet but drops its text, so the reader pastes it.
+    const caption = shareMessage();
+    writeClipboard(caption).then(() => flashCardStatus(TEXT.cardCaptionCopied), () => {});
     try {
       const blob = await cardImageBlob();
       if (!blob) throw new Error('empty');
@@ -8932,7 +8937,7 @@
       const file = new File([blob], name, { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: TEXT.cardSection, text: shareMessage() });
+          await navigator.share({ files: [file], title: TEXT.cardSection, text: caption });
           return;
         } catch (error) {
           // The reader opened the share sheet and backed out themselves —
