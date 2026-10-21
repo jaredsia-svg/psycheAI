@@ -195,66 +195,6 @@ const SCENES = {
       sparkle(300, 92, 7) + sparkle(498, 250, 8);
   },
 
-  // The Odyssey's ninth book: Polyphemus the Cyclops on his cliff in a storm,
-  // his one eye blazing, hurling a boulder after the ship as it runs for open
-  // sea. The ship keeps the eye Greek sailors painted on the bow to see the
-  // way and ward off harm (Homer, public domain).
-  'Odysseus': () => {
-    const sea = lin('sea', [[0, '#4a1a6a'], [1, '#14062a']]);
-    const sail = lin('sail', [[0, '#fff8ec'], [1, '#f0d8c8']], 0, 0, 1, 0);
-    const hull = lin('hull', [[0, '#6a3020'], [1, '#2a0e08']]);
-    const giant = lin('giant', [[0, '#2a0d3e'], [1, '#12051f']]);
-    const cloud = (x, y, s, o, c = '#2a0d3e') => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" fill="' + c + '" opacity="' + o + '">' +
-      '<ellipse cx="0" cy="0" rx="70" ry="26"/><ellipse cx="-40" cy="8" rx="44" ry="20"/><ellipse cx="46" cy="6" rx="50" ry="22"/><ellipse cx="10" cy="-16" rx="42" ry="22"/></g>';
-    const crest = (x, y, w, h, o = 1) => '<path d="M' + x + ' ' + y + 'C' + (x + w * 0.3) + ' ' + (y - h) + ' ' + (x + w * 0.7) + ' ' + (y - h * 1.1) + ' ' + (x + w) + ' ' + (y - h * 0.4) +
-      'C' + (x + w * 0.82) + ' ' + (y - h * 0.5) + ' ' + (x + w * 0.76) + ' ' + (y - h * 0.2) + ' ' + (x + w * 0.86) + ' ' + y + 'Z" fill="#fff" opacity="' + o + '"/>';
-    const oars = [0, 1, 2, 3, 4].map(i => '<path d="M' + (-62 + i * 24) + ' 14L' + (-78 + i * 24) + ' 50" stroke="#2a0e08" stroke-width="3.4" stroke-linecap="round"/>').join('');
-    return tint('#1a0f3a', '#6a2a72', 0.7) +
-      cloud(250, 40, 1.4, 0.9) + cloud(420, 20, 1.6, 0.95) + cloud(330, 90, 1.1, 0.7, '#3a1652') +
-      // Lightning splitting the sky behind the cliff.
-      glow('flash', 300, 90, 140, '#e8d8ff', 0.5) +
-      '<path d="M306 20L284 84L300 86L276 156L318 76L300 74L322 20Z" fill="#fff8d6"/>' +
-      '<path d="M306 20L284 84L300 86L276 156L318 76L300 74L322 20Z" fill="none" stroke="#c9b4ff" stroke-width="4" opacity=".5"/>' +
-      // The cliff, and the giant on it, far off: broad shoulders, one arm raised with the boulder.
-      '<g transform="translate(170 96) scale(.66)">' +
-      '<path d="M392 440L404 330C414 296 436 270 470 262L520 256V440Z" fill="#14051f"/>' +
-      '<g fill="' + giant + '">' +
-        '<path d="M414 300C406 246 412 196 436 176C456 162 500 158 520 162V300Z"/>' +
-        '<path d="M462 168C462 156 490 156 490 168V178H462Z"/>' +
-        '<circle cx="476" cy="130" r="32"/>' +
-        '<path d="M446 116L450 98L458 108L464 92L470 104L478 90L484 104L492 94L494 110L504 104L502 120Z"/>' +
-      '</g>' +
-      '<path d="M440 186L404 144L408 92" fill="none" stroke="#1e0830" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M498 186C510 214 512 244 504 268" fill="none" stroke="#1e0830" stroke-width="22" stroke-linecap="round"/>' +
-      '<circle cx="408" cy="64" r="30" fill="' + lin('rock', [[0, '#7a6a8a'], [1, '#2a1a3a']]) + '" stroke="#12051f" stroke-width="3"/>' +
-      '<path d="M394 56C400 48 410 48 416 54M400 76C408 74 416 74 422 70" fill="none" stroke="#12051f" stroke-width="2.4" opacity=".7"/>' +
-      // The one eye.
-      glow('eye', 478, 130, 34, '#ffcf5a', 0.85) +
-      '<ellipse cx="478" cy="130" rx="15" ry="10" fill="#fff4c4"/><circle cx="478" cy="130" r="6.4" fill="#d0461a"/><circle cx="478" cy="130" r="2.6" fill="#12051f"/>' +
-      '<path d="M458 118C468 110 488 110 498 118" fill="none" stroke="#12051f" stroke-width="5" stroke-linecap="round"/>' +
-      // A boulder already thrown, falling short behind the ship.
-      '<g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".3"><path d="M392 196C370 214 348 236 326 254M400 206C380 222 360 240 340 258"/></g>' +
-      '<circle cx="318" cy="262" r="10" fill="' + lin('rock2', [[0, '#7a6a8a'], [1, '#2a1a3a']]) + '" stroke="#12051f" stroke-width="3"/>' +
-      '</g>' +
-      // The sea, heaving.
-      '<path d="M0 440V300C60 286 120 312 190 296S320 280 400 300S480 290 520 296V440Z" fill="' + sea + '"/>' +
-      crest(150, 300, 70, 18, 0.5) + crest(392, 302, 64, 20, 0.55) +
-      '<g transform="translate(300 312)"><path d="M-30 0C-20 -30 0 -40 6 -36C8 -24 -4 -14 2 0" fill="#fff" opacity=".55"/><circle cx="-10" cy="-38" r="4" fill="#fff" opacity=".5"/><circle cx="12" cy="-34" r="3" fill="#fff" opacity=".5"/></g>' +
-      // The ship, heeled over in the swell, running for the open sea.
-      '<g transform="translate(392 340) rotate(-11) scale(1.08)">' +
-        '<path d="M2 -150V24" stroke="#2a0e08" stroke-width="5"/><path d="M-50 -142H54" stroke="#2a0e08" stroke-width="5" stroke-linecap="round"/>' +
-        '<path d="M-46 -140H50C58 -96 52 -44 44 -8H-40C-50 -44 -54 -96 -46 -140Z" fill="' + sail + '" stroke="#6a3a3a" stroke-width="2.4"/>' +
-        '<g fill="#c2366a" opacity=".85"><path d="M-34 -140H-20C-22 -96 -20 -44 -16 -8H-28C-38 -44 -40 -96 -34 -140Z"/><path d="M-6 -140H10V-8H-6Z"/><path d="M24 -140H38C42 -96 40 -44 32 -8H20C24 -44 26 -96 24 -140Z"/></g>' +
-        '<path d="M-92 4C-74 22 -44 30 4 30S84 22 100 0L94 30C82 46 50 52 4 52S-72 46 -84 30Z" fill="' + hull + '" stroke="#1a0804" stroke-width="2.4"/>' +
-        '<path d="M-92 4C-100 -6 -102 -18 -98 -30" fill="none" stroke="#2a0e08" stroke-width="7" stroke-linecap="round"/>' +
-        '<path d="M100 0C108 -10 110 -22 104 -34" fill="none" stroke="#2a0e08" stroke-width="7" stroke-linecap="round"/>' +
-        '<g transform="translate(-68 22)"><path d="M-14 0C-6 -9 6 -9 14 0C6 9 -6 9 -14 0Z" fill="#fff"/><circle r="5" fill="#2a6ad0"/><circle r="2.4" fill="#0a0a1a"/></g>' +
-        '<path d="M-80 36H90" stroke="#ffd98a" stroke-width="2.4" stroke-dasharray="6 5" opacity=".7"/>' + oars + '</g>' +
-      crest(300, 392, 80, 22, 0.55) + crest(430, 398, 70, 20, 0.6) +
-      '<path d="M0 440V410C80 398 170 420 260 404S420 396 520 410V440Z" fill="#14062a"/>' +
-      scatter(241, 26, (x, y, r) => '<path d="M' + x + ' ' + y + 'l-4 12" stroke="#c9b4ff" stroke-width="1.6" opacity="' + n(0.25 + r() * 0.35) + '"/>', 150, W, 120, 300);
-  },
-
   // Ice palace spires under an aurora, and a great crystal snowflake.
   'Elsa': () => {
     const arm = a => {

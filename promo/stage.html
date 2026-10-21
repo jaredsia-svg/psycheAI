@@ -62,7 +62,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
 #cardWrap img { width: 740px; display: block; border-radius: 30px; box-shadow: 0 40px 100px rgba(0,0,0,.55); }
 .hl { position: absolute; border: 6px solid #ffd36e; border-radius: 24px; box-shadow: 0 0 40px rgba(255,211,110,.9); }
 .tag { position: absolute; padding: 10px 24px; border-radius: 999px; background: #ffd36e; color: #2a0f22; font-weight: 900; font-size: 30px; white-space: nowrap;
-  left: 50%; top: -30px; transform: translate(-50%,-50%); }
+  left: 50%; top: -14px; transform: translate(-50%,-100%); }
 /* the report grid */
 .tile { position: absolute; width: 440px; height: 360px; border-radius: 30px; overflow: hidden; background: #fff; color: #241a2e;
   box-shadow: 0 30px 80px rgba(0,0,0,.45); }
@@ -321,9 +321,12 @@ const CHIPS = ['Scrolls at 2 a.m.', 'Saves recipes, never cooks', 'Searches \u20
 const chipEls = CHIPS.map(c => { const d = document.createElement('div'); d.className = 'chip'; d.textContent = c; $('chips').appendChild(d); return d; });
 // Values on the left and interests on the right of the same row: one box across both.
 PARTS.interestsValues = { x: PARTS.standFor.x, y: PARTS.standFor.y, w: PARTS.bigFive.x + PARTS.bigFive.w - PARTS.standFor.x, h: PARTS.standFor.h };
+// MBTI on the left and the Big Five on the right of the same row: one box across both, said as one phrase.
+PARTS.typeTraits = { x: PARTS.type.x, y: Math.min(PARTS.type.y, PARTS.bigFive.y), w: PARTS.bigFive.x + PARTS.bigFive.w - PARTS.type.x,
+  h: Math.max(PARTS.type.y + PARTS.type.h, PARTS.bigFive.y + PARTS.bigFive.h) - Math.min(PARTS.type.y, PARTS.bigFive.y) };
 // One box per phrase of the card line, after "You'll get a Psyche Card."
 const HL = [['character', 'Which character you are most like'], ['patterns', 'Signature patterns'], ['motives', 'Your motivations'],
-  ['type', 'Your type'], ['bigFive', 'Your traits'], ['interestsValues', 'Interests & values'], ['love', 'Love languages'],
+  ['typeTraits', 'Type & Traits'], ['interestsValues', 'Interests & values'], ['love', 'Love languages'],
   ['syncs', 'Most in sync with']];
 const hlEls = HL.map(([key, label]) => {
   const p = PARTS[key], CW = 740, CH = CW * PARTS.aspect, box = document.createElement('div'); box.className = 'hl';
@@ -405,11 +408,9 @@ function castOn(el, name) { const i = Math.max(0, CAST.names.indexOf(name)); el.
 castOn($('av1'), 'Mulan'); castOn($('av2'), 'Odysseus'); $('as1').textContent = 'Mulan'; $('as2').textContent = 'Odysseus';
 // The end card's carousel: characters sliding right to left and slowing until the sample card's own,
 // Mulan, stops in the centre, her name appearing under her.
-// Only the five the marketing shows, round and round.
-const SHOWN = ['Rapunzel', 'Sherlock Holmes', 'Odysseus', 'Dr Watson', 'Mulan'];
-const REEL = [].concat(SHOWN, SHOWN, SHOWN, SHOWN, SHOWN);
-// Only the last 15 before her, slowly.
-const REEL_STOP = 4 * SHOWN.length + SHOWN.indexOf('Mulan'), REEL_FROM = REEL_STOP - 15;
+// The cast is never named in the video, so a run of it rolls by: the last 15 before her, slowly.
+const REEL = [].concat(CAST.names, CAST.names, CAST.names);
+const REEL_STOP = 2 * CAST.names.length + Math.max(0, CAST.names.indexOf('Mulan')), REEL_FROM = REEL_STOP - 15;
 const ROLL_END = 2.6, REEL_GAP = 250;
 const reelEls = REEL.map(name => { const d = document.createElement('div'); d.className = 'reel-item'; castOn(d, name); $('reel').appendChild(d); return d; });
 function popAt(el, t, times) {
@@ -561,8 +562,8 @@ function render(t) {
   c = scene(5, t);
   if (c.o) {
     const k = back(prog(c.local, 0, 0.6));
-    // Pan between "your traits" and "your interests and values" so the bottom rows come into view.
-    const pan = -260 * easeIO(prog(t, c.s.marks[5] + 0.1, c.s.marks[6] - 0.05));
+    // Pan between "your type and traits" and "your interests and values" so the bottom rows come into view.
+    const pan = -260 * easeIO(prog(t, c.s.marks[4] + 0.1, c.s.marks[5] - 0.05));
     $('cardWrap').style.transform = 'translateY(' + ((1 - Math.min(1, k)) * 300 + pan) + 'px) scale(' + (0.9 + 0.1 * k + pulse * 0.015) + ') rotate(' + (1 - Math.min(1, k)) * -6 + 'deg)';
     $('cardWrap').style.opacity = prog(c.local, 0, 0.25);
     hlEls.forEach((el, i) => {

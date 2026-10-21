@@ -45,8 +45,8 @@ LINES = [
     (['{B} reads the Instagram,', ('Whatsapp, Google,', 0.8), 'and Facebook data you already have.'], 1.0, True, [0.05, 0.06]),
     # The card's own line is said slower than the list after it, with a beat before the list starts.
     ([("You will get a Psyche Card.", 1.0), "Which character you're most like,", 'your signature patterns,', 'your motivations,',
-      'your type,', 'your traits,', 'your interests and values,', 'your love languages,', "and who you sync with."],
-     0.87, True, [0.45] + [0.06] * 7),
+      'your type and traits,', 'your interests and values,', 'your love languages,', "and who you sync with."],
+     0.87, True, [0.45] + [0.06] * 6),
     # Parts 1 and 2 together as "the full explanations" (the card already showed what they explain).
     (['Then unlock your Psyche Report,', 'which has the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
     # Psyche Sync, after the report: a beat between the two halves.

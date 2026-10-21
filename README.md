@@ -7495,9 +7495,17 @@ anything we advertise with.
 - **Every studio character has a backup:** 23 in all, with the Tin Man, the Gingerbread Man, Gretel
   and Atlas added. `tools/reserve/slots.json` says which backup takes which slot (the Beast is
   Shrek's, Atlas is Hulk's).
-- **The promo videos** were rebuilt (`npm run promo`): the card shows the Ballad of Mulan, Psyche
-  Sync pairs Mulan with Odysseus rather than Baymax, and the end card's carousel rolls only the
-  five (`SHOWN` in `promo/stage.html`).
+- **The promo videos** were rebuilt (`npm run promo`): the card shows the Ballad of Mulan, and Psyche
+  Sync pairs Mulan with a fellow sample character rather than Baymax.
+- **Odysseus is the Trojan Horse** (`tools/art/odysseus.mjs`): his own plan, a muscular wooden war-horse
+  towering over Troy's walls at sunset, the sea and the Greek fleet behind, in place of the storm with
+  the Cyclops, whose round tile showed no ship. Emblem: a horse on wheels.
+- **The promo, rebuilt again:** the card's MBTI and Big Five light as one box, "Type & Traits", said
+  as one phrase ("your type and traits"); every highlight's tag now sits fully above its outline;
+  Psyche Sync pairs Mulan with Odysseus; the end card's carousel rolls a run of the whole cast again
+  (the cast is never named in the video); and from the end card (about 50 s) the music lifts: up a
+  tone, sixteenth hats, a clap on every beat, a bouncing octave bass and the melody an octave up,
+  ending on a bright chord (`LIFT` and `outro` in `promo/audio.py`).
 
 ### Let us roast you
 

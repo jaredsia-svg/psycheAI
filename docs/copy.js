@@ -1665,13 +1665,13 @@
     teacup: '<path d="M8 18h28c0 12-6 20-14 20S8 30 8 18z" fill="currentColor" fill-opacity=".18"/><path d="M8 18h28c0 12-6 20-14 20S8 30 8 18z"/><path d="M36 22c6 0 6 9-1 9"/><path d="M6 42h32"/><path d="M16 12c0-3 3-3 3-6M24 12c0-3 3-3 3-6"/><circle cx="22" cy="27" r="3" fill="currentColor" stroke="none"/>',
     magnifier: '<circle cx="19" cy="19" r="13" fill="currentColor" fill-opacity=".18"/><circle cx="19" cy="19" r="13"/><path d="M28.5 28.5L43 43"/><path d="M31 34l3-3M37 40l3-3"/><path d="M12 15a8 8 0 0 1 6-6"/><ellipse cx="17" cy="21" rx="2.6" ry="4" fill="currentColor" stroke="none"/><ellipse cx="17" cy="27" rx="1.8" ry="2" fill="currentColor" stroke="none"/>',
     bag: '<path d="M6 18h36l3 20c0 3-2 5-5 5H8c-3 0-5-2-5-5z" fill="currentColor" fill-opacity=".18"/><path d="M6 18h36l3 20c0 3-2 5-5 5H8c-3 0-5-2-5-5z"/><path d="M16 18v-5c0-4 3-6 8-6s8 2 8 6v5"/><path d="M4 18c6-4 34-4 40 0"/><path d="M24 25v12M18 31h12"/>',
-    ship: '<path d="M24 5v29"/><path d="M13 8h22"/><path d="M14 9h20c1 7 1 15-1 22H15c-2-7-2-15-1-22z" fill="currentColor" fill-opacity=".18"/><path d="M14 9h20c1 7 1 15-1 22H15c-2-7-2-15-1-22z"/><path d="M20 9v22M28 9v22"/><path d="M4 33c4 4 10 6 20 6s16-2 20-6l-2 5c-3 3-9 5-18 5s-15-2-18-5z" fill="currentColor" fill-opacity=".18"/><path d="M4 33c4 4 10 6 20 6s16-2 20-6l-2 5c-3 3-9 5-18 5s-15-2-18-5z"/><circle cx="9" cy="37" r="1.4" fill="currentColor" stroke="none"/>',
+    horse: '<path d="M10 20c0-3 2-5 5-5h14l5-10h5l3 2-3 5-5 2-2 14H10z" fill="currentColor" fill-opacity=".18"/><path d="M10 20c0-3 2-5 5-5h14l5-10h5l3 2-3 5-5 2-2 14H10z"/><path d="M12 28v8M18 28v8M27 28v8M32 28v8"/><path d="M8 36h28"/><circle cx="12" cy="41" r="3"/><circle cx="32" cy="41" r="3"/><path d="M8 20l-3 8"/><path d="M18 19h8v6h-8z"/>',
     tower: '<path d="M14 18h14v26H14z" fill="currentColor" fill-opacity=".18"/><path d="M14 18h14v26H14z"/><path d="M11 18L21 3l10 15z" fill="currentColor" fill-opacity=".18"/><path d="M11 18L21 3l10 15z"/><path d="M18 27v-3a3 3 0 0 1 6 0v3z"/><path d="M24 27c6 3 2 8 8 11s4 6 10 6"/><path d="M14 33h14M14 39h14"/><path d="M40 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" fill="currentColor" stroke="none"/>',
     flame: '<path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z" fill="currentColor" fill-opacity=".18"/><path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z"/><path d="M24 45c-5 0-7-3-7-7 0-5 4-7 5-12 3 3 6 6 6 10 1-1 2-2 2-4 2 2 3 4 3 6 0 4-3 7-9 7z" fill="currentColor" stroke="none" fill-opacity=".45"/>',
   };
   const CHARACTER_EMBLEMS = {
     'Mulan': 'sword', 'Elsa': 'snowflake', 'Moana': 'wave', 'Simba': 'crown', 'Rapunzel': 'tower',
-    'Sherlock Holmes': 'magnifier', 'Dr Watson': 'bag', 'Odysseus': 'ship',
+    'Sherlock Holmes': 'magnifier', 'Dr Watson': 'bag', 'Odysseus': 'horse',
     'Judy Hopps': 'rabbit', 'Nick Wilde': 'fox', 'Baymax': 'heart',
     'Buzz Lightyear': 'rocket', 'WALL-E': 'seedling', 'Remy': 'whisk', 'Joy': 'arcade',
     'Captain America': 'shield', 'Spider-Man': 'web', 'Hulk': 'mountain',
@@ -1701,8 +1701,8 @@
   // A round tile's square, where a scene's subject sits lower than the usual
   // upper right: Woody's boot stands on the ground, and the usual square
   // showed only its shaft; Dr Watson's bag sits under the window, and
-  // Odysseus's ship and the Cyclops share the middle.
-  const ART_CROPS = { Woody: '200 94 336 336', 'Dr Watson': '236 84 300 300', Odysseus: '236 60 290 290' };
+  // Odysseus's horse rears its head to the top of the scene.
+  const ART_CROPS = { Woody: '200 94 336 336', 'Dr Watson': '236 84 300 300', Odysseus: '300 0 220 220' };
   function characterArt(character, className, crop) {
     // Own properties only: a name such as "toString" from someone else's card
     // must find nothing, not a function.
