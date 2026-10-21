@@ -81,7 +81,7 @@ character strip, `docs/media/cast-sprite.webp` and its `.json` (`tools/cast-spri
 
 ## The privacy reel
 
-A second, short reel (about 25 seconds) walks through the privacy page's four steps:
+A second, short reel (about 24 seconds) walks through the privacy page's four steps:
 
 ```
 npm run promo:privacy            # after a first npm run promo, which sets up .cache
@@ -97,14 +97,16 @@ when it is run itself), lays them out and writes the music and mix. `privacy-sta
 | --- | --- |
 | What happens when you load your Instagram file onto PsycheAI? | the Instagram file lands large in the middle, the WhatsApp, Google and Facebook files smaller around it |
 | Your files stay on your phone. | Step 1: they land in a phone |
-| Only a short summary is made right on your phone, with names removed. | Step 2: they fold into a summary whose name, email, phone number and handle blur into placeholders; *100–200 KB of text* |
-| It's sent encrypted to Google Vertex AI, which never trains on it. | Step 3: it flies up locked to *Google Vertex AI enterprise*; *Never used to train AI* |
+| Only a short summary is made right on your phone, with names removed. | Step 2: the same words; they fold into a summary, *100–200 KB of text* comes in on "short summary", and on "with names removed" (which appears then) its name, email, phone number and handle blur into placeholders |
+| The summary is sent encrypted to Google Vertex AI, which never trains on it. | Step 3: *The summary is sent encrypted*; it flies up locked to *Google Vertex AI enterprise*; *Never used to train AI* |
 | Your results come back to you, and PsycheAI keeps no copy. | Step 4: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps no copy* |
-| PsycheAI takes your data privacy very seriously. | the mark, the line, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
+| See for yourself at PsycheAI dot io. | the mark, *See for yourself*, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
 
 Each line is said in one take at the main video's pace (0.92, its privacy line's). A first cut
 recorded phrases one by one and sped up to fit 20 seconds, and sounded clipped and robotic; "Where
-does your data go?" came out oddly on "data go".
+does your data go?" came out oddly on "data go", and "It's sent encrypted…" sounded off; it now
+starts "The summary is sent…". An ending on "PsycheAI takes your data privacy very seriously" was
+tried and dropped for "See for yourself".
 
 The music is the main video's own track, so the two sound like one brand: it opens on the privacy
 break (pads, plucks and bells, no drums), a soft kick and then hats come in under the steps with a

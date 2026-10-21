@@ -1,4 +1,4 @@
-"""The privacy reel (about 25 s): its voiceover, timeline, music and mix. npm run promo:privacy
+"""The privacy reel (about 24 s): its voiceover, timeline, music and mix. npm run promo:privacy
 
 The same voice as the main video (vo.py, imported for it) and the same track: 118 BPM, C G Am F,
 the bell tune. It opens on the main video's quiet privacy break (pads, plucks, bells, no drums),
@@ -18,9 +18,9 @@ LINES = [
     (['What happens when you load your Instagram file onto {B}?'], 0.92, None),
     (['Your files stay on your phone.'], 0.92, None),
     (['Only a short summary is made right on your phone,', 'with names removed.'], 0.92, None),
-    (["It's sent encrypted to Google Vertex AI,", 'which never trains on it.'], 0.92, None),
+    (['The summary is sent encrypted to Google Vertex AI,', 'which never trains on it.'], 0.92, None),
     (['Your results come back to you,', 'and {B} keeps no copy.'], 0.92, None),
-    (['{B} takes your data privacy very seriously.'], 0.92, None),
+    (['See for yourself at {B} dot I O.'], 0.9, None),
 ]
 
 # The voice is remade only when asked (python privacy.py --vo) or missing: it takes a few minutes.

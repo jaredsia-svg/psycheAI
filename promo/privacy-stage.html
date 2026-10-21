@@ -62,8 +62,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 /* the end card */
 #end { position: absolute; inset: 0; z-index: 30; opacity: 0; }
 #mark { position: absolute; left: 430px; top: 420px; width: 220px; height: 220px; }
-#endName { position: absolute; left: 0; right: 0; top: 660px; text-align: center; font-size: 76px; font-weight: 850; letter-spacing: .02em; }
-#endLine { position: absolute; left: 50px; right: 50px; top: 790px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
+#endName { position: absolute; left: 0; right: 0; top: 670px; text-align: center; font-size: 56px; font-weight: 850; letter-spacing: .02em; }
+#endLine { position: absolute; left: 60px; right: 60px; top: 810px; text-align: center; font-size: 110px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
 #cta { position: absolute; left: 50%; top: 1120px; padding: 30px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; white-space: nowrap; color: #fff;
   background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
 #facts { position: absolute; left: 0; right: 0; top: 1320px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
@@ -76,8 +76,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 
   <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
   <div class="head" id="h1"><div><span class="step">Step 1</span></div><div>Your files stay<br><span class="grad">on your phone</span></div></div>
-  <div class="head" id="h2" style="font-size:76px"><div><span class="step">Step 2</span></div><div>A <span class="grad">short summary</span>,<br>names &amp; numbers removed</div></div>
-  <div class="head" id="h3" style="top:230px;font-size:72px"><div><span class="step">Step 3</span></div><div>Only that is sent,<br><span class="grad">encrypted</span></div></div>
+  <div class="head" id="h2" style="top:230px;font-size:70px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made <span class="grad">right on your phone</span><span class="later">, with names removed</span></div></div>
+  <div class="head" id="h3" style="top:230px;font-size:72px"><div><span class="step">Step 3</span></div><div>The summary is sent<br><span class="grad">encrypted</span></div></div>
   <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
 
   <div id="trail"></div>
@@ -117,7 +117,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="end">
     <svg id="mark" viewBox="0 0 140 140"></svg>
     <div id="endName">PsycheAI</div>
-    <div id="endLine">takes your data privacy<br><span class="grad">very seriously</span></div>
+    <div id="endLine">See for<br><span class="grad">yourself</span></div>
     <div id="cta"></div>
     <div id="facts"><div>&lt;/&gt; The code is public</div><div>No sign-up · No cookies · No trackers</div></div>
   </div>
@@ -149,6 +149,9 @@ function head(i, t) {
   $('h' + i).style.display = t > s.start - 0.2 && t < s.end + 0.1 ? 'block' : 'none';
   parts.forEach((el, k) => { const p = prog(t, (k === last ? s.vo - 0.2 : s.start - 0.05), (k === last ? s.vo + 0.15 : s.start + 0.25));
     el.style.opacity = clamp(p * 2) * out; el.style.transform = 'translateY(' + (1 - ease(p)) * 40 + 'px) scale(' + (0.7 + 0.3 * back(p)) + ')'; });
+  // A line's second half (.later) comes in when the voice reaches it.
+  $('h' + i).querySelectorAll('.later').forEach(el => { const p = prog(t, s.marks[1] - 0.2, s.marks[1] + 0.1);
+    el.style.opacity = clamp(p * 2); el.style.filter = 'blur(' + (1 - p) * 8 + 'px)'; });
 }
 // Where things sit: the phone's screen, and the Vertex panel above it.
 const PHONE = { x: 335, y: 900, w: 410, h: 720 }, SCREEN_MID = { x: 540, y: 1180 }, CLOUD = { x: 540, y: 620 };
@@ -193,13 +196,14 @@ function render(t) {
   const sumIn = back(prog(t, s2.vo + 0.3, s2.vo + 0.7));
   set('summary', clamp(sumIn * 2), 'scale(' + Math.min(1.05, sumIn) + ')');
   ['sw1', 'sw2', 'sw3', 'sw4'].forEach((id, i) => {
-    const at = s2.vo + 1.0 + i * 0.3, k = prog(t, at, at + 0.3), [a, b] = $(id).children;
+    // Blurred into placeholders as the voice says "with names removed".
+    const at = s2.marks[1] - 0.1 + i * 0.22, k = prog(t, at, at + 0.3), [a, b] = $(id).children;
     a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)';
     b.style.color = '#e0457b'; a.style.display = k >= 1 ? 'none' : '';
   });
   $('onphone').style.opacity = prog(t, s1.vo + 0.6, s1.vo + 0.9);
-  // The size of what leaves, under the phone.
-  const kb = back(prog(t, s2.vo + 1.9, s2.vo + 2.3)), kbOut = prog(t, s3.start + 0.1, s3.start + 0.3);
+  // The size of what leaves, under the phone, on "short summary".
+  const kb = back(prog(t, s2.vo + 0.6, s2.vo + 1.0)), kbOut = prog(t, s3.start + 0.1, s3.start + 0.3);
   set('kb', clamp(kb * 2) * (1 - kbOut), 'translateX(-50%) scale(' + Math.min(1.05, kb) + ')');
   // Step 3: the summary leaves the screen as a locked packet and flies up the dashed line to Vertex AI.
   const panelIn = back(prog(t, s3.start + 0.05, s3.start + 0.4)), panelOut = prog(t, s4.marks[1] - 0.3, s4.marks[1]);
@@ -231,13 +235,11 @@ function render(t) {
   const e = t - FINAL;
   $('end').style.opacity = prog(e, -0.05, 0.15); $('end').style.display = e > -0.05 ? 'block' : 'none';
   $('mark').style.transform = 'scale(' + back(prog(e, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + e * 50 + 'deg)';
-  // The name as the voice says it, the rest of the line with "takes".
-  const said = w => (S[5].words.find(([x]) => x === w) || [0, S[5].vo])[1] - FINAL;
-  [['endName', said('psyche') - 0.25], ['endLine', said('takes') - 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
+  [['endName', 0.1], ['endLine', 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
     $(id).style.opacity = clamp(p * 2); $(id).style.transform = 'translateY(' + (1 - Math.min(1, p)) * 40 + 'px) scale(' + (0.7 + 0.3 * p) + ')'; });
-  const cta = back(prog(e, said('very') - 0.1, said('very') + 0.25));
+  const cta = back(prog(t, S[5].words[4][1] - 0.35, S[5].words[4][1]));
   $('cta').style.opacity = clamp(cta * 2); $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * cta + pulse * 0.06 * Math.min(1, cta)) + ')';
-  [...$('facts').children].forEach((el, i) => { const p = back(prog(e, said('seriously') + i * 0.2, said('seriously') + 0.35 + i * 0.2));
+  [...$('facts').children].forEach((el, i) => { const p = back(prog(e, 1.6 + i * 0.2, 1.95 + i * 0.2));
     el.style.opacity = clamp(p * 2); el.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px)'; });
 }
 for (let size = 56; $('cta').offsetWidth > 940 && size > 26; size -= 2) $('cta').style.fontSize = size + 'px';
