@@ -1,6 +1,7 @@
 // Captures the sample Psyche Card for the video: assets/card.png, and
 // assets/card-parts.json with where each part sits on it (as fractions of the
-// card), which the stage uses to draw its highlight boxes.
+// card), which the stage uses to draw its highlight boxes. Also the sample
+// report's opening, assets/report.png, for the privacy reel.
 //
 //   node promo/capture.mjs
 //
@@ -58,6 +59,19 @@ try {
   const { writeFileSync } = await import('node:fs');
   writeFileSync(dir + '/assets/card-parts.json', JSON.stringify(parts, null, 1) + '\n');
   console.log('card parts', Object.keys(parts).join(', '));
+
+  // The sample report's opening, for the privacy reel (assets/report.png): from its part nav (00 to 05)
+  // down, as tall as 1.4 times its width, without the dialog's title bar.
+  const report = await browser.newPage({ viewport: { width: 400, height: 1000 }, deviceScaleFactor: 3 });
+  await report.goto('http://localhost:' + PORT + '/#sample');
+  await report.waitForSelector('#sample-dialog[open] #sample-body');
+  await report.waitForTimeout(1200);
+  const box = await report.evaluate(() => {
+    const dialog = document.querySelector('#sample-dialog').getBoundingClientRect();
+    return { x: dialog.left, width: dialog.width, y: document.querySelector('#sample-body').getBoundingClientRect().top };
+  });
+  await report.screenshot({ path: dir + '/assets/report.png',
+    clip: { x: box.x, y: box.y + 8, width: box.width, height: Math.round(box.width * 1.4) } });
 } finally {
   await browser.close();
   server.kill();

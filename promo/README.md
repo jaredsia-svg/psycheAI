@@ -81,7 +81,7 @@ character strip, `docs/media/cast-sprite.webp` and its `.json` (`tools/cast-spri
 
 ## The privacy reel
 
-A second, short reel (about 20 seconds) walks through the privacy page's four steps:
+A second, short reel (about 25 seconds) walks through the privacy page's four steps:
 
 ```
 npm run promo:privacy            # after a first npm run promo, which sets up .cache
@@ -91,12 +91,20 @@ npm run promo:privacy -- --vo    # remake its voice too
 `out/PsycheAI-privacy.mp4` (post this), `out/PsycheAI-privacy-music-only.mp4` and `out/PsycheAI-privacy-cover.jpg`.
 `privacy.py` speaks its six lines with the same voice (it imports `vo.py`, whose own lines only run
 when it is run itself), lays them out and writes the music and mix. `privacy-stage.html` draws it, and
-`render.mjs privacy` renders it. The scenes: *Where does your data go?* with the four files floating;
-Step 1, they land in a phone; Step 2, they fold into a summary whose name, email and handle blur into
-placeholders, with *100–200 KB of text* under it; Step 3, it flies up locked to *Google Vertex AI
-enterprise*, with *Never used to train AI*; Step 4, the card and report come back down, with *PsycheAI
-keeps no copy*; then *See for yourself*, the reel's button, *The code is public* and *No sign-up · No
-cookies · No trackers*.
+`render.mjs privacy` renders it. The script and scenes:
+
+| Line | On screen |
+| --- | --- |
+| What happens when you load your Instagram file onto PsycheAI? | the Instagram file lands large in the middle, the WhatsApp, Google and Facebook files smaller around it |
+| Your files stay on your phone. | Step 1: they land in a phone |
+| Only a short summary is made right on your phone, with names removed. | Step 2: they fold into a summary whose name, email, phone number and handle blur into placeholders; *100–200 KB of text* |
+| It's sent encrypted to Google Vertex AI, which never trains on it. | Step 3: it flies up locked to *Google Vertex AI enterprise*; *Never used to train AI* |
+| Your results come back to you, and PsycheAI keeps no copy. | Step 4: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps no copy* |
+| PsycheAI takes your data privacy very seriously. | the mark, the line, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
+
+Each line is said in one take at the main video's pace (0.92, its privacy line's). A first cut
+recorded phrases one by one and sped up to fit 20 seconds, and sounded clipped and robotic; "Where
+does your data go?" came out oddly on "data go".
 
 The music is the main video's own track, so the two sound like one brand: it opens on the privacy
 break (pads, plucks and bells, no drums), a soft kick and then hats come in under the steps with a
@@ -137,7 +145,8 @@ npm run promo:card
 
 It starts the app in mock mode on its own port, opens the sample card full screen, saves the
 picture and measures each part with the same selectors the card guide uses (`syncs` included, for
-the *Most in sync with* highlight).
+the *Most in sync with* highlight). It also saves the sample report's opening, `assets/report.png`,
+for the privacy reel.
 
 ## Checking a scene without rendering it all
 

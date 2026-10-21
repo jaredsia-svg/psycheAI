@@ -57,14 +57,13 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   white-space: nowrap; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.14); z-index: 9; }
 .pill em { font-style: normal; color: #e0457b; }
 #result { position: absolute; z-index: 8; width: 170px; border-radius: 16px; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
-#report { position: absolute; z-index: 8; width: 170px; height: 240px; border-radius: 16px; background: #fff; box-shadow: 0 20px 50px rgba(90,40,120,.3); padding: 22px 18px; }
-#report b { display: block; height: 16px; border-radius: 8px; background: #eadff2; margin-bottom: 14px; }
-#report b:first-child { background: linear-gradient(90deg, #e0457b, #8a3fd0); width: 70%; height: 20px; }
+/* the sample report's opening (assets/report.png, from capture.mjs) */
+#report { position: absolute; z-index: 8; width: 170px; border-radius: 16px; border: 2px solid #eadff2; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
 /* the end card */
 #end { position: absolute; inset: 0; z-index: 30; opacity: 0; }
 #mark { position: absolute; left: 430px; top: 420px; width: 220px; height: 220px; }
-#endName { position: absolute; left: 0; right: 0; top: 670px; text-align: center; font-size: 56px; font-weight: 850; letter-spacing: .02em; }
-#endLine { position: absolute; left: 60px; right: 60px; top: 810px; text-align: center; font-size: 110px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
+#endName { position: absolute; left: 0; right: 0; top: 660px; text-align: center; font-size: 76px; font-weight: 850; letter-spacing: .02em; }
+#endLine { position: absolute; left: 50px; right: 50px; top: 790px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
 #cta { position: absolute; left: 50%; top: 1120px; padding: 30px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; white-space: nowrap; color: #fff;
   background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
 #facts { position: absolute; left: 0; right: 0; top: 1320px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
@@ -75,11 +74,11 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
   <div id="sparks"></div>
 
-  <div class="head" id="h0" style="top:330px;font-size:104px"><div>Where does your<br><span class="grad">data</span> go?</div></div>
+  <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
   <div class="head" id="h1"><div><span class="step">Step 1</span></div><div>Your files stay<br><span class="grad">on your phone</span></div></div>
-  <div class="head" id="h2"><div><span class="step">Step 2</span></div><div>A <span class="grad">short summary</span>,<br>names removed</div></div>
+  <div class="head" id="h2" style="font-size:76px"><div><span class="step">Step 2</span></div><div>A <span class="grad">short summary</span>,<br>names &amp; numbers removed</div></div>
   <div class="head" id="h3" style="top:230px;font-size:72px"><div><span class="step">Step 3</span></div><div>Only that is sent,<br><span class="grad">encrypted</span></div></div>
-  <div class="head" id="h4"><div><span class="step">Step 4</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
+  <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
 
   <div id="trail"></div>
   <div id="vertex"><div class="cloud"><svg viewBox="0 0 48 48" width="84" height="84" fill="none" stroke="#8a3fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -96,7 +95,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="summary"><h5>Summary</h5>
       <div><span class="k">name:</span> <span class="swap" id="sw1"><span>"Alex Tan"</span><span>"[name]"</span></span></div>
       <div><span class="k">email:</span> <span class="swap" id="sw2"><span>"alex@mail.com"</span><span>"[email]"</span></span></div>
-      <div><span class="k">chat:</span> "w/ <span class="swap" id="sw3"><span>@jamie.k</span><span>[P1]</span></span>"</div>
+      <div><span class="k">phone:</span> <span class="swap" id="sw3"><span>"+65 9123 4567"</span><span>"[number]"</span></span></div>
+      <div><span class="k">chat:</span> "w/ <span class="swap" id="sw4"><span>@jamie.k</span><span>[P1]</span></span>"</div>
     </div>
     <div id="sent"><svg viewBox="0 0 48 48" width="96" height="96" fill="none" stroke="#e0457b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="19" stroke="#f0d6e6"/><path d="M15 24.5l6.5 6.5L33 18"/></svg><div>Summary sent,<br>encrypted</div></div>
     <div id="onphone">On your phone</div>
@@ -112,12 +112,12 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="packet"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg></div>
   <img id="result" src="assets/card.png">
-  <div id="report"><b></b><b></b><b style="width:80%"></b><b></b><b style="width:60%"></b><b></b><b style="width:75%"></b></div>
+  <img id="report" src="assets/report.png">
 
   <div id="end">
     <svg id="mark" viewBox="0 0 140 140"></svg>
     <div id="endName">PsycheAI</div>
-    <div id="endLine">See for<br><span class="grad">yourself</span></div>
+    <div id="endLine">takes your data privacy<br><span class="grad">very seriously</span></div>
     <div id="cta"></div>
     <div id="facts"><div>&lt;/&gt; The code is public</div><div>No sign-up · No cookies · No trackers</div></div>
   </div>
@@ -152,7 +152,8 @@ function head(i, t) {
 }
 // Where things sit: the phone's screen, and the Vertex panel above it.
 const PHONE = { x: 335, y: 900, w: 410, h: 720 }, SCREEN_MID = { x: 540, y: 1180 }, CLOUD = { x: 540, y: 620 };
-const FILE_AT = [[110, 720], [670, 660], [140, 1180], [650, 1240]];
+// The Instagram file large in the middle, the other three smaller around it.
+const FILE_AT = [[390, 900], [720, 700], [60, 1200], [720, 1320]], FILE_SIZE = [1.35, 0.8, 0.8, 0.8];
 
 function render(t) {
   const si = S.findIndex(s => t < s.end); const cur = si < 0 ? S.length - 1 : si;
@@ -170,13 +171,15 @@ function render(t) {
   for (let i = 0; i < 5; i++) head(i, t);
 
   const [s0, s1, s2, s3, s4] = S;
+  const said0 = w => (s0.words.find(([x]) => x === w) || [0, s0.vo + 1])[1];
   // The hook: the four files float in around the question, then fly into the phone's screen on Step 1.
   ['f0', 'f1', 'f2', 'f3'].forEach((id, i) => {
-    const pin = back(prog(t, 0.1 + i * 0.12, 0.5 + i * 0.12)), fly = easeIO(prog(t, s1.start - 0.1 + i * 0.07, s1.start + 0.45 + i * 0.07));
+    const due = i ? said0('onto') + (i - 1) * 0.12 : said0('instagram') - 0.2;
+    const pin = back(prog(t, due, due + 0.4)), fly = easeIO(prog(t, s1.start - 0.1 + i * 0.07, s1.start + 0.45 + i * 0.07));
     const [x0, y0] = FILE_AT[i], bob = Math.sin(t * 2.4 + i * 1.7) * 14;
     const x = x0 + (SCREEN_MID.x - 150 - x0) * fly, y = y0 + bob + (SCREEN_MID.y - 70 - y0) * fly;
     const el = $(id); el.style.left = x + 'px'; el.style.top = y + 'px';
-    set(id, clamp(pin * 1.5) * (1 - prog(fly, 0.75, 1)), 'scale(' + (pin * (1 - 0.6 * fly)) + ') rotate(' + ((i % 2 ? 6 : -6) * (1 - fly)) + 'deg)');
+    set(id, clamp(pin * 1.5) * (1 - prog(fly, 0.75, 1)), 'scale(' + (pin * FILE_SIZE[i] * (1 - (1 - 0.4 / FILE_SIZE[i]) * fly)) + ') rotate(' + ((i % 2 ? 6 : -6) * (1 - fly)) + 'deg)');
   });
   // The phone rises in as the files arrive and stays until the last card.
   const phoneIn = back(prog(t, s1.start - 0.25, s1.start + 0.25)), phoneOut = prog(t, FINAL - 0.15, FINAL + 0.15);
@@ -189,8 +192,8 @@ function render(t) {
   });
   const sumIn = back(prog(t, s2.vo + 0.3, s2.vo + 0.7));
   set('summary', clamp(sumIn * 2), 'scale(' + Math.min(1.05, sumIn) + ')');
-  ['sw1', 'sw2', 'sw3'].forEach((id, i) => {
-    const at = s2.vo + 1.0 + i * 0.32, k = prog(t, at, at + 0.3), [a, b] = $(id).children;
+  ['sw1', 'sw2', 'sw3', 'sw4'].forEach((id, i) => {
+    const at = s2.vo + 1.0 + i * 0.3, k = prog(t, at, at + 0.3), [a, b] = $(id).children;
     a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)';
     b.style.color = '#e0457b'; a.style.display = k >= 1 ? 'none' : '';
   });
@@ -228,11 +231,13 @@ function render(t) {
   const e = t - FINAL;
   $('end').style.opacity = prog(e, -0.05, 0.15); $('end').style.display = e > -0.05 ? 'block' : 'none';
   $('mark').style.transform = 'scale(' + back(prog(e, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + e * 50 + 'deg)';
-  [['endName', 0.1], ['endLine', 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
+  // The name as the voice says it, the rest of the line with "takes".
+  const said = w => (S[5].words.find(([x]) => x === w) || [0, S[5].vo])[1] - FINAL;
+  [['endName', said('psyche') - 0.25], ['endLine', said('takes') - 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
     $(id).style.opacity = clamp(p * 2); $(id).style.transform = 'translateY(' + (1 - Math.min(1, p)) * 40 + 'px) scale(' + (0.7 + 0.3 * p) + ')'; });
-  const cta = back(prog(t, S[5].words[4][1] - 0.35, S[5].words[4][1]));
+  const cta = back(prog(e, said('very') - 0.1, said('very') + 0.25));
   $('cta').style.opacity = clamp(cta * 2); $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * cta + pulse * 0.06 * Math.min(1, cta)) + ')';
-  [...$('facts').children].forEach((el, i) => { const p = back(prog(e, 1.6 + i * 0.2, 1.95 + i * 0.2));
+  [...$('facts').children].forEach((el, i) => { const p = back(prog(e, said('seriously') + i * 0.2, said('seriously') + 0.35 + i * 0.2));
     el.style.opacity = clamp(p * 2); el.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px)'; });
 }
 for (let size = 56; $('cta').offsetWidth > 940 && size > 26; size -= 2) $('cta').style.fontSize = size + 'px';

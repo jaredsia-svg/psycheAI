@@ -1,4 +1,4 @@
-"""The privacy reel (about 19 s): its voiceover, timeline, music and mix. npm run promo:privacy
+"""The privacy reel (about 25 s): its voiceover, timeline, music and mix. npm run promo:privacy
 
 The same voice as the main video (vo.py, imported for it) and the same track: 118 BPM, C G Am F,
 the bell tune. It opens on the main video's quiet privacy break (pads, plucks, bells, no drums),
@@ -12,14 +12,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = HERE + '/build/privacy'
 os.makedirs(BUILD, exist_ok=True)
 
-# (phrases, length scale, record each phrase on its own[, pause]), as in vo.py. One line a scene.
+# (phrases, length scale, record each phrase on its own[, pause]), as in vo.py. One line a scene, each
+# said in one take at the main video's pace (0.92, its privacy line's): phrase by phrase, or faster, sounded clipped.
 LINES = [
-    (['Where does your data go?'], 0.88, None),
-    (['Your files stay on your phone.'], 0.85, None),
-    (['Only a short summary is made, with names removed.'], 0.84, None),
-    (["It's sent encrypted to Google Vertex AI,", 'which never trains on it.'], 0.84, True, 0.06),
-    (['Your results come back to you,', 'and {B} keeps no copy.'], 0.86, True, 0.06),
-    (['See for yourself at {B} dot I O.'], 0.9, None),
+    (['What happens when you load your Instagram file onto {B}?'], 0.92, None),
+    (['Your files stay on your phone.'], 0.92, None),
+    (['Only a short summary is made right on your phone,', 'with names removed.'], 0.92, None),
+    (["It's sent encrypted to Google Vertex AI,", 'which never trains on it.'], 0.92, None),
+    (['Your results come back to you,', 'and {B} keeps no copy.'], 0.92, None),
+    (['{B} takes your data privacy very seriously.'], 0.92, None),
 ]
 
 # The voice is remade only when asked (python privacy.py --vo) or missing: it takes a few minutes.
@@ -46,15 +47,15 @@ marks = marks['lines']
 
 BPM = 118; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
-# The hook holds for the files to float in; each step snaps to the half beat, as in the main video's hook.
-minimum = {0: 1.8}
+# Each step snaps to the half beat, as in the main video's hook.
+minimum = {}
 EXTRA_LEAD = {5: 0.25}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
     lead = 0.3 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
     length = max(lead + d + GAP, minimum.get(i, 0))
-    # The last card holds on the address and the button.
+    # The last card holds on the line and the button.
     end = t + lead + d + 1.2 if i == len(dur) - 1 else snap(t + length, BEAT / 2)
     scenes.append({'start': round(t, 3), 'end': round(end, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
