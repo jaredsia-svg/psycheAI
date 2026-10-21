@@ -148,12 +148,9 @@ K, C = kick(), clap()
 H, HO = hat(), hat(True)
 pump = np.ones(n, np.float32)   # sidechain from the kick
 b = 0.0; step = 0
-# The end card is the drop's groove, a touch livelier: an open hat on every offbeat and a ghost clap on
-# 1 and 3. (A bigger lift, up a tone with sixteenths and an octave bass, stood apart from the rest.)
 while b < TOTAL + BEAT:
     bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
-    outro = b >= FINAL and b < TOTAL - 0.6
-    full = (DROP <= b < BREAK) or outro
+    full = (DROP <= b < BREAK) or (b >= FINAL and b < TOTAL - 1.0)
     mid = INTRO_END <= b < DROP
     # Kick: light on 1 in the hook, every beat from the footprint, four on the floor in the drop.
     if full or mid or (b < INTRO_END and beat_i == 0):
@@ -161,11 +158,10 @@ while b < TOTAL + BEAT:
         a = int(b * SR); L = int(0.22 * SR)
         if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
     if full and beat_i in (1, 3): at(b, C, 0.9)
-    if outro and beat_i in (0, 2): at(b, C, 0.35)
     if full or mid:
         for k in range(4 if full else 2):
             at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
-        if (outro or (full and beat_i == 3)): at(b + BEAT / 2, HO, 0.4 if outro else 0.5, -0.3)
+        if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3)
     # Bass: offbeat pumping in the drop, roots elsewhere after the hook.
     if full:
         at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0)
@@ -179,9 +175,13 @@ while b < TOTAL + BEAT:
         at(b + k * BEAT / 2, pluck(m, 0.1 if b < DROP else 0.08), 1.0, 0.4 if k else -0.4)
     # Chord stabs on the beat in the drop.
     if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
-    # Bell melody in the drop and in the break.
+    # Bell melody in the drop and in the break; on the end card it leads, a little louder each beat
+    # (see the crescendo below).
     if (full or BREAK <= b < FINAL) and b >= DROP:
-        at(b, bell(MELODY[bar_i][beat_i]), 0.9, 0.15)
+        lead = min(1, (b - FINAL + BEAT) / (2 * BEAT)) if b >= FINAL else 0
+        at(b, bell(MELODY[bar_i][beat_i]), 0.9 + 0.6 * lead, 0.15)
+        # A soft octave above the tune on the end card, for a brighter, happier finish.
+        if lead: at(b, bell(MELODY[bar_i][beat_i] + 12), 0.28 * lead, -0.15)
     b += BEAT
 
 # Pads under the hook and the break.
@@ -206,8 +206,15 @@ music *= fade[:, None]
 music /= max(1e-6, np.abs(music).max())
 
 envv = lowpass(np.abs(voice), 8.0); envv /= max(1e-6, envv.max())
-duck = 1 - 0.5 * np.clip(envv * 2.4, 0, 1)
-mix = music * (0.42 * duck)[:, None] + voice[:, None] * 0.95
+# After the quiet privacy break ("...keeps no copy.") and the swoosh into the end card, the music
+# swells at once, right on the hit at the end of the swoosh: three quarters as loud again within a
+# third of a second, and ducked less under the closing line, so the ending lands as a bright contrast.
+swell_in = np.ones(n, np.float32)
+f0 = int(FINAL * SR); f1 = min(n, int((FINAL + 0.35) * SR))
+swell_in[f0:f1] = np.linspace(1.0, 1.75, f1 - f0); swell_in[f1:] = 1.75
+depth = np.where(np.arange(n) >= f0, 0.25, 0.5).astype(np.float32)
+duck = 1 - depth * np.clip(envv * 2.4, 0, 1)
+mix = music * (0.42 * duck * swell_in)[:, None] + voice[:, None] * 0.95
 mix = np.tanh(mix * 1.15) / np.tanh(1.15)
 # 0.89 leaves AAC about 1 dB of headroom, so the encoded file never clips.
 mix /= max(1e-6, np.abs(mix).max()) / 0.89

@@ -7503,9 +7503,12 @@ anything we advertise with.
 - **The promo, rebuilt again:** the card's MBTI and Big Five light as one box, "Type & Traits", said
   as one phrase ("your type and traits"); every highlight's tag now sits fully above its outline;
   Psyche Sync pairs Mulan with Odysseus; the end card's carousel rolls a run of the whole cast again
-  (the cast is never named in the video); and the end card (about 50 s) keeps the drop's groove a
-  touch livelier, an open hat on every offbeat and a soft clap on 1 and 3 (`outro` in
-  `promo/audio.py`). A bigger lift, up a tone with sixteenths, was tried and stood apart from the rest.
+  (the cast is never named in the video); and the end card (about 50 s) is the original ending, the
+  drop's groove after the swoosh and hit, made to land as a contrast with the quiet privacy break: the
+  music swells three quarters louder within a third of a second of the hit and dips less under the
+  closing line, and the bell melody leads, with a soft octave above it (`swell_in` and `lead` in
+  `promo/audio.py`). Tried and dropped: a lift up a tone with sixteenths; offbeat hats and ghost
+  claps; whooshes under the spinning carousel. Each stood apart from the rest of the track.
   The pulse in the animation and the kick share one 118 BPM grid from 0 s, every scene cut lands on
   it, and the encoded audio lines up with the mix to the sample.
 
