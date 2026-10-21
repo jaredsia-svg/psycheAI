@@ -89,6 +89,8 @@ npm run promo:privacy -- --vo    # remake its voice too
 ```
 
 `out/PsycheAI-privacy.mp4` (post this), `out/PsycheAI-privacy-music-only.mp4` and `out/PsycheAI-privacy-cover.jpg`.
+It also writes the privacy page's copy, `docs/media/psycheai-privacy.mp4` (720 wide) and its poster
+`psycheai-privacy-poster.webp` (the cover's frame); commit `docs/media/` after a rebuild.
 `privacy.py` speaks its six lines with the same voice (it imports `vo.py`, whose own lines only run
 when it is run itself), lays them out and writes the music and mix. `privacy-stage.html` draws it, and
 `render.mjs privacy` renders it. The script and scenes:
@@ -113,6 +115,13 @@ break (pads, plucks and bells, no drums), a soft kick and then hats come in unde
 swoosh into each, and the last card gets the main video's ending (riser, hit, full beat, the bells
 louder with an octave above, and the music swelling on the hit). The words pop in a line at a time
 rather than word by word: on "It's sent encrypted to Google Vertex AI" the word timer lost its place.
+
+## The privacy post
+
+`node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the
+feed's 4:5) of the privacy page's diagram: the four steps, *Never leaves your phone* and *The code is
+public · psycheai.io*. Its words are the page's, shortened to fit (`post-privacy.html`); change both
+together.
 
 ## Keeping the voice on the music
 

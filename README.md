@@ -8362,7 +8362,10 @@ and 179,000 characters), names removed, checked by the reader; only that summary
 Google Vertex AI enterprise, which does not train on it; the results (card, report, Syncs) come back and
 are saved only on the phone. A panel lists what never leaves (photos, videos, the data files, full
 messages), and a line links the public client code. The front page carries a compact four-icon version
-of it (`.mini-flow`) above the no-copy line, linking to `/privacy#flow-title`. The site now names only
+of it (`.mini-flow`) above the no-copy line, linking to `/privacy#flow-title`. The diagram opens with the 24-second
+privacy reel (`promo/`, `npm run promo:privacy`) as a plain click-to-play `<video>` (`.flow-video`,
+300 px wide, `preload="none"`, 1.3 MB at 720 wide): readers checking privacy get the short version first,
+the steps under it. It is not on the front page, which already has the main video and the compact flow. The site now names only
 Vertex AI as the provider, since that is what production runs.
 
 ### Three pools, by kind of evidence

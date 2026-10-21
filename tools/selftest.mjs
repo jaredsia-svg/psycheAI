@@ -8907,6 +8907,12 @@ check('the schema requires evidence on where they align and differ',
     /locked so PsycheAI cannot read it, and deleted once\s+your device has it, or after 30 days/.test(faq) &&
       /encrypted the same way with your link’s key, so PsycheAI cannot read them\. They are deleted once your device has them, or after 30 days/.test(privacyPage) &&
       /if you choose to share it, before syncing or later/.test(privacyPage));
+  // The privacy reel on the privacy page plays only when pressed, and its files are there and small.
+  const reel = join(root, 'docs', 'media', 'psycheai-privacy.mp4');
+  check('the privacy page carries the privacy reel, loaded only when played',
+    /<video controls[^>]*preload="none"[^>]*poster="media\/psycheai-privacy-poster\.webp"/.test(privacyPage) &&
+      /<source src="media\/psycheai-privacy\.mp4" type="video\/mp4">/.test(privacyPage) &&
+      existsSync(reel) && statSync(reel).size < 3e6 && existsSync(join(root, 'docs', 'media', 'psycheai-privacy-poster.webp')));
 }
 
 // ---------- WhatsApp chats ----------

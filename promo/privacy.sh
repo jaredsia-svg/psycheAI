@@ -15,4 +15,8 @@ cp build/privacy/video.mp4 out/PsycheAI-privacy.mp4
 # The cover: Step 3, the summary at Vertex AI and "Never used to train AI".
 COVER=$($PY -c "import json; s = json.load(open('build/privacy/timeline.json'))['scenes'][3]; print(s['end'] - 0.4)")
 "$FF" -y -v error -ss "$COVER" -i build/privacy/video.mp4 -frames:v 1 -q:v 2 out/PsycheAI-privacy-cover.jpg
-ls -lh out/PsycheAI-privacy*
+# The privacy page's copy: 720 wide and click to play, with a WebP poster of the same frame.
+"$FF" -y -v error -i build/privacy/video.mp4 -vf scale=720:-2 -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p \
+  -c:a aac -b:a 96k -movflags +faststart ../docs/media/psycheai-privacy.mp4
+"$FF" -y -v error -ss "$COVER" -i build/privacy/video.mp4 -frames:v 1 -vf scale=720:-2 -c:v libwebp -quality 85 ../docs/media/psycheai-privacy-poster.webp
+ls -lh out/PsycheAI-privacy* ../docs/media/psycheai-privacy*
