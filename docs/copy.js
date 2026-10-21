@@ -1643,7 +1643,7 @@
     rocket: '<path d="M24 3c8 6 10 16 8 26H16c-2-10 0-20 8-26z" fill="currentColor" fill-opacity=".18"/><path d="M24 3c8 6 10 16 8 26H16c-2-10 0-20 8-26z"/><circle cx="24" cy="16" r="4"/><path d="M16 22l-7 7v6l7-4M32 22l7 7v6l-7-4"/><path d="M19 33c0 5 2 9 5 12 3-3 5-7 5-12z" fill="currentColor" stroke="none" fill-opacity=".35"/><path d="M19 33c0 5 2 9 5 12 3-3 5-7 5-12"/><path d="M6 10v4M4 12h4M41 6v3M39.5 7.5h3"/>',
     seedling: '<path d="M24 38V20"/><path d="M24 26c0-8-6-12-15-12 0 8 6 12 15 12z" fill="currentColor" fill-opacity=".18"/><path d="M24 26c0-8-6-12-15-12 0 8 6 12 15 12z"/><path d="M24 21c0-8 6-12 15-12 0 8-6 12-15 12z" fill="currentColor" fill-opacity=".18"/><path d="M24 21c0-8 6-12 15-12 0 8-6 12-15 12z"/><path d="M15 20l4 3M33 15l-4 3"/><path d="M12 38h24l-3 7H15z" fill="currentColor" fill-opacity=".18"/><path d="M12 38h24l-3 7H15z"/><circle cx="40" cy="30" r="1.5"/>',
     whisk: '<path d="M14 22a7 7 0 0 1 2-13 8 8 0 0 1 16 0 7 7 0 0 1 2 13v6H14z" fill="currentColor" fill-opacity=".18"/><path d="M14 22a7 7 0 0 1 2-13 8 8 0 0 1 16 0 7 7 0 0 1 2 13v6H14z"/><path d="M14 28h20v5H14z"/><path d="M20 22v6M28 22v6M24 21v7"/><path d="M24 33v12M20 45h8"/>',
-    sun: '<circle cx="24" cy="24" r="9" fill="currentColor" fill-opacity=".18"/><circle cx="24" cy="24" r="9"/><path d="M36 24L44 24 M34.4 30L38.7 32.5 M30 34.4L34 41.3 M24 36L24 41 M18 34.4L14 41.3 M13.6 30L9.3 32.5 M12 24L4 24 M13.6 18L9.3 15.5 M18 13.6L14 6.7 M24 12L24 7 M30 13.6L34 6.7 M34.4 18L38.7 15.5"/><circle cx="21" cy="22" r="1.2" fill="currentColor" stroke="none"/><circle cx="27" cy="22" r="1.2" fill="currentColor" stroke="none"/><path d="M20.5 26c2 2.5 5 2.5 7 0"/>',
+    arcade: '<rect x="6" y="3" width="36" height="42" rx="5" fill="currentColor" fill-opacity=".18"/><rect x="6" y="3" width="36" height="42" rx="5"/><circle cx="15" cy="12" r="3.6"/><circle cx="24" cy="12" r="3.6"/><circle cx="33" cy="12" r="3.6"/><circle cx="19.5" cy="19.5" r="3.6"/><circle cx="28.5" cy="19.5" r="3.6"/><circle cx="24" cy="31" r="3.6" fill="currentColor" stroke="none"/><path d="M18 40a6 6 0 0 1 12 0"/><path d="M24 39l-2-6"/>',
     wrench: '<path d="M31 5a10 10 0 0 0-9 13L6 34a4.2 4.2 0 0 0 6 6l16-16a10 10 0 0 0 13-9l-6 6-7-2-2-7z" fill="currentColor" fill-opacity=".18"/><path d="M31 5a10 10 0 0 0-9 13L6 34a4.2 4.2 0 0 0 6 6l16-16a10 10 0 0 0 13-9l-6 6-7-2-2-7z"/><circle cx="9" cy="37" r="1.4"/><path d="M38 34l4 2.3v4.6L38 43.2l-4-2.3v-4.6z"/>',
     shield: '<path d="M8 8h32v14c0 11-8 18-16 22C16 40 8 33 8 22z" fill="currentColor" fill-opacity=".18"/><path d="M8 8h32v14c0 11-8 18-16 22C16 40 8 33 8 22z"/><path d="M24 8v36M8 22h32"/><circle cx="12" cy="12" r="1"/><circle cx="36" cy="12" r="1"/><path d="M24 14l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z" fill="currentColor" stroke="none"/>',
     web: '<path d="M24 22L24 2 M24 22L38.1 7.9 M24 22L44 22 M24 22L38.1 36.1 M24 22L24 42 M24 22L9.9 36.1 M24 22L4 22 M24 22L9.9 7.9"/><path d="M24 16 Q25.9 17.5 28.2 17.8 Q28.5 20.1 30 22 Q28.5 23.9 28.2 26.2 Q25.9 26.5 24 28 Q22.1 26.5 19.8 26.2 Q19.5 23.9 18 22 Q19.5 20.1 19.8 17.8 Q22.1 17.5 24 16 M24 11 Q27.5 13.7 31.8 14.2 Q32.3 18.5 35 22 Q32.3 25.5 31.8 29.8 Q27.5 30.3 24 33 Q20.5 30.3 16.2 29.8 Q15.7 25.5 13 22 Q15.7 18.5 16.2 14.2 Q20.5 13.7 24 11 M24 6 Q29 9.9 35.3 10.7 Q36.1 17 40 22 Q36.1 27 35.3 33.3 Q29 34.1 24 38 Q19 34.1 12.7 33.3 Q11.9 27 8 22 Q11.9 17 12.7 10.7 Q19 9.9 24 6"/><path d="M38 30v8"/><circle cx="38" cy="40.5" r="2.5" fill="currentColor" stroke="none"/><path d="M35 39l-2-1M35 42l-2 1M41 39l2-1M41 42l2 1"/>',
@@ -1656,27 +1656,33 @@
     mushroom: '<path d="M5 24C5 13 13 6 24 6s19 7 19 18z" fill="currentColor" fill-opacity=".18"/><path d="M5 24C5 13 13 6 24 6s19 7 19 18z"/><path d="M17 24v13c0 4 3 6 7 6s7-2 7-6V24"/><path d="M5 24h38"/><circle cx="15" cy="15" r="3.2" fill="currentColor" stroke="none" fill-opacity=".5"/><circle cx="31" cy="13" r="3.6" fill="currentColor" stroke="none" fill-opacity=".5"/><circle cx="24" cy="19" r="2" fill="currentColor" stroke="none" fill-opacity=".5"/><circle cx="21" cy="31" r="1.2" fill="currentColor" stroke="none"/><circle cx="27" cy="31" r="1.2" fill="currentColor" stroke="none"/><path d="M3 45h42"/>',
     compass: '<circle cx="24" cy="24" r="20"/><path d="M39.5 24L42 24 M35 35L36.7 36.7 M24 39.5L24 42 M13 35L11.3 36.7 M8.5 24L6 24 M13 13L11.3 11.3 M24 8.5L24 6 M35 13L36.7 11.3"/><path d="M24 8l4 16-4 16-4-16z" fill="currentColor" fill-opacity=".18"/><path d="M24 8l4 16-4 16-4-16z"/><path d="M8 24l16-4 16 4-16 4z"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><circle cx="24" cy="24" r="2"/>',
     leaf: '<path d="M6 42C6 20 20 6 42 6c0 22-14 36-36 36z" fill="currentColor" fill-opacity=".18"/><path d="M6 42C6 20 20 6 42 6c0 22-14 36-36 36z"/><path d="M6 42L32 16"/><path d="M14 34l-1-8M20 28l-1-9M26 22v-8M14 34l8 1M20 28l9 1M26 22l8 1"/>',
-    onion: '<path d="M24 8c-9 9-17 15-17 23a17 13 0 0 0 34 0c0-8-8-14-17-23z" fill="currentColor" fill-opacity=".18"/><path d="M24 8c-9 9-17 15-17 23a17 13 0 0 0 34 0c0-8-8-14-17-23z"/><path d="M24 14c-5 6-10 11-10 17a10 9 0 0 0 20 0c0-6-5-11-10-17z"/><path d="M24 20c-2 4-4 7-4 11a4 5 0 0 0 8 0c0-4-2-7-4-11z"/><path d="M24 8c0-3 1-5 3-6M24 8c-1-2-3-3-5-3"/><path d="M18 44l-1 2M24 44v2M30 44l1 2"/>',
+    treehouse: '<path d="M20 46c1-6 2-12 2-18-3-4-7-6-12-6M28 46c-1-6-2-12-2-18 3-4 7-6 12-6"/><path d="M8 18c0-8 7-13 16-13s16 5 16 13c0 5-6 8-16 8S8 23 8 18z" fill="currentColor" fill-opacity=".18"/><path d="M8 18c0-8 7-13 16-13s16 5 16 13c0 5-6 8-16 8S8 23 8 18z"/><path d="M15 34h18v-8H15z" fill="currentColor" fill-opacity=".3"/><path d="M15 34h18v-8H15z"/><path d="M13 26l11-6 11 6"/><path d="M20 30h3"/><path d="M33 34v10M36 36v10M33 38h3M33 42h3"/><path d="M4 46h40"/>',
     bowl: '<path d="M5 24h38c0 11-9 18-19 18S5 35 5 24z" fill="currentColor" fill-opacity=".18"/><path d="M5 24h38c0 11-9 18-19 18S5 35 5 24z"/><path d="M17 42h14"/><path d="M12 24c3-4 6-4 9 0s6 4 9 0 6-4 9 0"/><path d="M30 4l-8 22M36 6l-10 20"/><path d="M12 18c0-3 3-3 3-6M18 18c0-3 3-3 3-6"/>',
     book: '<path d="M24 13C19 9 11 8 4 10v28c7-2 15-1 20 3 5-4 13-5 20-3V10c-7-2-15-1-20 3z" fill="currentColor" fill-opacity=".18"/><path d="M24 13C19 9 11 8 4 10v28c7-2 15-1 20 3 5-4 13-5 20-3V10c-7-2-15-1-20 3z"/><path d="M24 13v28"/><path d="M9 17c4-1 8 0 11 2M9 23c4-1 8 0 11 2M9 29c4-1 8 0 11 2M28 19c3-2 7-3 11-2M28 25c3-2 7-3 11-2"/><path d="M38 1l1.3 3.2 3.2 1.3-3.2 1.3L38 10l-1.3-3.2-3.2-1.3 3.2-1.3z" fill="currentColor" stroke="none"/>',
-    skull: '<path d="M24 6C14 6 7 13 7 22c0 6 3 10 7 12v7h20v-7c4-2 7-6 7-12 0-9-7-16-17-16z" fill="currentColor" fill-opacity=".18"/><path d="M24 6C14 6 7 13 7 22c0 6 3 10 7 12v7h20v-7c4-2 7-6 7-12 0-9-7-16-17-16z"/><ellipse cx="17" cy="22" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="31" cy="22" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M24 28l-2.5 3.5h5z" fill="currentColor" stroke="none"/><path d="M19 41v-5M24 41v-5M29 41v-5"/><path d="M40 8c2 2 3 5 2 8M8 8c-2 2-3 5-2 8"/>',
-    brooch: '<path d="M24 43S5 31 5 18a9.5 9.5 0 0 1 19-4 9.5 9.5 0 0 1 19 4c0 13-19 25-19 25z" fill="currentColor" fill-opacity=".18"/><path d="M24 43S5 31 5 18a9.5 9.5 0 0 1 19-4 9.5 9.5 0 0 1 19 4c0 13-19 25-19 25z"/><path d="M27 16a9 9 0 1 0 5 15 7 7 0 0 1-5-15z" fill="currentColor" stroke="none"/><circle cx="24" cy="10" r="1.6" fill="currentColor" stroke="none"/><circle cx="9" cy="22" r="1.6" fill="currentColor" stroke="none"/><circle cx="39" cy="22" r="1.6" fill="currentColor" stroke="none"/>',
+    nightcat: '<path d="M30 4a17 17 0 1 0 14 26A14 14 0 0 1 30 4z" fill="currentColor" fill-opacity=".18"/><path d="M30 4a17 17 0 1 0 14 26A14 14 0 0 1 30 4z"/><path d="M14 44c-3-8-2-14 2-17-1-3-1-6 0-8l3 3c2-1 3-1 5 0l3-3c1 2 1 5 0 8 4 3 5 9 2 17z" fill="currentColor" stroke="none"/><path d="M6 10c2-2 5-2 6 0 1-2 4-2 6 0-2 1-3 3-3 5-1-1-2-2-3-1-1-1-2 0-3 1 0-2-1-4-3-5z" fill="currentColor" stroke="none"/>',
+    crescent: '<path d="M28 4a18 18 0 1 0 15 27A15 15 0 0 1 28 4z" fill="currentColor" fill-opacity=".18"/><path d="M28 4a18 18 0 1 0 15 27A15 15 0 0 1 28 4z"/><path d="M38 6l1.6 3.8 4 .4-3 2.7.9 4-3.5-2-3.5 2 .9-4-3-2.7 4-.4z" fill="currentColor" stroke="none"/><path d="M6 38l10-4"/>',
     peach: '<path d="M24 15c-9-5-20 1-20 13 0 9 8 16 20 16s20-7 20-16c0-12-11-18-20-13z" fill="currentColor" fill-opacity=".18"/><path d="M24 15c-9-5-20 1-20 13 0 9 8 16 20 16s20-7 20-16c0-12-11-18-20-13z"/><path d="M24 15c-3 8-3 19 0 29"/><path d="M24 15c0-4 2-8 5-10"/><path d="M28 9c4-6 11-6 14-3-4 5-10 6-14 3z" fill="currentColor" fill-opacity=".18"/><path d="M28 9c4-6 11-6 14-3-4 5-10 6-14 3z"/>',
-    bow: '<path d="M24 21C17 10 4 9 4 21s13 11 20 0z" fill="currentColor" fill-opacity=".18"/><path d="M24 21C17 10 4 9 4 21s13 11 20 0z"/><path d="M24 21c7-11 20-12 20 0s-13 11-20 0z" fill="currentColor" fill-opacity=".18"/><path d="M24 21c7-11 20-12 20 0s-13 11-20 0z"/><ellipse cx="24" cy="21" rx="4.5" ry="5.5" fill="currentColor" fill-opacity=".45"/><ellipse cx="24" cy="21" rx="4.5" ry="5.5"/><path d="M21 26l-5 15 5-3 2 4 1-15M27 26l5 15-5-3-2 4-1-15"/>',
+    teacup: '<path d="M8 18h28c0 12-6 20-14 20S8 30 8 18z" fill="currentColor" fill-opacity=".18"/><path d="M8 18h28c0 12-6 20-14 20S8 30 8 18z"/><path d="M36 22c6 0 6 9-1 9"/><path d="M6 42h32"/><path d="M16 12c0-3 3-3 3-6M24 12c0-3 3-3 3-6"/><circle cx="22" cy="27" r="3" fill="currentColor" stroke="none"/>',
+    magnifier: '<circle cx="19" cy="19" r="13" fill="currentColor" fill-opacity=".18"/><circle cx="19" cy="19" r="13"/><path d="M28.5 28.5L43 43"/><path d="M31 34l3-3M37 40l3-3"/><path d="M12 15a8 8 0 0 1 6-6"/><ellipse cx="17" cy="21" rx="2.6" ry="4" fill="currentColor" stroke="none"/><ellipse cx="17" cy="27" rx="1.8" ry="2" fill="currentColor" stroke="none"/>',
+    bag: '<path d="M6 18h36l3 20c0 3-2 5-5 5H8c-3 0-5-2-5-5z" fill="currentColor" fill-opacity=".18"/><path d="M6 18h36l3 20c0 3-2 5-5 5H8c-3 0-5-2-5-5z"/><path d="M16 18v-5c0-4 3-6 8-6s8 2 8 6v5"/><path d="M4 18c6-4 34-4 40 0"/><path d="M24 25v12M18 31h12"/>',
+    ship: '<path d="M24 5v29"/><path d="M13 8h22"/><path d="M14 9h20c1 7 1 15-1 22H15c-2-7-2-15-1-22z" fill="currentColor" fill-opacity=".18"/><path d="M14 9h20c1 7 1 15-1 22H15c-2-7-2-15-1-22z"/><path d="M20 9v22M28 9v22"/><path d="M4 33c4 4 10 6 20 6s16-2 20-6l-2 5c-3 3-9 5-18 5s-15-2-18-5z" fill="currentColor" fill-opacity=".18"/><path d="M4 33c4 4 10 6 20 6s16-2 20-6l-2 5c-3 3-9 5-18 5s-15-2-18-5z"/><circle cx="9" cy="37" r="1.4" fill="currentColor" stroke="none"/>',
+    tower: '<path d="M14 18h14v26H14z" fill="currentColor" fill-opacity=".18"/><path d="M14 18h14v26H14z"/><path d="M11 18L21 3l10 15z" fill="currentColor" fill-opacity=".18"/><path d="M11 18L21 3l10 15z"/><path d="M18 27v-3a3 3 0 0 1 6 0v3z"/><path d="M24 27c6 3 2 8 8 11s4 6 10 6"/><path d="M14 33h14M14 39h14"/><path d="M40 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" fill="currentColor" stroke="none"/>',
     flame: '<path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z" fill="currentColor" fill-opacity=".18"/><path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z"/><path d="M24 45c-5 0-7-3-7-7 0-5 4-7 5-12 3 3 6 6 6 10 1-1 2-2 2-4 2 2 3 4 3 6 0 4-3 7-9 7z" fill="currentColor" stroke="none" fill-opacity=".45"/>',
   };
   const CHARACTER_EMBLEMS = {
-    'Mulan': 'sword', 'Elsa': 'snowflake', 'Moana': 'wave', 'Simba': 'crown', 'Rapunzel': 'lantern',
+    'Mulan': 'sword', 'Elsa': 'snowflake', 'Moana': 'wave', 'Simba': 'crown', 'Rapunzel': 'tower',
+    'Sherlock Holmes': 'magnifier', 'Dr Watson': 'bag', 'Odysseus': 'ship',
     'Judy Hopps': 'badge', 'Nick Wilde': 'fox', 'Baymax': 'heart',
-    'Woody': 'star', 'Buzz Lightyear': 'rocket', 'WALL-E': 'seedling', 'Remy': 'whisk', 'Joy': 'sun',
-    'Iron Man': 'wrench', 'Captain America': 'shield', 'Spider-Man': 'web', 'Hulk': 'mountain',
-    'Wonder Woman': 'lasso', 'Batman': 'moon',
+    'Buzz Lightyear': 'rocket', 'WALL-E': 'seedling', 'Remy': 'whisk', 'Joy': 'arcade',
+    'Captain America': 'shield', 'Spider-Man': 'web', 'Hulk': 'mountain',
+    'Wonder Woman': 'lasso',
     'Pikachu': 'bolt', 'Totoro': 'leaf',
-    'Shrek': 'onion', 'Po': 'bowl', 'Hiccup': 'flame',
-    'Hermione Granger': 'book', 'Kuromi': 'skull', 'Sailor Moon': 'brooch', 'Princess Peach': 'peach', 'Hello Kitty': 'bow',
+    'Shrek': 'treehouse', 'Po': 'bowl', 'Hiccup': 'flame',
+    'Hermione Granger': 'book', 'Kuromi': 'nightcat', 'Sailor Moon': 'crescent', 'Princess Peach': 'peach', 'Hello Kitty': 'teacup',
     // Retired from the catalogue (lib/prompts.js, RETIRED_CHARACTERS), kept so
     // a card written before they were retired still draws its emblem.
     'Black Panther': 'claw', 'Doctor Strange': 'eye', 'Mario': 'mushroom', 'Link': 'compass',
+    'Woody': 'star', 'Iron Man': 'wrench', 'Batman': 'moon',
   };
 
   // A full scene for the card's purple box, for every catalogue character:
@@ -1694,8 +1700,9 @@
   /** The scene for a character, as SVG markup, or '' for any other name. */
   // A round tile's square, where a scene's subject sits lower than the usual
   // upper right: Woody's boot stands on the ground, and the usual square
-  // showed only its shaft.
-  const ART_CROPS = { Woody: '200 94 336 336' };
+  // showed only its shaft; Dr Watson's bag sits under the window, and
+  // Odysseus's ship and the Cyclops share the middle.
+  const ART_CROPS = { Woody: '200 94 336 336', 'Dr Watson': '236 84 300 300', Odysseus: '236 60 290 290' };
   function characterArt(character, className, crop) {
     // Own properties only: a name such as "toString" from someone else's card
     // must find nothing, not a function.
@@ -1720,35 +1727,39 @@
   // is an even 28, and the one loop of three it forced is gone).
   // Retired characters have none, and their cards show the old layout.
   const CHARACTER_SYNCS = {
-    'Mulan': ['Baymax', 'Po', 'Hermione Granger'],
-    'Elsa': ['Rapunzel', 'Moana', 'Iron Man'],
+    // The five the marketing shows (the sample card and the gallery) name
+    // each other wherever they can: five cannot all pair off three ways, so
+    // Rapunzel's third is Remy.
+    'Mulan': ['Rapunzel', 'Odysseus', 'Dr Watson'],
+    'Rapunzel': ['Mulan', 'Sherlock Holmes', 'Remy'],
+    'Sherlock Holmes': ['Dr Watson', 'Odysseus', 'Rapunzel'],
+    'Dr Watson': ['Sherlock Holmes', 'Odysseus', 'Mulan'],
+    'Odysseus': ['Sherlock Holmes', 'Dr Watson', 'Mulan'],
+    'Elsa': ['Moana', 'Captain America', 'Hermione Granger'],
     'Moana': ['Hiccup', 'Elsa', 'Joy'],
     'Simba': ['Po', 'Judy Hopps', 'Princess Peach'],
-    'Rapunzel': ['Elsa', 'Remy', 'Hulk'],
     'Judy Hopps': ['Nick Wilde', 'Simba', 'Wonder Woman'],
     'Nick Wilde': ['Judy Hopps', 'Shrek', 'Kuromi'],
-    'Baymax': ['Mulan', 'WALL-E', 'Hiccup'],
-    'Woody': ['Buzz Lightyear', 'Joy', 'WALL-E'],
-    'Buzz Lightyear': ['Woody', 'Wonder Woman', 'Captain America'],
-    'WALL-E': ['Baymax', 'Remy', 'Woody'],
-    'Remy': ['Rapunzel', 'WALL-E', 'Batman'],
-    'Joy': ['Woody', 'Pikachu', 'Moana'],
-    'Iron Man': ['Captain America', 'Spider-Man', 'Elsa'],
-    'Captain America': ['Iron Man', 'Wonder Woman', 'Buzz Lightyear'],
-    'Spider-Man': ['Iron Man', 'Hermione Granger', 'Sailor Moon'],
-    'Hulk': ['Batman', 'Hiccup', 'Rapunzel'],
+    'Baymax': ['WALL-E', 'Hiccup', 'Remy'],
+    'Buzz Lightyear': ['Wonder Woman', 'Captain America', 'WALL-E'],
+    'WALL-E': ['Baymax', 'Remy', 'Buzz Lightyear'],
+    'Remy': ['Rapunzel', 'WALL-E', 'Baymax'],
+    'Joy': ['Pikachu', 'Moana', 'Hulk'],
+    'Captain America': ['Wonder Woman', 'Buzz Lightyear', 'Elsa'],
+    'Spider-Man': ['Hermione Granger', 'Sailor Moon', 'Po'],
+    'Hulk': ['Hiccup', 'Hermione Granger', 'Joy'],
     'Wonder Woman': ['Captain America', 'Buzz Lightyear', 'Judy Hopps'],
-    'Batman': ['Hermione Granger', 'Hulk', 'Remy'],
     'Pikachu': ['Joy', 'Sailor Moon', 'Shrek'],
     'Princess Peach': ['Hello Kitty', 'Sailor Moon', 'Simba'],
     'Shrek': ['Nick Wilde', 'Kuromi', 'Pikachu'],
-    'Po': ['Mulan', 'Simba', 'Hello Kitty'],
+    'Po': ['Simba', 'Hello Kitty', 'Spider-Man'],
     'Hiccup': ['Moana', 'Hulk', 'Baymax'],
-    'Hermione Granger': ['Spider-Man', 'Batman', 'Mulan'],
+    'Hermione Granger': ['Spider-Man', 'Elsa', 'Hulk'],
     'Sailor Moon': ['Pikachu', 'Princess Peach', 'Spider-Man'],
     'Hello Kitty': ['Kuromi', 'Princess Peach', 'Po'],
     'Kuromi': ['Hello Kitty', 'Shrek', 'Nick Wilde'],
   };
+
 
   /** The three characters a catalogue character is most in sync with, or none. */
   function syncsOf(character) {

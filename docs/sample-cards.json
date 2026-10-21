@@ -2,134 +2,504 @@
   "_comment": "The other sample Psyche Cards in the front page's gallery, after the full sample in sample.json. Card fields only: each is drawn by psycheCardHtml() and explained by cardGuideFor(), and neither reads anything else. Made-up people, written the way a real card reads.",
   "cards": [
     {
-      "card": { "name": "Ethan Tan", "confidence": 82, "headline": "Quick-witted helper who shows up first and explains later" },
-      "confidence": { "score": 82, "level": "high" },
-      "essence": { "character": "Spider-Man", "icon": "🕸️" },
-      "cardHighlights": "Like him, you are the one who notices somebody needs a hand and is already there before anyone asks: sixty-odd posts of fixing, lifting and covering shifts for friends. The jokes come fastest when things get tense, which keeps the room light for everyone in it.",
+      "card": {
+        "name": "Sofia Reyes",
+        "confidence": 84,
+        "headline": "Hopeful maker who turns a small room into a studio"
+      },
+      "confidence": {
+        "score": 84,
+        "level": "high"
+      },
+      "essence": {
+        "character": "Rapunzel",
+        "source": "Grimm’s Fairy Tales",
+        "icon": ""
+      },
+      "cardHighlights": "Like her, you make the most of whatever space you are given: three years of posts from the same small flat, each one a new mural, plant or half-finished canvas. When you finally go somewhere new, you take it in with a wonder that gets everyone around you looking too.",
       "patterns": [
-        { "id": "p1", "name": "First to help, last to mention it" },
-        { "id": "p2", "name": "Humour that lightens the room" },
-        { "id": "p3", "name": "Gives each circle its own time" }
+        {
+          "id": "p1",
+          "name": "Makes something of every corner"
+        },
+        {
+          "id": "p2",
+          "name": "Wonder at the first time"
+        },
+        {
+          "id": "p3",
+          "name": "Hope that outlasts the setback"
+        }
       ],
-      "topMotivators": ["benevolence", "stimulation", "self-direction"],
-      "mbti": { "type": "ENFP", "letters": [
-        { "axis": "E/I", "choice": "E", "strength": "moderate" },
-        { "axis": "N/S", "choice": "N", "strength": "clear" },
-        { "axis": "T/F", "choice": "F", "strength": "slight" },
-        { "axis": "J/P", "choice": "P", "strength": "moderate" }
-      ] },
-      "bigFive": { "openness": { "score": 81 }, "conscientiousness": { "score": 58 }, "extraversion": { "score": 64 }, "agreeableness": { "score": 76 }, "neuroticism": { "score": 52 } },
-      "values": [{ "value": "Responsibility" }, { "value": "Loyalty" }, { "value": "Curiosity" }],
-      "beliefs": [{ "belief": "Ability comes with a duty" }],
-      "interests": [{ "name": "Street photography" }, { "name": "Bouldering" }, { "name": "Science videos" }],
-      "relationship": { "loveLanguages": {
-        "receiving": [{ "language": "Words of affirmation" }, { "language": "Quality time" }],
-        "giving": [{ "language": "Acts of service" }, { "language": "Words of affirmation" }]
-      } }
+      "topMotivators": [
+        "self-direction",
+        "stimulation",
+        "benevolence"
+      ],
+      "mbti": {
+        "type": "ENFP",
+        "letters": [
+          {
+            "axis": "E/I",
+            "choice": "E",
+            "strength": "slight"
+          },
+          {
+            "axis": "N/S",
+            "choice": "N",
+            "strength": "clear"
+          },
+          {
+            "axis": "T/F",
+            "choice": "F",
+            "strength": "moderate"
+          },
+          {
+            "axis": "J/P",
+            "choice": "P",
+            "strength": "moderate"
+          }
+        ]
+      },
+      "bigFive": {
+        "openness": {
+          "score": 88
+        },
+        "conscientiousness": {
+          "score": 54
+        },
+        "extraversion": {
+          "score": 58
+        },
+        "agreeableness": {
+          "score": 78
+        },
+        "neuroticism": {
+          "score": 57
+        }
+      },
+      "values": [
+        {
+          "value": "Creativity"
+        },
+        {
+          "value": "Freedom"
+        },
+        {
+          "value": "Kindness"
+        }
+      ],
+      "beliefs": [
+        {
+          "belief": "There is always more to see"
+        }
+      ],
+      "interests": [
+        {
+          "name": "Painting"
+        },
+        {
+          "name": "Houseplants"
+        },
+        {
+          "name": "Night markets"
+        }
+      ],
+      "relationship": {
+        "loveLanguages": {
+          "receiving": [
+            {
+              "language": "Words of affirmation"
+            },
+            {
+              "language": "Quality time"
+            }
+          ],
+          "giving": [
+            {
+              "language": "Receiving gifts"
+            },
+            {
+              "language": "Words of affirmation"
+            }
+          ]
+        }
+      }
     },
     {
-      "card": { "name": "Olivia Bennett", "confidence": 84, "headline": "Restless explorer with a strong pull back to her people" },
-      "confidence": { "score": 84, "level": "high" },
-      "essence": { "character": "Moana", "icon": "🌊" },
-      "cardHighlights": "Like her, you go further than the people around you expected and then come home to tell them about it: eleven trips in three years, and every one ends on a family table. You argue with tradition out loud and keep it anyway, which is the resemblance — not the boat.",
+      "card": {
+        "name": "Daniel Okafor",
+        "confidence": 86,
+        "headline": "Quiet investigator who notices what others miss"
+      },
+      "confidence": {
+        "score": 86,
+        "level": "high"
+      },
+      "essence": {
+        "character": "Sherlock Holmes",
+        "source": "Arthur Conan Doyle",
+        "icon": ""
+      },
+      "cardHighlights": "Like him, you cannot leave a good question alone: your saves are long threads on how things really work, read late at night and followed to the source. You keep your circle small, and the few in it get your full, very precise attention.",
       "patterns": [
-        { "id": "p1", "name": "Goes past the reef" },
-        { "id": "p2", "name": "Roots you keep returning to" },
-        { "id": "p3", "name": "Decides, then tells everyone" }
+        {
+          "id": "p1",
+          "name": "Follows a question to the end"
+        },
+        {
+          "id": "p2",
+          "name": "Few people, fully known"
+        },
+        {
+          "id": "p3",
+          "name": "Evidence before opinion"
+        }
       ],
-      "topMotivators": ["self-direction", "stimulation", "tradition"],
-      "mbti": { "type": "ENFJ", "letters": [
-        { "axis": "E/I", "choice": "E", "strength": "clear" },
-        { "axis": "N/S", "choice": "N", "strength": "moderate" },
-        { "axis": "T/F", "choice": "F", "strength": "moderate" },
-        { "axis": "J/P", "choice": "J", "strength": "slight" }
-      ] },
-      "bigFive": { "openness": { "score": 88 }, "conscientiousness": { "score": 63 }, "extraversion": { "score": 74 }, "agreeableness": { "score": 69 }, "neuroticism": { "score": 38 } },
-      "values": [{ "value": "Courage" }, { "value": "Family" }, { "value": "Independence" }],
-      "beliefs": [{ "belief": "Where you come from shows you where to go" }],
-      "interests": [{ "name": "Sailing" }, { "name": "Travel" }, { "name": "Island music" }],
-      "relationship": { "loveLanguages": {
-        "receiving": [{ "language": "Quality time" }, { "language": "Physical touch" }],
-        "giving": [{ "language": "Quality time" }, { "language": "Acts of service" }]
-      } }
+      "topMotivators": [
+        "self-direction",
+        "achievement",
+        "universalism"
+      ],
+      "mbti": {
+        "type": "INTJ",
+        "letters": [
+          {
+            "axis": "E/I",
+            "choice": "I",
+            "strength": "clear"
+          },
+          {
+            "axis": "N/S",
+            "choice": "N",
+            "strength": "moderate"
+          },
+          {
+            "axis": "T/F",
+            "choice": "T",
+            "strength": "clear"
+          },
+          {
+            "axis": "J/P",
+            "choice": "J",
+            "strength": "slight"
+          }
+        ]
+      },
+      "bigFive": {
+        "openness": {
+          "score": 86
+        },
+        "conscientiousness": {
+          "score": 74
+        },
+        "extraversion": {
+          "score": 28
+        },
+        "agreeableness": {
+          "score": 52
+        },
+        "neuroticism": {
+          "score": 44
+        }
+      },
+      "values": [
+        {
+          "value": "Truth"
+        },
+        {
+          "value": "Independence"
+        },
+        {
+          "value": "Competence"
+        }
+      ],
+      "beliefs": [
+        {
+          "belief": "Look closely before you decide"
+        }
+      ],
+      "interests": [
+        {
+          "name": "True-crime podcasts"
+        },
+        {
+          "name": "Chess"
+        },
+        {
+          "name": "Long-form science"
+        }
+      ],
+      "relationship": {
+        "loveLanguages": {
+          "receiving": [
+            {
+              "language": "Quality time"
+            },
+            {
+              "language": "Acts of service"
+            }
+          ],
+          "giving": [
+            {
+              "language": "Acts of service"
+            },
+            {
+              "language": "Quality time"
+            }
+          ]
+        }
+      }
     },
     {
-      "card": { "name": "Ryan Walker", "confidence": 79, "headline": "Inventive outsider who wins people over slowly" },
-      "confidence": { "score": 79, "level": "high" },
-      "essence": { "character": "Hiccup", "icon": "🔥" },
-      "cardHighlights": "Like him, you solve the problem nobody else thought was a problem, usually by building something: a workshop's worth of projects, and the one that cracked it. You would rather understand the thing everyone is afraid of than fight it, and the friends you keep are the ones who came round to that.",
+      "card": {
+        "name": "Arjun Mehta",
+        "confidence": 85,
+        "headline": "Steady friend who keeps everyone going"
+      },
+      "confidence": {
+        "score": 85,
+        "level": "high"
+      },
+      "essence": {
+        "character": "Dr Watson",
+        "source": "Arthur Conan Doyle",
+        "icon": ""
+      },
+      "cardHighlights": "Like him, you are the one people lean on without having to ask: the check-in when someone goes quiet, the lift home, the photos from every trip. You are calm when plans go sideways, and you are the one who tells the story afterwards.",
       "patterns": [
-        { "id": "p1", "name": "Builds the answer" },
-        { "id": "p2", "name": "Understands before judging" },
-        { "id": "p3", "name": "Small circle, deep trust" }
+        {
+          "id": "p1",
+          "name": "First to check in"
+        },
+        {
+          "id": "p2",
+          "name": "Keeper of the group’s story"
+        },
+        {
+          "id": "p3",
+          "name": "Calm when plans go sideways"
+        }
       ],
-      "topMotivators": ["self-direction", "universalism", "achievement"],
-      "mbti": { "type": "INTP", "letters": [
-        { "axis": "E/I", "choice": "I", "strength": "moderate" },
-        { "axis": "N/S", "choice": "N", "strength": "clear" },
-        { "axis": "T/F", "choice": "T", "strength": "slight" },
-        { "axis": "J/P", "choice": "P", "strength": "moderate" }
-      ] },
-      "bigFive": { "openness": { "score": 90 }, "conscientiousness": { "score": 55 }, "extraversion": { "score": 34 }, "agreeableness": { "score": 72 }, "neuroticism": { "score": 57 } },
-      "values": [{ "value": "Ingenuity" }, { "value": "Empathy" }, { "value": "Loyalty" }],
-      "beliefs": [{ "belief": "Different is not dangerous" }],
-      "interests": [{ "name": "3D printing" }, { "name": "Mountain biking" }, { "name": "Sketching" }],
-      "relationship": { "loveLanguages": {
-        "receiving": [{ "language": "Quality time" }, { "language": "Words of affirmation" }],
-        "giving": [{ "language": "Receiving gifts" }, { "language": "Acts of service" }]
-      } }
+      "topMotivators": [
+        "benevolence",
+        "security",
+        "tradition"
+      ],
+      "mbti": {
+        "type": "ISFJ",
+        "letters": [
+          {
+            "axis": "E/I",
+            "choice": "I",
+            "strength": "slight"
+          },
+          {
+            "axis": "N/S",
+            "choice": "S",
+            "strength": "moderate"
+          },
+          {
+            "axis": "T/F",
+            "choice": "F",
+            "strength": "moderate"
+          },
+          {
+            "axis": "J/P",
+            "choice": "J",
+            "strength": "clear"
+          }
+        ]
+      },
+      "bigFive": {
+        "openness": {
+          "score": 58
+        },
+        "conscientiousness": {
+          "score": 82
+        },
+        "extraversion": {
+          "score": 48
+        },
+        "agreeableness": {
+          "score": 84
+        },
+        "neuroticism": {
+          "score": 46
+        }
+      },
+      "values": [
+        {
+          "value": "Loyalty"
+        },
+        {
+          "value": "Reliability"
+        },
+        {
+          "value": "Family"
+        }
+      ],
+      "beliefs": [
+        {
+          "belief": "Look after your people"
+        }
+      ],
+      "interests": [
+        {
+          "name": "Cricket"
+        },
+        {
+          "name": "Cooking for friends"
+        },
+        {
+          "name": "Travel journals"
+        }
+      ],
+      "relationship": {
+        "loveLanguages": {
+          "receiving": [
+            {
+              "language": "Words of affirmation"
+            },
+            {
+              "language": "Quality time"
+            }
+          ],
+          "giving": [
+            {
+              "language": "Acts of service"
+            },
+            {
+              "language": "Quality time"
+            }
+          ]
+        }
+      }
     },
     {
-      "card": { "name": "Hana Sato", "confidence": 88, "headline": "Bright energiser who keeps the mood up on purpose" },
-      "confidence": { "score": 88, "level": "high" },
-      "essence": { "character": "Joy", "icon": "☀️" },
-      "cardHighlights": "Like her, you set the mood for everyone around you: birthdays planned weeks out, the group chat kept warm, and four years of posts full of good moments. The resemblance is in the care behind it — you put real effort into making a day bright for the people you love.",
+      "card": {
+        "name": "Lucas Moreau",
+        "confidence": 83,
+        "headline": "Resourceful planner with a way out of every corner"
+      },
+      "confidence": {
+        "score": 83,
+        "level": "high"
+      },
+      "essence": {
+        "character": "Odysseus",
+        "source": "Homer’s Odyssey",
+        "icon": ""
+      },
+      "cardHighlights": "Like him, you meet a problem with a plan, and a better one when the first fails: four years of side projects, each rescued at least once by a clever workaround. However far your plans take you, the same few friends hear about every one of them first.",
       "patterns": [
-        { "id": "p1", "name": "Keeps everyone's spirits up" },
-        { "id": "p2", "name": "Plans the fun properly" },
-        { "id": "p3", "name": "Shares the bright moments" }
+        {
+          "id": "p1",
+          "name": "A plan B for every plan"
+        },
+        {
+          "id": "p2",
+          "name": "Talks a room round"
+        },
+        {
+          "id": "p3",
+          "name": "Always heading home"
+        }
       ],
-      "topMotivators": ["hedonism", "benevolence", "achievement"],
-      "mbti": { "type": "ESFJ", "letters": [
-        { "axis": "E/I", "choice": "E", "strength": "clear" },
-        { "axis": "N/S", "choice": "S", "strength": "slight" },
-        { "axis": "T/F", "choice": "F", "strength": "clear" },
-        { "axis": "J/P", "choice": "J", "strength": "moderate" }
-      ] },
-      "bigFive": { "openness": { "score": 70 }, "conscientiousness": { "score": 77 }, "extraversion": { "score": 86 }, "agreeableness": { "score": 83 }, "neuroticism": { "score": 41 } },
-      "values": [{ "value": "Optimism" }, { "value": "Friendship" }, { "value": "Generosity" }],
-      "beliefs": [{ "belief": "A good day can be made" }],
-      "interests": [{ "name": "Dance classes" }, { "name": "Baking" }, { "name": "Festivals" }],
-      "relationship": { "loveLanguages": {
-        "receiving": [{ "language": "Words of affirmation" }, { "language": "Receiving gifts" }],
-        "giving": [{ "language": "Receiving gifts" }, { "language": "Quality time" }]
-      } }
-    },
-    {
-      "card": { "name": "Marcus Lee", "confidence": 77, "headline": "Gentle thinker with a big engine for what matters" },
-      "confidence": { "score": 77, "level": "high" },
-      "essence": { "character": "Hulk", "icon": "💪" },
-      "cardHighlights": "Like him, you are calm and considered most days, and then you care about something and the energy behind it is enormous: two years of weekend beach clean-ups, organised from one group chat. You read the deep dive before you form a view, and the gym is where you go to reset.",
-      "patterns": [
-        { "id": "p1", "name": "Calm with a big engine" },
-        { "id": "p2", "name": "Reads before reacting" },
-        { "id": "p3", "name": "Resets by moving" }
+      "topMotivators": [
+        "stimulation",
+        "achievement",
+        "self-direction"
       ],
-      "topMotivators": ["universalism", "self-direction", "benevolence"],
-      "mbti": { "type": "INFP", "letters": [
-        { "axis": "E/I", "choice": "I", "strength": "slight" },
-        { "axis": "N/S", "choice": "N", "strength": "moderate" },
-        { "axis": "T/F", "choice": "F", "strength": "slight" },
-        { "axis": "J/P", "choice": "P", "strength": "slight" }
-      ] },
-      "bigFive": { "openness": { "score": 78 }, "conscientiousness": { "score": 52 }, "extraversion": { "score": 44 }, "agreeableness": { "score": 74 }, "neuroticism": { "score": 61 } },
-      "values": [{ "value": "Fairness" }, { "value": "Curiosity" }, { "value": "Loyalty" }],
-      "beliefs": [{ "belief": "Strength is for protecting things" }],
-      "interests": [{ "name": "Strength training" }, { "name": "Science explainers" }, { "name": "Beach clean-ups" }],
-      "relationship": { "loveLanguages": {
-        "receiving": [{ "language": "Quality time" }, { "language": "Acts of service" }],
-        "giving": [{ "language": "Acts of service" }, { "language": "Words of affirmation" }]
-      } }
+      "mbti": {
+        "type": "ENTP",
+        "letters": [
+          {
+            "axis": "E/I",
+            "choice": "E",
+            "strength": "moderate"
+          },
+          {
+            "axis": "N/S",
+            "choice": "N",
+            "strength": "clear"
+          },
+          {
+            "axis": "T/F",
+            "choice": "T",
+            "strength": "moderate"
+          },
+          {
+            "axis": "J/P",
+            "choice": "P",
+            "strength": "moderate"
+          }
+        ]
+      },
+      "bigFive": {
+        "openness": {
+          "score": 84
+        },
+        "conscientiousness": {
+          "score": 56
+        },
+        "extraversion": {
+          "score": 72
+        },
+        "agreeableness": {
+          "score": 58
+        },
+        "neuroticism": {
+          "score": 40
+        }
+      },
+      "values": [
+        {
+          "value": "Ingenuity"
+        },
+        {
+          "value": "Adventure"
+        },
+        {
+          "value": "Loyalty"
+        }
+      ],
+      "beliefs": [
+        {
+          "belief": "There is always a way through"
+        }
+      ],
+      "interests": [
+        {
+          "name": "Sailing"
+        },
+        {
+          "name": "Start-ups"
+        },
+        {
+          "name": "Strategy games"
+        }
+      ],
+      "relationship": {
+        "loveLanguages": {
+          "receiving": [
+            {
+              "language": "Words of affirmation"
+            },
+            {
+              "language": "Quality time"
+            }
+          ],
+          "giving": [
+            {
+              "language": "Words of affirmation"
+            },
+            {
+              "language": "Acts of service"
+            }
+          ]
+        }
+      }
     }
   ]
 }

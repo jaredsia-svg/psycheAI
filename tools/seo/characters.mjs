@@ -6,6 +6,11 @@
 //   types   the MBTI types this temperament most often reads as (two)
 //   The three characters each is most in sync with are docs/copy.js's
 //   CHARACTER_SYNCS, shared with the card.
+// The five with a page of their own: the public-domain characters the
+// samples and marketing show (21 October 2026). The rest stay in the
+// catalogue, and in this file for when they are wanted, but have no page; their
+// old addresses are sent on to /characters (server.js, RETIRED_PAGES).
+export const MARKETED = ['Mulan', 'Rapunzel', 'Sherlock Holmes', 'Dr Watson', 'Odysseus'];
 export const CHARACTERS = [
   {
     name: 'Mulan', franchise: 'Disney',
@@ -104,16 +109,16 @@ export const CHARACTERS = [
     types: ['ISFJ', 'INFJ'],
   },
   {
-    name: 'Woody', franchise: 'Pixar',
-    tagline: 'Loyal, responsible and the one who keeps the group together.',
-    about: 'A Woody reading is someone who takes care of the group and takes the role seriously. They organise, check in, and want everyone to feel part of things. They care deeply about their people and do their best work when they share the lead.',
-    signs: ['You run or start the group chats.',
-      'You plan the meet-ups and make sure people turn up.',
-      'Your posts are about your crew and shared history.',
-      'You keep friendships going for years.'],
-    strengths: ['Loyal and committed', 'Organised and dependable', 'Holds a group together'],
-    growth: ['Sharing the spotlight', 'Trusting others to step up'],
-    types: ['ESFJ', 'ESTJ'],
+    name: 'Dr Watson', franchise: 'Arthur Conan Doyle',
+    tagline: 'Loyal, steady and the one who keeps everyone going.',
+    about: 'A Dr Watson reading is someone people rely on without having to ask. They look after others, keep good records and stay calm when things get strange. They are often the warm, practical centre of a group, and the one who tells its story afterwards.',
+    signs: ['You check in on friends when they go quiet.',
+      'You keep the photos, the plans and the history of your group.',
+      'Your messages are practical help as often as chat.',
+      'You stick with friendships for years.'],
+    strengths: ['Loyal and dependable', 'Calm and practical', 'Brings out the best in others'],
+    growth: ['Taking the lead more often', 'Giving their own ideas as much weight as others’'],
+    types: ['ISFJ', 'ESFJ'],
   },
   {
     name: 'Buzz Lightyear', franchise: 'Pixar',
@@ -164,15 +169,15 @@ export const CHARACTERS = [
     types: ['ESFJ', 'ENFP'],
   },
   {
-    name: 'Iron Man', franchise: 'Marvel',
-    tagline: 'Inventive, confident and always building the next thing.',
-    about: 'An Iron Man reading is someone with big ideas and the confidence to build them. They are quick, inventive and at home with technology and challenges. They do their best work when that brilliance is shared with a team they trust.',
-    signs: ['Your saves and searches are full of tech, tools and new ideas.',
-      'You share opinions confidently.',
-      'You work in intense bursts.',
-      'You like to fix and improve things.'],
-    strengths: ['Inventive and resourceful', 'Confident', 'Thinks fast'],
-    growth: ['Listening to the team', 'Showing the care beneath the confidence'],
+    name: 'Odysseus', franchise: 'Homer',
+    tagline: 'Resourceful, quick-thinking and always finding a way through.',
+    about: 'An Odysseus reading is someone with a plan for every problem and a better one when it fails. They are inventive, persuasive and at their best when a challenge looks impossible. However far they range, they keep working their way back to the people and places they call home.',
+    signs: ['Your saves and searches are full of ideas, tools and places to go.',
+      'You talk your way into opportunities and out of trouble.',
+      'You work in intense bursts on whatever has caught your interest.',
+      'You keep coming back to the same few people, wherever you are.'],
+    strengths: ['Inventive and resourceful', 'Persuasive', 'Thinks fast under pressure'],
+    growth: ['Asking for help before the plan gets complicated', 'Sharing the credit with the crew'],
     types: ['ENTP', 'ENTJ'],
   },
   {
@@ -224,16 +229,16 @@ export const CHARACTERS = [
     types: ['ENFJ', 'ENTJ'],
   },
   {
-    name: 'Batman', franchise: 'DC',
-    tagline: 'Focused, prepared and deeply committed to the people they protect.',
-    about: 'A Batman reading is someone who thinks ahead, works hard and keeps a lot to themselves. They plan for every possibility and hold themselves to a demanding standard. Their commitment to the people they care about is total, even if they rarely say so.',
-    signs: ['You post very little and keep your circle small.',
-      'Your activity is late at night and focused.',
-      'You research things thoroughly before acting.',
-      'You show care through actions, not words.'],
-    strengths: ['Strategic and prepared', 'Disciplined', 'Fiercely loyal'],
-    growth: ['Letting people in', 'Trusting others with some of the load'],
-    types: ['INTJ', 'ISTJ'],
+    name: 'Sherlock Holmes', franchise: 'Arthur Conan Doyle',
+    tagline: 'Observant, analytical and happiest with a puzzle to solve.',
+    about: 'A Sherlock Holmes reading is someone who notices what other people miss and cannot leave a question alone. They go deep rather than wide, trust evidence over opinion and keep a small circle they would do anything for. Their focus is a gift they are learning to switch off now and then.',
+    signs: ['You post rarely, and what you save is detailed and specific.',
+      'You fall down research rabbit holes late at night.',
+      'You ask precise questions in your messages.',
+      'You keep a small, trusted circle.'],
+    strengths: ['Sharp and observant', 'Thorough', 'Fiercely loyal to their few'],
+    growth: ['Saying out loud what they are thinking', 'Letting a question rest when it can'],
+    types: ['INTJ', 'INTP'],
   },
   {
     name: 'Pikachu', franchise: 'Pokémon',

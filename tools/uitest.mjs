@@ -4058,7 +4058,7 @@ try {
     check('the gallery draws only the cards in view at first: the front one and one peeking each side',
       drawnAtFirst === '0,1,prev', drawnAtFirst);
     // Once round the deck and back to the front, so every card has been drawn.
-    for (let i = 0; i < 6; i++) await page.evaluate(() => document.querySelector('.insight-deck-step[data-deck-step="1"]').click());
+    for (let i = 0; i < 5; i++) await page.evaluate(() => document.querySelector('.insight-deck-step[data-deck-step="1"]').click());
     await settle(page, '#insight-deck');
     const gallery = await page.evaluate(() => {
       const g = document.querySelector('#insight-deck');
@@ -4092,8 +4092,8 @@ try {
         spill: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
     });
-    check('the front page shows a deck of six sample cards, each its own character and person, with its scene',
-      gallery.count === 6 && gallery.characters === 6 && new Set(gallery.names).size === 6 && gallery.art && gallery.labels,
+    check('the front page shows a deck of five sample cards, each its own character and person, with its scene',
+      gallery.count === 5 && gallery.characters === 5 && new Set(gallery.names).size === 5 && gallery.art && gallery.labels,
       JSON.stringify(gallery));
     check('Mulan\'s at the front, centred over the arrows, one card peeking out each side, and no scrollbar',
       !gallery.scrolls && gallery.spill <= 1 && gallery.front.join() === '0' && gallery.stacked === 2 && gallery.sides && gallery.centred,
@@ -4106,7 +4106,7 @@ try {
       front: [...document.querySelectorAll('#insight-deck .insight-preview.is-front')].map(c => c.getAttribute('data-card')),
       dot: [...document.querySelectorAll('#insight-deck-dots i')].findIndex(d => d.classList.contains('is-on')),
     }));
-    check('the deck\'s arrows bring another card to the front, and the dots follow', stepped.front.join() === '5' && stepped.dot === 5,
+    check('the deck\'s arrows bring another card to the front, and the dots follow', stepped.front.join() === '4' && stepped.dot === 4,
       JSON.stringify(stepped));
     await page.click('#insight-deck .insight-preview.is-front');
     await page.waitForSelector('#sample-card-dialog[open].is-gallery', { timeout: 5000 }).catch(() => {});
@@ -4120,7 +4120,7 @@ try {
     await page.click('.sample-card-prev');
     const back = await at();
     check('a gallery card opens full screen, and steps left and right through the rest, wrapping round',
-      /^6 \/ 6 /.test(opened) && /^1 \/ 6 Mulan/.test(wrapped) && back === opened, [opened, wrapped, back].join(' | '));
+      /^5 \/ 5 /.test(opened) && /^1 \/ 5 Mulan/.test(wrapped) && back === opened, [opened, wrapped, back].join(' | '));
     await page.keyboard.press('Escape');
     await dialogClosed(page, '#sample-card-dialog');
     // Closed, the deck is left on the card last looked at; put it back.
@@ -7110,8 +7110,9 @@ try {
   check('the Psyche Card names no studio beside the character',
     await page.evaluate(() => [...document.querySelectorAll('.psyche-card')].every(card =>
       !card.querySelector('.pc-sfranchise') && !/\bMarvel\b/.test(card.textContent) &&
-      // Only the sample's Mulan carries a source line.
-      (!card.querySelector('.pc-ssource') || card.querySelector('.pc-ssource').textContent === 'The Ballad of Mulan'))));
+      // Only the samples carry a source line, and it names a public-domain story.
+      (!card.querySelector('.pc-ssource') || ['The Ballad of Mulan', 'Grimm’s Fairy Tales', 'Arthur Conan Doyle', 'Homer’s Odyssey']
+        .includes(card.querySelector('.pc-ssource').textContent)))));
   // A catalogue character carries its emblem; anything else keeps an emoji.
   check('the character carries an icon',
     (await page.locator('.essence-icon.has-emblem svg').count()) === 1 ||

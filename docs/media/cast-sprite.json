@@ -2,24 +2,24 @@
  "tile": 116,
  "names": [
   "Mulan",
+  "Rapunzel",
+  "Sherlock Holmes",
+  "Dr Watson",
+  "Odysseus",
   "Elsa",
   "Moana",
   "Simba",
-  "Rapunzel",
   "Judy Hopps",
   "Nick Wilde",
   "Baymax",
-  "Woody",
   "Buzz Lightyear",
   "WALL-E",
   "Remy",
   "Joy",
-  "Iron Man",
   "Captain America",
   "Spider-Man",
   "Hulk",
   "Wonder Woman",
-  "Batman",
   "Pikachu",
   "Princess Peach",
   "Shrek",
@@ -30,5 +30,5 @@
   "Hello Kitty",
   "Kuromi"
  ],
- "fingerprint": "503f3a89da2d0c0d"
+ "fingerprint": "cb0b1efbcb9d964a"
 }

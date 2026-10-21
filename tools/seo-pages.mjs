@@ -8,7 +8,7 @@
 //
 // What it writes:
 //   faq.html, sample-report.html                   from docs/index.html and docs/sample.json
-//   characters.html, <slug>-personality.html (29)  from tools/seo/characters.mjs
+//   characters.html, <slug>-personality.html (5)   from tools/seo/characters.mjs (MARKETED)
 //   mbti-types.html, <type>-personality.html (16)  from tools/seo/types.mjs
 //   the topic pages                                 from tools/seo/topics.mjs
 //   sitemap.xml, llms.txt
@@ -19,7 +19,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { CHARACTERS } from './seo/characters.mjs';
+import { CHARACTERS as ALL_CHARACTERS, MARKETED } from './seo/characters.mjs';
 import { TYPES, LETTERS } from './seo/types.mjs';
 import { TOPICS } from './seo/topics.mjs';
 
@@ -33,6 +33,9 @@ const Copy = globalThis.PsycheCopy;
 
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const slugOf = name => name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// Only the five the marketing shows get a page; the catalogue is still all of them.
+const CHARACTERS = ALL_CHARACTERS.filter(c => MARKETED.includes(c.name));
+const CATALOGUE_SIZE = ALL_CHARACTERS.length;
 const characterSlug = c => slugOf(c.name) + '-personality';
 const typeSlug = t => t.toLowerCase() + '-personality';
 const textOf = html => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -143,7 +146,7 @@ for (const c of CHARACTERS) {
       section(`You might be most like ${c.name} if…`, ticks(c.signs)) +
       section('Strengths and what to watch', `<h3>Strengths</h3>${ticks(c.strengths)}<h3>Worth watching</h3>${ticks(c.growth)}`) +
       section('Often paired with', `<p>MBTI types this temperament often reads as: ${types}</p><p>Most in sync with ${syncs}.</p>`) +
-      section('How the character is chosen', `<p>Your Psyche Card names the character whose temperament is closest to yours, from ${CHARACTERS.length} characters, using the same evidence as your MBTI and Big Five: how you post, write, keep in touch and spend your attention. It is a reading of temperament, never of looks.</p><p class="fineprint">Characters belong to their owners. PsycheAI is not affiliated with or endorsed by any of them.</p>`) +
+      section('How the character is chosen', `<p>Your Psyche Card names the character whose temperament is closest to yours, from ${CATALOGUE_SIZE} characters, using the same evidence as your MBTI and Big Five: how you post, write, keep in touch and spend your attention. It is a reading of temperament, never of looks.</p><p class="fineprint">Characters belong to their owners. PsycheAI is not affiliated with or endorsed by any of them.</p>`) +
       faqBlock(faq),
   }));
 }
@@ -154,10 +157,10 @@ for (const c of CHARACTERS) {
   pages.set('characters', page({
     slug: 'characters',
     title: 'Which character are you? From your Instagram | PsycheAI',
-    description: `Which of ${CHARACTERS.length} characters is your temperament closest to? Your free Psyche Card names yours, read from your own Instagram data. No quiz.`,
+    description: `Which of ${CATALOGUE_SIZE} characters is your temperament closest to? Your free Psyche Card names yours, read from your own Instagram data. No quiz.`,
     h1: 'Which character are you most like?',
-    lede: `Your Psyche Card names the character whose temperament is closest to yours, out of ${CHARACTERS.length}, read from how you actually behave in your own data. No quiz.`,
-    body: section('The characters', list) +
+    lede: `Your Psyche Card names the character whose temperament is closest to yours, out of ${CATALOGUE_SIZE}, read from how you actually behave in your own data. No quiz.`,
+    body: section('The characters', list + `<p>…and ${CATALOGUE_SIZE - CHARACTERS.length} more, met only when you make your card.</p>`) +
       section('How it works', '<p>The same evidence that scores your MBTI and Big Five is matched against each character’s temperament: how you plan, how you keep in touch, what you care about and how you handle a hard moment. You get the character, and the reasons from your own data.</p><p class="fineprint">Characters belong to their owners. PsycheAI is not affiliated with or endorsed by any of them.</p>'),
   }));
 }

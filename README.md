@@ -7458,6 +7458,36 @@ Mulan as the public-domain legend, whose art here is our own. Real reports never
 schema has no such field. The og image is `?v=3`. The promo videos still show the old card until
 `npm run promo` is re-run with its cache.
 
+**Five public-domain faces for the marketing** (21 October 2026). The samples, the link preview and the
+search pages now show only characters from public-domain stories, so no studio's character is in
+anything we advertise with.
+- **Three swaps in the catalogue, same slots:** Woody → **Dr Watson**, Iron Man → **Odysseus**,
+  Batman → **Sherlock Holmes** (12 women, 12 men, 4 neither, as before). The three join the retired
+  list, so old cards still draw them, and their pages 301 to their replacements'.
+- **The samples:** Mulan (the full sample) and a gallery of four, Rapunzel, Sherlock Holmes, Dr Watson
+  and Odysseus, each with `essence.source` (Grimm's Fairy Tales, Arthur Conan Doyle, Homer's Odyssey)
+  where the studio used to be. The five sync with each other wherever they can (five cannot all pair
+  off three ways, so Rapunzel's third is Remy); every other pairing stays mutual and balanced.
+- **Rapunzel redrawn** from the Grimm tale: moon, braid and rampion, without the floating lanterns,
+  which are the 2010 film's. New scenes: Sherlock Holmes (a glass over footprints in the fog),
+  Dr Watson (a doctor's bag and casebook under a lit window), Odysseus (*Odyssey* book 9: the ship,
+  with the eye Greek sailors painted on the bow, running from the Cyclops in a storm).
+- **Pages for the five only.** The other 23 catalogue characters' pages are gone and their addresses
+  301 to /characters, which lists the five and says how many more there are (`MARKETED` in
+  `tools/seo/characters.mjs`). The catalogue itself is unchanged: readers can still get any of 28.
+- **Eight scenes redrawn without the studio's signature design** (`tools/art/`): Hello Kitty (a
+  teapot, not the bow), Kuromi (a gothic chapel, iron fence, bats and a black cat, not the winged
+  skull-heart), Sailor Moon (a pastel crescent and a cat on a roof, not the brooch), Joy (a bubble
+  shooter, not memory-orb shelves), Wonder Woman (a sapphire in the tiara, not the red star), Hiccup
+  (a soaring dragon with no red fin or green eyes), Simba (a grown lion at a savanna sunrise, not
+  Pride Rock) and Shrek (a treehouse in a forest, not the stump house in a swamp). New emblems for
+  five of them.
+- **A reserve for a takedown letter:** 19 public-domain replacements drawn in advance, scenes and
+  emblems, in `tools/reserve/art-*.mjs` (built to `tools/reserve/character-art-reserve.js`, never
+  served): Joan of Arc, Athena, Belle, Alice, Cinderella, Dorothy, Snow White, Goldilocks, Heidi,
+  King Arthur, Hercules, Aladdin, Robin Hood, Merlin, The Beast, Sun Wukong, Sinbad, the Tortoise and
+  the Ant. `node tools/reserve/preview.mjs --reserve out.png` draws them as the card does.
+
 ### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the

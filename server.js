@@ -1847,7 +1847,37 @@ function applySecurityHeaders(request, response) {
 // redirected. Matched on the onrender.com suffix rather than on "anything
 // but the canonical host", so localhost and the test suite are never moved.
 // Pages of retired characters and where they now point (see above the short links).
-const RETIRED_PAGES = { 'totoro-personality': 'baymax-personality' };
+const RETIRED_PAGES = {
+  'totoro-personality': 'characters',
+  // Their public-domain replacements in the same slots (21 October 2026).
+  'woody-personality': 'dr-watson-personality', 'iron-man-personality': 'odysseus-personality',
+  'batman-personality': 'sherlock-holmes-personality',
+  // Only the five the marketing shows keep a page (21 October 2026); the rest
+  // of the catalogue's pages go to the list.
+  'elsa-personality': 'characters',
+  'moana-personality': 'characters',
+  'simba-personality': 'characters',
+  'judy-hopps-personality': 'characters',
+  'nick-wilde-personality': 'characters',
+  'baymax-personality': 'characters',
+  'buzz-lightyear-personality': 'characters',
+  'wall-e-personality': 'characters',
+  'remy-personality': 'characters',
+  'joy-personality': 'characters',
+  'captain-america-personality': 'characters',
+  'spider-man-personality': 'characters',
+  'hulk-personality': 'characters',
+  'wonder-woman-personality': 'characters',
+  'pikachu-personality': 'characters',
+  'princess-peach-personality': 'characters',
+  'shrek-personality': 'characters',
+  'po-personality': 'characters',
+  'hiccup-personality': 'characters',
+  'hermione-granger-personality': 'characters',
+  'sailor-moon-personality': 'characters',
+  'hello-kitty-personality': 'characters',
+  'kuromi-personality': 'characters',
+};
 
 const CANONICAL_HOST = String(process.env.PSYCHEAI_CANONICAL_HOST || '').trim().toLowerCase();
 function canonicalRedirect(request) {

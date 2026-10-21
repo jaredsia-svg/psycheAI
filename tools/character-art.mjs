@@ -120,6 +120,141 @@ function scene(draw) {
 // ---------- the scenes ----------
 
 const SCENES = {
+
+  // A magnifying glass over a trail of footprints in the fog, a gas lamp and
+  // the chimneys of Baker Street under a full moon (Conan Doyle, public domain).
+  'Sherlock Holmes': () => {
+    const brass = lin('brass', [[0, '#ffe9a6'], [0.5, '#e0a33a'], [1, '#9a5a1a']], 0, 0, 1, 1);
+    const lens = rad('lens', [[0, '#fffaf0', 0.95], [0.6, '#ffe8c0', 0.55], [1, '#d6c0ff', 0.25]], 0.38, 0.34);
+    const fog = (y, o) => '<path d="M0 ' + y + 'C90 ' + (y - 14) + ' 170 ' + (y + 10) + ' 260 ' + (y - 4) + 'S430 ' + (y - 16) + ' 520 ' + (y - 2) + 'V' + (y + 26) + 'H0Z" fill="#fff" opacity="' + o + '"/>';
+    const print = (x, y, a, s = 1) => '<g transform="translate(' + x + ' ' + y + ') rotate(' + a + ') scale(' + s + ')" fill="#2a0b3d" opacity=".75">' +
+      '<ellipse cx="0" cy="0" rx="6" ry="10"/><ellipse cx="0" cy="15" rx="4.6" ry="5"/></g>';
+    const chimneys = '<g fill="#1c0a2e">' +
+      '<path d="M150 440V352H196V330H206V352H232V340H262V352H300V312H318V300H330V312H344V352H372V440Z"/>' +
+      '<path d="M360 440V336H392V316H402V308H414V316H424V336H452V326H476V336H520V440Z"/></g>' +
+      '<g fill="#ffd27a" opacity=".8"><rect x="214" y="372" width="9" height="13"/><rect x="236" y="372" width="9" height="13"/><rect x="392" y="356" width="9" height="13"/><rect x="470" y="356" width="9" height="13"/><rect x="448" y="384" width="9" height="13"/></g>';
+    const smoke = '<path d="M408 304C398 290 418 280 406 266S414 244 404 232" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".18"/>';
+    return tint('#1a1240', '#5a2a7a', 0.6) + stars(211, 30, 120, W, 0, 160) +
+      glow('moon', 420, 92, 150, '#fff4d6', 0.55) +
+      '<circle cx="420" cy="92" r="56" fill="' + rad('moonf', [[0, '#fffaf0'], [1, '#eadcc0']], 0.4, 0.35) + '"/>' +
+      '<circle cx="404" cy="80" r="8" fill="#d8ccb0" opacity=".5"/><circle cx="436" cy="108" r="6" fill="#d8ccb0" opacity=".5"/>' +
+      // The gas lamp on its post, haloed in fog.
+      glow('lamp', 270, 214, 70, '#ffd98a', 0.7) +
+      '<path d="M268 440V236H272V440Z" fill="#1c0a2e"/><path d="M258 236H282L278 226H262Z" fill="#1c0a2e"/>' +
+      '<path d="M260 226L256 200H284L280 226Z" fill="#ffe7a8" stroke="#1c0a2e" stroke-width="3"/><path d="M254 200L270 188L286 200Z" fill="#1c0a2e"/>' +
+      fog(300, 0.1) + chimneys + smoke + fog(360, 0.12) +
+      // Footprints walking out of the fog toward the glass.
+      print(176, 424, -18, 0.8) + print(206, 410, 14, 0.8) + print(236, 400, -12, 0.85) + print(270, 388, 16, 0.9) +
+      '<g transform="translate(372 196) rotate(-24)">' +
+        '<path d="M-10 70H10L14 168C14 178 -14 178 -14 168Z" fill="' + lin('handle', [[0, '#8a4a2a'], [1, '#3a1a0a']], 0, 0, 1, 0) + '" stroke="#2a0b10" stroke-width="3"/>' +
+        '<rect x="-14" y="62" width="28" height="14" rx="4" fill="' + brass + '" stroke="#5a3010" stroke-width="2"/>' +
+        '<circle r="70" fill="' + lens + '"/>' +
+        '<g transform="translate(-4 4) rotate(24)" fill="#5a2a7a" opacity=".55"><ellipse cx="-8" cy="-10" rx="11" ry="18"/><ellipse cx="-8" cy="18" rx="8" ry="9"/>' +
+          '<ellipse cx="20" cy="-22" rx="7" ry="12" opacity=".6"/></g>' +
+        '<circle r="70" fill="none" stroke="' + brass + '" stroke-width="12"/><circle r="70" fill="none" stroke="#5a3010" stroke-width="2" opacity=".6"/>' +
+        '<path d="M-44 -40A58 58 0 0 1 -6 -62" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".75"/></g>' +
+      sparkle(476, 210, 9) + sparkle(300, 120, 6) + fog(404, 0.1);
+  },
+
+  // A doctor's bag and an open casebook with its pen under the lit window of a
+  // first-floor study, and a pocket watch (Conan Doyle, public domain). All of it kept to the right, clear of the card's write-up.
+  'Dr Watson': () => {
+    const leather = lin('bag', [[0, '#a8603a'], [1, '#4a2010']], 0, 0, 0, 1);
+    const brass = lin('brass', [[0, '#ffe9a6'], [1, '#c98a2a']]);
+    const page = lin('page', [[0, '#fffaf0'], [1, '#f0e2c8']], 0, 0, 1, 0);
+    return tint('#2a1650', '#8a3a7a', 0.55) + stars(221, 26, 120, W, 0, 150) +
+      // The window, lit from inside: the warm centrepiece.
+      glow('win', 410, 128, 150, '#ffd98a', 0.75) +
+      '<rect x="350" y="52" width="120" height="150" rx="6" fill="#3a1a4a"/>' +
+      '<rect x="360" y="62" width="100" height="130" fill="' + lin('glass', [[0, '#fff0c4'], [1, '#ffc46a']]) + '"/>' +
+      '<path d="M410 62V192M360 127H460" stroke="#3a1a4a" stroke-width="6"/>' +
+      '<path d="M360 62C378 96 378 160 364 192" fill="#c2366a" opacity=".55"/><path d="M460 62C442 96 442 160 456 192" fill="#c2366a" opacity=".55"/>' +
+      '<rect x="342" y="200" width="136" height="10" rx="3" fill="#3a1a4a"/>' +
+      '<g fill="#3a1a4a" opacity=".85"><circle cx="440" cy="166" r="12"/><path d="M426 192C426 176 454 176 454 192Z"/></g>' +
+      '<path d="M0 440V300C110 288 220 296 330 292S470 286 520 290V440Z" fill="#2a0b3d" opacity=".55"/>' +
+      // The bag, open at the clasp.
+      '<g transform="translate(424 300) scale(.84)">' +
+        '<path d="M-38 -44C-38 -70 38 -70 38 -44" fill="none" stroke="#3a1608" stroke-width="9" stroke-linecap="round"/>' +
+        '<path d="M-78 -30H78L90 54C92 66 84 72 72 72H-72C-84 72 -92 66 -90 54Z" fill="' + leather + '" stroke="#2a0e06" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M-82 -30C-60 -46 60 -46 82 -30" fill="none" stroke="#2a0e06" stroke-width="5"/>' +
+        '<rect x="-84" y="-34" width="168" height="10" rx="5" fill="' + brass + '" stroke="#7a4a10" stroke-width="2"/>' +
+        '<rect x="-12" y="-28" width="24" height="18" rx="4" fill="' + brass + '" stroke="#7a4a10" stroke-width="2"/>' +
+        '<g fill="none" stroke="#ffd98a" stroke-width="2.2" stroke-dasharray="5 4" opacity=".7"><path d="M-70 -14H70M-72 58H72"/></g>' +
+        '<path d="M-14 16H14M0 2V30" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".85"/></g>' +
+      // The casebook, open, and the pen across it.
+      '<g transform="translate(392 394) rotate(-8) scale(.62)">' +
+        '<path d="M-64 -30C-40 -36 -14 -34 0 -24C14 -34 40 -36 64 -30V26C40 20 14 22 0 32C-14 22 -40 20 -64 26Z" fill="' + page + '" stroke="#7a4a3a" stroke-width="2.4"/>' +
+        '<path d="M0 -24V32" stroke="#7a4a3a" stroke-width="2"/>' +
+        '<g stroke="#8a6a8a" stroke-width="2" opacity=".6"><path d="M-54 -16C-38 -20 -22 -19 -10 -14M-54 -4C-38 -8 -22 -7 -10 -2M-54 8C-38 4 -22 5 -10 10M10 -14C22 -19 38 -20 54 -16M10 -2C22 -7 38 -8 54 -4"/></g>' +
+        '<path d="M14 18L66 -40" stroke="#2a0b3d" stroke-width="5" stroke-linecap="round"/><path d="M60 -33L70 -44" stroke="' + brass + '" stroke-width="5" stroke-linecap="round"/></g>' +
+      // A pocket watch on its chain.
+      '<g transform="translate(482 398) scale(.8)"><path d="M-6 -18C-20 -30 -34 -26 -40 -14" fill="none" stroke="' + brass + '" stroke-width="2.6" stroke-dasharray="3 2"/>' +
+        '<circle r="18" fill="' + brass + '" stroke="#7a4a10" stroke-width="2"/><circle r="13" fill="#fffaf0"/>' +
+        '<path d="M0 0V-9M0 0L6 4" stroke="#3a1a4a" stroke-width="2" stroke-linecap="round"/><rect x="-3" y="-24" width="6" height="7" rx="2" fill="' + brass + '"/></g>' +
+      ground('M0 440V418C120 410 260 422 380 414S480 410 520 412V440Z', '#1c0a2e') +
+      sparkle(300, 92, 7) + sparkle(498, 250, 8);
+  },
+
+  // The Odyssey's ninth book: Polyphemus the Cyclops on his cliff in a storm,
+  // his one eye blazing, hurling a boulder after the ship as it runs for open
+  // sea. The ship keeps the eye Greek sailors painted on the bow to see the
+  // way and ward off harm (Homer, public domain).
+  'Odysseus': () => {
+    const sea = lin('sea', [[0, '#4a1a6a'], [1, '#14062a']]);
+    const sail = lin('sail', [[0, '#fff8ec'], [1, '#f0d8c8']], 0, 0, 1, 0);
+    const hull = lin('hull', [[0, '#6a3020'], [1, '#2a0e08']]);
+    const giant = lin('giant', [[0, '#2a0d3e'], [1, '#12051f']]);
+    const cloud = (x, y, s, o, c = '#2a0d3e') => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" fill="' + c + '" opacity="' + o + '">' +
+      '<ellipse cx="0" cy="0" rx="70" ry="26"/><ellipse cx="-40" cy="8" rx="44" ry="20"/><ellipse cx="46" cy="6" rx="50" ry="22"/><ellipse cx="10" cy="-16" rx="42" ry="22"/></g>';
+    const crest = (x, y, w, h, o = 1) => '<path d="M' + x + ' ' + y + 'C' + (x + w * 0.3) + ' ' + (y - h) + ' ' + (x + w * 0.7) + ' ' + (y - h * 1.1) + ' ' + (x + w) + ' ' + (y - h * 0.4) +
+      'C' + (x + w * 0.82) + ' ' + (y - h * 0.5) + ' ' + (x + w * 0.76) + ' ' + (y - h * 0.2) + ' ' + (x + w * 0.86) + ' ' + y + 'Z" fill="#fff" opacity="' + o + '"/>';
+    const oars = [0, 1, 2, 3, 4].map(i => '<path d="M' + (-62 + i * 24) + ' 14L' + (-78 + i * 24) + ' 50" stroke="#2a0e08" stroke-width="3.4" stroke-linecap="round"/>').join('');
+    return tint('#1a0f3a', '#6a2a72', 0.7) +
+      cloud(250, 40, 1.4, 0.9) + cloud(420, 20, 1.6, 0.95) + cloud(330, 90, 1.1, 0.7, '#3a1652') +
+      // Lightning splitting the sky behind the cliff.
+      glow('flash', 300, 90, 140, '#e8d8ff', 0.5) +
+      '<path d="M306 20L284 84L300 86L276 156L318 76L300 74L322 20Z" fill="#fff8d6"/>' +
+      '<path d="M306 20L284 84L300 86L276 156L318 76L300 74L322 20Z" fill="none" stroke="#c9b4ff" stroke-width="4" opacity=".5"/>' +
+      // The cliff, and the giant on it, far off: broad shoulders, one arm raised with the boulder.
+      '<g transform="translate(170 96) scale(.66)">' +
+      '<path d="M392 440L404 330C414 296 436 270 470 262L520 256V440Z" fill="#14051f"/>' +
+      '<g fill="' + giant + '">' +
+        '<path d="M414 300C406 246 412 196 436 176C456 162 500 158 520 162V300Z"/>' +
+        '<path d="M462 168C462 156 490 156 490 168V178H462Z"/>' +
+        '<circle cx="476" cy="130" r="32"/>' +
+        '<path d="M446 116L450 98L458 108L464 92L470 104L478 90L484 104L492 94L494 110L504 104L502 120Z"/>' +
+      '</g>' +
+      '<path d="M440 186L404 144L408 92" fill="none" stroke="#1e0830" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M498 186C510 214 512 244 504 268" fill="none" stroke="#1e0830" stroke-width="22" stroke-linecap="round"/>' +
+      '<circle cx="408" cy="64" r="30" fill="' + lin('rock', [[0, '#7a6a8a'], [1, '#2a1a3a']]) + '" stroke="#12051f" stroke-width="3"/>' +
+      '<path d="M394 56C400 48 410 48 416 54M400 76C408 74 416 74 422 70" fill="none" stroke="#12051f" stroke-width="2.4" opacity=".7"/>' +
+      // The one eye.
+      glow('eye', 478, 130, 34, '#ffcf5a', 0.85) +
+      '<ellipse cx="478" cy="130" rx="15" ry="10" fill="#fff4c4"/><circle cx="478" cy="130" r="6.4" fill="#d0461a"/><circle cx="478" cy="130" r="2.6" fill="#12051f"/>' +
+      '<path d="M458 118C468 110 488 110 498 118" fill="none" stroke="#12051f" stroke-width="5" stroke-linecap="round"/>' +
+      // A boulder already thrown, falling short behind the ship.
+      '<g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".3"><path d="M392 196C370 214 348 236 326 254M400 206C380 222 360 240 340 258"/></g>' +
+      '<circle cx="318" cy="262" r="10" fill="' + lin('rock2', [[0, '#7a6a8a'], [1, '#2a1a3a']]) + '" stroke="#12051f" stroke-width="3"/>' +
+      '</g>' +
+      // The sea, heaving.
+      '<path d="M0 440V300C60 286 120 312 190 296S320 280 400 300S480 290 520 296V440Z" fill="' + sea + '"/>' +
+      crest(150, 300, 70, 18, 0.5) + crest(392, 302, 64, 20, 0.55) +
+      '<g transform="translate(300 312)"><path d="M-30 0C-20 -30 0 -40 6 -36C8 -24 -4 -14 2 0" fill="#fff" opacity=".55"/><circle cx="-10" cy="-38" r="4" fill="#fff" opacity=".5"/><circle cx="12" cy="-34" r="3" fill="#fff" opacity=".5"/></g>' +
+      // The ship, heeled over in the swell, running for the open sea.
+      '<g transform="translate(392 340) rotate(-11) scale(1.08)">' +
+        '<path d="M2 -150V24" stroke="#2a0e08" stroke-width="5"/><path d="M-50 -142H54" stroke="#2a0e08" stroke-width="5" stroke-linecap="round"/>' +
+        '<path d="M-46 -140H50C58 -96 52 -44 44 -8H-40C-50 -44 -54 -96 -46 -140Z" fill="' + sail + '" stroke="#6a3a3a" stroke-width="2.4"/>' +
+        '<g fill="#c2366a" opacity=".85"><path d="M-34 -140H-20C-22 -96 -20 -44 -16 -8H-28C-38 -44 -40 -96 -34 -140Z"/><path d="M-6 -140H10V-8H-6Z"/><path d="M24 -140H38C42 -96 40 -44 32 -8H20C24 -44 26 -96 24 -140Z"/></g>' +
+        '<path d="M-92 4C-74 22 -44 30 4 30S84 22 100 0L94 30C82 46 50 52 4 52S-72 46 -84 30Z" fill="' + hull + '" stroke="#1a0804" stroke-width="2.4"/>' +
+        '<path d="M-92 4C-100 -6 -102 -18 -98 -30" fill="none" stroke="#2a0e08" stroke-width="7" stroke-linecap="round"/>' +
+        '<path d="M100 0C108 -10 110 -22 104 -34" fill="none" stroke="#2a0e08" stroke-width="7" stroke-linecap="round"/>' +
+        '<g transform="translate(-68 22)"><path d="M-14 0C-6 -9 6 -9 14 0C6 9 -6 9 -14 0Z" fill="#fff"/><circle r="5" fill="#2a6ad0"/><circle r="2.4" fill="#0a0a1a"/></g>' +
+        '<path d="M-80 36H90" stroke="#ffd98a" stroke-width="2.4" stroke-dasharray="6 5" opacity=".7"/>' + oars + '</g>' +
+      crest(300, 392, 80, 22, 0.55) + crest(430, 398, 70, 20, 0.6) +
+      '<path d="M0 440V410C80 398 170 420 260 404S420 396 520 410V440Z" fill="#14062a"/>' +
+      scatter(241, 26, (x, y, r) => '<path d="M' + x + ' ' + y + 'l-4 12" stroke="#c9b4ff" stroke-width="1.6" opacity="' + n(0.25 + r() * 0.35) + '"/>', 150, W, 120, 300);
+  },
+
   // Ice palace spires under an aurora, and a great crystal snowflake.
   'Elsa': () => {
     const arm = a => {
@@ -162,49 +297,18 @@ const SCENES = {
       sparkle(476, 150, 9) + sparkle(250, 60, 7);
   },
 
-  // A lion seated at the tip of the jutting rock, its mane against a great rising sun.
-  'Simba': () => {
-    const r = rng(311);
-    const tuft = (deg, len, w) => {
-      const a = (deg * Math.PI) / 180;
-      const [dx, dy] = [Math.cos(a), Math.sin(a)];
-      const [bx, by] = [-16 + dx * 30, -110 + dy * 30];
-      return '<path d="M' + n(bx - dy * w) + ' ' + n(by + dx * w) +
-        'Q' + n(bx + dx * len * 0.6 - dy * w * 0.9) + ' ' + n(by + dy * len * 0.6 + dx * w * 0.9) + ' ' + n(bx + dx * len) + ' ' + n(by + dy * len + 4) +
-        'Q' + n(bx + dx * len * 0.55 + dy * w * 0.7) + ' ' + n(by + dy * len * 0.55 - dx * w * 0.7) + ' ' + n(bx + dy * w) + ' ' + n(by - dx * w) + 'Z"/>';
-    };
-    let mane = '<circle cx="-16" cy="-110" r="40"/>';
-    for (let i = 0; i < 22; i++) {
-      const deg = -140 + i * 13 + (r() - 0.5) * 6;
-      mane += tuft(deg, 18 + r() * 10 + (deg > 60 ? 12 : 0), 12 + r() * 4);
-    }
-    return tint('#ffb24a', '#7a2e7a', 0.55) +
-      '<g fill="' + lin('rays', [[0, '#ffe7a0', 0.8], [1, '#ffb24a', 0]]) + '">' +
-        [-64, -40, -16, 8, 32, 56].map(a => '<path d="M400 200L384 40L416 40Z" transform="rotate(' + a + ' 400 200)"/>').join('') + '</g>' +
-      glow('sun', 400, 200, 190, '#ffd27a', 0.85) +
-      '<circle cx="400" cy="200" r="104" fill="' + lin('disc', [[0, '#fff1b8'], [0.6, '#ffb54d'], [1, '#ff7a3d']]) + '"/>' +
-      '<g fill="#7a2e7a" opacity=".3"><rect x="290" y="236" width="220" height="6"/><rect x="290" y="254" width="220" height="8"/><rect x="290" y="274" width="220" height="10"/></g>' +
-      '<g fill="none" stroke="#2b0d2f" stroke-width="2.4" stroke-linecap="round"><path d="M250 90q8-6 16 0q8-6 16 0"/><path d="M300 60q6-5 12 0q6-5 12 0"/><path d="M482 100q6-5 12 0q6-5 12 0"/></g>' +
-      '<g fill="#2b0d2f"><path d="M0 440V372C80 364 200 376 300 368S420 356 520 362V440Z"/>' +
-        '<path d="M520 300H360C344 302 330 308 322 316L304 320C300 324 304 328 312 328L360 334L520 346Z"/><path d="M400 336L430 372H520V340Z"/>' +
-        '<path d="M206 372V318" stroke="#2b0d2f" stroke-width="5"/><path d="M206 318C184 316 168 306 158 296C184 300 198 296 206 292C214 296 230 300 256 296C246 306 230 316 206 318Z"/>' +
-        '<path d="M300 372l4-14 3 14M318 370l3-12 3 12M150 374l4-14 3 14" stroke="#2b0d2f" stroke-width="2"/>' +
-        '<g transform="translate(446 300) scale(.95)">' +
-          '<path d="M64 -4C84 0 96 -6 100 -18" fill="none" stroke="#2b0d2f" stroke-width="5" stroke-linecap="round"/><ellipse cx="101" cy="-23" rx="5" ry="8" transform="rotate(20 101 -23)"/>' +
-          '<path d="M-58 0C-60 -5 -56 -9 -48 -9H-44C-42 -30 -40 -52 -42 -70C-42 -80 -38 -90 -30 -96L10 -100C30 -90 44 -74 56 -58C70 -42 76 -24 72 -10C70 -2 64 0 56 0Z"/>' +
-          '<ellipse cx="-12" cy="-4" rx="18" ry="5"/>' + mane +
-          '<circle cx="-34" cy="-142" r="7"/>' +
-          '<path d="M-28 -142C-44 -146 -58 -138 -64 -128L-72 -120C-77 -114 -75 -105 -68 -101C-62 -97 -52 -95 -42 -97C-32 -99 -26 -108 -26 -120Z"/></g></g>' +
-      '<path d="M360 300H520" stroke="#ffd27a" stroke-width="2" opacity=".5"/>' + sparkle(270, 150, 9);
-  },
-
-  // A tower with a long golden braid falling from its window, lanterns rising around it.
+  // A tower with no door and a long golden braid falling from its one window,
+  // under a crescent moon, rampion (the rapunzel the tale is named after) in
+  // bloom in the witch's garden below (Grimm, 1812). No lanterns: those are
+  // the 2010 film's.
   'Rapunzel': () => {
-    const lanFill = lin('lan', [[0, '#fff3c4'], [1, '#ff9a3c']]);
-    const lanGlow = rad('lglow', [[0, '#ffd27a', 0.55], [0.45, '#ffd27a', 0.22], [1, '#ffd27a', 0]]);
-    const lantern = (x, y, s) => '<circle cx="' + x + '" cy="' + y + '" r="' + n(s * 3.4) + '" fill="' + lanGlow + '"/>' +
-      '<path d="M' + (x - s) + ' ' + (y - s * 1.2) + 'h' + 2 * s + 'l' + n(s * 0.3) + ' ' + n(s * 2.2) + 'h' + n(-s * 2.6) + 'z" fill="' + lanFill + '"/>';
-    const spots = [[290, 70, 9], [346, 40, 7], [250, 140, 7], [322, 160, 11], [214, 60, 5], [300, 236, 6], [504, 240, 6], [508, 96, 8], [370, 110, 6], [240, 260, 5], [512, 170, 5]];
+    const bell = lin('bell', [[0, '#c9b4ff'], [1, '#6a4ad8']]);
+    const rampion = (x, y, s, lean = 0) => '<g transform="translate(' + x + ' ' + y + ') rotate(' + lean + ') scale(' + s + ')">' +
+      '<path d="M0 0C-2 -20 2 -40 0 -58" fill="none" stroke="#3f8a4a" stroke-width="2.6"/>' +
+      [[-1, -54, -30], [1, -40, 30], [-1, -26, -26]].map(([side, by, a]) =>
+        '<g transform="translate(' + side * 2 + ' ' + by + ') rotate(' + a + ')"><path d="M0 0V5" stroke="#3f8a4a" stroke-width="2"/>' +
+        '<path d="M-6 5C-6 15 -4 19 -7 22H7C4 19 6 15 6 5Z" fill="' + bell + '"/><path d="M-7 22L-3 19L0 23L3 19L7 22" fill="none" stroke="#6a4ad8" stroke-width="1.6"/></g>').join('') +
+      '<path d="M0 -8C-10 -12 -16 -8 -18 -2C-10 0 -4 -2 0 -8ZM0 -16C10 -20 16 -16 18 -10C10 -8 4 -10 0 -16Z" fill="#5ab04a"/></g>';
     const segs = [[[438, 166], [410, 180], [392, 214], [404, 250]], [[404, 250], [416, 290], [380, 316], [352, 340]], [[352, 340], [324, 364], [300, 396], [262, 424]]];
     const hair = 'M438 166C410 180 392 214 404 250C416 290 380 316 352 340C324 364 300 396 262 424C252 432 240 438 228 446';
     const blooms = [];
@@ -212,10 +316,11 @@ const SCENES = {
     const flower = ([x, y], i) => '<g fill="' + ['#ff8ab8', '#c49bff', '#fff'][i % 3] + '">' +
       [[0, -5], [5, -1], [3, 5], [-3, 5], [-5, -1]].map(([dx, dy]) => '<circle cx="' + n(x + dx) + '" cy="' + n(y + dy) + '" r="3.4"/>').join('') +
       '</g><circle cx="' + x + '" cy="' + y + '" r="2.4" fill="#ffd23c"/>';
-    return tint('#2b2d7a', '#c4508f', 0.55) + stars(31, 40, 120, W, 0, 200) +
-      spots.map(([x, y, s]) => lantern(x, y, s)).join('') +
-      '<rect x="0" y="396" width="520" height="44" fill="' + lin('lake', [[0, '#3b2a7a', 0.9], [1, '#1c0f3a', 1]]) + '"/>' +
-      spots.filter(([x, , s]) => s > 6 && x < 380).map(([x, , s]) => '<rect x="' + (x - 2) + '" y="' + (402 + s) + '" width="4" height="' + s * 2 + '" fill="#ffd27a" opacity=".45"/>').join('') +
+    return tint('#2b2d7a', '#c4508f', 0.55) + stars(31, 60, 120, W, 0, 260) +
+      glow('moonglow', 318, 92, 120, '#fff4d6', 0.5) +
+      '<path d="M330 44A50 50 0 1 0 352 136A40 40 0 0 1 330 44Z" fill="' + lin('moon', [[0, '#fffaf0'], [1, '#ffe0a0']]) + '"/>' +
+      sparkle(268, 160, 7) + sparkle(372, 232, 5) + sparkle(506, 210, 6) +
+      '<path d="M0 440V392C90 380 190 396 280 386S380 376 420 384H520V440Z" fill="' + lin('lawn', [[0, '#3b2a7a', 0.95], [1, '#1c0f3a', 1]]) + '"/>' +
       '<path d="M372 440L384 396C394 384 416 380 440 382L520 376V440Z" fill="#1c0f3a"/>' +
       '<path d="M414 388V150H474V388Z" fill="' + lin('stone', [[0, '#6a5aaa'], [1, '#2a1a5a']], 0, 0, 1, 0) + '"/>' +
       '<g stroke="#1c0f3a" stroke-width="2" opacity=".5"><path d="M414 210H474M414 260H474M414 310H474M414 360H474M440 210V260M456 260V310M432 310V360M452 360V388M428 150V210"/></g>' +
@@ -226,7 +331,8 @@ const SCENES = {
       '<path d="' + hair + '" fill="none" stroke="' + lin('hair', [[0, '#fff0a0'], [1, '#f0b030']]) + '" stroke-width="16" stroke-linecap="round"/>' +
       '<path d="' + hair + '" fill="none" stroke="#c98a1f" stroke-width="4" stroke-dasharray="10 9" stroke-linecap="round"/>' +
       '<path d="M438 166C424 172 414 184 410 196" fill="none" stroke="#fff8d0" stroke-width="4" stroke-linecap="round" opacity=".8"/>' +
-      blooms.map(flower).join('') + sparkle(480, 290, 8);
+      blooms.map(flower).join('') + sparkle(480, 290, 8) +
+      rampion(300, 420, 1, -6) + rampion(332, 428, 0.8, 8) + rampion(486, 410, 0.9, -4) + rampion(510, 424, 0.7, 10);
   },
 
   // A rabbit officer on a rooftop at dusk, rim-lit red and blue, looking out over a city of many climates.
@@ -418,52 +524,6 @@ const SCENES = {
       sparkle(220, 100, 9);
   },
 
-  // A glowing golden memory over shelves of coloured ones, above the curve of the control desk.
-  'Joy': () => {
-    const cols = ['#ffe36e', '#7fd8ff', '#ff6f7f', '#8ff0a0', '#c49bff'];
-    const r = rng(231);
-    let shelves = '';
-    for (const [y, x0] of [[56, 236], [108, 220], [160, 420], [212, 430]]) {
-      shelves += '<rect x="' + x0 + '" y="' + (y + 14) + '" width="' + (W - x0) + '" height="4" fill="#fff" opacity=".4"/>';
-      for (let x = x0 + 14; x < W; x += 30) {
-        const c = cols[Math.floor(r() * cols.length)];
-        shelves += '<circle cx="' + x + '" cy="' + y + '" r="11.5" fill="' + c + '" stroke="#fff" stroke-width="1.5"/><circle cx="' + (x - 3) + '" cy="' + (y - 4) + '" r="3.2" fill="#fff" opacity=".75"/>';
-      }
-    }
-    // The desk's top runs along this curve; its buttons are set along it.
-    const edge = [[0, 404], [150, 368], [340, 340], [520, 344]];
-    let keys = '';
-    [0.42, 0.5, 0.58, 0.82, 0.9].forEach((t, i) => {
-      const [x, y] = bez(...edge, t);
-      const c = cols[i % cols.length];
-      keys += '<ellipse cx="' + x + '" cy="' + n(y + 8) + '" rx="16" ry="6.5" fill="' + c + '" opacity=".35"/>' +
-        '<ellipse cx="' + x + '" cy="' + n(y + 6) + '" rx="11" ry="4.6" fill="' + c + '" stroke="#fff" stroke-width="1.4"/>';
-    });
-    [0.46, 0.54, 0.86].forEach(t => {
-      const [x, y] = bez(...edge, t);
-      keys += '<rect x="' + n(x - 7) + '" y="' + n(y + 14) + '" width="14" height="3" rx="1.5" fill="#fff" opacity=".7"/>';
-    });
-    const [lx, ly] = bez(...edge, 0.7);
-    return tint('#ffd56e', '#7a3aa0', 0.5) + glow('back', 400, 130, 220, '#fff3c4', 0.5) + shelves +
-      glow('core', 344, 186, 140, '#fff3a6', 0.95) +
-      '<circle cx="344" cy="186" r="64" fill="' + rad('orb', [[0, '#fffbe0'], [0.55, '#ffe36e'], [1, '#f0a020']], 0.4, 0.35) + '" stroke="#fff" stroke-width="5"/>' +
-      '<path d="M314 196c8-30 50-34 60-4s-28 32-38 12 12-24 22-12" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>' +
-      '<path d="M310 158a44 44 0 0 1 30 -22" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".9"/>' +
-      '<path d="M0 404C150 368 340 340 520 344V372C340 368 160 392 0 428Z" fill="' + lin('desktop', [[0, '#f4e8ff'], [1, '#b89ae0']]) + '"/>' +
-      '<path d="M0 428C160 392 340 368 520 372V440H0Z" fill="' + lin('deskfront', [[0, '#6a3aa0'], [1, '#2a1050']]) + '"/>' +
-      '<path d="M0 404C150 368 340 340 520 344" stroke="#fff" stroke-width="3" fill="none"/>' +
-      '<path d="M0 428C160 392 340 368 520 372" stroke="#ffe36e" stroke-width="2" fill="none" opacity=".7"/>' +
-      '<ellipse cx="344" cy="356" rx="60" ry="6" fill="#fff3a6" opacity=".5"/>' +
-      keys +
-      '<ellipse cx="' + lx + '" cy="' + n(ly + 8) + '" rx="16" ry="6" fill="#3a2a5a"/>' +
-      '<path d="M' + lx + ' ' + n(ly + 6) + 'L' + n(lx - 10) + ' ' + n(ly - 40) + '" stroke="#e9e4ff" stroke-width="6" stroke-linecap="round"/>' +
-      glow('knob', n(lx - 10), n(ly - 44), 26, '#ff6f7f', 0.7) +
-      '<circle cx="' + n(lx - 10) + '" cy="' + n(ly - 44) + '" r="11" fill="' + rad('knobf', [[0, '#ffb0b8'], [1, '#e8344a']], 0.4, 0.35) + '" stroke="#fff" stroke-width="2.4"/>' +
-      '<g fill="#e9d6ff" opacity=".55"><rect x="250" y="408" width="70" height="5" rx="2.5"/><rect x="360" y="400" width="110" height="5" rx="2.5"/></g>' +
-      '<g fill="#ffe36e"><circle cx="276" cy="410.5" r="4.5"/><circle cx="430" cy="402.5" r="4.5"/></g>' +
-      sparkle(250, 220, 10) + sparkle(480, 280, 9) + sparkle(420, 250, 6);
-  },
-
   // A glowing reactor ring over the city, two red-and-gold flight trails
   // spiralling up into a gold burst: the power and the flight, no suit.
   'Iron Man': () => {
@@ -640,45 +700,6 @@ const SCENES = {
       ground('M120 440V396C220 380 320 404 420 388S500 384 520 388V440Z', '#2a0d40');
   },
 
-  // A golden headband with a faceted red star, before a sword and a glowing lasso, over a cliffside temple at sunset.
-  'Wonder Woman': () => {
-    const gold = lin('gold', [[0, '#fff6c4'], [0.5, '#f0c050'], [1, '#b8781e']]);
-    let ruby = '';
-    for (let i = 0; i < 10; i++) {
-      const p = j => {
-        const a = ((j % 10) * 36 - 90) * Math.PI / 180;
-        const rr = j % 2 ? 9 : 23;
-        return n(rr * Math.cos(a)) + ' ' + n(rr * Math.sin(a));
-      };
-      ruby += '<path d="M0 0L' + p(i) + 'L' + p(i + 1) + 'Z" fill="' + (i % 2 ? '#ff7a84' : '#b0142c') + '"/>';
-    }
-    return tint('#ffb84a', '#a3203a', 0.55) + stars(161, 24, 120, W, 0, 150) +
-      '<g fill="#fff3c4" opacity=".22">' + [-60, -36, -12, 12, 36, 60].map(a => '<path d="M380 176L364 -40H396Z" transform="rotate(' + a + ' 380 176)"/>').join('') + '</g>' +
-      glow('g', 380, 180, 200, '#ffe39a', 0.85) +
-      '<path d="M0 440V380C120 372 260 386 380 380S490 376 520 378V440Z" fill="' + lin('sea', [[0, '#ff9a6a', 0.7], [1, '#5a1a3a']]) + '"/>' +
-      '<g fill="#3a0f2a"><path d="M300 440L322 410H520V440Z"/><path d="M318 410H520V404H326ZM326 404H520V398H334Z"/>' +
-        [342, 372, 402, 432, 462, 492].map(x => '<rect x="' + x + '" y="348" width="13" height="50"/>').join('') +
-        '<path d="M330 338H520V348H330Z"/><path d="M322 338L428 310L534 338Z"/></g>' +
-      '<g transform="translate(380 180) rotate(40)">' +
-        '<path d="M-7 -150L0 -172L7 -150V60H-7Z" fill="' + lin('blade', [[0, '#ffffff'], [1, '#a8b0c8']], 0, 0, 1, 0) + '" stroke="#fff" stroke-width="2"/>' +
-        '<path d="M0 -150V56" stroke="#8a94b0" stroke-width="1.6"/>' +
-        '<path d="M-36 60H36L30 70H-30Z" fill="' + gold + '" stroke="#fff" stroke-width="2"/>' +
-        '<rect x="-5" y="70" width="10" height="42" fill="#5a2a1a"/><path d="M-5 78h10M-5 88h10M-5 98h10" stroke="#c98a4a" stroke-width="2"/>' +
-        '<circle cy="118" r="8" fill="' + gold + '" stroke="#fff" stroke-width="2"/></g>' +
-      '<g transform="rotate(-12 380 182)" fill="none">' +
-        '<ellipse cx="380" cy="182" rx="150" ry="52" stroke="#fff3b0" stroke-width="20" opacity=".22"/>' +
-        '<ellipse cx="380" cy="182" rx="150" ry="52" stroke="#f0bf4a" stroke-width="6"/>' +
-        '<ellipse cx="380" cy="182" rx="150" ry="52" stroke="#fff8d8" stroke-width="2.4" stroke-dasharray="7 7"/></g>' +
-      '<g transform="translate(380 176) scale(1.1)">' +
-        '<path d="M-120 26C-60 -8 60 -8 120 26L114 46C58 16 -58 16 -114 46Z" fill="' + gold + '" stroke="#7a4a10" stroke-width="2" stroke-linejoin="round"/>' +
-        '<path d="M-114 30C-58 0 58 0 114 30" stroke="#fffbe0" stroke-width="2.4" fill="none"/>' +
-        '<path d="M-110 40C-56 12 56 12 110 40" stroke="#9a6014" stroke-width="2" fill="none" opacity=".7"/>' +
-        '<path d="M-50 12L0 -64L50 12C30 6 -30 6 -50 12Z" fill="' + gold + '" stroke="#7a4a10" stroke-width="2" stroke-linejoin="round"/>' +
-        '<path d="M-36 8L0 -46L36 8" stroke="#9a6014" stroke-width="2" fill="none"/><path d="M-44 10L0 -58" stroke="#fffbe0" stroke-width="2" fill="none"/>' +
-        '<g transform="translate(0 -14)"><circle r="28" fill="#ff4d5a" opacity=".25"/>' + ruby + '<path d="' + starPath(5, 23, 9) + '" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></g>' +
-      sparkle(480, 64, 13) + sparkle(270, 96, 9) + sparkle(470, 270, 7);
-  },
-
   // A full moon over a gothic skyline, a flock of bats crossing it.
   'Batman': () => {
     const bat = (x, y, s) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 0C6 -6 12 -6 16 -2C18 -8 24 -10 30 -6C26 -2 26 4 30 8C22 4 18 6 16 12C12 6 8 4 0 6C-8 4 -12 6 -16 12C-18 6 -22 4 -30 8C-26 4 -26 -2 -30 -6C-24 -10 -18 -8 -16 -2C-12 -6 -6 -6 0 0Z"/>';
@@ -809,34 +830,6 @@ const SCENES = {
       scatter(192, 14, (x, y) => '<circle cx="' + x + '" cy="' + y + '" r="2.6" fill="#f6ff9a"/><circle cx="' + x + '" cy="' + y + '" r="7" fill="#f6ff9a" opacity=".25"/>', 200, 500, 300, 390);
   },
 
-  // A home in an old tree stump by the swamp, smoke curling green, a KEEP OUT sign at the bank.
-  'Shrek': () => {
-    const bark = lin('bark', [[0, '#8a6a36'], [1, '#3a2a14']], 0, 0, 1, 0);
-    return tint('#7fe03a', '#14380f', 0.72) + stars(201, 18, 120, W, 0, 120, '#f6ffd0') +
-      glow('moon', 470, 66, 90, '#f6ffb0', 0.6) + '<circle cx="470" cy="66" r="28" fill="#f6ffd0"/>' +
-      glow('g', 392, 270, 180, '#c9ff7a', 0.5) +
-      '<g fill="#2a4a1c" opacity=".7"><ellipse cx="200" cy="350" rx="80" ry="50"/><ellipse cx="520" cy="320" rx="60" ry="80"/></g>' +
-      '<path d="M318 394C326 360 330 300 326 220C324 190 330 168 340 160L352 176L364 150L380 172L396 146L410 170L426 152L436 176L450 160C460 172 462 196 460 230C456 300 462 360 474 394C440 402 360 402 318 394Z" fill="' + bark + '"/>' +
-      '<path d="M318 394C300 398 284 404 266 412H330ZM474 394C492 398 506 404 520 408H460Z" fill="#3a2a14"/>' +
-      '<g stroke="#2a1a0a" stroke-width="2.5" fill="none" opacity=".6"><path d="M342 200C338 260 340 330 336 380M360 190C356 240 360 300 356 340M436 196C440 250 436 320 444 380M452 220C454 280 450 340 458 380"/></g>' +
-      '<g fill="#6fbf3a"><ellipse cx="346" cy="166" rx="16" ry="7"/><ellipse cx="400" cy="150" rx="14" ry="6"/><ellipse cx="444" cy="168" rx="14" ry="6"/><ellipse cx="330" cy="300" rx="8" ry="16"/></g>' +
-      '<path d="M430 162L434 112H450L452 166Z" fill="#5a4a3a"/>' +
-      '<path d="M442 106c-10-14 8-24-2-38s10-24 4-36" stroke="#d8ffb0" stroke-width="8" fill="none" opacity=".45" stroke-linecap="round"/>' +
-      glow('win', 356, 262, 40, '#ffd27a', 0.6) +
-      '<circle cx="356" cy="262" r="16" fill="#ffd27a" stroke="#2a1a0a" stroke-width="4"/><path d="M356 246V278M340 262H372" stroke="#2a1a0a" stroke-width="3"/>' +
-      '<circle cx="432" cy="232" r="13" fill="#ffd27a" stroke="#2a1a0a" stroke-width="4"/><path d="M432 219V245M419 232H445" stroke="#2a1a0a" stroke-width="3"/>' +
-      '<path d="M370 394V344A26 26 0 0 1 422 344V394Z" fill="#6a4a22" stroke="#2a1a0a" stroke-width="3"/><path d="M396 318V394M378 342H414M376 366H416" stroke="#2a1a0a" stroke-width="2"/><circle cx="414" cy="370" r="3.4" fill="#ffd27a"/>' +
-      '<path d="M0 404H520V440H0Z" fill="' + lin('swamp', [[0, '#3f6b2a'], [1, '#14280f']]) + '"/>' +
-      '<path d="M0 406C80 394 200 400 300 396S460 398 520 400V410H0Z" fill="#1c3a14"/>' +
-      '<g fill="#6fbf3a" opacity=".8"><ellipse cx="200" cy="424" rx="16" ry="4"/><ellipse cx="300" cy="430" rx="12" ry="3.4"/><ellipse cx="460" cy="426" rx="14" ry="3.6"/></g>' +
-      '<rect x="292" y="350" width="7" height="56" fill="#4a3018"/>' +
-      '<path d="M262 344L326 336L328 364L264 370Z" fill="#b08a4a" stroke="#4a3018" stroke-width="3"/>' +
-      '<text x="295" y="358" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="900" fill="#2a1a0a" text-anchor="middle" transform="rotate(-6 295 356)">KEEP OUT</text>' +
-      '<g stroke="#2a3a14" stroke-width="3" stroke-linecap="round">' + [200, 216, 488, 504].map((x, i) => '<path d="M' + x + ' 410V' + (338 + i * 6) + '"/><rect x="' + (x - 3) + '" y="' + (338 + i * 6) + '" width="6" height="22" rx="3" fill="#6a4a22"/>').join('') + '</g>' +
-      scatter(202, 14, (x, y) => '<circle cx="' + x + '" cy="' + y + '" r="2.4" fill="#e9ff7a"/><circle cx="' + x + '" cy="' + y + '" r="7" fill="#e9ff7a" opacity=".25"/>', 220, 510, 200, 390) +
-      '<g fill="none" stroke="#9fe05a" stroke-width="2" opacity=".6"><circle cx="240" cy="420" r="4"/><circle cx="380" cy="426" r="3"/><circle cx="420" cy="418" r="2.4"/></g>';
-  },
-
   // A steaming bowl of dumplings between bamboo, peach blossom drifting.
   'Po': () =>
     tint('#ff9a5c', '#5a2a5a', 0.55) +
@@ -852,72 +845,6 @@ const SCENES = {
     '<g fill="#2a1430">' + [[480, 200], [500, 150], [176, 160], [204, 120]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="12" height="' + (440 - y) + '"/><rect x="' + (x - 2) + '" y="' + (y + 70) + '" width="16" height="4"/><rect x="' + (x - 2) + '" y="' + (y + 150) + '" width="16" height="4"/>').join('') + '</g>' +
     scatter(212, 12, (x, y, r) => '<ellipse cx="' + x + '" cy="' + y + '" rx="6" ry="3.6" fill="#ffc6da" transform="rotate(' + n(r() * 180) + ' ' + x + ' ' + y + ')"/>', 220, 510, 20, 340) +
     ground('M120 440V384C220 370 320 392 420 378S500 372 520 376V440Z', '#2a1430'),
-
-  // A black dragon with a red tail fin sweeping across a full moon through storm clouds, a blue blast ahead of it.
-  'Hiccup': () => {
-    const wing = 'M-12 -40C-40 -58 -66 -70 -92 -68C-120 -66 -150 -56 -176 -44Q-152 -30 -150 0Q-130 2 -110 16Q-86 6 -60 20Q-36 6 -14 14Z';
-    const ribs = '<path d="M-92 -68L-150 0M-92 -68L-110 16M-92 -68L-60 20M-92 -68L-176 -44" stroke="#2a3a5a" stroke-width="2" fill="none"/>';
-    const body = 'M0 -102C14 -102 22 -92 22 -80C22 -72 16 -66 12 -62C18 -42 22 -20 20 0C18 20 12 40 8 60C8 100 4 140 0 180C-4 140 -8 100 -8 60C-12 40 -18 20 -20 0C-22 -20 -18 -42 -12 -62C-16 -66 -22 -72 -22 -80C-22 -92 -14 -102 0 -102Z' +
-      'M20 -84L40 -78L20 -70ZM16 -74L36 -60L14 -64ZM-20 -84L-40 -78L-20 -70ZM-16 -74L-36 -60L-14 -64Z' +
-      'M-16 36L-32 58L-18 54ZM16 36L32 58L18 54Z';
-    // The tail: a ribbon that tapers along an S-curve, spines down its middle,
-    // a pair of small fins halfway and the two swept tail fins at its end,
-    // the right one red.
-    const curve = [[0, 52], [14, 104], [-34, 140], [-16, 204]];
-    const along = t => {
-      const p = bez(...curve, t);
-      const q = bez(...curve, Math.min(1, t + 0.01));
-      const r = bez(...curve, Math.max(0, t - 0.01));
-      const len = Math.hypot(q[0] - r[0], q[1] - r[1]) || 1;
-      const d = [(q[0] - r[0]) / len, (q[1] - r[1]) / len];
-      return { p, d, nrm: [-d[1], d[0]] };
-    };
-    const at = (o, a, b) => n(o.p[0] + o.nrm[0] * a + o.d[0] * b) + ' ' + n(o.p[1] + o.nrm[1] * a + o.d[1] * b);
-    const steps = 28;
-    const left = [];
-    const right = [];
-    for (let i = 0; i <= steps; i++) {
-      const o = along(i / steps);
-      const w = 11 * (1 - i / steps) + 2;
-      left.push(at(o, w, 0));
-      right.unshift(at(o, -w, 0));
-    }
-    const tailPath = 'M' + left.join('L') + 'L' + right.join('L') + 'Z';
-    const fin = (t, side, span, back) => {
-      const o = along(t);
-      return 'M' + at(o, 0, -4) + 'Q' + at(o, side * span * 0.6, -back * 0.3) + ' ' + at(o, side * span, back * 0.55) +
-        'Q' + at(o, side * span * 0.62, back * 0.5) + ' ' + at(o, side * span * 0.5, back * 0.85) +
-        'Q' + at(o, side * span * 0.3, back * 0.62) + ' ' + at(o, 0, back) + 'Z';
-    };
-    let spines = '';
-    for (const t of [0.12, 0.24, 0.36, 0.62, 0.74]) {
-      const o = along(t);
-      spines += 'M' + at(o, -2.6, 0) + 'L' + at(o, 0, 9) + 'L' + at(o, 2.6, 0) + 'Z';
-    }
-    const tail = '<path d="' + tailPath + '"/><path d="' + fin(0.48, 1, 16, 14) + fin(0.48, -1, 16, 14) + fin(0.9, 1, 36, 26) + spines + '"/>';
-    const redFin = '<path d="' + fin(0.9, -1, 36, 26) + '" fill="#d8283a" stroke="#ff8a8a" stroke-width="1.5"/>';
-    const cloud = (x, y, rx, ry, fill, o) => '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="' + fill + '" opacity="' + o + '"/><path d="M' + (x - rx * 0.7) + ' ' + n(y - ry * 0.7) + 'Q' + x + ' ' + n(y - ry * 1.1) + ' ' + (x + rx * 0.7) + ' ' + n(y - ry * 0.7) + '" stroke="#dfe8ff" stroke-width="2" fill="none" opacity="' + n(o * 0.6) + '"/>';
-    return tint('#1a2a5a', '#3a2a6a', 0.7) + stars(221, 50, 120, W, 0, 260) +
-      glow('moonglow', 380, 190, 200, '#cfe0ff', 0.55) +
-      '<circle cx="380" cy="190" r="120" fill="' + rad('moon', [[0, '#ffffff'], [1, '#c8d6f0']], 0.4, 0.35) + '"/>' +
-      '<g fill="#a8b8d8" opacity=".35"><circle cx="340" cy="150" r="18"/><circle cx="420" cy="230" r="12"/><circle cx="430" cy="140" r="7"/></g>' +
-      cloud(300, 300, 190, 16, '#4a5a8a', 0.8) + cloud(470, 120, 110, 12, '#5a6a9a', 0.7) + cloud(330, 330, 150, 10, '#3a4a7a', 0.7) +
-      '<g transform="translate(392 196) rotate(32) scale(.86)">' +
-        '<path d="M0 -100L0 -230" stroke="#7fb8ff" stroke-width="22" stroke-linecap="round" opacity=".25"/>' +
-        '<path d="M0 -104L0 -214" stroke="#cfe8ff" stroke-width="7" stroke-linecap="round"/>' +
-        '<circle cy="-222" r="16" fill="' + rad('blast', [[0, '#ffffff'], [0.5, '#9fc8ff', 0.9], [1, '#7a6aff', 0]]) + '"/>' +
-        '<g fill="#0a0e1c" stroke="#9fb8e8" stroke-width="2" stroke-opacity=".55">' +
-          '<path d="' + wing + '"/><path d="' + wing + '" transform="scale(-1 1)"/>' +
-          tail + '<path d="' + body + '"/></g>' +
-        ribs + '<g transform="scale(-1 1)">' + ribs + '</g>' +
-        redFin +
-        '<path d="M-10 -88C-6 -84 -2 -84 0 -86" stroke="#9ff05a" stroke-width="2" fill="none"/><path d="M10 -88C6 -84 2 -84 0 -86" stroke="#9ff05a" stroke-width="2" fill="none"/></g>' +
-      cloud(240, 372, 200, 14, '#2a3360', 0.85) + cloud(470, 386, 120, 10, '#232a55', 0.85) +
-      '<g fill="#0c1230"><path d="M200 440V340L214 326L230 340V440Z"/><path d="M450 440V320L468 304L486 320V440Z"/></g>' +
-      ground('M0 440V404C120 396 260 410 380 402S490 398 520 400V440Z', '#0a1028') +
-      '<path d="M200 418c30-6 60 6 90 0s60-6 90 0 60 6 90 0" fill="none" stroke="#cfe0ff" stroke-width="2" opacity=".4"/>' +
-      sparkle(488, 60, 9) + sparkle(250, 90, 7);
-  },
 
   // A spellbook open in the air above a castle of lit windows, a wand
   // trailing sparks across its pages, candles floating in the dark.
@@ -964,75 +891,6 @@ const SCENES = {
       '<g fill="#ffd27a" opacity=".35">' + [[322, 384], [376, 392], [436, 386], [482, 396]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="16" rx="2.5"/>').join('') + '</g>';
   },
 
-  // A black heart with little bat wings and a pink skull at its centre,
-  // under a lilac crescent moon; bats, hearts and sparkles on a plum night,
-  // a spiked fence along the hills.
-  'Kuromi': () => {
-    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="486" cy="44" r="46" fill="#000"/></mask>');
-    const pink = lin('pink', [[0, '#ffd6ea'], [0.55, '#ff8cc4'], [1, '#f0559c']], 0, 0, 0.4, 1);
-    const ink = lin('ink', [[0, '#46295e'], [1, '#120820']], 0, 0, 0.5, 1);
-    const bat = (x, y, s) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" fill="#1a0c2c">' +
-      '<path d="M-6 -2C-12 -10 -24 -12 -30 -6C-24 -4 -22 2 -24 8C-18 4 -12 6 -8 10Z"/><path d="M6 -2C12 -10 24 -12 30 -6C24 -4 22 2 24 8C18 4 12 6 8 10Z"/>' +
-      '<circle r="8"/><path d="M-6 -6L-8 -14L-2 -8ZM6 -6L8 -14L2 -8Z"/><circle cx="-3" cy="-1" r="1.6" fill="#ff8cc4"/><circle cx="3" cy="-1" r="1.6" fill="#ff8cc4"/></g>';
-    const heart = (x, y, s, c) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 7C-9 1 -11 -4 -9 -7C-6 -11 -2 -10 0 -6C2 -10 6 -11 9 -7C11 -4 9 1 0 7Z" fill="' + c + '"/>';
-    const wing = k => '<path d="M' + (78 * k) + ' -40C' + (120 * k) + ' -86 ' + (170 * k) + ' -80 ' + (184 * k) + ' -50C' + (164 * k) + ' -50 ' +
-      (160 * k) + ' -36 ' + (166 * k) + ' -20C' + (146 * k) + ' -26 ' + (134 * k) + ' -14 ' + (136 * k) + ' 2C' + (116 * k) + ' -6 ' +
-      (100 * k) + ' 0 ' + (92 * k) + ' 14Z" fill="' + ink + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-      '<path d="M' + (96 * k) + ' -34C' + (124 * k) + ' -56 ' + (148 * k) + ' -60 ' + (170 * k) + ' -52" stroke="#8a62b8" stroke-width="2.5" fill="none" opacity=".7"/>';
-    return tint('#ff9ad2', '#1c0c34', 0.64) + stars(411, 44, 120, W, 0, 250, '#ffe0f4') +
-      glow('mg', 460, 70, 80, '#f3dcff', 0.45) +
-      '<circle cx="460" cy="70" r="50" fill="' + lin('moon', [[0, '#fbf0ff'], [1, '#cfa8ff']]) + '" mask="url(#{id}-cres)"/>' +
-      glow('g', 362, 196, 180, '#ff9ad2', 0.62) +
-      '<g transform="translate(362 196) scale(.8)">' + wing(1) + wing(-1) +
-        '<path d="M0 110C-60 70 -112 30 -112 -26C-112 -70 -80 -98 -46 -98C-24 -98 -8 -86 0 -68C8 -86 24 -98 46 -98C80 -98 112 -70 112 -26C112 30 60 70 0 110Z" fill="' + ink + '" stroke="#fff" stroke-width="4"/>' +
-        '<path d="M-84 -50C-78 -74 -58 -86 -40 -84" stroke="#8a62b8" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>' +
-        '<g transform="translate(0 -4)">' +
-          '<path d="M0 46C-30 26 -54 6 -54 -20C-54 -40 -40 -52 -24 -52C-12 -52 -4 -46 0 -36C4 -46 12 -52 24 -52C40 -52 54 -40 54 -20C54 6 30 26 0 46Z" fill="' + pink + '" stroke="#fff" stroke-width="3"/>' +
-          '<path d="M-36 -26C-34 -38 -26 -44 -16 -44" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"/>' +
-          '<path d="M8 -24A20 20 0 1 0 8 14A15 15 0 1 1 8 -24Z" fill="#2a1240" opacity=".85"/>' +
-          '<path d="M0 -70L4 -60L14 -58L6 -52L8 -42L0 -48L-8 -42L-6 -52L-14 -58L-4 -60Z" fill="#ff5f9a" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></g>' +
-      '<path d="M362 282C370 312 410 322 430 304" fill="none" stroke="#1a0c2c" stroke-width="6" stroke-linecap="round"/>' +
-      '<path d="M430 304L422 292L440 290L442 306Z" fill="#1a0c2c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
-      [[256, 120, 1], [496, 150, 0.8], [262, 290, 0.7], [486, 300, 0.75], [330, 50, 0.6]].map(([x, y, sc]) => bat(x, y, sc)).join('') +
-      heart(300, 200, 1.4, '#ff5f9a') + heart(510, 200, 1.1, '#ffc2e0') + heart(236, 220, 0.9, '#ffc2e0') + heart(400, 40, 0.9, '#ff8cc4') +
-      sparkle(500, 120, 9, '#ffe0f4') + sparkle(236, 90, 8, '#ffe0f4') + sparkle(320, 320, 6, '#ffe0f4') +
-      '<path d="M0 440V378C110 360 230 382 330 366S470 352 520 360V440Z" fill="#2a1446"/>' +
-      '<g fill="#160a26">' + Array.from({ length: 14 }, (_, i) => 252 + i * 20).map(x =>
-        '<rect x="' + (x - 2.5) + '" y="348" width="5" height="54"/><path d="M' + (x - 6) + ' 350C' + (x - 4) + ' 342 ' + (x - 2) + ' 338 ' + x + ' 330C' + (x + 2) + ' 338 ' + (x + 4) + ' 342 ' + (x + 6) + ' 350Z"/>').join('') +
-        '<rect x="246" y="360" width="290" height="5"/><rect x="246" y="384" width="290" height="5"/></g>' +
-      '<path d="M0 440V404C120 392 250 410 360 400S480 394 520 398V440Z" fill="#160a26"/>' +
-      [[290, 416], [350, 424], [430, 418], [500, 426]].map(([x, y]) => heart(x, y, 0.6, '#ff8cc4')).join('');
-  },
-
-  // A heart-shaped brooch with a crescent at its centre, ribbons streaming,
-  // under a great crescent moon over a city at night and its lattice tower.
-  'Sailor Moon': () => {
-    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="500" cy="40" r="72" fill="#000"/></mask>');
-    defs.push('<mask id="{id}-inner" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="386" cy="190" r="22" fill="#000"/></mask>');
-    const gold = lin('gold', [[0, '#fff6c4'], [0.5, '#f4c84a'], [1, '#c98a1f']]);
-    const heart = s => 'M0 ' + n(40 * s) + 'C' + n(-50 * s) + ' ' + n(6 * s) + ' ' + n(-62 * s) + ' ' + n(-24 * s) + ' ' + n(-44 * s) + ' ' + n(-42 * s) +
-      'C' + n(-28 * s) + ' ' + n(-58 * s) + ' ' + n(-8 * s) + ' ' + n(-50 * s) + ' 0 ' + n(-34 * s) +
-      'C' + n(8 * s) + ' ' + n(-50 * s) + ' ' + n(28 * s) + ' ' + n(-58 * s) + ' ' + n(44 * s) + ' ' + n(-42 * s) +
-      'C' + n(62 * s) + ' ' + n(-24 * s) + ' ' + n(50 * s) + ' ' + n(6 * s) + ' 0 ' + n(40 * s) + 'Z';
-    const tower = '<g fill="none" stroke="#ff5a6a" stroke-width="2.4"><path d="M262 400L290 250L318 400M276 330H304M270 360H310M282 290H298M290 250V220"/>' +
-      '<path d="M266 380L314 340M314 380L266 340M274 330L306 296M306 330L274 296"/></g>' +
-      '<rect x="278" y="312" width="24" height="7" fill="#ff5a6a"/>';
-    return tint('#ff9ad5', '#24247a', 0.55) + stars(421, 46, 120, W, 0, 260) +
-      '<circle cx="460" cy="74" r="80" fill="' + lin('moon', [[0, '#fffbe6'], [1, '#ffe08a']]) + '" mask="url(#{id}-cres)"/>' +
-      glow('g', 380, 196, 170, '#ffd6f0', 0.75) +
-      '<path d="M380 210C320 230 280 280 230 300C270 290 320 270 360 240Z" fill="#ff7ab8" opacity=".85"/>' +
-      '<path d="M380 210C440 236 470 290 520 306V290C480 276 450 246 400 220Z" fill="#7ab8ff" opacity=".85"/>' +
-      '<path d="M380 210C330 250 312 300 300 340C330 300 352 262 386 232Z" fill="#ffb3d9" opacity=".7"/>' +
-      '<g transform="translate(380 196)"><path d="' + heart(1.5) + '" fill="' + gold + '" stroke="#fff" stroke-width="3"/>' +
-        '<path d="' + heart(1.18) + '" fill="' + lin('pink', [[0, '#ffc2e0'], [1, '#ff4f9a']]) + '" stroke="#c98a1f" stroke-width="2"/></g>' +
-      '<circle cx="372" cy="190" r="26" fill="' + gold + '" mask="url(#{id}-inner)"/>' +
-      [[380, 128, '#ff4f6a'], [324, 170, '#4f9aff'], [436, 170, '#4fd08a'], [380, 246, '#ffe04f']].map(([x, y, c]) =>
-        '<circle cx="' + x + '" cy="' + y + '" r="7" fill="' + c + '" stroke="#fff" stroke-width="2"/>').join('') +
-      sparkle(476, 210, 12) + sparkle(270, 120, 9) + sparkle(452, 290, 7) + sparkle(318, 90, 6) +
-      skyline(422, 140, W, 420, 50, 150, '#1a1650', '#ffe9a6') + tower +
-      '<rect x="0" y="420" width="520" height="20" fill="#120e3a"/>';
-  },
-
   // A golden crown set with gems above a pink-roofed castle on green hills,
   // pennants flying, a peach or two in the grass.
   'Princess Peach': () => {
@@ -1065,43 +923,50 @@ const SCENES = {
       peach(250, 396, 1.1) + peach(286, 410, 0.8) + peach(500, 404, 0.9);
   },
 
-  // A big red bow over a little cottage on a hill of apples and flowers,
-  // polka dots in a pink sky.
-  'Hello Kitty': () => {
-    const red = lin('red', [[0, '#ff6a7a'], [1, '#d01a32']]);
-    const apple = (x, y, s) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')"><path d="M0 -10C-6 -16 -20 -14 -20 2C-20 16 -10 22 0 18C10 22 20 16 20 2C20 -14 6 -16 0 -10Z" fill="' + red + '"/>' +
-      '<path d="M0 -10V-18" stroke="#6a3a1a" stroke-width="2.4"/><path d="M2 -16C8 -24 16 -22 18 -18C12 -14 6 -13 2 -16Z" fill="#5ab04a"/>' +
-      '<ellipse cx="-9" cy="-3" rx="3" ry="5" fill="#fff" opacity=".5"/></g>';
-    const flower = (x, y, c) => '<g fill="' + c + '">' + [0, 72, 144, 216, 288].map(a => {
-      const r = a * Math.PI / 180;
-      return '<circle cx="' + n(x + 6 * Math.sin(r)) + '" cy="' + n(y - 6 * Math.cos(r)) + '" r="4.6"/>';
-    }).join('') + '</g><circle cx="' + x + '" cy="' + y + '" r="3.4" fill="#ffd23c"/>';
-    return tint('#ffd6e4', '#c2366a', 0.5) +
-      scatter(431, 30, (x, y, r) => '<circle cx="' + x + '" cy="' + y + '" r="' + n(4 + r() * 6) + '" fill="#fff" opacity=".35"/>', 120, W, 0, 300) +
-      glow('g', 384, 158, 170, '#fff0f4', 0.85) +
-      '<g transform="translate(384 156)">' +
-        '<path d="M-14 22L-46 92L-26 82L-16 100L-2 30Z" fill="' + red + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M14 22L46 92L26 82L16 100L2 30Z" fill="' + red + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-12 0C-50 -66 -120 -64 -122 -6C-124 54 -54 62 -12 10Z" fill="' + red + '" stroke="#fff" stroke-width="4"/>' +
-        '<path d="M12 0C50 -66 120 -64 122 -6C124 54 54 62 12 10Z" fill="' + red + '" stroke="#fff" stroke-width="4"/>' +
-        '<path d="M-24 2C-52 -38 -92 -40 -96 -6C-98 26 -60 34 -26 8Z" fill="#a8102a" opacity=".45"/>' +
-        '<path d="M24 2C52 -38 92 -40 96 -6C98 26 60 34 26 8Z" fill="#a8102a" opacity=".45"/>' +
-        '<path d="M-100 -30C-92 -48 -70 -52 -52 -40" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".55"/>' +
-        '<path d="M100 -30C92 -48 70 -52 52 -40" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".55"/>' +
-        '<ellipse cx="0" cy="4" rx="22" ry="26" fill="' + red + '" stroke="#fff" stroke-width="4"/>' +
-        '<ellipse cx="-6" cy="-6" rx="6" ry="9" fill="#fff" opacity=".45"/></g>' +
-      sparkle(270, 90, 9) + sparkle(500, 250, 8) + sparkle(290, 250, 6) +
-      '<path d="M0 440V340C90 320 190 336 270 346S420 318 520 326V440Z" fill="#a8e08a"/>' +
-      '<g transform="translate(456 300)"><rect x="-34" y="0" width="68" height="56" fill="#fffaf4"/>' +
-        '<path d="M-44 4L0 -36L44 4Z" fill="' + red + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-10 56V30A10 10 0 0 1 10 30V56Z" fill="#ffb3c6"/>' +
-        '<path d="M0 -8C-6 -14 -14 -10 -12 -4C-10 2 0 8 0 8S10 2 12 -4C14 -10 6 -14 0 -8Z" fill="#ff8aa8" transform="translate(-18 22) scale(.7)"/>' +
-        '<path d="M0 -8C-6 -14 -14 -10 -12 -4C-10 2 0 8 0 8S10 2 12 -4C14 -10 6 -14 0 -8Z" fill="#ff8aa8" transform="translate(18 22) scale(.7)"/></g>' +
-      '<path d="M0 440V388C110 372 230 392 340 380S470 372 520 378V440Z" fill="#6fc06a"/>' +
-      apple(300, 372, 1) + apple(334, 380, 0.9) + apple(366, 374, 1.05) +
-      flower(250, 404, '#fff') + flower(400, 410, '#ffc2dc') + flower(440, 400, '#fff') + flower(500, 414, '#ffc2dc') + flower(220, 424, '#ffc2dc');
-  },
+
 };
+
+// ---------- redrawn scenes ----------
+//
+// Eight scenes that leaned on a studio's own design (Hello Kitty's bow,
+// Kuromi's winged skull-heart, Sailor Moon's brooch, Joy's memory orbs, Wonder
+// Woman's star tiara, Toothless's red fin, Pride Rock, Shrek's stump house),
+// redrawn from generic things (21 October 2026). They live in tools/art/,
+// built from the same blocks as the reserve below. Their emblems are copied
+// into EMBLEM_PATHS in docs/copy.js, which is what the app reads.
+const { readdirSync } = await import('node:fs');
+const artDir = new URL('./art/', import.meta.url);
+for (const file of readdirSync(artDir).filter(f => /\.mjs$/.test(f)).sort()) {
+  const made = (await import(new URL(file, artDir))).default({ W, H, n, lin, rad, glow, tint, ground, bez, starPath, rng, stars, sparkle, skyline, scatter });
+  Object.assign(SCENES, made.scenes || {});
+}
+
+// ---------- the reserve ----------
+//
+// Replacements drawn in advance, from public-domain stories, for the studio
+// characters still in the catalogue, in case one has to go at short notice.
+// Each tools/reserve/art-*.mjs exports a function given these building blocks
+// and returning { scenes, emblems }. Nothing in docs/ reads them: they are
+// written to tools/reserve/character-art-reserve.js, and moving one into the
+// catalogue is a matter of moving its drawing up into SCENES.
+const HELPERS = { W, H, n, lin, rad, glow, tint, ground, bez, starPath, rng, stars, sparkle, skyline, scatter };
+const reserveDir = new URL('./reserve/', import.meta.url);
+const reserve = {};
+const reserveEmblems = {};
+// RESERVE_ONLY=art-x.mjs RESERVE_OUT=path builds that one file alone, for a
+// preview, and leaves docs/ and the reserve file untouched.
+const only = process.env.RESERVE_ONLY;
+for (const file of readdirSync(reserveDir).filter(f => /^art-.*\.mjs$/.test(f) && (!only || f === only)).sort()) {
+  const made = (await import(new URL(file, reserveDir))).default(HELPERS);
+  for (const [name, draw] of Object.entries(made.scenes || {})) reserve[name] = scene(draw);
+  Object.assign(reserveEmblems, made.emblems || {});
+}
+writeFileSync(only ? process.env.RESERVE_OUT : root + 'tools/reserve/character-art-reserve.js', '// Generated by tools/character-art.mjs from tools/reserve/art-*.mjs.\n' +
+  '// Backup scenes and emblems, not served: see the reserve section there.\n' +
+  '(function (root) {\n  \'use strict\';\n  root.PsycheCharacterArtReserve = ' + JSON.stringify({ scenes: reserve, emblems: reserveEmblems }, null, 1).replace(/\n/g, '\n  ') + ';\n' +
+  '})(typeof window !== \'undefined\' ? window : globalThis);\n');
+if (Object.keys(reserve).length) console.log('reserve: ' + Object.keys(reserve).join(', '));
+if (only) process.exit(0);
 
 // ---------- write ----------
 

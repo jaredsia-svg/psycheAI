@@ -7148,8 +7148,8 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('the catalogue is balanced: as many women as men, and a retired character is no longer offered',
     ['Mulan', 'Elsa', 'Moana', 'Rapunzel', 'Judy Hopps', 'Joy', 'Wonder Woman', 'Hermione Granger', 'Kuromi',
       'Sailor Moon', 'Princess Peach', 'Hello Kitty'].every(name => prompts.CHARACTER_NAMES.includes(name)) &&
-      prompts.CHARACTER_NAMES.filter(name => ['Simba', 'Nick Wilde', 'Woody', 'Buzz Lightyear', 'Iron Man', 'Captain America',
-        'Spider-Man', 'Hulk', 'Batman', 'Shrek', 'Po', 'Hiccup'].includes(name)).length === 12 &&
+      prompts.CHARACTER_NAMES.filter(name => ['Simba', 'Nick Wilde', 'Dr Watson', 'Buzz Lightyear', 'Odysseus', 'Captain America',
+        'Spider-Man', 'Hulk', 'Sherlock Holmes', 'Shrek', 'Po', 'Hiccup'].includes(name)).length === 12 &&
       prompts.CHARACTER_NAMES.length === 28 &&
       prompts.RETIRED_CHARACTERS.every(([name]) => !prompts.CHARACTER_NAMES.includes(name)),
     prompts.CHARACTER_NAMES.join(', '));
@@ -8041,7 +8041,7 @@ check('the schema requires evidence on where they align and differ',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 63 &&
+  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 40 &&
     ['/', '/privacy', '/terms', '/refunds', '/faq', '/sample-report', '/characters', '/mbti-types', '/intj-personality']
       .every(path => paths.includes(path)), JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
@@ -8071,7 +8071,7 @@ check('the schema requires evidence on where they align and differ',
       /"@type":"FAQPage"/.test(faq) && /class="footer-note"/.test(faq) && !/<script src=/.test(faq));
     const generated = paths.filter(p => /-personality$|^\/(faq|sample-report|characters|mbti-types|love-language-test|big-five-personality-test|what-instagram-knows-about-you|instagram-data-download-help|best-friend-compatibility-test)$/.test(p));
     check('the front page links to none of the generated pages',
-      generated.length === 53 && generated.every(p => !index.includes('href="' + p + '"') && !index.includes('href="' + p.slice(1) + '"')),
+      generated.length === 30 && generated.every(p => !index.includes('href="' + p + '"') && !index.includes('href="' + p.slice(1) + '"')),
       generated.filter(p => index.includes('href="' + p + '"')).join());
     check('the guides link to them instead',
       ['/characters', '/mbti-types', '/faq', '/sample-report'].every(p => pages.find(([q]) => q === '/instagram-personality-test')[1].includes('href="' + p + '"')));
@@ -8138,10 +8138,25 @@ check('the schema requires evidence on where they align and differ',
     check('the cast strip\'s image is current and in the table\'s order (node tools/cast-sprite.mjs)',
       spriteFresh && JSON.stringify(spriteIndex.names) === JSON.stringify(Object.keys(table)) &&
         statSync(join(root, 'docs', 'media', 'cast-sprite.webp')).size > 10000);
-    check('Totoro is retired: no page of its own, and its old address is sent on to Baymax\'s',
-      !existsSync(join(root, 'docs', 'totoro-personality.html')) && !('Totoro' in table) &&
-        /const RETIRED_PAGES = \{ 'totoro-personality': 'baymax-personality' \};/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
-        prompts.RETIRED_CHARACTERS.some(([name]) => name === 'Totoro'));
+    // Retired characters: no page of their own, and each old address sent on
+    // to the character that took the slot (Totoro to Baymax; Woody, Iron Man
+    // and Batman to their public-domain replacements).
+    const retiredTo = { woody: 'dr-watson', 'iron-man': 'odysseus', batman: 'sherlock-holmes' };
+    const serverText = readFileSync(join(root, 'server.js'), 'utf8');
+    check('retired characters have no page of their own, and their old addresses are sent on',
+      ['Totoro', 'Woody', 'Iron Man', 'Batman'].every(name => !(name in table) && prompts.RETIRED_CHARACTERS.some(([n]) => n === name)) &&
+        Object.entries(retiredTo).every(([from, to]) => !existsSync(join(root, 'docs', from + '-personality.html')) &&
+          existsSync(join(root, 'docs', to + '-personality.html')) &&
+          serverText.includes("'" + from + "-personality': '" + to + "-personality'")) &&
+        serverText.includes("'totoro-personality': 'characters'"));
+    // Only the five the marketing shows keep a page; the rest of the
+    // catalogue's addresses go to the list.
+    const marketed = ['mulan', 'rapunzel', 'sherlock-holmes', 'dr-watson', 'odysseus'];
+    const unlisted = names.map(n => n.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).filter(s => !marketed.includes(s));
+    check('only the five marketed characters have a page, and the others\' addresses go to /characters',
+      marketed.every(s => existsSync(join(root, 'docs', s + '-personality.html'))) && unlisted.length === 23 &&
+        unlisted.every(s => !existsSync(join(root, 'docs', s + '-personality.html')) && serverText.includes("'" + s + "-personality': 'characters'")),
+      unlisted.filter(s => existsSync(join(root, 'docs', s + '-personality.html'))).join());
     check('every pairing goes both ways (28 characters pair off, October 2026)',
       Object.entries(table).flatMap(([a, list]) => list.filter(b => !table[b].includes(a))).length === 0);
   }
@@ -8153,19 +8168,21 @@ check('the schema requires evidence on where they align and differ',
 //
 // docs/sample-cards.json holds the cards after the full sample's in the
 // gallery. Each is drawn by the same psycheCardHtml, so each needs what the
-// card reads: a catalogue character with no studio beside it, a person's name
+// card reads: a catalogue character with its public-domain source, a person's name
 // nobody else in the gallery has, three patterns, three known motivators,
 // four type letters, the Big Five, and both sides of the love languages.
 {
   const gallery = JSON.parse(readFileSync(join(root, 'docs', 'sample-cards.json'), 'utf8')).cards || [];
   const catalogue = new Map(prompts.CHARACTER_CATALOGUE);
+  // Each sample names the public-domain story it is from, never a studio.
+  const SOURCES = { Rapunzel: 'Grimm’s Fairy Tales', 'Sherlock Holmes': 'Arthur Conan Doyle', 'Dr Watson': 'Arthur Conan Doyle', Odysseus: 'Homer’s Odyssey' };
   const motives = ['self-direction', 'stimulation', 'hedonism', 'achievement', 'power', 'security', 'conformity', 'tradition', 'benevolence', 'universalism'];
   const languages = ['Words of affirmation', 'Acts of service', 'Quality time', 'Receiving gifts', 'Physical touch'];
   const faults = gallery.flatMap((c, i) => {
     const at = '#' + (i + 1) + ' ';
     const out = [];
     const character = c.essence && c.essence.character;
-    if (!catalogue.has(character) || 'franchise' in c.essence || 'source' in c.essence) out.push(at + 'character ' + character);
+    if (!catalogue.has(character) || 'franchise' in c.essence || !SOURCES[character] || c.essence.source !== SOURCES[character]) out.push(at + 'character ' + character);
     if (!c.card || !/^\S+ \S+/.test(c.card.name || '') || !c.card.headline || !(c.card.confidence > 0)) out.push(at + 'card');
     if (!c.cardHighlights) out.push(at + 'highlights');
     if ((c.patterns || []).map(p => p.id).join() !== 'p1,p2,p3') out.push(at + 'patterns');
@@ -8176,7 +8193,9 @@ check('the schema requires evidence on where they align and differ',
     if (![love.receiving, love.giving].every(side => side && side.length && side.every(l => languages.includes(l.language)))) out.push(at + 'love languages');
     return out;
   });
-  check('the gallery\'s sample cards each have what a card reads', gallery.length === 5 && faults.length === 0, faults.join(', '));
+  check('the gallery\'s sample cards each have what a card reads', gallery.length === 4 && faults.length === 0, faults.join(', '));
+  check('the gallery is the four public-domain characters the marketing shows beside Mulan',
+    gallery.map(c => c.essence.character).join() === 'Rapunzel,Sherlock Holmes,Dr Watson,Odysseus');
   // The full sample, the face of the marketing, names no studio either: its
   // Mulan is pinned to the public-domain legend instead. Real reports get no
   // source, since the schema has no such field (pinned above).
