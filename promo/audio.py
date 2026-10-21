@@ -148,10 +148,8 @@ K, C = kick(), clap()
 H, HO = hat(), hat(True)
 pump = np.ones(n, np.float32)   # sidechain from the kick
 b = 0.0; step = 0
-# The end card is the lift: from FINAL the key steps up a tone and the beat gets busier (sixteenth hats,
-# a clap on every beat, a bouncing octave bass, the melody an octave up in eighths), so the video ends
-# on its most upbeat bars rather than the same groove as the middle.
-LIFT = 2
+# The end card is the drop's groove, a touch livelier: an open hat on every offbeat and a ghost clap on
+# 1 and 3. (A bigger lift, up a tone with sixteenths and an octave bass, stood apart from the rest.)
 while b < TOTAL + BEAT:
     bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
     outro = b >= FINAL and b < TOTAL - 0.6
@@ -163,40 +161,27 @@ while b < TOTAL + BEAT:
         a = int(b * SR); L = int(0.22 * SR)
         if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
     if full and beat_i in (1, 3): at(b, C, 0.9)
-    if outro and beat_i in (0, 2): at(b, C, 0.55)
+    if outro and beat_i in (0, 2): at(b, C, 0.35)
     if full or mid:
-        steps = 8 if outro else 4 if full else 2
-        for k in range(steps):
-            at(b + k * BEAT / steps, H, (0.7 if k % 2 else 0.45) * (0.8 if outro else 1), 0.3)
-        if full and beat_i in ((1, 3) if outro else (3,)): at(b + BEAT / 2, HO, 0.5, -0.3)
-    # Bass: offbeat pumping in the drop, roots elsewhere after the hook; bouncing octaves in the outro.
-    if outro:
-        r = ROOTS[bar_i] + LIFT
-        for k, m in enumerate((r, r + 12, r + 7, r + 12)):
-            at(b + k * BEAT / 4, bass(m, BEAT * 0.2), 0.8)
-    elif full:
+        for k in range(4 if full else 2):
+            at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
+        if (outro or (full and beat_i == 3)): at(b + BEAT / 2, HO, 0.4 if outro else 0.5, -0.3)
+    # Bass: offbeat pumping in the drop, roots elsewhere after the hook.
+    if full:
         at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0)
         at(b, bass(ROOTS[bar_i], BEAT * 0.3), 0.7)
     elif b >= INTRO_END or b >= BREAK:
         at(b, bass(ROOTS[bar_i], BEAT * 0.8), 0.6)
     # Plucked arpeggio everywhere, eighths.
-    lift = LIFT if outro else 0
-    notes = [m + lift for m in CHORDS[bar_i]] + [CHORDS[bar_i][0] + 12 + lift]
+    notes = CHORDS[bar_i] + [CHORDS[bar_i][0] + 12]
     for k in range(2):
         m = notes[(beat_i * 2 + k) % 4] + 12
         at(b + k * BEAT / 2, pluck(m, 0.1 if b < DROP else 0.08), 1.0, 0.4 if k else -0.4)
-    # Chord stabs on the beat in the drop, on every beat and the offbeats in the outro.
-    if full and (outro or beat_i in (0, 2)):
-        chord = [m + lift for m in CHORDS[bar_i]]
-        at(b, stab(chord, BEAT * 0.45 if outro else BEAT * 0.9), 1.0)
-        if outro: at(b + BEAT / 2, stab(chord, BEAT * 0.3), 0.7)
-    # Bell melody in the drop and in the break; in the outro an octave up, in eighths.
+    # Chord stabs on the beat in the drop.
+    if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
+    # Bell melody in the drop and in the break.
     if (full or BREAK <= b < FINAL) and b >= DROP:
-        if outro:
-            at(b, bell(MELODY[bar_i][beat_i] + lift + 12), 0.7, 0.15)
-            at(b + BEAT / 2, bell(MELODY[bar_i][(beat_i + 1) % 4] + lift + 12), 0.5, -0.15)
-        else:
-            at(b, bell(MELODY[bar_i][beat_i]), 0.9, 0.15)
+        at(b, bell(MELODY[bar_i][beat_i]), 0.9, 0.15)
     b += BEAT
 
 # Pads under the hook and the break.
@@ -212,9 +197,6 @@ for bar in range(int(TOTAL / BAR) + 2):
 at(DROP - 2.2, riser(2.2), 1.0); at(DROP, impact(), 1.0)
 for k in (5, 6): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
 at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
-# The last hit: a bright chord on the downbeat before the fade, so it ends on a high.
-last = math.floor((TOTAL - 0.8) / BEAT) * BEAT
-at(last, stab([m + LIFT + 12 for m in CHORDS[0]], BEAT * 2.5) * 1.6, 1.0); at(last, impact(), 0.6)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
