@@ -361,19 +361,21 @@
          moment they arrive on the page. One bar covers both worries: what
          happens to the data, and whether anyone is watching. Every clause is
          literally true: the export never leaves the browser; what is sent is
-         the reviewed, de-identified digest, to Gemini or Claude; PsycheAI
+         the reviewed, de-identified digest, to Google Vertex AI; PsycheAI
          keeps neither it nor the report. It used to say "No one can see that
          you visited", which was not true — the host sees an IP address, and
          PsycheAI counts daily totals — so that promise is gone. -->
     <div class="eyebrow privacy-points">
       <p class="privacy-points-head">We take the privacy of your data seriously.</p>
-      <ul>
-        <li><strong>Your Instagram file never leaves your device.</strong></li>
-        <li>Only a de-identified summary, which you check first, is sent to Gemini or Claude to write your card.</li>
-        <li>PsycheAI keeps no copy of it or your report.</li>
-        <li>No sign-up, no cookies, no trackers or third-party analytics.</li>
-      </ul>
-      <a href="/privacy">How your data is handled</a>
+      <!-- The privacy page's data flow, in four icons (docs/privacy.html, #flow-title). -->
+      <ol class="mini-flow">
+        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h14l8 8v26a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M28 6v8h8"/><path d="M17 25h14M17 32h10"/></svg></span><span>Your files stay on your phone</span></li>
+        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 14h28M10 22h22M10 30h14"/><path d="M30 30l9 9M39 30l-9 9"/></svg></span><span>Names removed. You check it first</span></li>
+        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg></span><span>Summary sent encrypted to Vertex AI</span></li>
+        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg></span><span>Results saved on your phone only</span></li>
+      </ol>
+      <p class="privacy-points-foot">PsycheAI keeps no copy of your data or your report. No sign-up, no cookies, no trackers or third-party analytics.
+        <a href="/privacy#flow-title">See how your data flows</a></p>
     </div>
 
     <div id="upload-error" class="alert" hidden></div>
@@ -1407,7 +1409,7 @@
      not an informed one. -->
 <dialog id="review-dialog" class="mode-dialog review-dialog" aria-labelledby="review-dialog-title">
   <h2 id="review-dialog-title">Review what gets sent</h2>
-  <p class="muted">Choose which data gets analysed by Gemini or Claude. PsycheAI keeps no copy of
+  <p class="muted">Choose which data gets analysed by Google Vertex AI. PsycheAI keeps no copy of
     this data or your report.</p>
   <!-- What is taken out before anything leaves the device. Always shown. -->
   <div class="deid-note">

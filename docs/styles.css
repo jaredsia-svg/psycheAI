@@ -394,6 +394,16 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .privacy-points-head { margin: 0 0 .3rem; font-weight: 700; }
 .privacy-points ul { margin: 0 0 .35rem; padding-left: 1.1rem; }
 .privacy-points li { margin: 0 0 .15rem; }
+/* The data flow in four icons, joined by a dotted line (the full diagram is
+   on the privacy page). */
+.mini-flow { list-style: none; margin: .55rem 0 .5rem; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; position: relative; }
+.mini-flow::before { content: ''; position: absolute; left: 12%; right: 12%; top: 1.05rem; border-top: 2px dashed rgba(123, 63, 160, .3); }
+.privacy-points .mini-flow li { margin: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .3rem;
+  font-size: .72rem; line-height: 1.3; font-weight: 600; position: relative; }
+.mini-flow-icon { width: 2.1rem; height: 2.1rem; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2)); box-shadow: 0 0 0 4px rgba(123, 63, 160, .10); }
+.mini-flow-icon svg { width: 1.15rem; height: 1.15rem; fill: none; stroke: #fff; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.privacy-points-foot { margin: .2rem 0 0; }
 .privacy-points strong { font-weight: 700; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 
@@ -5233,3 +5243,47 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (max-width: 759px) { .cx-br { display: inline; } }
 /* "then" between the front page's free badge and the re-run price. */
 .premium-tier-then { font-size: .8rem; font-weight: 600; color: var(--ink-soft); }
+
+/* The privacy page's data flow: four steps on a soft wash, a row on wide
+   screens and a column on a phone, joined by a dotted line through the icons,
+   with what never leaves the phone in its own panel underneath. */
+.data-flow { background: linear-gradient(160deg, rgba(123, 63, 160, .07), rgba(209, 71, 122, .06) 70%, transparent), var(--card, #fff); }
+.data-flow h2 { margin-bottom: .35rem; }
+.flow-lede { margin: 0 0 1.3rem; color: var(--ink-soft); }
+.flow-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(4, 1fr); position: relative; }
+.flow-steps::before { content: ''; position: absolute; left: 12%; right: 12%; top: 3.55rem; border-top: 2px dashed rgba(123, 63, 160, .35); }
+.flow-steps li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .45rem;
+  padding: 1rem .8rem 1.1rem; border-radius: 18px; background: rgba(255, 255, 255, .92);
+  box-shadow: 0 6px 22px rgba(90, 40, 120, .10), 0 0 0 1px rgba(123, 63, 160, .08); }
+.flow-step { font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+  padding: .15rem .55rem; border-radius: 999px; background: rgba(123, 63, 160, .09); }
+.flow-icon { width: 3.3rem; height: 3.3rem; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2)); box-shadow: 0 0 0 6px rgba(123, 63, 160, .10), 0 8px 18px rgba(123, 63, 160, .28); }
+.flow-icon svg, .flow-never-icon svg, .flow-proof-icon svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.flow-icon svg { width: 1.75rem; height: 1.75rem; stroke: #fff; stroke-width: 3; }
+.flow-steps b { font-size: .97rem; line-height: 1.3; margin-top: .2rem; color: var(--ink); }
+.flow-desc { font-size: .85rem; color: var(--ink-soft); line-height: 1.45; }
+.flow-never { margin-top: 1.2rem; display: flex; gap: .9rem; align-items: center; padding: .9rem 1rem; border-radius: 16px;
+  background: rgba(255, 255, 255, .92); box-shadow: 0 0 0 1px rgba(123, 63, 160, .12); }
+.flow-never-icon { flex: none; width: 2.6rem; height: 2.6rem; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: rgba(123, 63, 160, .10); }
+.flow-never-icon svg { width: 1.5rem; height: 1.5rem; stroke: var(--accent); stroke-width: 3; }
+.flow-never b { display: block; font-size: .92rem; margin-bottom: .35rem; }
+.flow-never p { margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.flow-never p span { padding: .2rem .7rem; border-radius: 999px; font-size: .82rem; font-weight: 600; color: var(--accent); background: rgba(123, 63, 160, .08); }
+.flow-proof { margin: .9rem 0 0; font-size: .88rem; color: var(--ink-soft); }
+.flow-proof-icon { display: inline-block; vertical-align: -.25em; margin-right: .45rem; }
+.flow-proof-icon svg { width: 1.2rem; height: 1.2rem; stroke: var(--accent); stroke-width: 3.2; display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .flow-steps li, :root:not([data-theme="light"]) .flow-never { background: rgba(255, 255, 255, .05); }
+}
+:root[data-theme="dark"] .flow-steps li, :root[data-theme="dark"] .flow-never { background: rgba(255, 255, 255, .05); }
+@media (max-width: 640px) {
+  .flow-steps { grid-template-columns: 1fr; gap: .8rem; }
+  .flow-steps::before { left: 2.55rem; right: auto; top: 2rem; bottom: 2rem; border-top: 0; border-left: 2px dashed rgba(123, 63, 160, .35); }
+  .flow-steps li { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'icon step' 'icon title' 'icon desc';
+    column-gap: .9rem; row-gap: .15rem; text-align: left; align-items: start; padding: .9rem 1rem; }
+  .flow-steps li .flow-icon { grid-area: icon; align-self: center; }
+  .flow-steps li .flow-step { grid-area: step; justify-self: start; }
+  .flow-steps li b { grid-area: title; margin-top: .1rem; }
+  .flow-steps li .flow-desc { grid-area: desc; }
+}

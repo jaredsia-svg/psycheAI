@@ -323,7 +323,8 @@ async function sendJsonWhileWorking(response, produce) {
 function servedFromMemory(response, kind, key, background) {
   const cached = results.get(kind, key);
   if (cached) {
-    sendJson(response, 200, cached);
+    // With what the browser needs to release the sealed copy once it has this.
+    sendJson(response, 200, Object.assign({}, cached, { release: { job: results.keyFor(kind, key), unlock: results.unlockFor(kind, key) } }));
     return Promise.resolve();
   }
   const running = results.pending(kind, key);
@@ -332,7 +333,7 @@ function servedFromMemory(response, kind, key, background) {
   // already knows how to poll, and the job it would have started is the one
   // already in flight.
   if (background) {
-    sendJson(response, 202, { job: results.keyFor(kind, key), status: 'running' });
+    sendJson(response, 202, { job: results.keyFor(kind, key), unlock: results.unlockFor(kind, key), status: 'running' });
     return Promise.resolve();
   }
   return sendJsonWhileWorking(response, () => running);
@@ -364,7 +365,7 @@ function generate(response, opts) {
   const work = results.share(kind, key, produce);
   if (settle) work.then(settle, settle);
   if (!background) return sendJsonWhileWorking(response, () => work);
-  sendJson(response, 202, { job: results.keyFor(kind, key), status: 'running' });
+  sendJson(response, 202, { job: results.keyFor(kind, key), unlock: results.unlockFor(kind, key), status: 'running' });
   return Promise.resolve();
 }
 
@@ -387,13 +388,17 @@ function wantsBackground(body) {
 // poll and exhaust its own allowance. What stands in for the ticket is the key
 // itself — a SHA-256 of the digest, which cannot be produced without the
 // digest, so possession of it already means possession of the evidence.
-function handleResult(response, url) {
+// The key that unlocks a finished report (lib/results.js), from the header the
+// browser sends it in: never the URL, so it is in no access log.
+const resultUnlock = request => String(request.headers['x-result-key'] || '');
+
+function handleResult(request, response, url) {
   const job = String(url.searchParams.get('job') || '');
   if (!/^[a-z-]+:[0-9a-f]{64}$/.test(job)) {
     sendJson(response, 400, { error: 'That is not a job key.' });
     return;
   }
-  const found = results.lookup(job);
+  const found = results.lookup(job, resultUnlock(request));
   if (found.status === 'done') {
     sendJson(response, 200, Object.assign({ status: 'done' }, found.value));
     return;
@@ -406,11 +411,24 @@ function handleResult(response, url) {
     sendJson(response, 200, { status: 'running' });
     return;
   }
+  // Finished, but sealed and asked for without its key (a page from before
+  // reports were sealed): as good as gone to this caller, who starts again.
   // Not a failure and not a refusal: this process has no memory of the job,
   // because it restarted or because the result aged out. Its own state, so
   // the client can start the work again rather than reporting an error it
   // cannot act on.
   sendJson(response, 200, { status: 'unknown' });
+}
+
+// The browser has its report: forget the sealed copy now rather than in four
+// hours. Only with the key it was sealed under (lib/results.js, release).
+function handleRelease(request, response, url) {
+  const job = String(url.searchParams.get('job') || '');
+  if (!/^[a-z-]+:[0-9a-f]{64}$/.test(job)) {
+    sendJson(response, 400, { error: 'That is not a job key.' });
+    return;
+  }
+  sendJson(response, 200, { released: results.release(job, resultUnlock(request)) });
 }
 
 function readJsonBody(request) {
@@ -1953,7 +1971,8 @@ function routeRequest(route, url, request, response) {
     const handler =
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
         : route === '/api/nonce' && request.method === 'GET' ? () => handleNonce(response)
-          : route === '/api/result' && request.method === 'GET' ? () => handleResult(response, url)
+          : route === '/api/result' && request.method === 'GET' ? () => handleResult(request, response, url)
+          : route === '/api/result' && request.method === 'DELETE' ? () => handleRelease(request, response, url)
             : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
               : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
                   : route === '/api/stats' && request.method === 'GET' ? () => handleStats(request, response, url)

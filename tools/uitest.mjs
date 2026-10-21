@@ -1771,7 +1771,7 @@ try {
       // `card:` — a free run is the summary card, cached and keyed apart from
       // the full report so one can never be served for the other.
       check('and the page writes the job down while it is still running',
-        typeof record.key === 'string' && /^card:[0-9a-f]{64}$/.test(record.key),
+        typeof record.key === 'string' && /^card:[0-9a-f]{64}\.[0-9a-f]{64}$/.test(record.key),
         JSON.stringify(record));
       check('the record holds a key, a kind and a time, never a report',
         Object.keys(record).filter(k => k !== 'ownName').sort().join(',') === 'at,auth,key,kind', Object.keys(record).join(','));
@@ -2823,9 +2823,9 @@ try {
     (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
   check('the single badge carries both the storage claim and the no-tracking claim, and nothing it cannot keep',
     await page.locator('#view-welcome .upload-card .eyebrow').innerText().then(t =>
-      /Your Instagram file never leaves your device\./.test(t) && /PsycheAI keeps no copy of it or your report/.test(t) &&
+      /Your files stay on your phone/.test(t) && /PsycheAI keeps no copy of your data or your report/.test(t) &&
       /no cookies, no trackers or third-party analytics/.test(t) && !/No one can see that you visited/.test(t) &&
-      /How your data is handled/.test(t)),
+      /See how your data flows/.test(t)),
     await page.locator('#view-welcome .upload-card .eyebrow').innerText());
   // A pill (border-radius: 999px) reads fine for a short single-line label,
   // which is what this started as. Sized to a three-sentence paragraph it
@@ -3164,7 +3164,7 @@ try {
     check('the terms set the minimum age at 18 and Singapore law',
       /You must be 18 or over/.test(policies.terms) && /governed by the laws of Singapore/.test(policies.terms));
     check('the privacy policy names who receives the summary, and what is kept',
-      /Gemini API/.test(policies.privacy) && /Claude API/.test(policies.privacy) && /Stripe/.test(policies.privacy) &&
+      /Google Vertex AI/.test(policies.privacy) && /Google Cloud/.test(policies.privacy) && /Stripe/.test(policies.privacy) &&
         /Upstash/.test(policies.privacy) && /Personal Data Protection Act/.test(policies.privacy));
     check('the payment sheet points to the terms and the 24-hour refund',
       await page.evaluate(() => Boolean(document.querySelector('#premium-dialog a[href="/terms"]')) &&
@@ -4719,7 +4719,7 @@ try {
   check('and no longer offers a list of follows it does not send',
     !/followed accounts/.test(reviewText), reviewText.slice(0, 400));
   check('the review names both providers and says PsycheAI keeps no copy — not that nobody can access it',
-    /Choose which data gets analysed by Gemini or Claude/i.test(reviewText) &&
+    /Choose which data gets analysed by Google Vertex AI/i.test(reviewText) &&
     /PsycheAI keeps no copy of this data or your report/i.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
@@ -6437,7 +6437,7 @@ try {
   }, null, { timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => null);
   check('the unlock records a job of its own while it runs',
     Boolean(premiumJob) && premiumJob.kind === 'full' &&
-    /^full:[0-9a-f]{64}$/.test(premiumJob.key), JSON.stringify(premiumJob));
+    /^full:[0-9a-f]{64}\.[0-9a-f]{64}$/.test(premiumJob.key), JSON.stringify(premiumJob));
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
   await page.unroute('**/api/analyse');
   check('the progress bar is gone once the dialog closes',
@@ -10063,7 +10063,7 @@ try {
   }, null, { timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => null);
   check('a comparison records a job of its own while it runs',
     Boolean(compatJob) && compatJob.kind === 'compatibility' &&
-    /^compatibility:[0-9a-f]{64}$/.test(compatJob.key), JSON.stringify(compatJob));
+    /^compatibility:[0-9a-f]{64}\.[0-9a-f]{64}$/.test(compatJob.key), JSON.stringify(compatJob));
   check('and it carries what rendering the result needs and nothing could rebuild',
     Boolean(compatJob && compatJob.other && compatJob.other.name) &&
     Boolean(compatJob.mode) && 'stance' in compatJob,

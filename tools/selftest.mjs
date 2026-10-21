@@ -708,7 +708,13 @@ const jobStates = runInServer(`
   const whileRunning = results.lookup(key).status;
   unlatch();
   await work;
-  const afterDone = results.lookup(key);
+  const afterDone = results.lookup(key, results.unlockFor('analyse', d));
+  // Sealed: without the reader's key a poll learns it is done and nothing more,
+  // and only that key can release it.
+  const withoutKey = results.lookup(key);
+  const wrongRelease = results.release(key, '0'.repeat(64));
+  const rightRelease = results.release(key, results.unlockFor('analyse', d));
+  const afterRelease = results.lookup(key, results.unlockFor('analyse', d)).status;
 
   // A second job, failed, so the poll can carry the reason rather than the
   // client having to guess from a job that simply stopped existing.
@@ -732,7 +738,9 @@ const jobStates = runInServer(`
     failStatus: afterFail.status,
     failError: afterFail.error,
     whileRetrying,
-    finally: results.lookup(failKey).value.report,
+    finally: results.lookup(failKey, results.unlockFor('analyse', f)).value.report,
+    withoutKey, wrongRelease, rightRelease, afterRelease,
+    unlockDiffers: results.unlockFor('analyse', d) !== key.split(':')[1],
   };
 `, {});
 check('a job nobody has started is unknown, not failed — the client starts it rather than reporting it',
@@ -741,6 +749,9 @@ check('a job in flight reports as running',
   jobStates.whileRunning === 'running', jobStates.whileRunning);
 check('and once it lands the poll carries the report itself',
   jobStates.doneStatus === 'done' && jobStates.doneValue === 'polled', JSON.stringify(jobStates));
+check('a finished report is sealed: without the reader\'s key a poll gets no report, only that key releases it, and then it is gone',
+  jobStates.withoutKey.status === 'sealed' && !jobStates.withoutKey.value && jobStates.wrongRelease === false &&
+    jobStates.rightRelease === true && jobStates.afterRelease === 'unknown' && jobStates.unlockDiffers, JSON.stringify(jobStates));
 check('a failed job is remembered long enough to say why',
   jobStates.failStatus === 'failed' && /provider fell over/.test(jobStates.failError || ''),
   JSON.stringify(jobStates));

@@ -293,9 +293,39 @@
    * Null rather than a throw, because "could not ask" and "asked, and the news
    * is bad" need different handling here and a throw would flatten them.
    */
-  async function pollOnce(job) {
+  // A job as the page holds it: the server's job key, then '.' and the key that
+  // unlocks the finished report, which the server sealed and does not keep
+  // (lib/results.js). The unlock key travels in a header, never the URL.
+  const jobParts = token => {
+    const [job, unlock] = String(token || '').split('.');
+    return { job, unlock: unlock || '' };
+  };
+  const jobToken = started => started.job + (started.unlock ? '.' + started.unlock : '');
+
+  // The report is safely here: ask the server to forget its sealed copy now
+  // rather than when it ages out. Fire and forget; it goes in four hours anyway.
+  function release(job, unlock) {
+    if (!job || !unlock) return;
     try {
-      const response = await fetch('/api/result?job=' + encodeURIComponent(job), { cache: 'no-store' });
+      fetch('/api/result?job=' + encodeURIComponent(job), { method: 'DELETE', headers: { 'X-Result-Key': unlock }, keepalive: true })
+        .catch(() => {});
+    } catch (error) { /* nothing to undo */ }
+  }
+  // A report answered straight from the server's memory carries what releasing
+  // it needs; used, and kept off the report itself.
+  function received(report) {
+    if (report && report.release && typeof report.release === 'object') {
+      release(report.release.job, report.release.unlock);
+      delete report.release;
+    }
+    return report;
+  }
+
+  async function pollOnce(token) {
+    const { job, unlock } = jobParts(token);
+    try {
+      const response = await fetch('/api/result?job=' + encodeURIComponent(job),
+        { cache: 'no-store', headers: unlock ? { 'X-Result-Key': unlock } : {} });
       if (!response.ok) return null;
       return await response.json();
     } catch (error) {
@@ -334,7 +364,11 @@
       // sequence says nothing.
       failures = 0;
 
-      if (state.status === 'done') return state;
+      if (state.status === 'done') {
+        const { job: key, unlock } = jobParts(job);
+        release(key, unlock);
+        return state;
+      }
       if (state.status === 'failed') throw new Error(state.error || 'The analysis failed.');
       if (state.status === 'unknown') {
         // Once only. A second disappearance is a server that cannot hold a
@@ -342,9 +376,9 @@
         // reader's money on a loop.
         if (restarted || !restart) throw new Error('The analysis did not survive on the server. Try again.');
         restarted = true;
-        const revived = await restart();
+        const revived = received(await restart());
         if (revived && revived.status !== 'running') return revived;
-        job = (revived && revived.job) || job;
+        job = revived && revived.job ? jobToken(revived) : job;
         continue;
       }
       if (Date.now() > deadline) {
@@ -363,16 +397,17 @@
    */
   async function run(path, body, opts) {
     const start = () => post(path, Object.assign({ background: true }, body), { retryOnDrop: true });
-    const started = await start();
+    const started = received(await start());
     // A server that predates background jobs, or one answering from its cache,
     // returns the finished report rather than a job key. Both are already the
     // thing being waited for.
     if (!started || !started.job) return started;
+    const token = jobToken(started);
     // Handed up before the wait, not after it, so a caller can write the key
     // down while the job is still running — which is the only time writing it
     // down is any use.
-    if (opts && typeof opts.onJob === 'function') opts.onJob(started.job);
-    return collect(started.job, start);
+    if (opts && typeof opts.onJob === 'function') opts.onJob(token);
+    return collect(token, start);
   }
 
   const analyseProfile = (digest, auth, opts) =>
@@ -412,7 +447,7 @@
       const response = await fetch('/api/guess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job, guess }),
+        body: JSON.stringify({ job: jobParts(job).job, guess }),
       });
       const body = await response.json().catch(() => ({}));
       if (body && body.locked && typeof body.guess === 'string') return { locked: true, guess: body.guess };

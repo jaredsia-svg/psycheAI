@@ -8338,6 +8338,33 @@ shows nothing, PsycheAI has no access to your data or results, and the finished 
 memory under a code worked out from your own summary (`lib/results.js` keys it on a SHA-256 of the
 digest), so only the device holding that summary can collect it.
 
+### The held report is sealed, and released on collection
+
+Why the server holds a finished report at all: writing it takes minutes, and a phone loses its
+connection meanwhile (switching apps, Wi-Fi to mobile data). Holding it means the reader is never
+charged twice or made to wait again. But "held in memory" still meant PsycheAI *could* read it. So
+`lib/results.js` now stores only ciphertext: AES-256-GCM under a key derived from the digest
+(`unlockFor(kind, digest)`: SHA-256 of a label, the kind and the stable digest JSON), separate from the
+job key that indexes it. The server forgets the key after writing; the client gets it in the 202
+(`unlock`) and keeps it with the job (`job.unlock` in the remembered token, split by `jobParts` in
+`docs/llm.js`). A poll sends it in the `X-Result-Key` header, never in the URL, so it stays out of
+logs; without it a poll gets `unknown`, the same as an empty slot. A retry with the digest re-derives
+the key, so the free re-serve after a dropped connection still works, and an old client simply restarts
+and is served from the cache. Once the device has the report it calls `DELETE /api/result`
+(`release`), which drops the entry only if the key decrypts it: usually within seconds, never more than
+the four-hour ceiling.
+
+### How your data flows: the diagram
+
+The privacy page opens with a four-step diagram (`.data-flow`, plain HTML and CSS since the page is
+script-free): files stay on the phone; a 100–200 KB summary is made there (the digest caps are 126,000
+and 179,000 characters), names removed, checked by the reader; only that summary is sent, encrypted, to
+Google Vertex AI enterprise, which does not train on it; the results (card, report, Syncs) come back and
+are saved only on the phone. A panel lists what never leaves (photos, videos, the data files, full
+messages), and a line links the public client code. The front page carries a compact four-icon version
+of it (`.mini-flow`) above the no-copy line, linking to `/privacy#flow-title`. The site now names only
+Vertex AI as the provider, since that is what production runs.
+
 ### Three pools, by kind of evidence
 
 Per-source ceilings left room stranded: an Instagram account with few captions could not lend its spare
