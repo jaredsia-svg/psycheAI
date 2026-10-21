@@ -401,12 +401,15 @@ const sparks = Array.from({ length: 26 }, (_, i) => { const s = document.createE
 
 // A character from the site's strip on an element whose background is the strip.
 function castOn(el, name) { const i = Math.max(0, CAST.names.indexOf(name)); el.style.backgroundPosition = (i * 100 / (CAST.names.length - 1)) + '% 0, 0 0'; }
-castOn($('av1'), 'Mulan'); castOn($('av2'), 'Baymax'); $('as1').textContent = 'Mulan'; $('as2').textContent = 'Baymax';
+// Only the five public-domain characters the marketing shows (README): Mulan and one she is in sync with.
+castOn($('av1'), 'Mulan'); castOn($('av2'), 'Dr Watson'); $('as1').textContent = 'Mulan'; $('as2').textContent = 'Dr Watson';
 // The end card's carousel: characters sliding right to left and slowing until the sample card's own,
 // Mulan, stops in the centre, her name appearing under her.
-const REEL = [].concat(CAST.names, CAST.names, CAST.names);
-// Only the last 15 before her, slowly, rather than the whole cast twice.
-const REEL_STOP = 2 * CAST.names.length + Math.max(0, CAST.names.indexOf('Mulan')), REEL_FROM = REEL_STOP - 15;
+// Only the five the marketing shows, round and round.
+const SHOWN = ['Rapunzel', 'Sherlock Holmes', 'Odysseus', 'Dr Watson', 'Mulan'];
+const REEL = [].concat(SHOWN, SHOWN, SHOWN, SHOWN, SHOWN);
+// Only the last 15 before her, slowly.
+const REEL_STOP = 4 * SHOWN.length + SHOWN.indexOf('Mulan'), REEL_FROM = REEL_STOP - 15;
 const ROLL_END = 2.6, REEL_GAP = 250;
 const reelEls = REEL.map(name => { const d = document.createElement('div'); d.className = 'reel-item'; castOn(d, name); $('reel').appendChild(d); return d; });
 function popAt(el, t, times) {

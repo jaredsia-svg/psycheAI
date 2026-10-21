@@ -274,7 +274,8 @@ const SCENES = {
       sparkle(470, 60, 12) + sparkle(262, 196, 8);
   },
 
-  // A voyaging canoe under a great crab-claw sail, the sun going down behind it.
+  // A voyaging canoe under a great crab-claw sail painted with a frigatebird and
+  // stars, the sun going down behind it.
   'Moana': () => {
     const hull = (dx, dy, fill) => '<path transform="translate(' + dx + ' ' + dy + ')" d="M206 318C214 334 226 344 246 346H484C504 346 516 336 524 318C526 344 512 366 486 374H248C222 370 206 346 206 318Z" fill="' + fill + '"/>';
     return tint('#ff9a6a', '#0b3466', 0.55) + stars(21, 30, 120, W, 0, 110) +
@@ -288,7 +289,10 @@ const SCENES = {
       '<path d="M392 340V58" stroke="#3a1c0c" stroke-width="7" stroke-linecap="round"/>' +
       '<path d="M392 330L258 94Q376 126 506 52Z" fill="' + lin('sail', [[0, '#fff1d0'], [1, '#e0a868']]) + '"/>' +
       '<g stroke="#c98a4a" stroke-width="2" opacity=".7"><path d="M392 330L304 108M392 330L348 116M392 330L398 108M392 330L446 90M392 330L478 70"/></g>' +
-      '<path d="M386 168a6 6 0 1 1 12 0a14 14 0 1 1-28 0a22 22 0 1 1 44 0a30 30 0 1 1-60 0" fill="none" stroke="#b0563a" stroke-width="5" stroke-linecap="round"/>' +
+      // A frigatebird painted on the sail, the wayfinder's bird that points to land.
+      '<path d="M352 176C366 160 380 156 392 170C404 154 424 150 442 160C428 160 412 166 400 180L392 190L384 180C376 172 364 170 352 176Z" fill="#b0563a"/>' +
+      '<path d="M392 190L386 206L392 202L398 206Z" fill="#b0563a"/>' +
+      '<g fill="#b0563a"><circle cx="346" cy="214" r="3"/><circle cx="438" cy="204" r="3"/><circle cx="420" cy="232" r="2.4"/><circle cx="364" cy="240" r="2.4"/></g>' +
       '<path d="M392 330L258 94M392 330L506 52" stroke="#5a2e14" stroke-width="7" stroke-linecap="round"/>' +
       hull(0, 0, lin('wood', [[0, '#8a4a22'], [1, '#2e160c']])) +
       '<path d="M222 340C232 352 244 356 262 356H470" stroke="#ffd9a0" stroke-width="2" opacity=".5" fill="none"/>' +
@@ -335,7 +339,7 @@ const SCENES = {
       rampion(300, 420, 1, -6) + rampion(332, 428, 0.8, 8) + rampion(486, 410, 0.9, -4) + rampion(510, 424, 0.7, 10);
   },
 
-  // A rabbit officer on a rooftop at dusk, rim-lit red and blue, looking out over a city of many climates.
+  // A rabbit on a rooftop at dusk, rim-lit by the sunset, looking out over the city.
   'Judy Hopps': () => {
     const bunny = 'M-26 0C-30 -6 -22 -8 -10 -8H10C16 -8 16 0 10 0Z' +
       'M-12 -8C-16 -30 -18 -60 -14 -84C-10 -96 6 -98 14 -88C20 -70 20 -40 16 -20C14 -12 12 -8 10 -8Z' +
@@ -349,19 +353,17 @@ const SCENES = {
       skyline(43, 130, W, 372, 50, 170, '#7a5aa8', '#ffe9a6') +
       '<g fill="#5a3a8a"><path d="M300 372V130L308 104L316 130V372Z"/><path d="M286 372V180H330V372Z"/></g>' +
       '<circle cx="308" cy="100" r="4" fill="#ff6f7f"/>' + glow('beacon', 308, 100, 16, '#ff6f7f', 0.7) +
-      '<path d="M170 372A64 64 0 0 1 298 372Z" fill="' + lin('dome', [[0, '#d8f4ff', 0.85], [1, '#7fb8e8', 0.6]]) + '" stroke="#fff" stroke-width="2"/>' +
-      '<path d="M234 308V372M200 318C214 340 220 356 222 372M268 318C254 340 248 356 246 372M178 346H290" stroke="#fff" stroke-width="1.6" fill="none" opacity=".7"/>' +
-      '<g fill="#2a5a4a"><ellipse cx="500" cy="300" rx="40" ry="34"/><ellipse cx="470" cy="320" rx="30" ry="24"/><rect x="496" y="320" width="8" height="52"/></g>' +
+      '<g fill="#6a4a9a"><rect x="180" y="300" width="40" height="72"/><rect x="226" y="280" width="34" height="92"/><rect x="470" y="290" width="44" height="82"/></g>' +
+      '<g fill="#ffe9a6" opacity=".7"><rect x="188" y="312" width="5" height="7"/><rect x="204" y="330" width="5" height="7"/><rect x="236" y="296" width="5" height="7"/><rect x="246" y="320" width="5" height="7"/><rect x="480" y="304" width="5" height="7"/><rect x="498" y="330" width="5" height="7"/></g>' +
       skyline(44, 130, W, 400, 20, 60, '#3a2266', '#ffd27a') +
       ground('M0 440V400H340V378H520V440Z', '#1a1035') +
       '<path d="M340 378H520" stroke="#ffb0c8" stroke-width="2" opacity=".6"/>' +
-      glow('red', 360, 330, 90, '#ff4d6d', 0.55) + glow('blue', 500, 330, 90, '#4da3ff', 0.55) +
+      glow('warm', 360, 330, 90, '#ff9a7a', 0.5) + glow('cool', 500, 330, 90, '#c49bff', 0.45) +
       '<g transform="translate(430 378) scale(1.02)">' +
-        '<path d="' + bunny + '" fill="none" stroke="' + lin('rim', [[0, '#ff6f8a'], [1, '#6fb8ff']], 0, 0, 1, 0) + '" stroke-width="6" stroke-linejoin="round"/>' +
+        '<path d="' + bunny + '" fill="none" stroke="' + lin('rim', [[0, '#ffb08a'], [1, '#d6a8ff']], 0, 0, 1, 0) + '" stroke-width="6" stroke-linejoin="round"/>' +
         '<path d="' + bunny + '" fill="#1a1035"/>' +
         '<path d="M-1 -136C-5 -160 -4 -180 -1 -192" stroke="#ffb0c8" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>' +
-        '<circle cx="-17" cy="-118" r="2.6" fill="#b48cff"/><circle cx="-28" cy="-113" r="2" fill="#ffb0c8"/>' +
-        '<path d="M-8 -74l6 2.6v5c0 4.4-2.6 7-6 8.6c-3.4-1.6-6-4.2-6-8.6v-5z" fill="#ffd23c"/></g>' +
+        '<circle cx="-17" cy="-118" r="2.6" fill="#b48cff"/><circle cx="-28" cy="-113" r="2" fill="#ffb0c8"/></g>' +
       sparkle(416, 300, 7) + sparkle(470, 70, 11) + sparkle(260, 120, 7);
   },
 
@@ -448,13 +450,16 @@ const SCENES = {
     '<path d="M150 440C180 400 210 380 240 370" stroke="#fff" stroke-width="16" stroke-linecap="round" opacity=".18"/>' +
     ground('M120 440V420C220 404 340 414 520 400V440Z', '#140b35'),
 
-  // A green seedling in an old boot on a heap of crushed rust-yellow cubes,
-  // the blue Earth rising behind: the plant, not the robot.
+  // A green seedling in a clay pot on a stack of weathered wooden crates, the
+  // blue Earth rising behind: the plant, not the robot.
   'WALL-E': () => {
-    const rust = lin('rust', [[0, '#f2c25a'], [1, '#a8642a']]);
-    const rust2 = lin('rust2', [[0, '#d9a24a'], [1, '#7a4420']]);
-    const cube = (x, y, s, f) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')"><rect x="-22" y="-22" width="44" height="44" rx="3" fill="' + f + '" stroke="#5a3418" stroke-width="2.5"/>' +
-      '<path d="M-22 -6H22M-22 8H22M-8 -22V22" stroke="#5a3418" stroke-width="1.6" opacity=".55"/></g>';
+    const rust = lin('rust', [[0, '#e8b866'], [1, '#9a6230']]);
+    const rust2 = lin('rust2', [[0, '#d09a52'], [1, '#74441e']]);
+    // A wooden crate: planks, a frame and a cross brace.
+    const cube = (x, y, s, f) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')"><rect x="-22" y="-22" width="44" height="44" rx="2" fill="' + f + '" stroke="#5a3418" stroke-width="2.5"/>' +
+      '<path d="M-22 -8H22M-22 7H22" stroke="#5a3418" stroke-width="1.4" opacity=".5"/>' +
+      '<path d="M-18 -18L18 18" stroke="#5a3418" stroke-width="3" opacity=".7"/><rect x="-22" y="-22" width="44" height="44" rx="2" fill="none" stroke="#7a4a20" stroke-width="5" opacity=".35"/>' +
+      '<circle cx="-17" cy="-17" r="1.4" fill="#3a2010"/><circle cx="17" cy="-17" r="1.4" fill="#3a2010"/><circle cx="-17" cy="17" r="1.4" fill="#3a2010"/><circle cx="17" cy="17" r="1.4" fill="#3a2010"/></g>';
     return tint('#0f2b4f', '#5a2a7a', 0.6) + stars(81, 70, 120, W, 0, 330) +
       glow('atmo', 446, 62, 78, '#8fd8ff', 0.75) +
       '<circle cx="446" cy="62" r="44" fill="' + rad('earth', [[0, '#5fa8ff'], [0.55, '#1f5fc8'], [0.85, '#0f3a8a'], [1, '#08245a']], 0.35, 0.35) + '"/>' +
@@ -475,14 +480,15 @@ const SCENES = {
       '<circle cx="296" cy="64" r="10" fill="#d8d0f0"/><circle cx="292" cy="61" r="3" fill="#b8b0d8"/>' +
       '<g fill="#2a1f4a" opacity=".8"><path d="M150 380L190 300L230 330L262 270L300 380Z"/><path d="M440 380L470 310L500 330L520 300V380Z"/></g>' +
       ground('M0 440V380C120 370 260 384 400 376S490 370 520 372V440Z', '#1c1238') +
-      // The heap of cubes, a pyramid.
+      // The crates, stacked in a pyramid.
       cube(300, 356, 1, rust2) + cube(346, 356, 1, rust) + cube(392, 356, 1, rust2) + cube(438, 356, 1, rust) + cube(484, 356, 1, rust2) +
       cube(323, 312, 1, rust) + cube(369, 312, 1, rust2) + cube(415, 312, 1, rust) + cube(461, 312, 1, rust2) +
       cube(346, 268, 1, rust2) + cube(392, 268, 1, rust) + cube(438, 268, 1, rust2) +
-      // The old boot on top, the seedling in it.
+      // The clay pot on top, the seedling in it.
       '<g transform="translate(392 246)">' +
-        '<path d="M-26 0V-58H8V-24C24 -22 40 -16 42 -4V0Z" fill="' + lin('boot', [[0, '#e0e4f0'], [1, '#8a90b0']]) + '" stroke="#3a3550" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-26 -50H8" stroke="#3a3550" stroke-width="2.5"/><path d="M-20 -60H2" stroke="#6a7090" stroke-width="5" stroke-linecap="round"/>' +
+        '<path d="M-28 -44H16L10 0H-22Z" fill="' + lin('pot', [[0, '#e8865a'], [1, '#9a4426']], 0, 0, 1, 0) + '" stroke="#5a2414" stroke-width="3" stroke-linejoin="round"/>' +
+        '<rect x="-34" y="-58" width="56" height="14" rx="3" fill="' + lin('rim', [[0, '#f09a6a'], [1, '#b0502c']], 0, 0, 1, 0) + '" stroke="#5a2414" stroke-width="3"/>' +
+        '<path d="M-26 -56H16" stroke="#ffc49a" stroke-width="2" opacity=".6"/><ellipse cx="-6" cy="-58" rx="24" ry="3.4" fill="#4a2a18"/>' +
         '<path d="M-9 -60C-10 -80 -6 -96 -4 -108" stroke="#3f8f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
         '<path d="M-5 -92C-6 -110 -24 -120 -40 -116C-38 -100 -22 -92 -5 -92Z" fill="#6fe08a"/>' +
         '<path d="M-4 -104C-2 -122 16 -130 32 -126C30 -110 14 -102 -4 -104Z" fill="#8ff0a0"/></g>' +
@@ -637,18 +643,18 @@ const SCENES = {
       skyline(122, 130, W, 440, 70, 190, '#160b2f', '#ffe9a6', true);
   },
 
-  // A mountain cracking under a green shockwave, boulders in the air.
+  // A mountain cracking under a golden shockwave, boulders in the air.
   'Hulk': () =>
-    tint('#3fbf5a', '#3a1a5a', 0.5) +
-    '<g fill="#c9ff9a" opacity=".35">' + Array.from({ length: 12 }, (_, i) => '<path d="M380 150L366 -60H394Z" transform="rotate(' + (i * 30 + 8) + ' 380 150)"/>').join('') + '</g>' +
-    glow('g', 380, 150, 200, '#9fff6f', 0.85) +
-    '<circle cx="380" cy="150" r="54" fill="' + rad('core', [[0, '#f4ffd6'], [1, '#7fe64a']]) + '"/>' +
-    '<g fill="none" stroke="#e8ffb0" stroke-linecap="round"><circle cx="380" cy="150" r="80" stroke-width="7" opacity=".85"/><circle cx="380" cy="150" r="118" stroke-width="4" opacity=".5"/><circle cx="380" cy="150" r="160" stroke-width="3" opacity=".3"/></g>' +
-    '<path d="M300 0L290 50L316 58L280 120" fill="none" stroke="#f4ffd6" stroke-width="5" stroke-linejoin="round"/>' +
+    tint('#ffb44a', '#3a1a5a', 0.5) +
+    '<g fill="#ffe0a0" opacity=".35">' + Array.from({ length: 12 }, (_, i) => '<path d="M380 150L366 -60H394Z" transform="rotate(' + (i * 30 + 8) + ' 380 150)"/>').join('') + '</g>' +
+    glow('g', 380, 150, 200, '#ffc86a', 0.85) +
+    '<circle cx="380" cy="150" r="54" fill="' + rad('core', [[0, '#fff6d6'], [1, '#ffb43a']]) + '"/>' +
+    '<g fill="none" stroke="#ffe6b0" stroke-linecap="round"><circle cx="380" cy="150" r="80" stroke-width="7" opacity=".85"/><circle cx="380" cy="150" r="118" stroke-width="4" opacity=".5"/><circle cx="380" cy="150" r="160" stroke-width="3" opacity=".3"/></g>' +
+    '<path d="M300 0L290 50L316 58L280 120" fill="none" stroke="#fff6d6" stroke-width="5" stroke-linejoin="round"/>' +
     ground('M150 440V330L200 270L236 296L284 240L330 290L380 250L430 300L480 262L520 290V440Z', lin('mtn', [[0, '#4a2a6a'], [1, '#1f0a2a']])) +
-    '<path d="M284 240L296 300L276 340L304 400M380 250L372 320L396 380M480 262L470 330" fill="none" stroke="#9fff6f" stroke-width="4" stroke-linejoin="round"/>' +
+    '<path d="M284 240L296 300L276 340L304 400M380 250L372 320L396 380M480 262L470 330" fill="none" stroke="#ffc86a" stroke-width="4" stroke-linejoin="round"/>' +
     [[248, 120, 26, 20], [480, 70, 30, -15], [494, 200, 20, 40], [230, 210, 16, 10], [300, 30, 14, 30], [446, 250, 14, 60]]
-      .map(([x, y, s, a]) => '<path d="M' + (x - s) + ' ' + y + 'l' + n(s * 0.7) + ' ' + (-s) + 'l' + n(s * 1.2) + ' ' + n(s * 0.3) + 'l' + n(s * 0.4) + ' ' + n(s * 1.2) + 'l' + n(-s) + ' ' + n(s * 0.6) + 'z" fill="#4a2a6a" stroke="#8fff6f" stroke-width="2" transform="rotate(' + a + ' ' + x + ' ' + y + ')"/>').join('') +
+      .map(([x, y, s, a]) => '<path d="M' + (x - s) + ' ' + y + 'l' + n(s * 0.7) + ' ' + (-s) + 'l' + n(s * 1.2) + ' ' + n(s * 0.3) + 'l' + n(s * 0.4) + ' ' + n(s * 1.2) + 'l' + n(-s) + ' ' + n(s * 0.6) + 'z" fill="#3a2a3a" stroke="#ffc86a" stroke-width="2" transform="rotate(' + a + ' ' + x + ' ' + y + ')"/>').join('') +
     ground('M120 440V400H520V440Z', '#1f0a2a'),
 
   // A panther's face, fierce and still, traced in silver and lit violet in front of the moon.
@@ -846,16 +852,12 @@ const SCENES = {
     scatter(212, 12, (x, y, r) => '<ellipse cx="' + x + '" cy="' + y + '" rx="6" ry="3.6" fill="#ffc6da" transform="rotate(' + n(r() * 180) + ' ' + x + ' ' + y + ')"/>', 220, 510, 20, 340) +
     ground('M120 440V384C220 370 320 392 420 378S500 372 520 376V440Z', '#2a1430'),
 
-  // A spellbook open in the air above a castle of lit windows, a wand
-  // trailing sparks across its pages, candles floating in the dark.
+  // A book open in the air above a domed library tower with lit windows, a
+  // wand trailing sparks across its pages, fireflies in the dark.
   'Hermione Granger': () => {
-    const halo = rad('cg', [[0, '#ffd27a', 0.6], [1, '#ffd27a', 0]]);
-    const candle = (x, y, r) => {
-      const h = n(14 + r() * 12);
-      return '<circle cx="' + x + '" cy="' + n(y - 4) + '" r="12" fill="' + halo + '"/>' +
-        '<rect x="' + n(x - 3) + '" y="' + y + '" width="6" height="' + h + '" rx="1.5" fill="#fff4dc"/>' +
-        '<path d="M' + x + ' ' + n(y - 9) + 'c3 4 3 7 0 8c-3-1-3-4 0-8z" fill="#ffb84a"/>';
-    };
+    const halo = rad('cg', [[0, '#ffe08a', 0.7], [1, '#ffe08a', 0]]);
+    const firefly = (x, y, r) => '<circle cx="' + x + '" cy="' + y + '" r="' + n(7 + r() * 5) + '" fill="' + halo + '"/>' +
+      '<circle cx="' + x + '" cy="' + y + '" r="' + n(1.6 + r() * 1.2) + '" fill="#fff6c4"/>';
     const page = side => {
       const s = side;
       return '<path d="M390 150C' + (390 - 30 * s) + ' 132 ' + (390 - 70 * s) + ' 130 ' + (390 - 100 * s) + ' 140L' + (390 - 100 * s) + ' 222C' +
@@ -870,7 +872,7 @@ const SCENES = {
       trail += i % 3 === 0 ? sparkle(x, y, n(4 + t * 6), '#fff6c4') : '<circle cx="' + x + '" cy="' + y + '" r="' + n(1.6 + t * 1.4) + '" fill="#ffe9a6" opacity=".85"/>';
     }
     return tint('#f2b84a', '#2a1048', 0.58) + stars(401, 34, 120, W, 0, 220, '#fff6dc') +
-      scatter(402, 9, (x, y, r) => candle(x, y, r), 160, 510, 70, 130) +
+      scatter(402, 14, (x, y, r) => firefly(x, y, r), 160, 510, 60, 330) +
       glow('g', 390, 186, 170, '#ffe2a0', 0.75) +
       '<path d="M390 158C356 140 312 138 282 148L282 236C312 226 356 228 390 246C424 228 468 226 498 236L498 148C468 138 424 140 390 158Z" fill="#7a1a2a" stroke="#f0c050" stroke-width="2"/>' +
       page(1) + page(-1) + '<path d="M390 150V232" stroke="#c9a46a" stroke-width="2"/>' +
@@ -879,19 +881,17 @@ const SCENES = {
         '<path d="M-5 74h10M-5 84h10M-5 94h10" stroke="#c9945a" stroke-width="2.4"/><circle cy="0" r="4" fill="#fff6c4"/></g>' +
       trail +
       '<path d="M0 440V360C90 350 200 362 280 352S440 340 520 348V440Z" fill="#1c0b30"/>' +
-      '<g fill="#140826"><rect x="312" y="326" width="186" height="46"/>' +
-        '<rect x="316" y="302" width="24" height="70"/><path d="M312 302L328 272L344 302Z"/>' +
-        '<rect x="362" y="292" width="28" height="80"/><path d="M357 292L376 256L395 292Z"/>' +
-        '<rect x="420" y="282" width="32" height="90"/><path d="M415 282L436 252L457 282Z"/>' +
-        '<rect x="472" y="304" width="22" height="68"/><path d="M468 304L483 276L498 304Z"/>' +
-        [318, 342, 396, 456].map(x => '<rect x="' + x + '" y="318" width="10" height="8"/>').join('') + '</g>' +
-      '<g fill="#ffd27a" opacity=".85">' + [[324, 312], [326, 336], [372, 304], [380, 330], [432, 294], [440, 320], [432, 346], [478, 320], [404, 348], [464, 350], [350, 350]]
-        .map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="8" rx="2.5"/>').join('') + '</g>' +
+      // The library: a long hall of arched windows and a round domed tower.
+      '<g fill="#140826"><rect x="304" y="322" width="200" height="50"/><path d="M300 324H508L504 316H304Z"/>' +
+        '<rect x="404" y="268" width="52" height="104"/><path d="M398 270H462V262H398Z"/>' +
+        '<path d="M404 262A26 26 0 0 1 456 262Z"/><path d="M430 236V226" stroke="#140826" stroke-width="3"/><circle cx="430" cy="224" r="3"/></g>' +
+      '<g fill="#ffd27a" opacity=".85">' + [314, 336, 358, 380, 470, 490].map(x => '<path d="M' + x + ' 360V342A5 5 0 0 1 ' + (x + 10) + ' 342V360Z"/>').join('') +
+        [416, 436].map(x => '<path d="M' + x + ' 300V286A4 4 0 0 1 ' + (x + 8) + ' 286V300Z"/><path d="M' + x + ' 336V322A4 4 0 0 1 ' + (x + 8) + ' 322V336Z"/>').join('') + '</g>' +
       '<rect x="0" y="372" width="520" height="68" fill="' + lin('lake', [[0, '#2a1450'], [1, '#0e0620']]) + '"/>' +
       '<g fill="#ffd27a" opacity=".35">' + [[322, 384], [376, 392], [436, 386], [482, 396]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="16" rx="2.5"/>').join('') + '</g>';
   },
 
-  // A golden crown set with gems above a pink-roofed castle on green hills,
+  // A crown of peach blossom above a pink-roofed castle on green hills,
   // pennants flying, a peach or two in the grass.
   'Princess Peach': () => {
     const gold = lin('gold', [[0, '#fff6c4'], [0.5, '#f4c84a'], [1, '#c98a1f']]);
@@ -903,12 +903,15 @@ const SCENES = {
       '<g fill="#fff6c4" opacity=".2">' + [-50, -25, 0, 25, 50].map(a => '<path d="M384 150L370 -30H398Z" transform="rotate(' + a + ' 384 150)"/>').join('') + '</g>' +
       glow('g', 384, 136, 160, '#fff1b8', 0.85) +
       '<g transform="translate(384 128) scale(.92)">' +
-        '<path d="M-70 40L-82 -34L-44 -6L-22 -56L0 -14L22 -56L44 -6L82 -34L70 40Z" fill="' + gold + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-72 40H72V58H-72Z" fill="' + gold + '" stroke="#fff" stroke-width="3"/>' +
-        [[-82, -34], [-22, -56], [22, -56], [82, -34]].map(([x, y]) => '<circle cx="' + x + '" cy="' + y + '" r="8" fill="#fffbe6" stroke="#c98a1f" stroke-width="2"/>').join('') +
-        '<path d="M0 -4l12 16-12 16-12-16z" fill="#4f9aff" stroke="#fff" stroke-width="2"/>' +
-        '<circle cx="-40" cy="20" r="8" fill="#ff4f6a" stroke="#fff" stroke-width="2"/><circle cx="40" cy="20" r="8" fill="#ff4f6a" stroke="#fff" stroke-width="2"/>' +
-        '<circle cx="-50" cy="49" r="4" fill="#4f9aff"/><circle cx="0" cy="49" r="4" fill="#ff4f6a"/><circle cx="50" cy="49" r="4" fill="#4f9aff"/></g>' +
+        // A thin gold band, and a ring of peach blossom and leaves along it.
+        '<path d="M-82 40C-60 58 60 58 82 40" fill="none" stroke="' + gold + '" stroke-width="9" stroke-linecap="round"/>' +
+        '<path d="M-82 40C-60 58 60 58 82 40" fill="none" stroke="#fff" stroke-width="2" opacity=".7"/>' +
+        [[-74, 24, -40], [-52, 6, -20], [-24, -4, -8], [24, -4, 8], [52, 6, 20], [74, 24, 40], [-40, 38, -30], [40, 38, 30]]
+          .map(([x, y, a]) => '<path d="M' + x + ' ' + y + 'c-6-14 4-26 16-28c-2 14-8 24-16 28z" fill="#5ab04a" transform="rotate(' + a + ' ' + x + ' ' + y + ')"/>').join('') +
+        [[-66, 30, 1], [-40, 10, 1.1], [0, -14, 1.35], [40, 10, 1.1], [66, 30, 1], [-18, 26, 0.9], [18, 26, 0.9]].map(([x, y, k]) =>
+          '<g transform="translate(' + x + ' ' + y + ') scale(' + k + ')">' + [0, 72, 144, 216, 288].map(a =>
+            '<ellipse cx="0" cy="-9" rx="7" ry="9.5" fill="' + lin('pet', [[0, '#fff0f4'], [1, '#ff8ab0']]) + '" stroke="#fff" stroke-width="1.4" transform="rotate(' + a + ')"/>').join('') +
+          '<circle r="5" fill="#ffd23c"/><circle r="2" fill="#ff8a3a"/></g>').join('') + '</g>' +
       sparkle(476, 96, 11) + sparkle(290, 150, 8) + sparkle(470, 180, 6) +
       '<path d="M0 440V330C80 300 160 318 230 336S380 300 520 320V440Z" fill="#6fcf6a"/>' +
       '<g transform="translate(0 30)"><g fill="#fffaf4">' +

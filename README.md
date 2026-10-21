@@ -7482,11 +7482,22 @@ anything we advertise with.
   (a soaring dragon with no red fin or green eyes), Simba (a grown lion at a savanna sunrise, not
   Pride Rock) and Shrek (a treehouse in a forest, not the stump house in a swamp). New emblems for
   five of them.
-- **A reserve for a takedown letter:** 19 public-domain replacements drawn in advance, scenes and
+- **A reserve for a takedown letter:** public-domain replacements drawn in advance, scenes and
   emblems, in `tools/reserve/art-*.mjs` (built to `tools/reserve/character-art-reserve.js`, never
   served): Joan of Arc, Athena, Belle, Alice, Cinderella, Dorothy, Snow White, Goldilocks, Heidi,
   King Arthur, Hercules, Aladdin, Robin Hood, Merlin, The Beast, Sun Wukong, Sinbad, the Tortoise and
   the Ant. `node tools/reserve/preview.mjs --reserve out.png` draws them as the card does.
+- **Six medium-risk scenes touched up, same palette and idea:** Moana's sail carries a frigatebird
+  and stars, not Te Fiti's spiral; Princess Peach's crown is peach blossom, not the jewelled one;
+  WALL-E's seedling is in a clay pot on wooden crates, not a boot on rubbish cubes; Judy Hopps is a
+  plain rabbit (emblem: a rabbit, not a police badge) before one ordinary skyline; Hermione's
+  candles are fireflies and the castle a domed library; Hulk's blast is amber-gold, not green.
+- **Every studio character has a backup:** 23 in all, with the Tin Man, the Gingerbread Man, Gretel
+  and Atlas added. `tools/reserve/slots.json` says which backup takes which slot (the Beast is
+  Shrek's, Atlas is Hulk's).
+- **The promo videos** were rebuilt (`npm run promo`): the card shows the Ballad of Mulan, Psyche
+  Sync pairs Mulan with Dr Watson rather than Baymax, and the end card's carousel rolls only the
+  five (`SHOWN` in `promo/stage.html`).
 
 ### Let us roast you
 
