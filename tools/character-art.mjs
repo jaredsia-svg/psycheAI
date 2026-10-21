@@ -643,15 +643,15 @@ const SCENES = {
       skyline(122, 130, W, 440, 70, 190, '#160b2f', '#ffe9a6', true);
   },
 
-  // A mountain cracking under a golden shockwave, boulders in the air.
+  // A mountain cracking under a golden shockwave with a green edge, boulders in the air.
   'Hulk': () =>
     tint('#ffb44a', '#3a1a5a', 0.5) +
     '<g fill="#ffe0a0" opacity=".35">' + Array.from({ length: 12 }, (_, i) => '<path d="M380 150L366 -60H394Z" transform="rotate(' + (i * 30 + 8) + ' 380 150)"/>').join('') + '</g>' +
-    glow('g', 380, 150, 200, '#ffc86a', 0.85) +
-    '<circle cx="380" cy="150" r="54" fill="' + rad('core', [[0, '#fff6d6'], [1, '#ffb43a']]) + '"/>' +
-    '<g fill="none" stroke="#ffe6b0" stroke-linecap="round"><circle cx="380" cy="150" r="80" stroke-width="7" opacity=".85"/><circle cx="380" cy="150" r="118" stroke-width="4" opacity=".5"/><circle cx="380" cy="150" r="160" stroke-width="3" opacity=".3"/></g>' +
+    glow('gg', 380, 150, 230, '#8fe06a', 0.55) + glow('g', 380, 150, 170, '#ffd27a', 0.8) +
+    '<circle cx="380" cy="150" r="54" fill="' + rad('core', [[0, '#fff6d6'], [0.55, '#ffd56a'], [1, '#8fd85a']]) + '"/>' +
+    '<g fill="none" stroke="#ffe6b0" stroke-linecap="round"><circle cx="380" cy="150" r="80" stroke-width="7" opacity=".85"/></g><g fill="none" stroke="#b8f08a" stroke-linecap="round"><circle cx="380" cy="150" r="118" stroke-width="4" opacity=".55"/><circle cx="380" cy="150" r="160" stroke-width="3" opacity=".35"/></g>' +
     '<path d="M300 0L290 50L316 58L280 120" fill="none" stroke="#fff6d6" stroke-width="5" stroke-linejoin="round"/>' +
-    ground('M150 440V330L200 270L236 296L284 240L330 290L380 250L430 300L480 262L520 290V440Z', lin('mtn', [[0, '#4a2a6a'], [1, '#1f0a2a']])) +
+    ground('M150 440V330L200 270L236 296L284 240L330 290L380 250L430 300L480 262L520 290V440Z', lin('mtn', [[0, '#3a4a4a'], [0.35, '#3a2a5a'], [1, '#1f0a2a']])) +
     '<path d="M284 240L296 300L276 340L304 400M380 250L372 320L396 380M480 262L470 330" fill="none" stroke="#ffc86a" stroke-width="4" stroke-linejoin="round"/>' +
     [[248, 120, 26, 20], [480, 70, 30, -15], [494, 200, 20, 40], [230, 210, 16, 10], [300, 30, 14, 30], [446, 250, 14, 60]]
       .map(([x, y, s, a]) => '<path d="M' + (x - s) + ' ' + y + 'l' + n(s * 0.7) + ' ' + (-s) + 'l' + n(s * 1.2) + ' ' + n(s * 0.3) + 'l' + n(s * 0.4) + ' ' + n(s * 1.2) + 'l' + n(-s) + ' ' + n(s * 0.6) + 'z" fill="#3a2a3a" stroke="#ffc86a" stroke-width="2" transform="rotate(' + a + ' ' + x + ' ' + y + ')"/>').join('') +

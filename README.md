@@ -7496,7 +7496,7 @@ anything we advertise with.
   and Atlas added. `tools/reserve/slots.json` says which backup takes which slot (the Beast is
   Shrek's, Atlas is Hulk's).
 - **The promo videos** were rebuilt (`npm run promo`): the card shows the Ballad of Mulan, Psyche
-  Sync pairs Mulan with Dr Watson rather than Baymax, and the end card's carousel rolls only the
+  Sync pairs Mulan with Odysseus rather than Baymax, and the end card's carousel rolls only the
   five (`SHOWN` in `promo/stage.html`).
 
 ### Let us roast you
