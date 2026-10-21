@@ -569,6 +569,13 @@
       .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
   }
 
+  /** The card's signature: the site, then the Instagram handle to tag (cardFooter, set out). */
+  function cardSignHtml() {
+    const S = Copy.STRUCTURED;
+    return '<span class="pc-sign-site">' + esc(S.cardSite) + '</span><span class="pc-sign-dot" aria-hidden="true"></span>' +
+      '<span class="pc-sign-tag">' + esc(S.cardTagLead) + '</span><span class="pc-sign-handle">' + esc(S.cardHandle) + '</span>';
+  }
+
   function psycheStoryHtml(report, own) {
     const S = Copy.STRUCTURED;
     const card = report.card || {};
@@ -665,7 +672,7 @@
       // On the reader's own card the foot carries the QR code for their link
       // once it is saved (fillCardQr), and the line moves in beside it.
       (own ? '<div class="pc-qr-slot"></div>' : '') +
-      '<p class="pc-sfoot">' + esc(S.cardFooter) + '</p>' +
+      '<p class="pc-sfoot">' + cardSignHtml() + '</p>' +
       '</div>';
   }
 
@@ -704,7 +711,7 @@
       const slot = card && card.querySelector('.pc-qr-slot');
       if (!slot) continue;
       slot.innerHTML = svg ? svg + '<div class="pc-qr-text"><p class="pc-qr-call">' + esc(TEXT.cardQrCall) + '</p>' +
-        '<p class="pc-qr-site">' + esc(Copy.STRUCTURED.cardFooter) + '</p></div>' : '';
+        '<p class="pc-qr-site">' + cardSignHtml() + '</p></div>' : '';
       card.classList.toggle('pc-has-qr', Boolean(svg));
     }
   }

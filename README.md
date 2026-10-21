@@ -7541,6 +7541,11 @@ Holmes and The Tin Man, in that order in the gallery (Odysseus second).
   (`cardShareText`). Instagram keeps a shared image but drops its text, so the tap also copies the
   caption and says so ("Caption copied. Paste it into your post to tag @psycheai.io.").
 - The link's credit note: "1 card made = 1 credit = 5 questions or 1 report to gift".
+- The card's signature is set out rather than in small capitals (`cardSignHtml()`): **psycheai.io** in
+  ink, a dot, "Tag us" and **@psycheai.io** in the accent, about 40% larger.
+- Five emblems now match their scenes and drop a studio's mark: Mulan a spear with pennant and blossom
+  (was a sword), Simba a savanna sunrise with an acacia (was a crown), Hiccup a dragon's wing (was a
+  flame), Wonder Woman a laurel wreath (was her lasso), Captain America a plain star (was his shield).
 
 ### Let us roast you
 
