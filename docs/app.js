@@ -5317,7 +5317,11 @@
 
     return new Promise(resolve => {
       let answer = null;
+      const offline = $('#review-offline');
+      offline.hidden = true;
       const send = () => {
+        // Offline (an airplane-mode test, say): said here, with the review and its choices still open.
+        if (navigator.onLine === false) { offline.textContent = TEXT.reviewOffline; offline.hidden = false; return; }
         answer = currentDecision();
         dialog.close();
       };
@@ -5541,8 +5545,12 @@
    * addDataAndRerun, which builds the digest the review dialog shows next.
    */
   function askDataSources(options) {
-    // Fetched while the reader picks a file; each read waits for them.
-    loadReaders().catch(() => {});
+    // Fetched while the reader picks a file; each read waits for them. Once they are here, nothing more is
+    // needed from the network until the review, and the popout says so.
+    const offlineNote = $('#datasources-offline');
+    offlineNote.lastElementChild.textContent = TEXT.dataSourcesOffline;
+    offlineNote.hidden = true;
+    loadReaders().then(() => { offlineNote.hidden = false; }).catch(() => {});
     const settings = options || {};
     const dialog = $('#datasources-dialog');
     // Loading data in an app's own browser: said in the popout too, where the

@@ -846,7 +846,9 @@
       from a creator’s link. Nothing in them identifies you.</p>
 
     <h3>Can I verify this?</h3>
-    <p>The site is open source, so you can
+    <p>Yes. Open Load your data, turn on airplane mode, then pick your file: it is still read and
+      summarised, because that all happens on your device. Turn your connection back on only to send.</p>
+    <p>The site is also open source, so you can
       <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">read
       what the browser sends</a>.</p>
   </div>
@@ -1291,6 +1293,9 @@
   <p class="alert" id="datasources-inapp" hidden></p>
   <p class="muted" id="datasources-dialog-blurb">Load newer data to replace a source, or add one
     you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
+  <!-- Shown once the data readers have loaded: reading and summarising needs no network from then on.
+       Words from copy.js (dataSourcesOffline), set by askDataSources. -->
+  <p class="offline-note" id="datasources-offline" hidden><span aria-hidden="true">✈️</span><span></span></p>
   <div class="mode-options">
     <button class="mode-option" data-datasource="instagram" type="button">
       <span class="mode-icon">📷</span>
@@ -1444,6 +1449,8 @@
   <p class="fineprint review-legal" id="review-legal">By sending, you confirm you are 18 or over and agree to the
     <a href="/terms" target="_blank" rel="noopener">terms</a> and
     <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</p>
+  <!-- Send pressed while offline: said here, and the review stays open (copy.js, reviewOffline). -->
+  <p class="alert" id="review-offline" role="status" hidden></p>
   <div class="btn-row">
     <button class="btn btn-outline" id="review-cancel" type="button">Back</button>
     <button class="btn" id="review-send" type="button">Send this</button>

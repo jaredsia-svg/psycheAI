@@ -8351,6 +8351,20 @@ syncs locked with the link's key (FAQ). The FAQ and the front page's how-it-work
 naming Gemini: step 2 now says a de-identified summary is analysed by Google Vertex AI, since only the
 summary is.
 
+### No internet connection needed to read the export
+
+The strongest proof that the files stay on the phone is one the reader can run: airplane mode. Once
+"Add your data" has opened, the data readers (`reader-scripts`, fetched on opening it) are in, and from
+there to the review nothing is needed from the network: the export is read, de-identified and
+summarised, and the review opens, with the connection off (the only request tried is the step counter,
+`/api/event`, which carries a step's name and fails quietly). So the popout says *No internet connection
+needed for this step* (`#datasources-offline`, `dataSourcesOffline` in copy.js), shown only once the
+readers have loaded so it is true when seen; the privacy page's last line and the FAQ's *Can I verify
+this?* invite the airplane-mode test. Send pressed while still offline keeps the review open and says
+*You are offline. Turn your connection back on to send.* (`#review-offline`), rather than closing it
+into a connection error. The UI suite runs the whole test with the network cut. A bytes-sent counter was
+considered and dropped: a number the app shows is still the app's word; airplane mode is the reader's.
+
 ### The held report is sealed, and released on collection
 
 Why the server holds a finished report at all: writing it takes minutes, and a phone loses its

@@ -816,6 +816,8 @@
     // nothing to pay at all.
     reviewProceed: 'Proceed',
     reviewSend: 'Send this',
+    // Send pressed with the device offline (an airplane-mode test, say): the review stays open, its choices kept.
+    reviewOffline: 'You are offline. Turn your connection back on to send.',
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',
     // The server makes no free read from data it cannot tie to an Instagram
     // account (server.js, noAccount; October 2026): no username in it, and no
@@ -970,6 +972,10 @@
     // this screen that needs no explaining. What is left is the part they
     // could not have guessed.
     dataSourcesFirstBlurb: 'Before anything is sent, you review exactly what it contains and can untick anything.',
+    // Under that line once the readers have loaded (and only then, so it is true when shown): from here
+    // to the review, the export is read and summarised with the network off. The privacy page and the
+    // FAQ invite the reader to test it in airplane mode.
+    dataSourcesOffline: 'No internet connection needed for this step',
     // The Instagram row's own line on that same popout. The markup's version
     // ends "to replace it", which is right on the report page and describes
     // replacing something that does not exist yet here.

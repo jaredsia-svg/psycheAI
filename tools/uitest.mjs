@@ -1292,6 +1292,59 @@ try {
     }
   }
 
+  // ---- no internet connection needed to read the export ----
+  //
+  // "Add your data" says so once the readers have loaded, and the privacy page and FAQ invite the reader
+  // to test it in airplane mode. So it is tested here: with the network cut after the popout opens, the
+  // export is read and summarised and the review opens; Send, still offline, says so and keeps the review
+  // open; back online, Send goes on.
+  {
+    const offContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const off = await offContext.newPage();
+    try {
+      await off.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await off.click('#open-sources');
+      await off.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      await off.waitForSelector('#datasources-offline:not([hidden])', { timeout: 15000 });
+      check('"Add your data" says no internet connection is needed, once the readers are in',
+        (await off.locator('#datasources-offline').innerText()).includes('No internet connection needed for this step'));
+      const sent = [];
+      off.on('request', request => { if (request.method() === 'POST' && !/\/api\/event$/.test(request.url())) sent.push(request.url()); });
+      await offContext.setOffline(true);
+      const [pick] = await Promise.all([
+        off.waitForEvent('filechooser', { timeout: 15000 }),
+        clickSource(off, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await pick.setFiles({ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await off.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]')
+        .classList.contains('is-added'), null, { timeout: 30000 });
+      await off.click('#datasources-continue');
+      for (let step = 0; step < 4; step++) {
+        await off.waitForSelector('#more-data-dialog[open], #review-dialog[open]', { timeout: 30000 });
+        if (await off.locator('#review-dialog[open]').count()) break;
+        await off.click('#more-data-continue');
+        await off.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
+        await off.click('#datasources-continue');
+      }
+      check('and with the network off, the export is read and summarised through to the review',
+        (await off.locator('#review-dialog[open]').count()) === 1 && /Your captions & comments/.test(await off.locator('#review-list').innerText()));
+      await off.click('#review-send');
+      const held = await off.evaluate(() => ({ open: document.querySelector('#review-dialog').open,
+        said: document.querySelector('#review-offline').hidden ? '' : document.querySelector('#review-offline').textContent }));
+      check('Send, still offline, says so and keeps the review open', held.open && held.said === 'You are offline. Turn your connection back on to send.' &&
+        sent.length === 0, JSON.stringify({ held, sent }));
+      await offContext.setOffline(false);
+      // Nothing is let through to the server: a real send would spend this Instagram account's free card,
+      // which the tests after this one still need. Leaving the review is what is checked.
+      await offContext.route('**/api/**', route => route.abort());
+      await off.click('#review-send');
+      await off.waitForFunction(() => !document.querySelector('#review-dialog').open, null, { timeout: 10000 }).catch(() => {});
+      check('and back online, Send goes on', !(await off.evaluate(() => document.querySelector('#review-dialog').open)));
+    } finally {
+      await offContext.close();
+    }
+  }
+
   // ---- an Instagram with almost no writing in it ----
   //
   // Captions blank, no comments, no messages: before the review, one note

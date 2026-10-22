@@ -3882,6 +3882,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .datasources-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
 .datasources-dialog > * { flex: none; }
 .datasources-dialog h2 { font-size: 1.25rem; margin-bottom: .25rem; }
+.offline-note { display: flex; align-items: center; gap: .4rem; margin: -.35rem 0 .85rem; font-size: .86rem; font-weight: 650; color: #2f8a57; }
+.offline-note[hidden] { display: none; }
+:root[data-theme="dark"] .offline-note { color: #6fd39b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .offline-note { color: #6fd39b; } }
 /* Restore from a backup: a small quiet link left of Continue, on a first
    upload only. */
 .datasources-dialog .datasources-restore { font-size: .78rem; margin-right: .2rem; white-space: nowrap; }
