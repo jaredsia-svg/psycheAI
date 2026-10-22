@@ -68,9 +68,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .pill { position: absolute; left: 50%; padding: 16px 34px; border-radius: 999px; background: #fff; border: 3px solid #e4d2f3; font-size: 36px; font-weight: 850;
   white-space: nowrap; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.14); z-index: 9; }
 .pill em { font-style: normal; color: #e0457b; }
-#result { position: absolute; z-index: 8; width: 170px; border-radius: 16px; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
+#result { position: absolute; z-index: 8; transform-origin: 0 0; width: 170px; border-radius: 16px; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
 /* the sample report's opening (assets/report.png, from capture.mjs) */
-#report { position: absolute; z-index: 8; width: 170px; border-radius: 16px; border: 2px solid #eadff2; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
+#report { position: absolute; z-index: 8; transform-origin: 0 0; width: 170px; border-radius: 16px; border: 2px solid #eadff2; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
 /* the end card */
 #end { position: absolute; inset: 0; z-index: 30; opacity: 0; }
 #mark { position: absolute; left: 430px; top: 420px; width: 220px; height: 220px; }
@@ -210,7 +210,9 @@ function render(t) {
   const phoneIn = back(prog(t, s1.start - 0.25, s1.start + 0.25)), phoneOut = prog(t, FINAL - 0.15, FINAL + 0.15);
   // Steps 1 to 3 happen on the phone, so it grows to fill the frame once the files are in (1.4 times, its top
   // up at 600), and settles back to its own size as Step 4 starts, for the Vertex AI panel above it.
-  const zoom = easeIO(prog(t, s1.start + 0.4, s1.start + 1.0)) * (1 - easeIO(prog(t, s3.start - 0.1, s3.start + 0.35)));
+  // And again in Step 5, once the Vertex AI panel has gone and the results are in the phone.
+  const zoomBack = easeIO(prog(t, s4.marks[1] - 0.25, s4.marks[1] + 0.35));
+  const zoom = Math.max(easeIO(prog(t, s1.start + 0.4, s1.start + 1.0)) * (1 - easeIO(prog(t, s3.start - 0.1, s3.start + 0.35))), zoomBack);
   set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + ((1 - Math.min(1, phoneIn)) * 300 - 300 * zoom) + 'px) scale(' +
     (1 + 0.4 * zoom + pulse * 0.015) + ')');
   // The rows land one by one (Step 1), then fold into the summary (Step 2).
@@ -261,10 +263,13 @@ function render(t) {
   // Step 4: the card and the report come down the line into the phone; then "keeps no copy" as the panel goes.
   const down = easeIO(prog(t, s4.start + 0.15, s4.vo + 1.1)), resOn = prog(t, s4.start + 0.1, s4.start + 0.3);
   const ry = CLOUD.y + (SCREEN_MID.y + 20 - CLOUD.y) * down;
-  $('result').style.left = (540 - 182) + 'px'; $('result').style.top = (ry - 120) + 'px';
-  $('report').style.left = (540 + 12) + 'px'; $('report').style.top = (ry - 120) + 'px';
-  set('result', resOn, 'rotate(' + (-6 + 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) + ')');
-  set('report', resOn, 'rotate(' + (6 - 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) + ')');
+  // Grown with the phone: the phone scales from its top centre (540, 900), so the card and report take the
+  // same mapping, scaled from their own top-left corners.
+  const grow = 1 + 0.4 * zoomBack, lift = -300 * zoomBack;
+  const place = (id, x) => { $(id).style.left = (540 + (x - 540) * grow) + 'px'; $(id).style.top = (900 + lift + (ry - 120 - 900) * grow) + 'px'; };
+  place('result', 540 - 182); place('report', 540 + 12);
+  set('result', resOn, 'rotate(' + (-6 + 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
+  set('report', resOn, 'rotate(' + (6 - 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
   const nc = back(prog(t, s4.marks[1] - 0.1, s4.marks[1] + 0.3)), ncOut = prog(t, FINAL - 0.15, FINAL + 0.05);
   set('nocopy', clamp(nc * 2) * (1 - ncOut), 'translateX(-50%) scale(' + Math.min(1.08, nc) + ')');
   ['result', 'report'].forEach(id => { $(id).style.opacity = resOn * (1 - ncOut); });

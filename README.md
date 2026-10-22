@@ -8386,7 +8386,7 @@ the four-hour ceiling.
 The privacy page opens with a five-step diagram (`.data-flow`, plain HTML and CSS since the page is
 script-free): the files are loaded on the phone, not uploaded (step 1 said "stay on your phone", a
 state rather than a step, until October 2026); a 100–200 KB summary is made there (the digest caps are 126,000
-and 179,000 characters), names removed; the reader chooses what is sent (the review sheet's switches, one a kind of data, all on
+and 179,000 characters), names removed (step 2's title: *A short de-identified summary is made*); the reader chooses what is sent (the review sheet's switches, one a kind of data, all on
 by default, and its download of exactly what goes: its own step since October 2026, as the one step the
 reader takes rather than the app, where it had been "You check it first" at the end of step 2); only
 that summary is sent, encrypted, to
