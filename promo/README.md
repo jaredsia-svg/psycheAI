@@ -128,6 +128,27 @@ swoosh into each, and the last card gets the main video's ending (riser, hit, fu
 louder with an octave above, and the music swelling on the hit). The words pop in a line at a time
 rather than word by word: on "It's sent encrypted to Google Vertex AI" the word timer lost its place.
 
+## The short reels
+
+```
+npm run promo:shorts             # both; or npm run promo:shorts -- notes
+```
+
+Two reels of about 19 seconds for reach, `out/PsycheAI-notes.mp4` and `out/PsycheAI-mbti.mp4` (and a
+cover each), from `shorts.py` (voice, timeline, music) and one stage, `shorts-stage.html`:
+
+| Reel | Lines | On screen |
+| --- | --- | --- |
+| `notes` | Your Instagram has been taking notes on you for years. / It knows you save recipes you never cook, reply within a minute, and you're online at 2am. / So I let AI read it. / I got Mulan. The organiser with a warm centre. / Comment card, and I'll send you the link. | a phone with a scrolling feed; three habits pop as they are said and are drawn into the phone as it is read; the sample card flips in on the hit; *Comment "CARD"* |
+| `mbti` | I took the MBTI test three times, and got three different answers. / So I asked my Instagram instead. / No questions. Just what I actually do. / I got Odysseus. ENTP, with the evidence. / What does yours say? Comment your type. | three test results (INFJ, ESTP, INTP) and a "?"; Instagram on the phone; his habits; the Odysseus sample card (`assets/card-odysseus.png`) with its MBTI ringed; the sixteen types scrolling |
+
+The music is the main video's instruments in a different key and feel each: `notes` in A minor
+(Am F C G) at 112, curious then bright; `mbti` in D (D A Bm G) at 124, with early claps and swung plucks.
+Both end like the main video: riser, hit, the full beat. The voice gets names wrong, so `vo.py` gives
+`{Mulan}` and `{Odysseus}` as sounds (as it gives PsycheAI), and the voice script spells as it is said
+("organizer", "E N T P"). The *Comment "CARD"* ending assumes the comments are answered, by hand or by
+an auto-DM tool.
+
 ## The privacy post
 
 `node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the

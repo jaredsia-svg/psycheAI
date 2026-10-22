@@ -1,7 +1,8 @@
 // Captures the sample Psyche Card for the video: assets/card.png, and
 // assets/card-parts.json with where each part sits on it (as fractions of the
 // card), which the stage uses to draw its highlight boxes. Also the sample
-// report's opening, assets/report.png, for the privacy reel.
+// report's opening, assets/report.png, for the privacy reel, and the Odysseus
+// sample card, assets/card-odysseus.png, for the MBTI reel.
 //
 //   node promo/capture.mjs
 //
@@ -59,6 +60,25 @@ try {
   const { writeFileSync } = await import('node:fs');
   writeFileSync(dir + '/assets/card-parts.json', JSON.stringify(parts, null, 1) + '\n');
   console.log('card parts', Object.keys(parts).join(', '));
+
+  // The Odysseus sample card too (assets/card-odysseus.png), for the MBTI reel: the viewer steps
+  // through the sample cards with its arrows until his is showing. Found by its name, Lucas Moreau:
+  // "Odysseus" is also on Mulan's card, in its Most in sync with.
+  for (let step = 0; step < 8; step++) {
+    if (/Lucas Moreau/.test(await card.innerText())) break;
+    await page.evaluate(() => { const next = document.querySelector('#sample-card-dialog .sample-card-next');
+      next.style.visibility = ''; next.click(); });
+    await page.mouse.move(1, 1);
+    await page.waitForTimeout(700);
+  }
+  await page.evaluate(() => document.querySelectorAll('#sample-card-dialog button').forEach(b => {
+    if (!b.closest('#sample-psyche-card-full')) b.style.visibility = 'hidden';
+  }));
+  // The pointer, left over the card by the arrow, would open a part's explanation over it.
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(500);
+  if (/Lucas Moreau/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-odysseus.png' });
+  else console.error('no Odysseus sample card found');
 
   // The sample report's opening, for the privacy reel (assets/report.png): from its part nav (00 to 05)
   // down, as tall as 1.4 times its width, without the dialog's title bar.

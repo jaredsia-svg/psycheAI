@@ -57,7 +57,29 @@ LINES = [
 # The closing line: this, then each version's own words from config.json.
 END = 'Your first Psyche Card is free!'
 
+# Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen") and
+# {Odysseus} ("Utysis"). The recogniser hears them as the plain word.
+NAMES = {'{Mulan}': list('muːlˈæn'), '{Odysseus}': list('oʊdˈɪsiːəs')}
+
+def named(text):
+    """Phonemes for a line with a {Name} in it: the words around it phonemized, the name as given."""
+    sents = [[]]
+    for part in re.split(r'(\{\w+\})', text):
+        if part in NAMES:
+            sents[-1] = sents[-1] + ([' '] if sents[-1] else []) + NAMES[part]
+        elif re.search('[A-Za-z0-9]', part):
+            # Punctuation straight after a name ("{Mulan}. The…") stays with the name, so the voice pauses there.
+            lead = re.match(r'\s*([,.?!]*)', part).group(1)
+            if lead: sents[-1] = sents[-1] + list(lead)
+            said = v.phonemize(part[len(re.match(r'\s*[,.?!]*', part).group(0)):])
+            sents[-1] = sents[-1] + ([' '] if sents[-1] else []) + said[0]
+            sents += said[1:]
+        elif part.strip():
+            sents[-1] = sents[-1] + list(part.strip())
+    return sents
+
 def phonemes(text):
+    if any(name in text for name in NAMES): return named(text)
     if '{B}' not in text: return v.phonemize(text)
     before, after = text.split('{B}')
     sents = v.phonemize(before) if before.strip() else [[]]
@@ -83,8 +105,9 @@ def words(text):
     text = text.replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
     # The recogniser writes a spoken address as one: "psyche ai dot app" comes back "psycheai.app".
     text = re.sub(r'(?<=[a-z])\.(?=[a-z])', ' dot ', text).replace('psycheai', 'psyche ai')
-    # A spelled-out ending, "dot I O", is heard as ".io".
-    return [part for w in re.findall(r"[a-z']+", text) for part in (['i', 'o'] if w == 'io' else [w])]
+    # A spelled-out ending, "dot I O", is heard as ".io", and a spelled-out type, "E N T P", as "ENTP".
+    return [part for w in re.findall(r"[a-z']+", text)
+            for part in (['i', 'o'] if w == 'io' else list(w) if re.fullmatch('[ei][ns][tf][jp]', w) else [w])]
 
 def pauses(a, phrases):
     """Where each phrase after the first starts: the silence nearest where its share of the script falls."""
