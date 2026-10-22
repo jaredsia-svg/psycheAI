@@ -49,8 +49,8 @@ REELS = {
         # At the other reels' pace, each question held for a breath, the regret one a little longer.
         'lines': [
             (['Some questions are hard to ask anyone.'], 0.92, None),
-            (["What's my most underrated trait?"], 0.92, None),
             (['What do people misunderstand about me?'], 0.92, None),
+            (['What do I keep trying to prove, and to whom?'], 0.92, None),
             (["What would I regret most, when I'm old?"], 0.92, None),
             (['{B} answers from what your own data shows.'], 0.92, None),
             (['A coach that already knows you.'], 0.92, None),

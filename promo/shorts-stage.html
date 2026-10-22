@@ -51,6 +51,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #cta small { display: block; margin-top: 18px; font-size: 46px; font-weight: 800; letter-spacing: -0.01em; color: #6b3f8f; }
 #site { z-index: 20; left: 50%; top: 1560px; padding: 22px 52px; border-radius: 999px; font-size: 46px; font-weight: 900; color: #fff; white-space: nowrap;
   background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.5); }
+#free { z-index: 20; left: 0; right: 0; top: 1220px; text-align: center; font-size: 44px; font-weight: 800; color: #6b3f8f; }
 #types { z-index: 19; left: 0; right: 0; top: 1440px; height: 90px; overflow: hidden; }
 #types div { position: absolute; top: 0; padding: 14px 28px; border-radius: 999px; background: #fff; border: 3px solid #ead9f6; font-size: 40px; font-weight: 900; color: #7b3fa0; }
 /* The coach reel: the questions on a dusk ground, then the answer on the phone as the ground warms. */
@@ -83,6 +84,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el" id="cta"></div>
   <div class="el" id="types"></div>
   <div class="el" id="site">psycheai.io ↗</div>
+  <div class="el" id="free"></div>
 <script>
 const TL = __TIMELINE__;
 const PARTS = __PARTS__;
@@ -134,20 +136,22 @@ const REELS = {
     card: 'assets/card.png',
     heads: [[], [], [], [],
       ['<span style="font-size:60px"><span class="grad">PsycheAI</span> answers from what your own data shows</span>'],
-      ['A coach that <span class="grad">already knows you</span>', '<span style="font-size:48px;color:#6b3f8f">Your first question is free</span>'],
+      ['A coach that <span class="grad">already knows you</span>'],
       []],
     chips: [],
     cta: 'Ask <span class="grad">yours</span>',
-    hook: 'Questions you’ve never asked out loud.',
-    questions: ['What’s my most underrated trait?', 'What do people misunderstand about me?', 'What would I regret most, when I’m old?'],
+    hook: 'Some questions are hard to ask anyone.',
+    questions: ['What do people misunderstand about me?', 'What do I keep trying to prove, and to whom?', 'What would I regret most, when I’m old?'],
     // A sample answer to the regret question, from the kinds of evidence the app reads: messages, saves, posts.
-    answer: '<b>Not the risks you took. The ones you saved for later.</b> This year you told three friends ‘we should catch up soon’ ' +
-      '— and haven’t messaged them since. You’ve saved 214 places you’ve never been. You love people and adventure. ' +
-      'You just keep scheduling them for ‘later’. <b>Later is the one thing you’ll run out of.</b>',
+    answer: '<b>You’ll wish you’d spent more time with your parents and friends.</b> Your messages home have shrunk to ‘ok’ and ' +
+      '‘see you soon’. You told three friends ‘let’s catch up soon’ this year — and never did. You keep saving places you want ' +
+      'to visit, but never go. <b>Don’t wait. Call home. Message them. Book the trip.</b>',
+    free: 'Your first question is free',
   },
 }[REEL];
 $('card').src = REELS.card;
 $('cta').innerHTML = REELS.cta;
+$('free').textContent = REELS.free || '';
 const heads = REELS.heads.map((lines, i) => { const h = document.createElement('div'); h.className = 'head';
   if (REEL === 'mbti' && i === 0) h.style.fontSize = '74px';
   if (REEL === 'mbti' && i === 2) h.style.fontSize = '68px';
@@ -275,6 +279,9 @@ function coach(t, pulse) {
   const site = back(prog(t, CTA.vo + 0.9, CTA.vo + 1.3));
   $('site').style.top = '1060px';
   show('site', clamp(site * 2), 'translateX(-50%) scale(' + (Math.min(1.05, site) + pulse * 0.05 * Math.min(1, site)) + ')');
+  // And last, as text only: the first question is free.
+  const free = ease(prog(t, CTA.voEnd + 0.1, CTA.voEnd + 0.5));
+  show('free', free, 'translateY(' + (1 - free) * 20 + 'px)');
 }
 window.render = render;
 window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
