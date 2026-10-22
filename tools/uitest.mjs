@@ -3097,10 +3097,10 @@ try {
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('.row-head')).color +
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
-  check('the four steps say what you get, not how it works, and step 2 names Gemini alone',
+  check('the four steps say what you get, not how it works, and step 2 names Vertex AI alone',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync' &&
-    /analysed by Gemini, which creates a report for you/.test(await page.locator('.step-card').nth(1).innerText()) &&
+    /summary of your data is analysed by Google Vertex AI, which writes your report/.test(await page.locator('.step-card').nth(1).innerText()) &&
     !/Claude/.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // Step one points the reader downwards for the how-to. A directional
@@ -10277,13 +10277,16 @@ try {
       'How long does it take?',
       'What file do I need?',
       'What data leaves this device?',
+      'Do I need to give my Instagram password?',
       'Is my data used to train AI?',
       'Can the digest be linked back to me?',
       'Can anyone else access my data?',
+      'What if PsycheAI gets hacked?',
       'Does PsycheAI count anything?',
       'Can I verify this?',
       'How accurate is it?',
       'What does it cost?',
+      'How does PsycheAI make money?',
       'How does Psyche Sync work?',
       'How do I keep my report from getting lost?',
       'How do I contact PsycheAI?',
@@ -10317,8 +10320,8 @@ try {
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the page says there is no account, and no collection of exports or reports to breach',
     /There is no account, and PsycheAI stores none of your data, digest or report, so there is\s+nothing for anyone to take/.test(about));
-  check('the page names Google Gemini, the provider the site runs on, as the party that reads the digest',
-    /It goes to Google Gemini/.test(about) && !/Grok/i.test(about));
+  check('the page names Google Vertex AI, the provider the site runs on, as the party that reads the digest',
+    /It goes to Google Vertex AI/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
     /keeps no copy of your data, digest or report/i.test(about));
   check('the page is honest that hosting and payment providers see something',
@@ -10346,7 +10349,7 @@ try {
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
   check('the media and the zip never leave; the de-identified digest goes to the model, Ask PsycheAI included, and PsycheAI keeps no copy',
     /Your Instagram zip file and your photos and videos never leave this device\. They are read in your browser\./.test(about) &&
-      /emails and phone numbers\. You can review\s+it before anything is sent for analysis\. It goes to Google Gemini to write your card and report and to\s+answer Ask PsycheAI questions on the enterprise paid tier\./.test(about) &&
+      /emails and phone numbers\. You can review\s+it before anything is sent for analysis\. It goes to Google Vertex AI, on Google Cloud’s enterprise tier,\s+to write your card and report and to answer Ask PsycheAI questions\./.test(about) &&
       /PsycheAI keeps no copy of your data, digest or report\./.test(about),
     about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 

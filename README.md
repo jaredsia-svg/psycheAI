@@ -8338,6 +8338,19 @@ shows nothing, PsycheAI has no access to your data or results, and the finished 
 memory under a code worked out from your own summary (`lib/results.js` keys it on a SHA-256 of the
 digest), so only the device holding that summary can collect it.
 
+### Answering the sceptic's three questions
+
+People wary of a new app ask three things before loading their data, so each now has a plain answer
+(October 2026). **How does PsycheAI make money?** From paid re-runs and Ask PsycheAI questions, never
+from your data; no ads, nothing sold or shared (FAQ, the privacy policy's no-tracking line, and the front
+page's privacy panel). **Do I need to give my Instagram password?** No: PsycheAI never asks for one or
+logs in to any account; the reader downloads their own data (FAQ, privacy policy, front page). **What if
+PsycheAI gets hacked?** There is none of your data to take: no accounts, no store of exports, digests or
+reports, a report in progress held only sealed until collected (`lib/results.js`), and shared cards and
+syncs locked with the link's key (FAQ). The FAQ and the front page's how-it-works step 2 also stopped
+naming Gemini: step 2 now says a de-identified summary is analysed by Google Vertex AI, since only the
+summary is.
+
 ### The held report is sealed, and released on collection
 
 Why the server holds a finished report at all: writing it takes minutes, and a phone loses its

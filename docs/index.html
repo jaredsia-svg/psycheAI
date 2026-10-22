@@ -239,7 +239,7 @@
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
       <p>Download your data from Instagram (WhatsApp and Google data are optional). See <a href="#request-data" class="step-below">below</a> for instructions.</p></div>
     <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
-      <p>Your data is analysed by Gemini, which creates a report for you. No data is stored by PsycheAI.</p></div>
+      <p>A short, de-identified summary of your data is analysed by Google Vertex AI, which writes your report. No data is stored by PsycheAI.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Psyche Sync</h3>
@@ -374,7 +374,9 @@
         <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg></span><span>Summary sent encrypted to Vertex AI</span></li>
         <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg></span><span>Results saved on your phone only</span></li>
       </ol>
-      <p class="privacy-points-foot">PsycheAI keeps no copy of your data or your report. No sign-up, no cookies, no trackers or third-party analytics.
+      <p class="privacy-points-foot">PsycheAI keeps no copy of your data or your report, and never asks for your password.
+        No sign-up, no cookies, no trackers or third-party analytics. We make money from paid re-runs and
+        questions, never from your data.
         <a href="/privacy#flow-title">See how your data flows</a></p>
     </div>
 
@@ -803,14 +805,18 @@
     <p>Your Instagram zip file and your photos and videos never leave this device. They are read in your browser.</p>
     <p>The only thing sent is a short digest of your own activity, about 100–200 KB of text, which has removed
       your personal details such as your name, other people’s handles, emails and phone numbers. You can review
-      it before anything is sent for analysis. It goes to Google Gemini to write your card and report and to
-      answer Ask PsycheAI questions on the enterprise paid tier.</p>
+      it before anything is sent for analysis. It goes to Google Vertex AI, on Google Cloud’s enterprise tier,
+      to write your card and report and to answer Ask PsycheAI questions.</p>
     <p>PsycheAI keeps no copy of your data, digest or report. They stay in your browser until you press
       Delete everything. There is no account to create, and our hosting and payment providers can see only
       that the site was used or a payment made, never your data.</p>
 
+    <h3>Do I need to give my Instagram password?</h3>
+    <p>No. PsycheAI never asks for your password and never logs in to any of your accounts. You download
+      your own data from Instagram, WhatsApp, Google or Facebook yourself, and choose the file here.</p>
+
     <h3>Is my data used to train AI?</h3>
-    <p>No. PsycheAI uses Google Gemini on Google Cloud’s enterprise tier, where Google does not train its AI
+    <p>No. PsycheAI uses Google Vertex AI on Google Cloud’s enterprise tier, where Google does not train its AI
       on your digest, questions or report, and uses them only to answer you.</p>
 
     <h3>Can the digest be linked back to me?</h3>
@@ -828,6 +834,12 @@
       small things that do not name you, and the <a href="/privacy">privacy policy</a> lists every one.</p>
     <p>Your shared card and any Psyche Sync sent to you are locked with a key that lives only in your link,
       so PsycheAI cannot read them.</p>
+
+    <h3>What if PsycheAI gets hacked?</h3>
+    <p>There would be none of your data to take. PsycheAI has no accounts or passwords, and no store of
+      exports, digests or reports. A report being written waits only in encrypted form that PsycheAI cannot
+      read, until your device collects it, usually within seconds. Shared cards and syncs are locked with a
+      key that only your link holds.</p>
 
     <h3>Does PsycheAI count anything?</h3>
     <p>Only daily totals, such as how many cards, reports and syncs were made, and how many people arrived
@@ -857,6 +869,10 @@
       with its Psyche Report – is <span data-price="unlock">US$5</span>. Ask PsycheAI, your coach, answers one question free,
       then five for <span data-price="ask">US$5</span>. You
       see the price before you pay.</p>
+
+    <h3>How does PsycheAI make money?</h3>
+    <p>From paid re-runs and Ask PsycheAI questions, never from your data. There are no ads, and nothing
+      about you is sold or shared.</p>
 
     <h3>How does Psyche Sync work?</h3>
     <p>You get one personal link, also printed on your Psyche Card as a QR code. Send it to a
