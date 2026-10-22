@@ -131,10 +131,10 @@ rather than word by word: on "It's sent encrypted to Google Vertex AI" the word 
 ## The short reels
 
 ```
-npm run promo:shorts             # both; or npm run promo:shorts -- notes
+npm run promo:shorts             # notes, mbti and coach; or name them: npm run promo:shorts -- coach-misunderstood
 ```
 
-Three reels of 20 to 25 seconds for reach, `out/PsycheAI-notes.mp4` and `out/PsycheAI-mbti.mp4` (and a
+Short reels of 20 to 25 seconds for reach, `out/PsycheAI-notes.mp4` and `out/PsycheAI-mbti.mp4` (and a
 cover each), from `shorts.py` (voice, timeline, music) and one stage, `shorts-stage.html`:
 
 | Reel | Lines | On screen |
@@ -142,11 +142,11 @@ cover each), from `shorts.py` (voice, timeline, music) and one stage, `shorts-st
 | `notes` | Your Instagram has been taking notes on you for years. / It knows you're the one who organises every plan, you give more attention than you ask for, and you go quiet when you need to recharge. / So I let PsycheAI read it. / I got Mulan. The organiser with a warm centre. / Comment card, and I'll send you the link. | a phone with a scrolling feed; three habits pop as they are said (Mulan's own patterns, so the reveal is earned; trivia like "saves recipes, never cooks" was tried first) and are drawn into the phone as it is read; the sample card flips in on the hit; *Comment "CARD"* |
 | `mbti` | I took the MBTI test three times, and got three different answers. / So I loaded my Instagram data instead. / No questions asked. Just what my online patterns actually show. / I got Odysseus. ENTP, with the evidence. / What does yours say? Comment your type. | three test results (INFJ, ESTP, INTP) and a "?"; Instagram on the phone; three of his own signature patterns as his card evidences them (*Rescues every plan with a plan B*, *Talks every group round*, *Same few friends hear it all first*); the Odysseus sample card (`assets/card-odysseus.png`) with its MBTI ringed; the sixteen types scrolling |
 
-| `coach` | Some questions are hard to ask anyone. / What do people misunderstand about me? / What do I keep trying to prove, and to whom? / What would I regret most, when I'm old? / PsycheAI answers from what your own data shows. / A coach that already knows you. / Ask yours at PsycheAI dot io. | the hook typed out as said, then each question alone on a dusk-plum ground, held for a breath (the regret one longer); the ground warms and Ask PsycheAI answers the regret question, typed in, in plain words (*You'll wish you'd spent more time with your parents and friends.* … *Don't wait. Call home. Message them. Book the trip.*: a sample reader's, from the kinds of evidence the app reads); *Ask yours*, the address, and last *Your first question is free* |
+| `coach` | Some questions are hard to ask anyone. / What am I most insecure about? / What do I keep trying to prove, and to whom? / What would I regret most, when I'm old? / PsycheAI answers from what your own data shows. / A coach that already knows you. / Ask yours at PsycheAI dot io. | the hook typed out as said, then each question alone on a dusk-plum ground, held for a breath (the regret one longer); the ground warms and Ask PsycheAI answers the regret question, typed in, in plain words (*You'll wish you'd spent more time with your parents and friends.* … *Don't wait. Call home. Message them. Book the trip.*: a sample reader's, from the kinds of evidence the app reads); *Ask yours*, the address, and last *Your first question is free* |
 
 The music is the main video's instruments in a different key and feel each: `notes` in A minor
 (Am F C G) at 112, curious then bright; `mbti` in D (D A Bm G) at 124, with early claps and swung plucks.
-Both end like the main video: riser, hit, the full beat. `coach` has a piece of its own, hopeful: E minor to G (Em C G D) at 88, a rolling piano with an echo and strings swelling through the questions, lifting into a light beat and bells as the answer types, ending on a bright chord. (A slower, sombre version in D minor, with the narration at 1.0, was tried first.)
+Both end like the main video: riser, hit, the full beat. `coach-misunderstood` is the same reel opening on *What do people misunderstand about me?*: the gentler first cut, kept to post a few days apart and compare (insecure, then prove, then regret, reads as one story but is heavier). `coach` has a piece of its own, hopeful: E minor to G (Em C G D) at 88, a rolling piano with an echo and strings swelling through the questions, lifting into a light beat and bells as the answer types, ending on a bright chord. (A slower, sombre version in D minor, with the narration at 1.0, was tried first.)
 
 ## The privacy post
 

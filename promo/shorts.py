@@ -3,6 +3,7 @@
     python shorts.py notes   # "Your Instagram has been taking notes on you": Mulan
     python shorts.py mbti    # "I took the MBTI test three times": Odysseus
     python shorts.py coach   # "Some questions are hard to ask anyone": Ask PsycheAI
+    python shorts.py coach-misunderstood   # the same, opening on "What do people misunderstand about me?"
 
 npm run promo:shorts builds both. The same voice as the other videos (vo.py, imported for it), and music
 from the main video's instruments: each reel its own tempo, key and feel, so they sound related but not
@@ -49,7 +50,7 @@ REELS = {
         # At the other reels' pace, each question held for a breath, the regret one a little longer.
         'lines': [
             (['Some questions are hard to ask anyone.'], 0.92, None),
-            (['What do people misunderstand about me?'], 0.92, None),
+            (['What am I most insecure about?'], 0.92, None),
             (['What do I keep trying to prove, and to whom?'], 0.92, None),
             (["What would I regret most, when I'm old?"], 0.92, None),
             (['{B} answers from what your own data shows.'], 0.92, None),
@@ -65,6 +66,10 @@ REELS = {
         'reveal': 4, 'swing': 0.0, 'early_claps': False,
     },
 }
+# The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
+# post a few days apart and compare.
+REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +
+                                    REELS['coach']['lines'][2:])
 R = REELS[REEL]
 LINES = R['lines']
 BUILD = HERE + '/build/' + REEL

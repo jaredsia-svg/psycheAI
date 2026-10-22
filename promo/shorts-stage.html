@@ -106,7 +106,7 @@ const sparks = Array.from({ length: 22 }, (_, i) => { const s = document.createE
 
 // Each reel: its headlines (one a scene, a line or two of them, the second shown at the scene's second mark),
 // its chips, and which card it reveals.
-const REELS = {
+const REELS_ALL = {
   notes: {
     card: 'assets/card.png',
     heads: [
@@ -141,14 +141,18 @@ const REELS = {
     chips: [],
     cta: 'Ask <span class="grad">yours</span>',
     hook: 'Some questions are hard to ask anyone.',
-    questions: ['What do people misunderstand about me?', 'What do I keep trying to prove, and to whom?', 'What would I regret most, when I’m old?'],
+    questions: ['What am I most insecure about?', 'What do I keep trying to prove, and to whom?', 'What would I regret most, when I’m old?'],
     // A sample answer to the regret question, from the kinds of evidence the app reads: messages, saves, posts.
     answer: '<b>You’ll wish you’d spent more time with your parents and friends.</b> Your messages home have shrunk to ‘ok’ and ' +
       '‘see you soon’. You told three friends ‘let’s catch up soon’ this year — and never did. You keep saving places you want ' +
       'to visit, but never go. <b>Don’t wait. Call home. Message them. Book the trip.</b>',
     free: 'Your first question is free',
   },
-}[REEL];
+};
+// The gentler first cut of the coach reel: the same, opening on "What do people misunderstand about me?".
+REELS_ALL['coach-misunderstood'] = Object.assign({}, REELS_ALL.coach,
+  { questions: ['What do people misunderstand about me?'].concat(REELS_ALL.coach.questions.slice(1)) });
+const REELS = REELS_ALL[REEL];
 $('card').src = REELS.card;
 $('cta').innerHTML = REELS.cta;
 $('free').textContent = REELS.free || '';
@@ -191,7 +195,7 @@ function render(t) {
   sparks.forEach(p => { p.el.style.left = (p.x + Math.sin(t + p.phase * 6) * 30) + 'px'; p.el.style.top = (1980 - ((t * p.speed + p.phase * 2000) % 2080)) + 'px';
     p.el.style.width = p.el.style.height = p.size + 'px'; p.el.style.opacity = 0.5 * (0.6 + pulse * 0.4); });
   S.forEach((s, i) => head(i, t));
-  if (REEL === 'coach') return coach(t, pulse);
+  if (REEL.startsWith('coach')) return coach(t, pulse);
 
   // The card: flips in on the reveal (the hit), the type or character highlighted, then rises to make room for the ask.
   const flip = easeIO(prog(t, REVEAL.start - 0.05, REVEAL.start + 0.5)), rise = easeIO(prog(t, CTA.start - 0.1, CTA.start + 0.5));
@@ -249,9 +253,9 @@ function render(t) {
 }
 // The coach reel: the hook typed out and the three questions, one at a time, on the dusk ground; then the
 // ground warms, and the phone shows the regret question answered, typed in; then the ask.
-const hookChars = REEL === 'coach' ? [...REELS.hook].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; }) : [];
-const qEls = REEL === 'coach' ? REELS.questions.map(q => { const d = document.createElement('div'); d.className = 'q el'; d.textContent = q; $('qs').appendChild(d); return d; }) : [];
-const answerWords = REEL === 'coach' ? REELS.answer.split(/(?<=\s)/) : [];
+const hookChars = REEL.startsWith('coach') ? [...REELS.hook].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; }) : [];
+const qEls = REEL.startsWith('coach') ? REELS.questions.map(q => { const d = document.createElement('div'); d.className = 'q el'; d.textContent = q; $('qs').appendChild(d); return d; }) : [];
+const answerWords = REEL.startsWith('coach') ? REELS.answer.split(/(?<=\s)/) : [];
 function coach(t, pulse) {
   const A = S[4], CTA = S[6];
   const warm = easeIO(prog(t, A.start - 0.6, A.start + 0.5));
