@@ -8384,16 +8384,23 @@ the four-hour ceiling.
 ### How your data flows: the diagram
 
 The privacy page opens with a five-step diagram (`.data-flow`, plain HTML and CSS since the page is
-script-free): files stay on the phone; a 100–200 KB summary is made there (the digest caps are 126,000
+script-free): the files are loaded on the phone, not uploaded (step 1 said "stay on your phone", a
+state rather than a step, until October 2026); a 100–200 KB summary is made there (the digest caps are 126,000
 and 179,000 characters), names removed; the reader chooses what is sent (the review sheet's switches, one a kind of data, all on
 by default, and its download of exactly what goes: its own step since October 2026, as the one step the
 reader takes rather than the app, where it had been "You check it first" at the end of step 2); only
 that summary is sent, encrypted, to
 Google Vertex AI enterprise, which does not train on it; the results (card, report, Syncs) come back and
 are saved only on the phone. A panel lists what never leaves (photos, videos, the data files, full
-messages), and a line links the public client code. The front page carries a compact four-icon version (its second label *Names removed. You choose what
+messages), and a line links the public client code. The steps sit in two zones (`.flow-zones`, since October 2026): steps 1 to 3 in light green, *On your
+phone · no internet needed* (loading, summarising and reviewing all run with the network off, as the UI
+suite tests), and 4 and 5 in light purple, *The only part online · encrypted*, each label drawn in front
+of the cards so its border shows whole. Step 5 is online because the results are downloaded, and the
+site is not an offline app, so it is not in the green zone. An all-purple version, the zones told apart
+by shade, was tried and was not clear enough. The *Never leaves your phone* panel was dropped: the
+review already shows exactly what is sent. The front page carries a compact four-icon version (its second label *Names removed. You choose what
 is sent*)
-of it (`.mini-flow`) above the no-copy line, linking to `/privacy#flow-title`. The diagram opens with the 27-second
+of it (`.mini-flow`) above the no-copy line, linking to `/privacy#flow-title`. The diagram opens with the 28-second
 privacy reel (`promo/`, `npm run promo:privacy`) as a plain click-to-play `<video>` (`.flow-video`,
 300 px wide, `preload="none"`, 1.5 MB at 720 wide): readers checking privacy get the short version first,
 the steps under it. It is not on the front page, which already has the main video and the compact flow. The site now names only

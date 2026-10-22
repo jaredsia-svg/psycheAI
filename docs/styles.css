@@ -5258,8 +5258,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 .flow-video video { display: block; width: 100%; aspect-ratio: 9 / 16; border-radius: 22px; background: #f3e6fb;
   box-shadow: 0 14px 40px rgba(90, 40, 120, .18); }
 .flow-video figcaption { margin-top: .6rem; font-size: .85rem; color: var(--muted); }
-.flow-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(5, 1fr); position: relative; }
-.flow-steps::before { content: ''; position: absolute; left: 10%; right: 10%; top: 3.55rem; border-top: 2px dashed rgba(123, 63, 160, .35); }
+/* Stacked, the offline zone first: five steps side by side left each too narrow to read. */
+.flow-zones { display: grid; gap: 1.8rem; margin-top: 1.2rem; }
+.flow-zone { position: relative; padding: 1.5rem .8rem .8rem; border-radius: 22px; }
+.flow-zone-off { background: rgba(47, 138, 87, .09); border: 2px solid #b5dfc6; }
+.flow-zone-on { background: rgba(138, 63, 208, .08); border: 2px solid #d9c2ef; }
+.flow-zone-label { position: absolute; top: -.8rem; right: 1rem; margin: 0; padding: .25rem .75rem; border-radius: 999px; font-size: .78rem; font-weight: 800;
+  white-space: nowrap; z-index: 2; }
+.flow-zone-off .flow-zone-label { background: #e8f6ee; color: #2f8a57; border: 2px solid #b5dfc6; }
+.flow-zone-on .flow-zone-label { background: #f4ebfc; color: #7b3fa0; border: 2px solid #d9c2ef; }
+.flow-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; grid-auto-flow: column; grid-auto-columns: 1fr; position: relative; }
+.flow-steps::before { content: ''; position: absolute; left: 15%; right: 15%; top: 3.55rem; border-top: 2px dashed rgba(123, 63, 160, .35); }
 .flow-steps li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .45rem;
   padding: 1rem .8rem 1.1rem; border-radius: 18px; background: rgba(255, 255, 255, .92);
   box-shadow: 0 6px 22px rgba(90, 40, 120, .10), 0 0 0 1px rgba(123, 63, 160, .08); }
@@ -5267,26 +5276,29 @@ details.more[open] > summary::after { content: ' ▴'; }
   padding: .15rem .55rem; border-radius: 999px; background: rgba(123, 63, 160, .09); }
 .flow-icon { width: 3.3rem; height: 3.3rem; border-radius: 999px; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(150deg, var(--accent), var(--accent-2)); box-shadow: 0 0 0 6px rgba(123, 63, 160, .10), 0 8px 18px rgba(123, 63, 160, .28); }
-.flow-icon svg, .flow-never-icon svg, .flow-proof-icon svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.flow-icon svg, .flow-proof-icon svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .flow-icon svg { width: 1.75rem; height: 1.75rem; stroke: #fff; stroke-width: 3; }
-.flow-steps b { font-size: .97rem; line-height: 1.3; margin-top: .2rem; color: var(--ink); }
+:root[data-theme="dark"] .flow-steps b { font-size: .97rem; line-height: 1.3; margin-top: .2rem; color: var(--ink); }
 .flow-desc { font-size: .85rem; color: var(--ink-soft); line-height: 1.45; }
-.flow-never { margin-top: 1.2rem; display: flex; gap: .9rem; align-items: center; padding: .9rem 1rem; border-radius: 16px;
-  background: rgba(255, 255, 255, .92); box-shadow: 0 0 0 1px rgba(123, 63, 160, .12); }
-.flow-never-icon { flex: none; width: 2.6rem; height: 2.6rem; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: rgba(123, 63, 160, .10); }
-.flow-never-icon svg { width: 1.5rem; height: 1.5rem; stroke: var(--accent); stroke-width: 3; }
-.flow-never b { display: block; font-size: .92rem; margin-bottom: .35rem; }
-.flow-never p { margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
-.flow-never p span { padding: .2rem .7rem; border-radius: 999px; font-size: .82rem; font-weight: 600; color: var(--accent); background: rgba(123, 63, 160, .08); }
 .flow-proof { margin: .9rem 0 0; font-size: .88rem; color: var(--ink-soft); }
 .flow-proof-icon { display: inline-block; vertical-align: -.25em; margin-right: .45rem; }
 .flow-proof-icon svg { width: 1.2rem; height: 1.2rem; stroke: var(--accent); stroke-width: 3.2; display: block; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .flow-steps li, :root:not([data-theme="light"]) .flow-never { background: rgba(255, 255, 255, .05); }
+  :root:not([data-theme="light"]) .flow-zone .flow-steps li { background: rgba(255, 255, 255, .05); }
+  :root:not([data-theme="light"]) .flow-zone-off { background: rgba(111, 211, 155, .07); border-color: rgba(111, 211, 155, .4); }
+  :root:not([data-theme="light"]) .flow-zone-on { background: rgba(195, 155, 230, .07); border-color: rgba(195, 155, 230, .4); }
+  :root:not([data-theme="light"]) .flow-zone-on .flow-zone-label { background: #3a2a4d; color: #e6d4f7; }
+  :root:not([data-theme="light"]) .flow-zone-off .flow-zone-label { background: #1f3a2b; color: #a6e3c1; }
 }
-:root[data-theme="dark"] .flow-steps li, :root[data-theme="dark"] .flow-never { background: rgba(255, 255, 255, .05); }
+:root[data-theme="dark"] .flow-zone .flow-steps li { background: rgba(255, 255, 255, .05); }
+:root[data-theme="dark"] .flow-zone-off { background: rgba(111, 211, 155, .07); border-color: rgba(111, 211, 155, .4); }
+:root[data-theme="dark"] .flow-zone-off .flow-zone-label { background: #1f3a2b; color: #a6e3c1; }
+:root[data-theme="dark"] .flow-zone-on .flow-zone-label { background: #3a2a4d; color: #e6d4f7; }
+:root[data-theme="dark"] .flow-zone-on { background: rgba(195, 155, 230, .07); border-color: rgba(195, 155, 230, .4); }
 @media (max-width: 640px) {
-  .flow-steps { grid-template-columns: 1fr; gap: .8rem; }
+  .flow-zones { gap: 1.6rem; }
+  .flow-zone { padding: 1.4rem .6rem .6rem; }
+  .flow-steps { grid-auto-flow: row; grid-template-columns: 1fr; gap: .8rem; }
   .flow-steps::before { left: 2.55rem; right: auto; top: 2rem; bottom: 2rem; border-top: 0; border-left: 2px dashed rgba(123, 63, 160, .35); }
   .flow-steps li { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'icon step' 'icon title' 'icon desc';
     column-gap: .9rem; row-gap: .15rem; text-align: left; align-items: start; padding: .9rem 1rem; }

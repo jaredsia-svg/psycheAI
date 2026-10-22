@@ -2876,7 +2876,7 @@ try {
     (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
   check('the single badge carries both the storage claim and the no-tracking claim, and nothing it cannot keep',
     await page.locator('#view-welcome .upload-card .eyebrow').innerText().then(t =>
-      /Your files stay on your phone/.test(t) && /PsycheAI keeps no copy of your data or your report/.test(t) &&
+      /Files loaded on your phone, not uploaded/.test(t) && /PsycheAI keeps no copy of your data or your report/.test(t) &&
       /no cookies, no trackers or third-party analytics/.test(t) && !/No one can see that you visited/.test(t) &&
       /See how your data flows/.test(t)),
     await page.locator('#view-welcome .upload-card .eyebrow').innerText());

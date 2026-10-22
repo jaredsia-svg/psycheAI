@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the privacy reel (about 27 s): npm run promo:privacy
+# Builds the privacy reel (about 28 s): npm run promo:privacy
 # Needs promo/.cache from a first `npm run promo`. Pass --vo to remake the voice.
 # See promo/README.md.
 set -euo pipefail
