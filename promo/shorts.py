@@ -2,6 +2,7 @@
 
     python shorts.py notes   # "Your Instagram has been taking notes on you": Mulan
     python shorts.py mbti    # "I took the MBTI test three times": Odysseus
+    python shorts.py coach   # "Some questions are hard to ask anyone": Ask PsycheAI
 
 npm run promo:shorts builds both. The same voice as the other videos (vo.py, imported for it), and music
 from the main video's instruments: each reel its own tempo, key and feel, so they sound related but not
@@ -44,6 +45,26 @@ REELS = {
         'melody': [[78, 76, 74, 76], [76, 73, 69, 73], [74, 78, 81, 78], [79, 78, 74, 71]],
         'reveal': 3, 'swing': 0.06, 'early_claps': True,
     },
+    'coach': {
+        # Slower than the others (1.0), and each question held for a breath, the regret one longest.
+        'lines': [
+            (['Some questions are hard to ask anyone.'], 1.0, None),
+            (["What's my most underrated trait?"], 1.0, None),
+            (['What do people misunderstand about me?'], 1.0, None),
+            (["What would I regret most, when I'm old?"], 1.0, None),
+            (['{B} answers from what your own data shows.'], 1.0, None),
+            (['A coach that already knows you.'], 1.0, None),
+            (['Ask yours at {B} dot I O.'], 0.95, None),
+        ],
+        'hold': {1: 0.9, 2: 0.9, 3: 1.7, 4: 1.2},
+        # Its own piece, not the others' beat: D minor (Dm Bb F C) at 72 under the questions, soft piano
+        # notes with a long echo and a faint heartbeat; lifting to F major (F C Dm Bb) as the answer comes.
+        'mood': 'reflective', 'bpm': 72,
+        'chords': [[62, 65, 69], [58, 62, 65], [65, 69, 72], [60, 64, 67]], 'roots': [38, 34, 41, 36],
+        'lift': [[65, 69, 72], [60, 64, 67], [62, 65, 69], [58, 62, 65]], 'lift_roots': [41, 36, 38, 34],
+        'melody': [[74, 72, 69, 72], [74, 77, 74, 70], [72, 69, 65, 69], [72, 67, 64, 67]],
+        'reveal': 4, 'swing': 0.0, 'early_claps': False,
+    },
 }
 R = REELS[REEL]
 LINES = R['lines']
@@ -78,12 +99,12 @@ BPM = R['bpm']; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 REVEAL = R['reveal']
 # The reveal lets the card land before the voice names it; every cut snaps to the half beat.
-EXTRA_LEAD = {REVEAL: 0.45}
+EXTRA_LEAD = {REVEAL: 0.45 if R.get('mood') != 'reflective' else 0.6}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
     lead = 0.3 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
-    end = t + lead + d + 1.5 if i == len(dur) - 1 else snap(t + lead + d + GAP, BEAT / 2)
+    end = t + lead + d + 1.5 if i == len(dur) - 1 else snap(t + lead + d + GAP + R.get('hold', {}).get(i, 0), BEAT / 2)
     scenes.append({'start': round(t, 3), 'end': round(end, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
                    'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})
@@ -170,50 +191,107 @@ def impact():
     noise = lowpass(rng.standard_normal(L).astype(np.float32), 3000) * np.exp(-x * 9) * 0.5
     return (boom + noise) * 0.55
 
-sc = scenes
-MID = sc[1]['start']       # a light pulse comes in after the hook
-DROP = sc[REVEAL]['start']  # the card: riser, hit, the full beat to the end
-K, C = kick(), clap()
-H, HO = hat(), hat(True)
-pump = np.ones(n, np.float32)
-b = 0.0
-while b < TOTAL + BEAT:
-    bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
-    full = DROP <= b < TOTAL - 1.0
-    mid = MID <= b < DROP
-    if full or mid:
-        at(b, K, 0.95 if full else 0.45)
-        a = int(b * SR); L = int(0.22 * SR)
-        if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
-    if (full or (mid and R['early_claps'])) and beat_i in (1, 3): at(b, C, 0.9 if full else 0.5)
-    if full or mid:
-        for k in range(4 if full else 2):
-            at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
-        if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3)
-    if full:
-        at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0)
-        at(b, bass(ROOTS[bar_i], BEAT * 0.3), 0.7)
-    elif b >= MID:
-        at(b, bass(ROOTS[bar_i], BEAT * 0.8), 0.6)
-    # Plucks on the eighths; the second of each pair a touch late in a swung reel.
-    notes = CHORDS[bar_i] + [CHORDS[bar_i][0] + 12]
-    for k in range(2):
-        m = notes[(beat_i * 2 + k) % 4] + 12
-        at(b + k * (BEAT / 2 + R['swing']), pluck(m, 0.1 if not full else 0.08), 1.0, 0.4 if k else -0.4)
-    if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
-    # The bell tune: soft before the reveal, leading after it with a soft octave above.
-    lead = min(1, (b - DROP + BEAT) / (2 * BEAT)) if b >= DROP else 0
-    at(b, bell(MELODY[bar_i][beat_i]), (0.55 if b < MID else 0.8) + 0.6 * lead, 0.15)
-    if lead: at(b, bell(MELODY[bar_i][beat_i] + 12), 0.28 * lead, -0.15)
-    b += BEAT
+def echo(x, delay, feedback, mix):
+    """A simple feedback delay: the long echo under the reflective piece's piano."""
+    out = x.copy(); d = int(delay * SR)
+    for k in range(1, 6):
+        if d * k >= len(x): break
+        out[d * k:] += x[:len(x) - d * k] * (feedback ** k) * mix
+    return out
+def piano(m, length=2.4, gain=0.16):
+    # Soft and round: a slower attack than the pluck, a long decay, a little detune for warmth.
+    L = int(length * SR); x = np.arange(L) / SR
+    s = sum(np.sin(2 * np.pi * hz(m) * f * x) * a for f, a in ((1, 1), (2.002, 0.35), (3.001, 0.12), (0.998, 0.4)))
+    return s * np.minimum(1, x / 0.012) * np.exp(-x * 1.6) * gain
+def heartbeat():
+    # Lub-dub, low and soft.
+    L = int(0.6 * SR); x = np.arange(L) / SR
+    thump = lambda at, g: np.sin(2 * np.pi * np.cumsum(38 + 30 * np.exp(-np.maximum(0, x - at) * 30)) / SR) * np.exp(-np.maximum(0, x - at) * 14) * (x >= at) * g
+    return (thump(0, 1.0) + thump(0.18, 0.7)) * 0.5
 
-for bar in range(int(TOTAL / BAR) + 2):
-    a0 = bar * BAR
-    if a0 >= DROP: break
-    at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
+if R.get('mood') == 'reflective':
+    sc = scenes
+    DROP = sc[REVEAL]['start']
+    QUIET = (sc[3]['voEnd'] + 0.2, sc[3]['end'] + 0.1)   # near-silence after the regret question
+    H = hat()
+    pump = np.ones(n, np.float32)
+    keys = np.zeros(n, np.float32)
+    b = 0.0
+    while b < TOTAL + BEAT:
+        bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
+        lifted = b >= DROP
+        chords, roots = (R['lift'], R['lift_roots']) if lifted else (CHORDS, ROOTS)
+        quiet = QUIET[0] <= b < QUIET[1]
+        # Piano: a broken chord, one note a beat, softer in the quiet; the tune on top after the lift.
+        if not quiet:
+            note = (chords[bar_i] + [chords[bar_i][1] + 12])[beat_i]
+            a = int(b * SR); p = piano(note, 2.4, 0.16 if not lifted else 0.13)
+            keys[a:a + len(p)] += p[:max(0, min(len(p), n - a))]
+        if lifted: at(b, bell(MELODY[bar_i][beat_i] + 12), 0.5, 0.15)
+        # A heartbeat under the questions, a gentle kick on 1 and 3 after the lift.
+        if sc[1]['start'] <= b < DROP and beat_i in (0, 2) and not quiet: at(b, heartbeat(), 0.7)
+        if lifted and b < TOTAL - 1.2 and beat_i in (0, 2): at(b, kick(), 0.35)
+        if lifted and b < TOTAL - 1.2 and beat_i in (1, 3): at(b, H, 0.35, 0.3)
+        b += BEAT
+    # The echo makes the piano sound like a room.
+    keys = echo(keys, BEAT * 0.75, 0.45, 0.6)
+    music[:, 0] += keys; music[:, 1] += keys * 0.92
+    # Pads: low and warm under the questions (none in the quiet), opening up after the lift.
+    for bar in range(int(TOTAL / BAR) + 2):
+        a0 = bar * BAR
+        if a0 >= TOTAL: break
+        lifted = a0 >= DROP
+        chords, roots = (R['lift'], R['lift_roots']) if lifted else (CHORDS, ROOTS)
+        if QUIET[0] <= a0 < QUIET[1]: continue
+        at(a0, stab(chords[bar % 4], BAR * 1.05) * (1.4 if not lifted else 2.0), 0.8)
+        at(a0, bass(roots[bar % 4], BAR * 0.9) * 0.5, 0.5)
+    # The lift: a slow rising swell into the answer, no hit.
+    at(DROP - 2.4, swell(2.4) * 1.6, 1.0)
+else:
+    sc = scenes
+    MID = sc[1]['start']       # a light pulse comes in after the hook
+    DROP = sc[REVEAL]['start']  # the card: riser, hit, the full beat to the end
+    K, C = kick(), clap()
+    H, HO = hat(), hat(True)
+    pump = np.ones(n, np.float32)
+    b = 0.0
+    while b < TOTAL + BEAT:
+        bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
+        full = DROP <= b < TOTAL - 1.0
+        mid = MID <= b < DROP
+        if full or mid:
+            at(b, K, 0.95 if full else 0.45)
+            a = int(b * SR); L = int(0.22 * SR)
+            if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
+        if (full or (mid and R['early_claps'])) and beat_i in (1, 3): at(b, C, 0.9 if full else 0.5)
+        if full or mid:
+            for k in range(4 if full else 2):
+                at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
+            if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3)
+        if full:
+            at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0)
+            at(b, bass(ROOTS[bar_i], BEAT * 0.3), 0.7)
+        elif b >= MID:
+            at(b, bass(ROOTS[bar_i], BEAT * 0.8), 0.6)
+        # Plucks on the eighths; the second of each pair a touch late in a swung reel.
+        notes = CHORDS[bar_i] + [CHORDS[bar_i][0] + 12]
+        for k in range(2):
+            m = notes[(beat_i * 2 + k) % 4] + 12
+            at(b + k * (BEAT / 2 + R['swing']), pluck(m, 0.1 if not full else 0.08), 1.0, 0.4 if k else -0.4)
+        if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
+        # The bell tune: soft before the reveal, leading after it with a soft octave above.
+        lead = min(1, (b - DROP + BEAT) / (2 * BEAT)) if b >= DROP else 0
+        at(b, bell(MELODY[bar_i][beat_i]), (0.55 if b < MID else 0.8) + 0.6 * lead, 0.15)
+        if lead: at(b, bell(MELODY[bar_i][beat_i] + 12), 0.28 * lead, -0.15)
+        b += BEAT
 
-for k in range(1, REVEAL): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
-at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
+    for bar in range(int(TOTAL / BAR) + 2):
+        a0 = bar * BAR
+        if a0 >= DROP: break
+        at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
+
+    for k in range(1, REVEAL): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
+    at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
@@ -226,7 +304,8 @@ envv = lowpass(np.abs(voice), 8.0); envv /= max(1e-6, envv.max())
 # As the main video's ending: the music swells at once on the hit and is ducked less after it.
 swell_in = np.ones(n, np.float32)
 f0 = int(DROP * SR); f1 = min(n, int((DROP + 0.35) * SR))
-swell_in[f0:f1] = np.linspace(1.0, 1.6, f1 - f0); swell_in[f1:] = 1.6
+top = 1.25 if R.get('mood') == 'reflective' else 1.6
+swell_in[f0:f1] = np.linspace(1.0, top, f1 - f0); swell_in[f1:] = top
 depth = np.where(np.arange(n) >= f0, 0.3, 0.5).astype(np.float32)
 duck = 1 - depth * np.clip(envv * 2.4, 0, 1)
 mix = music * (0.42 * duck * swell_in)[:, None] + voice[:, None] * 0.95

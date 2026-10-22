@@ -53,12 +53,28 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.5); }
 #types { z-index: 19; left: 0; right: 0; top: 1440px; height: 90px; overflow: hidden; }
 #types div { position: absolute; top: 0; padding: 14px 28px; border-radius: 999px; background: #fff; border: 3px solid #ead9f6; font-size: 40px; font-weight: 900; color: #7b3fa0; }
+/* The coach reel: the questions on a dusk ground, then the answer on the phone as the ground warms. */
+#dusk { position: absolute; inset: 0; z-index: 1; background: radial-gradient(120% 80% at 50% 30%, #4a2366 0%, #2a1238 55%, #160a22 100%); display: none; }
+#hook { z-index: 20; left: 90px; right: 90px; top: 820px; text-align: center; color: #fff; font-size: 74px; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; }
+#hook i { font-style: normal; opacity: 0; }
+.q { z-index: 20; left: 80px; right: 80px; top: 780px; text-align: center; color: #fff; font-size: 92px; font-weight: 800; line-height: 1.1; letter-spacing: -0.025em;
+  text-shadow: 0 10px 40px rgba(0,0,0,.35); }
+#chat { position: absolute; left: 18px; right: 18px; top: 84px; display: none; }
+#chat h6 { margin: 0 0 14px; text-align: center; font-size: 20px; font-weight: 800; color: #8a3fd0; letter-spacing: .04em; }
+.bq { margin-left: auto; width: max-content; max-width: 86%; padding: 12px 16px; border-radius: 20px 20px 6px 20px; color: #fff; font-size: 22px; font-weight: 700;
+  background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+.ba { margin-top: 14px; max-width: 100%; padding: 16px 18px; border-radius: 20px 20px 20px 6px; background: #fff; color: #2a1238; font-size: 23px; line-height: 1.42;
+  font-weight: 550; box-shadow: 0 8px 20px rgba(90,40,120,.14); }
+.ba b { color: #c2407a; }
 </style></head>
 <body>
   <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
   <div id="sparks"></div>
+  <div id="dusk"></div>
   <div id="heads"></div>
-  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="feed"></div><div id="scan"></div><div id="igIcon"></div></div></div>
+  <div class="el" id="hook"></div>
+  <div id="qs"></div>
+  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="feed"></div><div id="chat"><h6>ASK PSYCHEAI</h6><div class="bq">What’s my most underrated trait?</div><div class="ba" id="answer"></div></div><div id="scan"></div><div id="igIcon"></div></div></div>
   <div id="chips"></div>
   <div id="results"></div>
   <div class="el" id="huh">?</div>
@@ -77,7 +93,7 @@ const prog = (t, a, b) => clamp((t - a) / (b - a));
 const ease = x => 1 - Math.pow(1 - x, 3);
 const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
-const PAL = [['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8']];
+const PAL = [['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8'], ['#e6dcff', '#ffdbe6'], ['#ffd9ec', '#ffe2c7']];
 const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
   return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
 const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
@@ -113,6 +129,21 @@ const REELS = {
     // Odysseus's own signature patterns (A plan B for every plan, Talks a room round, Always heading home), as his card's evidence puts them.
     chips: [['🧭 Rescues every plan with a plan B', 50, 760], ['🗣️ Talks every group round', 330, 1050], ['🏠 Same few friends hear it all first', 70, 1340]],
     cta: 'What’s <span class="grad">yours?</span><small>Comment your type 👇</small>',
+  },
+  coach: {
+    card: 'assets/card.png',
+    heads: [[], [], [], [],
+      ['<span style="font-size:60px"><span class="grad">PsycheAI</span> answers from what your own data shows</span>'],
+      ['A coach that <span class="grad">already knows you</span>', '<span style="font-size:48px;color:#6b3f8f">Your first question is free</span>'],
+      []],
+    chips: [],
+    cta: 'Ask <span class="grad">yours</span>',
+    hook: 'Questions you’ve never asked out loud.',
+    questions: ['What’s my most underrated trait?', 'What do people misunderstand about me?', 'What would I regret most, when I’m old?'],
+    // From the Mulan sample's own report: 47 posts naming a deadline, 41 closing it out, the win written as
+    // ours, and no post in four years saying the load was heavy.
+    answer: '<b>Your quiet strength.</b> In four years you posted 47 plans and closed out 41, and wrote each win as ‘ours’. ' +
+      'Not one post says the load was heavy. You carry more than anyone sees.',
   },
 }[REEL];
 $('card').src = REELS.card;
@@ -156,6 +187,7 @@ function render(t) {
   sparks.forEach(p => { p.el.style.left = (p.x + Math.sin(t + p.phase * 6) * 30) + 'px'; p.el.style.top = (1980 - ((t * p.speed + p.phase * 2000) % 2080)) + 'px';
     p.el.style.width = p.el.style.height = p.size + 'px'; p.el.style.opacity = 0.5 * (0.6 + pulse * 0.4); });
   S.forEach((s, i) => head(i, t));
+  if (REEL === 'coach') return coach(t, pulse);
 
   // The card: flips in on the reveal (the hit), the type or character highlighted, then rises to make room for the ask.
   const flip = easeIO(prog(t, REVEAL.start - 0.05, REVEAL.start + 0.5)), rise = easeIO(prog(t, CTA.start - 0.1, CTA.start + 0.5));
@@ -210,6 +242,39 @@ function render(t) {
     show('types', typesIn);
     [...$('types').children].forEach((d, i) => { d.style.left = (i * 210 - ((t * 120) % (TYPES.length * 210))) + 'px'; });
   }
+}
+// The coach reel: the hook typed out and the three questions, one at a time, on the dusk ground; then the
+// ground warms, and the phone shows the first question answered, typed in; then the ask.
+const hookChars = REEL === 'coach' ? [...REELS.hook].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; }) : [];
+const qEls = REEL === 'coach' ? REELS.questions.map(q => { const d = document.createElement('div'); d.className = 'q el'; d.textContent = q; $('qs').appendChild(d); return d; }) : [];
+const answerWords = REEL === 'coach' ? REELS.answer.split(/(?<=\s)/) : [];
+function coach(t, pulse) {
+  const A = S[4], CTA = S[6];
+  const warm = easeIO(prog(t, A.start - 0.6, A.start + 0.5));
+  show('dusk', 1 - warm);
+  const hookOut = prog(t, S[0].end - 0.3, S[0].end);
+  show('hook', 1 - hookOut);
+  hookChars.forEach((c, i) => { c.style.opacity = prog(t, S[0].vo + i * 0.045, S[0].vo + i * 0.045 + 0.12); });
+  // Each question alone: drifts up out of a blur as it is said, held, then gone.
+  qEls.forEach((q, i) => { const s = S[i + 1], inn = ease(prog(t, s.vo - 0.35, s.vo + 0.35)), out = prog(t, s.end - 0.45, s.end - 0.05);
+    show(q, inn * (1 - out), 'translateY(' + ((1 - inn) * 40 - out * 30) + 'px)'); q.style.filter = 'blur(' + ((1 - inn) * 8 + out * 6) + 'px)'; });
+  // The phone with the answer, through the answer and the promise.
+  const phIn = back(prog(t, A.start + 0.1, A.start + 0.5)), phOut = prog(t, CTA.start - 0.1, CTA.start + 0.25);
+  show('phone', clamp(phIn * 2) * (1 - phOut), 'translateY(' + ((1 - Math.min(1, phIn)) * 200 - 150) + 'px) scale(' + 1.5 * (1 - 0.2 * phOut) + ')');
+  $('feed').style.display = 'none'; $('scan').style.opacity = 0; $('igIcon').style.display = 'none';
+  $('chat').style.display = 'block';
+  const asked = back(prog(t, A.start + 0.45, A.start + 0.8));
+  $('chat').querySelector('.bq').style.opacity = clamp(asked * 2); $('chat').querySelector('.bq').style.transform = 'scale(' + Math.min(1, asked) + ')';
+  const typed = Math.round(answerWords.length * prog(t, A.vo + 0.2, A.vo + 4.2));
+  $('answer').innerHTML = answerWords.slice(0, typed).join('') || '…';
+  $('answer').style.opacity = prog(t, A.start + 0.8, A.start + 1.0);
+  // The ask.
+  const cta = back(prog(t, CTA.vo - 0.2, CTA.vo + 0.2));
+  $('cta').style.top = '820px';
+  show('cta', clamp(cta * 2), 'translateY(' + (1 - Math.min(1, cta)) * 50 + 'px) scale(' + (0.75 + 0.25 * cta) + ')');
+  const site = back(prog(t, CTA.vo + 0.9, CTA.vo + 1.3));
+  $('site').style.top = '1060px';
+  show('site', clamp(site * 2), 'translateX(-50%) scale(' + (Math.min(1.05, site) + pulse * 0.05 * Math.min(1, site)) + ')');
 }
 window.render = render;
 window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
