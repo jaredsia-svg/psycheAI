@@ -99,14 +99,14 @@ when it is run itself), lays them out and writes the music and mix. `privacy-sta
 | --- | --- |
 | What happens when you load your Instagram file onto PsycheAI? | the Instagram file lands large in the middle, the WhatsApp, Google and Facebook files smaller around it |
 | Your files are loaded on your phone, not uploaded. | Step 1: they land in a phone |
-| Only a short summary is made right on your phone, with names removed. | Step 2: the same words; they fold into a summary, *100–200 KB of text* comes in on "short summary", and on "with names removed" (which appears then) its name, email, phone number and handle blur into placeholders |
+| Only a short summary is made, with names and handles removed. | Step 2: the same words; they fold into a summary, *100–200 KB of text* comes in on "short summary", and on "with names and handles removed" (which appears then) its name, email, phone number and handle blur into placeholders |
 | You review it, and untick anything you'd rather keep. | Step 3: the app's review sheet, *Review what gets sent*, a switch a kind of data; on "untick" *Google searches* turns off, then *Send this* is pressed |
 | The summary is sent encrypted to Google Vertex AI, which never trains on it. | Step 4: *The summary is sent encrypted*; it flies up locked to *Google Vertex AI enterprise*; *Never used to train AI* |
 | Your results come back to you, and PsycheAI keeps no copy. | Step 5: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps no copy* |
 | See for yourself at PsycheAI dot io. | the mark, *See for yourself*, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
 
-Through Steps 1 to 3 the phone's own screen says *No internet needed* (light green) under *On your
-phone*, gone as the summary leaves at Step 4: the privacy page's two zones, said where the phone already
+Through Steps 1 to 3 the phone's own screen says *No internet needed* (light green; it no longer
+says *On your phone*), gone as the summary leaves at Step 4: the privacy page's two zones, said where the phone already
 is (a tag above the step label was tried and dropped). The Instagram post (`post-privacy.html`) draws the
 two zones round its cards, their labels in front of the cards.
 

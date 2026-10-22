@@ -8392,8 +8392,8 @@ reader takes rather than the app, where it had been "You check it first" at the 
 that summary is sent, encrypted, to
 Google Vertex AI enterprise, which does not train on it; the results (card, report, Syncs) come back and
 are saved only on the phone. A panel lists what never leaves (photos, videos, the data files, full
-messages), and a line links the public client code. The steps sit in two zones (`.flow-zones`, since October 2026): steps 1 to 3 in light green, *On your
-phone · no internet needed* (loading, summarising and reviewing all run with the network off, as the UI
+messages), and a line links the public client code. The steps sit in two zones (`.flow-zones`, since October 2026): steps 1 to 3 in light green, *No internet
+needed* (loading, summarising and reviewing all run with the network off, as the UI
 suite tests), and 4 and 5 in light purple, *The only part online · encrypted*, each label drawn in front
 of the cards so its border shows whole. Step 5 is online because the results are downloaded, and the
 site is not an offline app, so it is not in the green zone. An all-purple version, the zones told apart

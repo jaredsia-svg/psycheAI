@@ -37,8 +37,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #sent { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font-size: 30px; font-weight: 850; line-height: 1.25; color: #4a2366; }
 #sent svg { display: block; margin: 0 auto 14px; }
 #onphone { position: absolute; left: 0; right: 0; bottom: 26px; text-align: center; font-size: 26px; font-weight: 800; color: #8a3fd0; }
-/* Steps 1 to 3 run with no connection, said on the phone itself under "On your phone". */
-#noNet { display: block; width: max-content; margin: 10px auto 0; padding: 6px 16px; border-radius: 999px; background: #e8f6ee; color: #2f8a57; border: 2px solid #b5dfc6; font-size: 22px; }
+/* Steps 1 to 3 run with no connection, said on the phone itself. */
+#noNet { display: block; width: max-content; margin: 0 auto; padding: 6px 16px; border-radius: 999px; background: #e8f6ee; color: #2f8a57; border: 2px solid #b5dfc6; font-size: 22px; }
 .row { position: absolute; left: 34px; right: 34px; height: 92px; border-radius: 22px; background: #fff; box-shadow: 0 8px 22px rgba(90,40,120,.14);
   display: flex; align-items: center; gap: 18px; padding: 0 20px; font-size: 30px; font-weight: 800; }
 .row i { flex: none; width: 52px; height: 52px; border-radius: 14px; }
@@ -88,7 +88,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 
   <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
   <div class="head" id="h1" style="top:230px;font-size:70px"><div><span class="step">Step 1</span></div><div>Your files are loaded<br><span class="grad">on your phone</span>,<br>not uploaded</div></div>
-  <div class="head" id="h2" style="top:230px;font-size:70px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made <span class="grad">right on your phone</span><span class="later">, with names removed</span></div></div>
+  <div class="head" id="h2" style="top:230px;font-size:60px;left:40px;right:40px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made<span class="later">,</span><br><span class="later">with names and handles removed</span></div></div>
   <div class="head" id="h3" style="top:230px;font-size:66px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">and <span class="grad">untick</span> anything you&rsquo;d rather keep</span></div></div>
   <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>The summary is sent<br><span class="grad">encrypted</span></div></div>
   <div class="head" id="h5" style="top:230px;font-size:72px"><div><span class="step">Step 5</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
@@ -120,7 +120,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
       <div id="sendBtn">Send this</div>
     </div>
     <div id="sent"><svg viewBox="0 0 48 48" width="96" height="96" fill="none" stroke="#e0457b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="19" stroke="#f0d6e6"/><path d="M15 24.5l6.5 6.5L33 18"/></svg><div>Summary sent,<br>encrypted</div></div>
-    <div id="onphone">On your phone<span id="noNet">✈️ No internet needed</span></div>
+    <div id="onphone"><span id="noNet">✈️ No internet needed</span></div>
   </div></div>
   <div class="pill" id="kb" style="top:1660px">100–200 KB of text</div>
   <div class="pill" id="nocopy" style="top:1660px">PsycheAI keeps <em>no copy</em></div>
