@@ -5254,8 +5254,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .flow-video video { display: block; width: 100%; aspect-ratio: 9 / 16; border-radius: 22px; background: #f3e6fb;
   box-shadow: 0 14px 40px rgba(90, 40, 120, .18); }
 .flow-video figcaption { margin-top: .6rem; font-size: .85rem; color: var(--muted); }
-.flow-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(4, 1fr); position: relative; }
-.flow-steps::before { content: ''; position: absolute; left: 12%; right: 12%; top: 3.55rem; border-top: 2px dashed rgba(123, 63, 160, .35); }
+.flow-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(5, 1fr); position: relative; }
+.flow-steps::before { content: ''; position: absolute; left: 10%; right: 10%; top: 3.55rem; border-top: 2px dashed rgba(123, 63, 160, .35); }
 .flow-steps li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .45rem;
   padding: 1rem .8rem 1.1rem; border-radius: 18px; background: rgba(255, 255, 255, .92);
   box-shadow: 0 6px 22px rgba(90, 40, 120, .10), 0 0 0 1px rgba(123, 63, 160, .08); }

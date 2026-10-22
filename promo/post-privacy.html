@@ -10,27 +10,27 @@ body { font-family: Inter, sans-serif; color: #2a1238; background: radial-gradie
 .grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #brand { position: absolute; left: 0; right: 0; top: 64px; display: flex; justify-content: center; align-items: center; gap: 16px; font-size: 36px; font-weight: 850; letter-spacing: .01em; }
 #brand svg { width: 58px; height: 58px; }
-h1 { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.02; }
-.lede { position: absolute; left: 110px; right: 110px; top: 250px; text-align: center; font-size: 31px; font-weight: 600; line-height: 1.35; color: #6b3f8f; }
-ol { position: absolute; left: 70px; right: 70px; top: 360px; list-style: none; display: grid; gap: 18px; }
+h1 { position: absolute; left: 0; right: 0; top: 136px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.02; }
+.lede { position: absolute; left: 110px; right: 110px; top: 232px; text-align: center; font-size: 31px; font-weight: 600; line-height: 1.35; color: #6b3f8f; }
+ol { position: absolute; left: 70px; right: 70px; top: 335px; list-style: none; display: grid; gap: 14px; }
 /* the dashed line joining the four icons */
-ol::before { content: ''; position: absolute; left: 82px; top: 60px; bottom: 60px; border-left: 5px dashed #d8bdec; }
-li { position: relative; display: grid; grid-template-columns: 124px 1fr; align-items: center; gap: 26px; min-height: 150px; padding: 18px 34px 18px 22px;
+ol::before { content: ''; position: absolute; left: 72px; top: 60px; bottom: 60px; border-left: 5px dashed #d8bdec; }
+li { position: relative; display: grid; grid-template-columns: 104px 1fr; align-items: center; gap: 24px; min-height: 128px; padding: 14px 30px 14px 20px;
   border-radius: 34px; background: #fff; box-shadow: 0 16px 40px rgba(90, 40, 120, .12); }
-.icon { position: relative; width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center;
+.icon { position: relative; width: 100px; height: 100px; border-radius: 50%; display: grid; place-items: center;
   background: linear-gradient(140deg, #8a3fd0, #e0457b); box-shadow: 0 0 0 10px #f1e3fb, 0 14px 30px rgba(224, 69, 123, .3); }
-.icon svg { width: 62px; height: 62px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.icon svg { width: 52px; height: 52px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
 .num { position: absolute; right: -8px; top: -8px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #fff;
   color: #8a3fd0; font-size: 24px; font-weight: 900; box-shadow: 0 4px 12px rgba(90, 40, 120, .2); }
-li b { display: block; font-size: 37px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
-li span.d { display: block; margin-top: 8px; font-size: 26px; font-weight: 550; line-height: 1.35; color: #6b5a7b; }
-#never { position: absolute; left: 70px; right: 70px; top: 1055px; display: flex; align-items: center; gap: 22px; padding: 22px 30px; border-radius: 30px;
+li b { display: block; font-size: 34px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
+li span.d { display: block; margin-top: 6px; font-size: 24px; font-weight: 550; line-height: 1.35; color: #6b5a7b; }
+#never { position: absolute; left: 70px; right: 70px; top: 1078px; display: flex; align-items: center; gap: 22px; padding: 22px 30px; border-radius: 30px;
   background: rgba(255, 255, 255, .7); border: 3px solid #ead9f6; }
 #never svg { flex: none; width: 64px; height: 64px; fill: none; stroke: #8a3fd0; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
 #never b { display: block; font-size: 30px; font-weight: 850; margin-bottom: 10px; }
 #never p { display: flex; gap: 10px; white-space: nowrap; }
 #never p span { padding: 7px 16px; border-radius: 999px; background: #f3e6fb; color: #7b3fa0; font-size: 21px; font-weight: 750; }
-#foot { position: absolute; left: 0; right: 0; bottom: 84px; text-align: center; font-size: 30px; font-weight: 750; color: #6b3f8f; }
+#foot { position: absolute; left: 0; right: 0; bottom: 50px; text-align: center; font-size: 30px; font-weight: 750; color: #6b3f8f; }
 #foot em { font-style: normal; color: #e0457b; }
 </style></head>
 <body>
@@ -45,10 +45,12 @@ li span.d { display: block; margin-top: 8px; font-size: 26px; font-weight: 550; 
     <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M14 6h14l8 8v26a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M28 6v8h8"/><path d="M17 25h14M17 32h10"/></svg><span class="num">1</span></span>
       <div><b>Your data files stay on your phone</b><span class="d">Your Instagram, WhatsApp, Google or Facebook files are opened right in your browser.</span></div></li>
     <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M10 14h28M10 22h22M10 30h14"/><path d="M30 30l9 9M39 30l-9 9"/></svg><span class="num">2</span></span>
-      <div><b>A short summary is made on your phone</b><span class="d">Just 100–200 KB of text. Names, handles, emails and numbers are removed. You check it first.</span></div></li>
-    <li><span class="icon"><svg viewBox="0 0 48 48"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg><span class="num">3</span></span>
+      <div><b>A short summary is made on your phone</b><span class="d">Just 100–200 KB of text. Names, handles, emails and numbers are removed.</span></div></li>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><rect x="7" y="9" width="12" height="12" rx="3"/><path d="M10 15l2.5 2.5L17 12"/><path d="M25 15h16"/><rect x="7" y="27" width="12" height="12" rx="3"/><path d="M25 33h16"/></svg><span class="num">3</span></span>
+      <div><b>You choose what is sent</b><span class="d">Review the summary and untick anything you would rather not share.</span></div></li>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg><span class="num">4</span></span>
       <div><b>Only that summary is sent, encrypted</b><span class="d">To Google Vertex AI enterprise, which never trains on it.</span></div></li>
-    <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg><span class="num">4</span></span>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg><span class="num">5</span></span>
       <div><b>Your results come back to your phone</b><span class="d">Your card, report and Syncs are saved only there. PsycheAI keeps no copy.</span></div></li>
   </ol>
   <div id="never"><svg viewBox="0 0 48 48"><path d="M24 5l15 6v11c0 10-7 17-15 21C16 39 9 32 9 22V11z"/><path d="M17 24l5 5 9-10"/></svg>

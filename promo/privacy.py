@@ -1,8 +1,8 @@
-"""The privacy reel (about 24 s): its voiceover, timeline, music and mix. npm run promo:privacy
+"""The privacy reel (about 27 s): its voiceover, timeline, music and mix. npm run promo:privacy
 
 The same voice as the main video (vo.py, imported for it) and the same track: 118 BPM, C G Am F,
 the bell tune. It opens on the main video's quiet privacy break (pads, plucks, bells, no drums),
-builds under the four steps, and lands with the main video's ending on the last card: the riser,
+builds under the five steps, and lands with the main video's ending on the last card: the riser,
 the hit, the full beat and the brighter bells.
 """
 import json, math, os, sys
@@ -18,17 +18,26 @@ LINES = [
     (['What happens when you load your Instagram file onto {B}?'], 0.92, None),
     (['Your files stay on your phone.'], 0.92, None),
     (['Only a short summary is made right on your phone,', 'with names removed.'], 0.92, None),
+    (['You review it,', "and untick anything you'd rather keep."], 0.92, None),
     (['The summary is sent encrypted to Google Vertex AI,', 'which never trains on it.'], 0.92, None),
     (['Your results come back to you,', 'and {B} keeps no copy.'], 0.92, None),
     (['See for yourself at {B} dot I O.'], 0.9, None),
 ]
 
-# The voice is remade only when asked (python privacy.py --vo) or missing: it takes a few minutes.
-if '--vo' in sys.argv or not os.path.exists(BUILD + '/marks.json'):
+# Each line's take is kept under a name made from its words and pace, so changing or adding a line
+# records only that line and the others keep the takes already approved. python privacy.py --vo
+# records them all again.
+import hashlib
+names = ['p' + hashlib.sha1(json.dumps(line).encode()).hexdigest()[:10] for line in LINES]
+stored = json.load(open(BUILD + '/marks.json')) if os.path.exists(BUILD + '/marks.json') else {'lines': {}, 'words': {}}
+todo = [(name, line) for name, line in zip(names, LINES)
+        if '--vo' in sys.argv or name not in stored['lines'] or not os.path.exists(f'{BUILD}/{name}.wav')]
+if todo:
     import vo
     vo.OUT = BUILD
-    marks = {'lines': [vo.write(f'p{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'words': vo.word_marks}
-    json.dump(marks, open(BUILD + '/marks.json', 'w'))
+    for name, line in todo: stored['lines'][name] = vo.write(name, *line)
+    stored['words'].update(vo.word_marks)
+    json.dump(stored, open(BUILD + '/marks.json', 'w'))
 
 import wave
 import imageio_ffmpeg, subprocess
@@ -39,17 +48,16 @@ def load(path):
                          capture_output=True, check=True).stdout
     return np.frombuffer(out, dtype=np.int16).astype(np.float32) / 32768.0
 
-lines = [load(f'{BUILD}/p{i:02d}.wav') for i in range(1, len(LINES) + 1)]
+lines = [load(f'{BUILD}/{name}.wav') for name in names]
 dur = [len(x) / SR for x in lines]
-marks = json.load(open(BUILD + '/marks.json'))
-word_marks = [marks['words'][f'p{i:02d}'] for i in range(1, len(LINES) + 1)]
-marks = marks['lines']
+word_marks = [stored['words'][name] for name in names]
+marks = [stored['lines'][name] for name in names]
 
 BPM = 118; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 minimum = {}
-EXTRA_LEAD = {5: 0.25}
+EXTRA_LEAD = {6: 0.25}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
@@ -146,8 +154,8 @@ def impact():
     return (boom + noise) * 0.55
 
 sc = scenes
-STEPS = sc[1]['start']   # the four steps: a light pulse comes in under the break
-FINAL = sc[5]['start']   # the last card: the main video's ending
+STEPS = sc[1]['start']   # the five steps: a light pulse comes in under the break
+FINAL = sc[6]['start']   # the last card: the main video's ending
 K, C = kick(), clap()
 H, HO = hat(), hat(True)
 pump = np.ones(n, np.float32)
@@ -162,7 +170,7 @@ while b < TOTAL + BEAT:
         a = int(b * SR); L = int(0.22 * SR)
         if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
     if full and beat_i in (1, 3): at(b, C, 0.9)
-    if full or (mid and b >= sc[3]['start']):
+    if full or (mid and b >= sc[4]['start']):
         for k in range(4 if full else 2):
             at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
         if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3)
@@ -189,7 +197,7 @@ for bar in range(int(TOTAL / BAR) + 2):
     at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
 
 # A soft swoosh into each step, the riser and the hit into the last card.
-for k in (2, 3, 4): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
+for k in (2, 3, 4, 5): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
 at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
