@@ -74,7 +74,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="heads"></div>
   <div class="el" id="hook"></div>
   <div id="qs"></div>
-  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="feed"></div><div id="chat"><h6>ASK PSYCHEAI</h6><div class="bq">What’s my most underrated trait?</div><div class="ba" id="answer"></div></div><div id="scan"></div><div id="igIcon"></div></div></div>
+  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="feed"></div><div id="chat"><h6>ASK PSYCHEAI</h6><div class="bq">What would I regret most, when I’m old?</div><div class="ba" id="answer"></div></div><div id="scan"></div><div id="igIcon"></div></div></div>
   <div id="chips"></div>
   <div id="results"></div>
   <div class="el" id="huh">?</div>
@@ -140,10 +140,10 @@ const REELS = {
     cta: 'Ask <span class="grad">yours</span>',
     hook: 'Questions you’ve never asked out loud.',
     questions: ['What’s my most underrated trait?', 'What do people misunderstand about me?', 'What would I regret most, when I’m old?'],
-    // From the Mulan sample's own report: 47 posts naming a deadline, 41 closing it out, the win written as
-    // ours, and no post in four years saying the load was heavy.
-    answer: '<b>Your quiet strength.</b> In four years you posted 47 plans and closed out 41, and wrote each win as ‘ours’. ' +
-      'Not one post says the load was heavy. You carry more than anyone sees.',
+    // A sample answer to the regret question, from the kinds of evidence the app reads: messages, saves, posts.
+    answer: '<b>Not the risks you took. The ones you saved for later.</b> This year you told three friends ‘we should catch up soon’ ' +
+      '— and haven’t messaged them since. You’ve saved 214 places you’ve never been. You love people and adventure. ' +
+      'You just keep scheduling them for ‘later’. <b>Later is the one thing you’ll run out of.</b>',
   },
 }[REEL];
 $('card').src = REELS.card;
@@ -244,7 +244,7 @@ function render(t) {
   }
 }
 // The coach reel: the hook typed out and the three questions, one at a time, on the dusk ground; then the
-// ground warms, and the phone shows the first question answered, typed in; then the ask.
+// ground warms, and the phone shows the regret question answered, typed in; then the ask.
 const hookChars = REEL === 'coach' ? [...REELS.hook].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; }) : [];
 const qEls = REEL === 'coach' ? REELS.questions.map(q => { const d = document.createElement('div'); d.className = 'q el'; d.textContent = q; $('qs').appendChild(d); return d; }) : [];
 const answerWords = REEL === 'coach' ? REELS.answer.split(/(?<=\s)/) : [];
@@ -259,17 +259,17 @@ function coach(t, pulse) {
   qEls.forEach((q, i) => { const s = S[i + 1], inn = ease(prog(t, s.vo - 0.35, s.vo + 0.35)), out = prog(t, s.end - 0.45, s.end - 0.05);
     show(q, inn * (1 - out), 'translateY(' + ((1 - inn) * 40 - out * 30) + 'px)'); q.style.filter = 'blur(' + ((1 - inn) * 8 + out * 6) + 'px)'; });
   // The phone with the answer, through the answer and the promise.
-  const phIn = back(prog(t, A.start + 0.1, A.start + 0.5)), phOut = prog(t, CTA.start - 0.1, CTA.start + 0.25);
+  const phIn = back(prog(t, A.start + 0.1, A.start + 0.5)), phOut = prog(t, CTA.start - 0.35, CTA.start);
   show('phone', clamp(phIn * 2) * (1 - phOut), 'translateY(' + ((1 - Math.min(1, phIn)) * 200 - 150) + 'px) scale(' + 1.5 * (1 - 0.2 * phOut) + ')');
   $('feed').style.display = 'none'; $('scan').style.opacity = 0; $('igIcon').style.display = 'none';
   $('chat').style.display = 'block';
   const asked = back(prog(t, A.start + 0.45, A.start + 0.8));
   $('chat').querySelector('.bq').style.opacity = clamp(asked * 2); $('chat').querySelector('.bq').style.transform = 'scale(' + Math.min(1, asked) + ')';
-  const typed = Math.round(answerWords.length * prog(t, A.vo + 0.2, A.vo + 4.2));
+  const typed = Math.round(answerWords.length * prog(t, A.vo + 0.1, A.vo + 4.4));
   $('answer').innerHTML = answerWords.slice(0, typed).join('') || '…';
   $('answer').style.opacity = prog(t, A.start + 0.8, A.start + 1.0);
   // The ask.
-  const cta = back(prog(t, CTA.vo - 0.2, CTA.vo + 0.2));
+  const cta = back(prog(t, CTA.start + 0.05, CTA.start + 0.45));
   $('cta').style.top = '820px';
   show('cta', clamp(cta * 2), 'translateY(' + (1 - Math.min(1, cta)) * 50 + 'px) scale(' + (0.75 + 0.25 * cta) + ')');
   const site = back(prog(t, CTA.vo + 0.9, CTA.vo + 1.3));
