@@ -98,15 +98,15 @@ const REELS = {
       ['I got <span class="grad">Mulan</span>', '<span style="font-size:52px;color:#6b3f8f">The organiser with a warm centre</span>'],
       [],
     ],
-    chips: [['🍝 Saves recipes, never cooks', 70, 760], ['⚡ Replies within a minute', 330, 1050], ['🌙 Online at 2am', 170, 1340]],
+    chips: [['🗓️ Organises every plan', 70, 760], ['🤍 Gives more than you ask for', 250, 1050], ['🔋 Goes quiet to recharge', 150, 1340]],
     cta: 'Comment <span class="grad">“CARD”</span><small>and I’ll send you the link</small>',
   },
   mbti: {
     card: 'assets/card-odysseus.png',
     heads: [
       ['I took the <span class="grad">MBTI test</span><br>3 times…', '<span style="font-size:56px;color:#6b3f8f">…and got 3 different answers</span>'],
-      ['So I asked my <span class="grad">Instagram</span> instead'],
-      ['No questions.', 'Just what I <span class="grad">actually do</span>'],
+      ['So I loaded my <span class="grad">Instagram data</span> instead'],
+      ['No questions asked.', 'Just what my <span class="grad">online patterns</span> actually show'],
       ['I got <span class="grad">Odysseus</span>', '<span style="font-size:56px;color:#6b3f8f">ENTP, with the evidence</span>'],
       [],
     ],
@@ -118,6 +118,7 @@ $('card').src = REELS.card;
 $('cta').innerHTML = REELS.cta;
 const heads = REELS.heads.map((lines, i) => { const h = document.createElement('div'); h.className = 'head';
   if (REEL === 'mbti' && i === 0) h.style.fontSize = '74px';
+  if (REEL === 'mbti' && i === 2) h.style.fontSize = '68px';
   h.innerHTML = lines.map(l => '<div>' + l + '</div>').join(''); $('heads').appendChild(h); return h; });
 const chips = REELS.chips.map(([text, x, y]) => { const c = document.createElement('div'); c.className = 'chip el'; c.textContent = text;
   c.style.left = x + 'px'; c.style.top = y + 'px'; $('chips').appendChild(c); return c; });

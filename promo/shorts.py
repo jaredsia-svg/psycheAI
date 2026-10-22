@@ -1,4 +1,4 @@
-"""Short reels for Instagram (about 18 s each): their voiceover, timeline, music and mix.
+"""Short reels for Instagram (about 20 s each): their voiceover, timeline, music and mix.
 
     python shorts.py notes   # "Your Instagram has been taking notes on you": Mulan
     python shorts.py mbti    # "I took the MBTI test three times": Odysseus
@@ -14,12 +14,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REEL = sys.argv[1]
 
 # (phrases, length scale, record each phrase on its own[, pause]), as in vo.py; one line a scene. The voice
-# script spells as it is said: "organizer", "center" (the screen says organiser, centre), "E N T P".
+# script spells as it is said: "organizes", "organizer", "center" (the screen: organises, organiser, centre), "E N T P".
 REELS = {
     'notes': {
         'lines': [
             (['Your Instagram has been taking notes on you for years.'], 0.92, None),
-            (['It knows you save recipes you never cook,', 'reply within a minute,', "and you're online at 2am."], 0.92, True, 0.08),
+            (["It knows you're the one who organizes every plan,", 'you give more attention than you ask for,',
+              'and you go quiet when you need to recharge.'], 0.92, True, 0.08),
             (['So I let AI read it.'], 0.92, None),
             (['I got {Mulan}. The organizer with a warm center.'], 0.92, None),
             (["Comment card, and I'll send you the link."], 0.92, None),
@@ -32,8 +33,8 @@ REELS = {
     'mbti': {
         'lines': [
             (['I took the MBTI test three times,', 'and got three different answers.'], 0.92, None),
-            (['So I asked my Instagram instead.'], 0.92, None),
-            (['No questions.', 'Just what I actually do.'], 0.92, None),
+            (['So I loaded my Instagram data instead.'], 0.92, None),
+            (['No questions asked.', 'Just what my online patterns actually show.'], 0.92, None),
             (['I got {Odysseus}. E N T P, with the evidence.'], 0.92, None),
             (['What does yours say? Comment your type.'], 0.92, None),
         ],

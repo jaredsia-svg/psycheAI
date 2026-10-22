@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the short reels (about 19 s each): npm run promo:shorts [-- notes|mbti]
+# Builds the short reels (about 20 s each): npm run promo:shorts [-- notes|mbti]
 # Needs promo/.cache from a first `npm run promo`. Add --vo to remake every line of the voice.
 # See promo/README.md.
 set -euo pipefail
