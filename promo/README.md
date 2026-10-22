@@ -105,6 +105,9 @@ when it is run itself), lays them out and writes the music and mix. `privacy-sta
 | Your results come back to you, and PsycheAI keeps no copy. | Step 5: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps no copy* |
 | See for yourself at PsycheAI dot io. | the mark, *See for yourself*, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
 
+Steps 1 to 3 happen on the phone, so once the files are in it grows to 1.4 times its size to fill the
+frame, and settles back as Step 4 starts, to leave room for the Vertex AI panel above it.
+
 Each line's take is kept (`build/privacy/p<hash>.wav`, named from its words and pace), so adding or
 changing a line records only that one and the approved takes stay; `--vo` records them all again.
 Each line is said in one take at the main video's pace (0.92, its privacy line's). A first cut

@@ -20,7 +20,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .step { display: inline-block; margin-bottom: 22px; padding: 10px 26px; border-radius: 999px; background: #fff; color: #8a3fd0; font-size: 30px; font-weight: 850;
   letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
 /* the phone, carried through the four steps */
-#phone { position: absolute; left: 335px; top: 900px; width: 410px; height: 720px; border-radius: 64px; background: #2a1238; padding: 16px;
+#phone { position: absolute; left: 335px; top: 900px; width: 410px; height: 720px; border-radius: 64px; background: #2a1238; padding: 16px; transform-origin: 50% 0;
   box-shadow: 0 40px 90px rgba(90,40,120,.3); z-index: 5; }
 #screen { position: absolute; inset: 16px; border-radius: 50px; overflow: hidden; background: linear-gradient(170deg, #fff, #f6ecfd); }
 #notch { position: absolute; left: 50%; top: 30px; width: 110px; height: 28px; margin-left: -55px; border-radius: 14px; background: #2a1238; z-index: 3; }
@@ -87,7 +87,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
   <div class="head" id="h1"><div><span class="step">Step 1</span></div><div>Your files stay<br><span class="grad">on your phone</span></div></div>
   <div class="head" id="h2" style="top:230px;font-size:70px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made <span class="grad">right on your phone</span><span class="later">, with names removed</span></div></div>
-  <div class="head" id="h3" style="top:230px;font-size:72px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">and <span class="grad">untick</span> anything you&rsquo;d rather keep</span></div></div>
+  <div class="head" id="h3" style="top:230px;font-size:66px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">and <span class="grad">untick</span> anything you&rsquo;d rather keep</span></div></div>
   <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>The summary is sent<br><span class="grad">encrypted</span></div></div>
   <div class="head" id="h5" style="top:230px;font-size:72px"><div><span class="step">Step 5</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
 
@@ -206,7 +206,11 @@ function render(t) {
   });
   // The phone rises in as the files arrive and stays until the last card.
   const phoneIn = back(prog(t, s1.start - 0.25, s1.start + 0.25)), phoneOut = prog(t, FINAL - 0.15, FINAL + 0.15);
-  set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + (1 - Math.min(1, phoneIn)) * 300 + 'px) scale(' + (1 + pulse * 0.015) + ')');
+  // Steps 1 to 3 happen on the phone, so it grows to fill the frame once the files are in (1.4 times, its top
+  // up at 600), and settles back to its own size as Step 4 starts, for the Vertex AI panel above it.
+  const zoom = easeIO(prog(t, s1.start + 0.4, s1.start + 1.0)) * (1 - easeIO(prog(t, s3.start - 0.1, s3.start + 0.35)));
+  set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + ((1 - Math.min(1, phoneIn)) * 300 - 300 * zoom) + 'px) scale(' +
+    (1 + 0.4 * zoom + pulse * 0.015) + ')');
   // The rows land one by one (Step 1), then fold into the summary (Step 2).
   const fold = easeIO(prog(t, s2.vo, s2.vo + 0.5));
   ['r0', 'r1', 'r2', 'r3'].forEach((id, i) => {
