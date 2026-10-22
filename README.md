@@ -8351,6 +8351,13 @@ syncs locked with the link's key (FAQ). The FAQ and the front page's how-it-work
 naming Gemini: step 2 now says a de-identified summary is analysed by Google Vertex AI, since only the
 summary is.
 
+### The front page's privacy panel, shortened
+
+The panel under *Start here* had grown to a heading, four labels and three sentences (no copy, no
+password, no cookies or trackers, how PsycheAI makes money): about 60 words where people skim. It is now
+*Your data stays private*, the same four steps, and one line, *No sign-up, no password, no trackers.*,
+with *How your data flows →* to the privacy page. Everything cut is one tap away, there or in the FAQ.
+
 ### No internet connection needed to read the export
 
 The strongest proof that the files stay on the phone is one the reader can run: airplane mode. Once

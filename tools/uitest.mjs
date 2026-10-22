@@ -2874,11 +2874,11 @@ try {
     (await page.locator('#view-welcome .hero .eyebrow').count()) === 0 &&
     (await page.locator('#view-welcome .eyebrow').count()) === 1,
     (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
-  check('the single badge carries both the storage claim and the no-tracking claim, and nothing it cannot keep',
+  check('the single badge carries the storage claim and the no-tracking claim, briefly, and nothing it cannot keep',
     await page.locator('#view-welcome .upload-card .eyebrow').innerText().then(t =>
-      /Files loaded on your phone, not uploaded/.test(t) && /PsycheAI keeps no copy of your data or your report/.test(t) &&
-      /no cookies, no trackers or third-party analytics/.test(t) && !/No one can see that you visited/.test(t) &&
-      /See how your data flows/.test(t)),
+      /^Your data stays private/.test(t) && /Files loaded on your phone, not uploaded/.test(t) &&
+      /Results saved on your phone only/.test(t) && /No sign-up, no password, no trackers\./.test(t) &&
+      !/No one can see that you visited/.test(t) && /How your data flows →/.test(t)),
     await page.locator('#view-welcome .upload-card .eyebrow').innerText());
   // A pill (border-radius: 999px) reads fine for a short single-line label,
   // which is what this started as. Sized to a three-sentence paragraph it
