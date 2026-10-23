@@ -148,6 +148,34 @@ The music is the main video's instruments in a different key and feel each: `not
 (Am F C G) at 112, curious then bright; `mbti` in D (D A Bm G) at 124, with early claps and swung plucks.
 Both end like the main video: riser, hit, the full beat. `coach-misunderstood` is the same reel opening on *What do people misunderstand about me?*: the gentler first cut, kept to post a few days apart and compare (insecure, then prove, then regret, reads as one story but is heavier). `coach` has a piece of its own, hopeful: E minor to G (Em C G D) at 88, a rolling piano with an echo and strings swelling through the questions, lifting into a light beat and bells as the answer types, ending on a bright chord. (A slower, sombre version in D minor, with the narration at 1.0, was tried first.)
 
+### The roast reel
+
+```
+npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 27 s
+```
+
+Built by `shorts.py` like the others, but with a stage of its own, `roast-stage.html`, and music of its own.
+It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the card is nice, then *Reveal my roast*.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) with hearts, then the site's roast cover; a finger presses the button |
+| 1–3 | Six hundred workout videos saved. / Zero workouts done. · Your friends like every post you make. / You never like theirs back. · You left forty seven people on read. / Including your mom. | a dark, ember-lit ground; a ROAST #n badge; the set-up word by word; one graphic each: a saved grid counting to 600 then stamped *0 workouts done*, hearts raining from friends to you with *Likes you gave back: 0*, an inbox of "Seen" chats stopping on Mom; the punchline slams in, with a flash and a shake |
+| 4 | Then it tells you what to actually do. | *What an honest friend would tell you* (the report's `bonusAdvice`), one tip ticked for each burn |
+| 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
+
+The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
+romance, and simple enough to get on one hearing (a first draft's "your thumb has never been in better
+shape" and "combined revenue: the likes" were too clever by half). Sherlock rather than Mulan or the Tin Man:
+his card's late-night saves and small circle set the burns up, where the Tin Man's checking in on quiet
+friends would contradict "left 47 people on read". The voice is quicker than the other reels (0.85).
+
+Each burn is recorded as set-up and punchline apart (`punch` in its entry): `shorts.py` puts silence
+before the punchline so it starts on a beat. The music: B flat (Bb Gm Eb F) at 132, a music box under the
+nice card, a scratch into four-on-the-floor with synth brass, a sliding bass and a four-note riff; the drums
+drop out for the beat before each punchline and a brass hit and crash land on it; half time for the advice,
+everything back for the ask, a last held brass chord.
+
 ## The privacy post
 
 `node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the

@@ -2,7 +2,8 @@
 // assets/card-parts.json with where each part sits on it (as fractions of the
 // card), which the stage uses to draw its highlight boxes. Also the sample
 // report's opening, assets/report.png, for the privacy reel, and the Odysseus
-// sample card, assets/card-odysseus.png, for the MBTI reel.
+// sample card, assets/card-odysseus.png, for the MBTI reel, and Sherlock's, assets/card-sherlock.png, for
+// the roast reel.
 //
 //   node promo/capture.mjs
 //
@@ -79,6 +80,22 @@ try {
   await page.waitForTimeout(500);
   if (/Lucas Moreau/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-odysseus.png' });
   else console.error('no Odysseus sample card found');
+
+  // And Sherlock's (Daniel Okafor), for the roast reel: further along the same arrows.
+  for (let step = 0; step < 8; step++) {
+    if (/Daniel Okafor/.test(await card.innerText())) break;
+    await page.evaluate(() => { const next = document.querySelector('#sample-card-dialog .sample-card-next');
+      next.style.visibility = ''; next.click(); });
+    await page.mouse.move(1, 1);
+    await page.waitForTimeout(700);
+  }
+  await page.evaluate(() => document.querySelectorAll('#sample-card-dialog button').forEach(b => {
+    if (!b.closest('#sample-psyche-card-full')) b.style.visibility = 'hidden';
+  }));
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(500);
+  if (/Daniel Okafor/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-sherlock.png' });
+  else console.error('no Sherlock sample card found');
 
   // The sample report's opening, for the privacy reel (assets/report.png): from its part nav (00 to 05)
   // down, as tall as 1.4 times its width, without the dialog's title bar.

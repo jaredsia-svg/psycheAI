@@ -66,6 +66,30 @@ REELS = {
         'reveal': 4, 'swing': 0.0, 'early_claps': False,
     },
 }
+# The roast: the card is nice, then the roast button is pressed and three burns land, each punchline on a beat.
+# Every line is a phrase pair, set-up then punchline, recorded apart so the punchline can be moved onto the beat
+# (`punch`). The numbers are a made-up sample, written as said.
+REELS['roast'] = {
+    'lines': [
+        (['My Psyche Card was so nice.', 'Then I clicked, reveal my roast.'], 0.85, True, 0.2),
+        (['Six hundred workout videos saved.', 'Zero workouts done.'], 0.85, True, 0.15),
+        (['Your friends like every post you make.', 'You never like theirs back.'], 0.85, True, 0.15),
+        (['You left forty seven people on read.', 'Including your mom.'], 0.85, True, 0.15),
+        (['Then it tells you what to actually do.'], 0.85, None),
+        (['Your roast is free with every card.', "Comment roast, if you're brave."], 0.85, True, 0.15),
+    ],
+    'hold': {1: 0.2, 2: 0.2, 3: 0.45, 4: 1.0},
+    'punch': (1, 2, 3),
+    # Its own piece, bouncy and cheeky: B flat major (Bb Gm Eb F) at 132, a music box under the nice card, then a
+    # scratch into four-on-the-floor with synth brass, a sliding bass and a riff that comes back between burns;
+    # the drums drop out for a beat before each punchline and a brass hit lands on it. Half time for the advice.
+    'mood': 'roast', 'bpm': 132,
+    'chords': [[58, 62, 65], [55, 58, 62], [55, 58, 63], [53, 57, 60]], 'roots': [34, 31, 39, 41],
+    # The riff, in eighths (None a rest): two bars of question, two of answer.
+    'riff': [[77, None, 74, 77, None, 82, None, 77], [79, None, 74, 79, None, 82, None, 79],
+             [79, None, 75, 79, None, 82, None, 84], [81, None, 77, 81, 84, None, 82, None]],
+    'reveal': 1, 'swing': 0.0, 'early_claps': False,
+}
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +
@@ -106,8 +130,18 @@ REVEAL = R['reveal']
 EXTRA_LEAD = {REVEAL: 0.45 if R.get('mood') != 'uplifting' else 0.6}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
-for i, d in enumerate(dur):
+for i in range(len(lines)):
     lead = 0.3 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
+    if i in R.get('punch', ()):
+        # Silence before the punchline so it starts on the next beat: a beat's pause at most, the comic one.
+        cut = marks[i][1]; at = t + lead + cut
+        pad = snap(at + 0.12, BEAT) - at
+        a = int(cut * SR)
+        lines[i] = np.concatenate([lines[i][:a], np.zeros(int(pad * SR), np.float32), lines[i][a:]])
+        marks[i] = marks[i][:1] + [round(m + pad, 3) for m in marks[i][1:]]
+        word_marks[i] = [[w, round(s + pad, 3) if s >= cut - 0.05 else s] for w, s in word_marks[i]]
+        dur[i] = len(lines[i]) / SR
+    d = dur[i]
     end = t + lead + d + 1.5 if i == len(dur) - 1 else snap(t + lead + d + GAP + R.get('hold', {}).get(i, 0), BEAT / 2)
     scenes.append({'start': round(t, 3), 'end': round(end, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
@@ -126,7 +160,7 @@ voice /= max(1e-6, np.abs(voice).max()) / 0.9
 # The instruments, as in audio.py.
 rng = np.random.default_rng(7)
 def hz(m): return 440.0 * 2 ** ((m - 69) / 12)
-CHORDS, ROOTS, MELODY = R['chords'], R['roots'], R['melody']
+CHORDS, ROOTS, MELODY = R['chords'], R['roots'], R.get('melody')
 
 def lowpass(x, cutoff):
     a = np.exp(-2 * np.pi * cutoff / SR); out = np.empty_like(x); prev = 0.0
@@ -253,6 +287,94 @@ if R.get('mood') == 'uplifting':
     # The lift: a rising swell into the answer, and a bright last chord.
     at(DROP - 2.2, swell(2.2) * 1.8, 1.0)
     at(TOTAL - 2.4, strings([67, 71, 74, 79], 2.4, 0.07), 1.0)
+elif R.get('mood') == 'roast':
+    sc = scenes
+    DROP = sc[1]['start']                      # the roast button: a scratch, then the beat
+    ADVICE, CTA = sc[4]['start'], sc[5]['start']  # half time for the advice, everything back for the ask
+    PUNCH = [sc[i]['marks'][1] for i in R['punch']]
+    END = sc[5]['voEnd'] + 0.4
+    RIFF = R['riff']
+
+    def brass(chord, length, bright=4200):
+        # Synth brass: detuned saws that scoop up into the note, the filter opening on the attack then closing.
+        L = int(length * SR); x = np.arange(L) / SR; s = np.zeros(L, np.float32)
+        scoop = 1 - 0.025 * np.exp(-x * 45)
+        for m in chord:
+            for det in (-0.1, 0.1):
+                ph = np.cumsum(hz(m) * (1 + det / 100) * scoop) / SR; s += 2 * (ph % 1) - 1
+        e = np.minimum(1, x / 0.008) * np.minimum(1, (length - x) / 0.03).clip(0)
+        dull, sharp = lowpass(s * e, 900), lowpass(s * e, bright)
+        return (dull + (sharp - dull) * np.exp(-x * 9)) * 0.05
+    def slide(m0, m1, length):
+        # The bass sliding up into a new line.
+        L = int(length * SR); x = np.arange(L) / SR
+        f = hz(m0) * (hz(m1) / hz(m0)) ** np.clip(x / (length * 0.8), 0, 1)
+        return np.tanh(1.8 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * env(L, 0.01, 0.05) * 0.32
+    def scratch():
+        # A record scratch: a chord and some hiss pushed forwards and back under the needle, twice.
+        src = brass(CHORDS[0], 0.7, 3000) * 6 + lowpass(rng.standard_normal(int(0.7 * SR)).astype(np.float32), 2500) * 0.08
+        L = int(0.36 * SR); x = np.arange(L) / SR
+        pos = (0.16 + 0.14 * np.sin(2 * np.pi * x / 0.18)) * SR
+        y = np.interp(pos, np.arange(len(src)), src)
+        y = y - lowpass(y, 250)
+        return y * env(L, 0.005, 0.04) * 1.4
+    def crash():
+        L = int(1.6 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+        return (noise - lowpass(noise, 5000)) * np.exp(-x * 2.6) * 0.3
+    notes = {}
+    def riff_note(m, length):
+        key = (m, round(length, 3))
+        if key not in notes: notes[key] = brass([m, m - 12], length, 5200)
+        return notes[key]
+
+    K, C, H, HO = kick(), clap(), hat(), hat(True)
+    pump = np.ones(n, np.float32)
+    b = 0.0
+    while b < END:
+        bar_i = int(round(b / BEAT)) // 4 % 4; beat_i = int(round(b / BEAT)) % 4
+        chord, root = CHORDS[bar_i], ROOTS[bar_i]
+        hook, adv, cta = b < DROP, ADVICE <= b < CTA, b >= CTA
+        # The beat drops out for the beat before each punchline.
+        held = any(p - BEAT - 0.01 <= b < p - 0.01 for p in PUNCH)
+        if hook:
+            # The nice card: a music box playing the riff, sweetly, over soft plucked chords.
+            for k, m in enumerate(RIFF[bar_i][beat_i * 2: beat_i * 2 + 2]):
+                if m: at(b + k * BEAT / 2, bell(m + 12), 0.7, 0.2 if k else -0.2)
+            at(b, pluck(chord[beat_i % 3] + 12, 0.08), 1.0)
+        elif adv:
+            # Half time: a kick on one, a clap on three, warm piano chords, the bass held.
+            if beat_i == 0: at(b, K, 0.7); at(b, bass(root, BAR * 0.9) * 0.7, 0.7)
+            if beat_i == 2: at(b, C, 0.6)
+            if beat_i in (0, 2):
+                for m in chord + [chord[0] + 12]: at(b, piano(m, 1.4, 0.09), 1.0)
+            at(b + BEAT / 2, H, 0.3, 0.3)
+        elif not held:
+            at(b, K, 0.95)
+            a = int(b * SR); L = int(0.2 * SR)
+            if a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.4 + 0.6 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
+            if beat_i in (1, 3): at(b, C, 0.9)
+            at(b + BEAT / 2, HO, 0.45, -0.3)
+            for k in range(4): at(b + k * BEAT / 4, H, 0.5 if k % 2 else 0.3, 0.3)
+            # The bass bounces root then octave in eighths.
+            at(b, bass(root, BEAT * 0.4), 0.9); at(b + BEAT / 2, bass(root + 12, BEAT * 0.35), 0.8)
+            if beat_i in (0, 2): at(b, brass(chord, BEAT * 0.35), 0.8)
+            # The riff: under the voice (the mix ducks it), and out in front for the ask.
+            for k, m in enumerate(RIFF[bar_i][beat_i * 2: beat_i * 2 + 2]):
+                if m: at(b + k * BEAT / 2, riff_note(m, BEAT * 0.42), 1.25 if cta else 0.75, 0.15)
+        b += BEAT
+
+    # The roast button: a scratch, then a crash and a brass hit as the beat drops.
+    at(DROP - 0.4, scratch(), 1.0)
+    at(DROP, impact(), 0.8); at(DROP, crash(), 1.0); at(DROP, brass([58, 65, 70, 74], 0.6), 2.2)
+    # Each punchline: the bass slides up to it, a brass hit and a crash land on it.
+    for p in PUNCH:
+        at(p - BEAT, slide(ROOTS[0] - 5, ROOTS[0] + 12, BEAT), 1.0)
+        at(p, brass([58, 62, 65, 70], 0.5), 2.4); at(p, crash(), 0.9); at(p, impact(), 0.5)
+    # Into the ask: a swell and a scratch back to the full beat; the last hit, held.
+    at(CTA - 1.2, swell(1.2) * 1.6, 1.0); at(CTA - 0.36, scratch(), 0.7)
+    at(CTA, crash(), 1.0)
+    last = snap(END - 0.2, BEAT)
+    at(last, brass([46, 58, 62, 65, 70], 1.6), 2.4); at(last, impact(), 0.7); at(last, crash(), 0.8)
 else:
     sc = scenes
     MID = sc[1]['start']       # a light pulse comes in after the hook
@@ -302,7 +424,8 @@ else:
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
 fi = int(0.3 * SR); fade[:fi] = np.linspace(0, 1, fi)
-fo = int((TOTAL - 1.4) * SR); fade[fo:] = np.clip(np.linspace(1, 0, n - fo) * 1.6, 0, 1)
+# The roast's last hit rings on a little longer.
+fo = int((TOTAL - (0.9 if R.get('mood') == 'roast' else 1.4)) * SR); fade[fo:] = np.clip(np.linspace(1, 0, n - fo) * 1.6, 0, 1)
 music *= fade[:, None]
 music /= max(1e-6, np.abs(music).max())
 

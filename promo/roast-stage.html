@@ -1,0 +1,317 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The roast reel (shorts.py roast): the nice card, the roast button, three burns, the advice, the ask. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fdf7fc; }
+body { font-family: Inter, sans-serif; color: #2a1238; }
+.el { position: absolute; display: none; }
+#world { position: absolute; inset: 0; }
+#glow { position: absolute; inset: 0; }
+.ember { position: absolute; border-radius: 50%; background: #ffb36b; box-shadow: 0 0 14px 4px rgba(255,122,69,.55); }
+#flash { position: absolute; inset: 0; z-index: 90; background: #fff; opacity: 0; pointer-events: none; }
+.fire { background: linear-gradient(90deg, #ffd166, #ff7a45 40%, #e0457b 75%, #b14fd8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* The hook: the nice card, then the site's own roast cover and its button. */
+#nice { z-index: 20; left: 60px; right: 60px; top: 250px; text-align: center; font-size: 82px; font-weight: 850; letter-spacing: -0.03em; line-height: 1.08; }
+#then { z-index: 20; left: 60px; right: 60px; top: 250px; text-align: center; font-size: 82px; font-weight: 850; letter-spacing: -0.03em; }
+#card { z-index: 10; left: 290px; top: 470px; width: 500px; border-radius: 26px; box-shadow: 0 40px 90px rgba(90,40,120,.3); transform-origin: 50% 0; }
+.heart { position: absolute; z-index: 11; font-size: 64px; }
+#cover { z-index: 12; left: 90px; width: 900px; top: 1000px; padding: 44px 40px 52px; border-radius: 44px; text-align: center; border: 5px solid transparent;
+  background: linear-gradient(160deg, #fbeefa, #fff 70%) padding-box, linear-gradient(120deg, #e0457b, #8a3fd0, #ff7a45, #e0457b) border-box;
+  box-shadow: 0 40px 90px rgba(90,40,120,.25); }
+#cover .badge { display: inline-block; padding: 12px 28px; border-radius: 999px; color: #fff; font-size: 30px; font-weight: 800; letter-spacing: .08em;
+  background: linear-gradient(90deg, #7b3fa0, #d1477a); }
+#cover h2 { margin: 22px 0 10px; font-size: 66px; font-weight: 900; letter-spacing: -0.02em; }
+#cover p { font-size: 34px; line-height: 1.35; color: #4a2366; font-weight: 550; }
+#btn { display: inline-block; margin-top: 30px; padding: 30px 64px; border-radius: 999px; color: #fff; font-size: 50px; font-weight: 850;
+  background: linear-gradient(90deg, #d1477a, #7b3fa0); box-shadow: 0 16px 50px rgba(209,71,122,.5); }
+#tap { z-index: 30; font-size: 120px; }
+#ring { z-index: 29; width: 160px; height: 160px; border-radius: 50%; border: 8px solid #fff; }
+
+/* The burns. */
+#badge { z-index: 30; left: 50%; top: 250px; padding: 16px 40px; border-radius: 999px; color: #fff; font-size: 42px; font-weight: 900; letter-spacing: .06em;
+  background: linear-gradient(90deg, #ff7a45, #e0457b); box-shadow: 0 12px 40px rgba(255,90,90,.45); white-space: nowrap; }
+.setup { z-index: 30; left: 70px; right: 70px; top: 370px; text-align: center; color: #fff; font-size: 76px; font-weight: 850; letter-spacing: -0.025em; line-height: 1.1; }
+.setup i { font-style: normal; display: inline-block; }
+.setup b { color: #ffd166; }
+.punch { z-index: 40; left: 40px; right: 40px; top: 1395px; text-align: center; font-size: 108px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.02;
+  filter: drop-shadow(0 10px 40px rgba(255,90,60,.45)); }
+.panel { z-index: 20; left: 110px; width: 860px; top: 610px; height: 740px; border-radius: 48px; overflow: hidden;
+  background: linear-gradient(170deg, rgba(255,255,255,.12), rgba(255,255,255,.05)); border: 3px solid rgba(255,255,255,.16);
+  box-shadow: 0 40px 100px rgba(0,0,0,.45); }
+.panel .bar { position: absolute; left: 0; right: 0; top: 0; height: 120px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px;
+  color: #fff; font-size: 40px; font-weight: 800; border-bottom: 2px solid rgba(255,255,255,.12); background: #2b1236; z-index: 3; }
+.count { padding: 10px 26px; border-radius: 999px; font-size: 38px; font-weight: 900; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b); }
+/* 1: saved workouts */
+#grid { position: absolute; left: 34px; right: 34px; top: 150px; }
+.tile { position: absolute; width: 184px; height: 184px; border-radius: 28px; display: flex; align-items: center; justify-content: center; font-size: 92px; }
+.tile::after { content: '▶'; position: absolute; right: 14px; bottom: 10px; font-size: 26px; color: rgba(255,255,255,.9); }
+.tile::before { content: ''; position: absolute; right: 18px; top: 14px; width: 22px; height: 30px; background: #fff;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%); }
+#stamp { z-index: 25; left: 50%; top: 860px; width: 560px; height: 300px; margin-left: -280px; border-radius: 40px; border: 14px solid #ff3d6e; color: #ff3d6e;
+  padding-top: 34px; text-align: center; font-weight: 900; background: rgba(30,8,24,.9); box-shadow: 0 0 60px rgba(255,61,110,.45); }
+#stamp b { display: block; font-size: 160px; line-height: 1; }
+#stamp small { display: block; margin-top: 6px; font-size: 44px; letter-spacing: .12em; }
+/* 2: likes */
+.av { position: absolute; width: 150px; height: 150px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 84px;
+  background: linear-gradient(135deg, #ffd6a5, #ff9ec4); border: 6px solid rgba(255,255,255,.85); }
+#you { width: 230px; height: 230px; font-size: 130px; background: linear-gradient(135deg, #c792ff, #ff7eb3); }
+#youName { position: absolute; left: 0; right: 0; text-align: center; color: #fff; font-size: 40px; font-weight: 850; }
+.fh { position: absolute; font-size: 56px; }
+#got, #gave { position: absolute; left: 40px; right: 40px; text-align: center; font-size: 46px; font-weight: 850; color: #fff; }
+#gave { color: #ff6b8b; }
+/* 3: messages */
+#list { position: absolute; left: 0; right: 0; top: 120px; }
+.row { position: absolute; left: 24px; right: 24px; height: 118px; display: flex; align-items: center; gap: 24px; padding: 0 22px; border-radius: 28px; }
+.row .pic { flex: none; width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 46px;
+  background: linear-gradient(135deg, #ffd6a5, #ff9ec4); }
+.row .txt { flex: 1; min-width: 0; color: #fff; }
+.row .nm { font-size: 36px; font-weight: 850; }
+.row .pv { font-size: 30px; color: rgba(255,255,255,.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .seen { flex: none; font-size: 28px; font-weight: 800; color: rgba(255,255,255,.55); }
+.row.mom { background: rgba(255,255,255,.1); }
+.row.mom .seen { color: #ff6b8b; }
+/* The advice: the honest friend, on a warmer ground. */
+#advice { z-index: 30; left: 90px; width: 900px; top: 620px; padding: 50px 50px 30px; border-radius: 48px; background: #fff; box-shadow: 0 40px 100px rgba(0,0,0,.35); }
+#advice h3 { font-size: 40px; font-weight: 900; color: #2a1238; letter-spacing: -0.01em; margin-bottom: 26px; }
+.tip { display: flex; align-items: center; gap: 26px; padding: 22px 0; border-top: 2px solid #f1e6f7; font-size: 42px; font-weight: 750; color: #2a1238; }
+.tick { flex: none; width: 66px; height: 66px; border-radius: 50%; border: 5px solid #e3d3ee; display: flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: 900; color: #fff; }
+/* The ask. */
+#ask { z-index: 30; left: 50px; right: 50px; top: 640px; text-align: center; color: #fff; }
+#ask .small { font-size: 52px; font-weight: 800; color: #ffd9ec; line-height: 1.2; }
+#ask .big { margin-top: 70px; font-size: 128px; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+#ask .brave { margin-top: 24px; font-size: 60px; font-weight: 850; }
+#flame { z-index: 29; left: 0; right: 0; top: 420px; text-align: center; font-size: 170px; }
+#site { z-index: 30; left: 50%; top: 1330px; padding: 26px 60px; border-radius: 999px; font-size: 52px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(255,90,90,.45); }
+</style></head>
+<body>
+  <div id="glow"></div>
+  <div id="embers"></div>
+  <div id="world">
+    <div class="el" id="nice">My Psyche Card<br>was <span class="grad">so nice</span> 🥰</div>
+    <div class="el" id="then">Then I clicked…</div>
+    <img class="el" id="card" src="assets/card-sherlock.png">
+    <div id="hearts"></div>
+    <div class="el" id="cover"><div class="badge">✨ SECRET BONUS UNLOCKED</div><h2 class="grad">Let us roast you</h2>
+      <p>Your card is the nice version.<br>This is the other one.</p><div id="btn">🔥 Reveal my roast</div></div>
+    <div class="el" id="ring"></div>
+    <div class="el" id="tap">👆</div>
+
+    <div class="el" id="badge"></div>
+    <div id="setups"></div>
+    <div id="punches"></div>
+    <div class="el panel" id="p1"><div class="bar"><span>🔖 Saved · Workouts</span><span class="count" id="c1">0</span></div><div id="grid"></div></div>
+    <div class="el" id="stamp"><b>0</b><small>WORKOUTS DONE</small></div>
+    <div class="el panel" id="p2"><div id="friends"></div><div id="flying"></div><div class="av" id="you">😎</div><div id="youName">You</div>
+      <div id="got"></div><div id="gave">Likes you gave back: 0 💔</div></div>
+    <div class="el panel" id="p3"><div class="bar"><span>💬 Messages</span><span class="count" id="c3">0 left on read</span></div><div id="list"></div></div>
+
+    <div class="el" id="advice"><h3>💡 What an honest friend would tell you</h3></div>
+    <div class="el" id="flame">🔥</div>
+    <div class="el" id="ask"></div>
+    <div class="el" id="site">psycheai.io ↗</div>
+  </div>
+  <div id="flash"></div>
+<script>
+const TL = __TIMELINE__;
+const S = TL.scenes, BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  if (tf !== undefined) el.style.transform = tf; };
+const said = (i, word, fallback) => ((S[i].words || []).find(([w]) => w === word) || [0, fallback])[1];
+const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
+const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+const DROP = S[1].start, ADV = S[4], CTA = S[5];
+// Each burn's punchline lands on the second phrase.
+const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
+
+// The setups, word by word as they are said, and the punchlines.
+const BURNS = [
+  { badge: 'ROAST #1 🔥', setup: '<b>600</b> workout videos saved.', punch: 'Zero workouts done.' },
+  { badge: 'ROAST #2 🔥', setup: 'Your friends like every post you make.', punch: 'You never like theirs back.' },
+  { badge: 'ROAST #3 🔥', setup: 'You left <b>47</b> people on read.', punch: 'Including your mom.' },
+];
+const setups = BURNS.map(b => { const d = mk('setup el', '', $('setups'));
+  d.innerHTML = b.setup.split(' ').map(w => '<i>' + w + '</i>').join(' '); return d; });
+const punches = BURNS.map(b => mk('punch el fire', b.punch, $('punches')));
+// Setup words: spread over the times the voice says the setup.
+function wordsIn(el, i, t) {
+  const ws = (S[i].words || []).filter(([, at]) => at < S[i].marks[1] - 0.05);
+  const a = ws.length ? ws[0][1] : S[i].vo, b = ws.length ? ws[ws.length - 1][1] : S[i].vo + 1.5;
+  const items = [...el.children];
+  items.forEach((w, k) => { const at = a + (b - a) * k / Math.max(1, items.length - 1) - 0.08, p = back(prog(t, at, at + 0.25));
+    w.style.opacity = clamp(p * 2); w.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px) scale(' + (0.6 + 0.4 * p) + ')'; });
+}
+
+// 1: the saved grid, scrolling up as it fills.
+const EMO = ['🏋️', '🧘', '🏃', '💪', '🤸', '🚴', '🥊', '🏊', '🧗', '⛹️', '🤾', '🏋️‍♀️'];
+const GRADS = ['#ff9a5a,#e0457b', '#8a3fd0,#e0457b', '#ffb347,#ff6b8b', '#5a7bff,#b14fd8', '#ff6b8b,#ffb36b', '#c792ff,#6b5bff'];
+const tiles = Array.from({ length: 24 }, (_, i) => { const d = mk('tile', EMO[i % EMO.length], $('grid'));
+  d.style.left = (i % 4) * 202 + 'px'; d.style.top = Math.floor(i / 4) * 202 + 'px';
+  d.style.background = 'linear-gradient(135deg,' + GRADS[(i * 5) % GRADS.length] + ')'; return d; });
+// 2: friends' likes raining down on you, none going back.
+const FACES = ['😄', '🥳', '😊', '🤩', '🙂'];
+const friends = FACES.map((f, i) => { const d = mk('av', f, $('friends')); d.style.left = (40 + i * 160) + 'px'; d.style.top = '50px'; return d; });
+$('you').style.left = (430 - 115) + 'px'; $('you').style.top = '360px';
+$('youName').style.top = '600px'; $('got').style.top = '660px'; $('gave').style.top = '230px';
+const hearts = Array.from({ length: 18 }, (_, i) => mk('fh', '❤️', $('flying')));
+// 3: the inbox, every chat seen and not answered, Mom's last.
+const CHATS = [['Sam', '😄', 'are we still on for tonight?? 👀', '2d'], ['Group chat 🎂', '🥳', 'who’s bringing the cake', '3d'],
+  ['Jess', '🤩', 'omg look at this 😂😂', '3d'], ['Alex', '🙂', 'hey, you free this week?', '4d'], ['Coach Dan', '😊', 'you coming saturday?', '5d'],
+  ['Priya', '😄', 'happy birthday!!! 🎉', '6d'], ['Leo', '🤩', 'did you see my message?', '1w'], ['Mom ❤️', '👩', 'Did you eat? Call me back 🙂', '4d']];
+const rows = CHATS.map(([nm, pic, pv, when], i) => { const d = mk('row' + (i === CHATS.length - 1 ? ' mom' : ''),
+  '<div class="pic">' + pic + '</div><div class="txt"><div class="nm">' + nm + '</div><div class="pv">' + pv + '</div></div><div class="seen">Seen ' + when + '</div>', $('list'));
+  return d; });
+// The advice: one tip for each burn.
+const TIPS = ['💬 Text your mom back', '🏋️ Do one workout from your saves', '❤️ Like your friends’ posts back'];
+const tips = TIPS.map(tx => mk('tip', '<div class="tick">✓</div><div>' + tx + '</div>', $('advice')));
+$('ask').innerHTML = '<div class="small">' + 'Your roast is free with every card'.split(' ').map(w => '<i style="font-style:normal;display:inline-block">' + w + '</i>').join(' ') +
+  '</div><div class="big">Comment<br><span class="fire">“ROAST”</span></div><div class="brave">if you’re brave 😈</div>';
+// The hook's hearts around the nice card, and the embers after.
+const niceHearts = ['💖', '✨', '💗', '⭐', '💕', '✨'].map((h, i) => { const d = mk('heart el', h, $('hearts')); return d; });
+const embers = Array.from({ length: 34 }, (_, i) => { const d = document.createElement('div'); d.className = 'ember'; $('embers').appendChild(d);
+  return { el: d, x: hash(i) * 1080, speed: 90 + hash(i + 9) * 160, phase: hash(i + 3), size: 4 + hash(i + 5) * 9 }; });
+
+function render(t) {
+  const ph = (t % BEAT) / BEAT, pulse = t >= DROP ? Math.exp(-ph * 6) : 0;
+  // The ground: pastel for the nice card, burnt dark for the roast, warmer for the advice, dark again for the ask.
+  const dark = easeIO(prog(t, DROP - 0.1, DROP + 0.25)), warm = easeIO(prog(t, ADV.start - 0.3, ADV.start + 0.4)) * (1 - easeIO(prog(t, CTA.start - 0.3, CTA.start + 0.2)));
+  document.body.style.background = dark < 0.01 ? 'radial-gradient(130% 90% at 50% 0%, #ffd6e7 0%, #fdf7fc 60%, #f3e6ff 100%)'
+    : 'radial-gradient(120% 80% at 50% 35%, ' + (warm > 0.5 ? '#6b2a6e' : '#3a1240') + ' 0%, #1c0a24 60%, #0e0514 100%)';
+  $('glow').style.opacity = dark;
+  $('glow').style.background = 'radial-gradient(60% 40% at 50% 105%, rgba(255,110,60,' + (0.45 + pulse * 0.25) + '), transparent 70%),' +
+    'radial-gradient(50% 30% at 50% 45%, rgba(224,69,123,' + (0.18 + warm * 0.25 + pulse * 0.1) + '), transparent 70%)';
+  $('flash').style.opacity = 0.85 * (1 - prog(t, DROP, DROP + 0.35)) * (t >= DROP ? 1 : 0) +
+    PUNCH.reduce((m, p) => Math.max(m, 0.4 * (1 - prog(t, p, p + 0.25)) * (t >= p ? 1 : 0)), 0);
+  embers.forEach(e => { e.el.style.left = (e.x + Math.sin(t * 1.3 + e.phase * 6) * 40) + 'px'; e.el.style.top = (1980 - ((t * e.speed + e.phase * 2000) % 2080)) + 'px';
+    e.el.style.width = e.el.style.height = e.size + 'px'; e.el.style.opacity = dark * (0.5 + 0.5 * pulse) * (warm > 0.5 ? 0.4 : 1); });
+  // The punches shake the world.
+  const hit = PUNCH.concat([DROP]).reduce((m, p) => Math.max(m, t >= p ? 1 - prog(t, p, p + 0.45) : 0), 0);
+  $('world').style.transform = hit ? 'translate(' + Math.sin(t * 90) * 22 * hit + 'px,' + Math.cos(t * 77) * 16 * hit + 'px)' : '';
+
+  hook(t, pulse);
+  burns(t, pulse);
+  advice(t);
+  ask(t, pulse);
+}
+
+function hook(t) {
+  const s = S[0], m1 = s.marks[1], tapAt = said(0, 'reveal', m1 + 0.6) - 0.1;
+  const gone = prog(t, DROP - 0.05, DROP + 0.3);
+  const inn = back(prog(t, 0, 0.4));
+  show('nice', clamp(inn * 2) * (1 - prog(t, m1 - 0.2, m1)), 'scale(' + (0.7 + 0.3 * inn) + ')');
+  const th = back(prog(t, m1 - 0.1, m1 + 0.25));
+  show('then', clamp(th * 2) * (1 - gone), 'scale(' + (0.7 + 0.3 * th) + ')');
+  // The card: floats, then rises and shrinks to make room for the cover; burns away on the drop.
+  const up = easeIO(prog(t, m1 - 0.3, m1 + 0.3)), cardIn = back(prog(t, 0.05, 0.5));
+  show('card', clamp(cardIn * 2) * (1 - gone), 'translateY(' + ((1 - Math.min(1, cardIn)) * 160 - 60 * up + Math.sin(t * 2.4) * 8 + gone * 300) + 'px) ' +
+    'rotate(' + (Math.sin(t * 1.7) * 2 + gone * 25) + 'deg) scale(' + (1 - 0.38 * up) * (1 - 0.5 * gone) + ')');
+  $('card').style.filter = gone ? 'sepia(' + gone + ') saturate(' + (1 + gone * 3) + ') hue-rotate(-' + gone * 30 + 'deg) brightness(' + (1 - gone * 0.6) + ')' : '';
+  niceHearts.forEach((h, i) => { const a = i / niceHearts.length * Math.PI * 2 + t * 0.6, r = 330 + Math.sin(t * 2 + i) * 20, p = back(prog(t, 0.3 + i * 0.12, 0.6 + i * 0.12));
+    h.style.left = (540 + Math.cos(a) * r - 32) + 'px'; h.style.top = (900 + Math.sin(a) * r * 1.3 - 32) + 'px';
+    show(h, clamp(p * 2) * (1 - prog(t, m1 - 0.2, m1 + 0.1)), 'scale(' + Math.min(1.1, p) + ')'); });
+  // The cover rises in; the finger comes in and presses the button; the ring spreads.
+  const cv = back(prog(t, m1, m1 + 0.4));
+  const press = prog(t, tapAt, tapAt + 0.08) * (1 - prog(t, tapAt + 0.12, tapAt + 0.25));
+  show('cover', clamp(cv * 2) * (1 - gone), 'translateY(' + (1 - Math.min(1, cv)) * 200 + 'px) scale(' + (1 + gone * 0.3) + ')');
+  $('btn').style.transform = 'scale(' + (1 - press * 0.08 + Math.sin(t * 7) * 0.015) + ')';
+  $('btn').style.boxShadow = '0 16px ' + (50 + Math.sin(t * 5) * 20) + 'px rgba(209,71,122,.6)';
+  const fin = easeIO(prog(t, tapAt - 0.55, tapAt));
+  show('tap', clamp(fin * 3) * (1 - prog(t, tapAt + 0.3, tapAt + 0.5)) * (1 - gone));
+  Object.assign($('tap').style, { left: (490 + (1 - fin) * 300 + press * 6) + 'px', top: (1390 + (1 - fin) * 380 + press * 14) + 'px' });
+  const rg = prog(t, tapAt + 0.05, tapAt + 0.55);
+  Object.assign($('ring').style, { left: '440px', top: '1320px' });
+  show('ring', (1 - rg) * (rg > 0 ? 1 : 0), 'scale(' + (0.3 + rg * 2.2) + ')');
+}
+
+function burns(t, pulse) {
+  const cur = [1, 2, 3].findIndex(i => t >= S[i].start - 0.05 && t < S[i].end);
+  // The badge: bounces in on each burn, the number changing with it.
+  const bi = cur < 0 ? -1 : cur, bs = bi < 0 ? 0 : back(prog(t, S[bi + 1].start - 0.05, S[bi + 1].start + 0.3));
+  if (bi >= 0) $('badge').textContent = BURNS[bi].badge;
+  show('badge', clamp(bs * 2) * (bi < 0 ? 0 : 1 - prog(t, S[bi + 1].end - 0.15, S[bi + 1].end)),
+    'translateX(-50%) scale(' + (Math.min(1.05, bs) + pulse * 0.04) + ') rotate(' + Math.sin(t * 3) * 2 + 'deg)');
+  [1, 2, 3].forEach((i, k) => {
+    const s = S[i], out = prog(t, s.end - 0.15, s.end), on = t >= s.start - 0.05 && t < s.end;
+    const p = PUNCH[k];
+    show(setups[k], on ? 1 - out : 0); if (on) wordsIn(setups[k], i, t);
+    const pp = prog(t, p - 0.04, p + 0.22), slam = 1 + (1 - ease(pp)) * 1.2;
+    show(punches[k], on && t >= p - 0.04 ? clamp(pp * 3) * (1 - out) : 0, 'scale(' + (slam + pulse * 0.03) + ') rotate(' + (k % 2 ? 2 : -2) + 'deg)');
+    const pin = back(prog(t, s.start, s.start + 0.4));
+    show('p' + (k + 1), on ? clamp(pin * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, pin)) * 260 + 'px) scale(' + (0.9 + 0.1 * Math.min(1, pin)) + ')');
+  });
+  // 1: the grid fills and scrolls as the count runs to 600; at the punchline it greys and the stamp lands.
+  { const s = S[1], fill = prog(t, s.vo - 0.1, PUNCH[0] - 0.2), dead = prog(t, PUNCH[0], PUNCH[0] + 0.2);
+    $('c1').textContent = Math.round(600 * easeIO(fill)) + ' saved';
+    $('grid').style.transform = 'translateY(' + (-404 * easeIO(fill)) + 'px)';
+    tiles.forEach((d, i) => { const p = back(prog(t, s.start + 0.15 + i * 0.05, s.start + 0.4 + i * 0.05)); d.style.opacity = clamp(p * 2);
+      d.style.transform = 'scale(' + Math.min(1.05, p) * (1 - dead * 0.06) + ')'; d.style.filter = 'grayscale(' + dead + ') brightness(' + (1 - dead * 0.5) + ')'; });
+    const st = prog(t, PUNCH[0], PUNCH[0] + 0.18);
+    show('stamp', t >= PUNCH[0] && t < s.end ? clamp(st * 3) * (1 - prog(t, s.end - 0.15, s.end)) : 0, 'scale(' + (1 + (1 - ease(st)) * 1.6) + ') rotate(-10deg)'); }
+  // 2: hearts fall from friends to you, the count climbing; at the punchline one heart tries to go back and breaks.
+  { const s = S[2], p = PUNCH[1], stop = t >= p;
+    const got = Math.round(1284 * easeIO(prog(t, s.vo, p)));
+    $('got').textContent = '❤️ ' + got.toLocaleString('en') + ' likes from friends';
+    hearts.forEach((h, i) => { const life = 0.9, born = s.start + 0.2 + i * 0.16, u = (t - born) / life;
+      const f = i % 5, x0 = 115 + f * 160, y0 = 140, x1 = 430, y1 = 470;
+      const vis = u > 0 && u < 1 && t < p;
+      h.style.left = (x0 + (x1 - x0) * easeIO(clamp(u)) - 28) + 'px'; h.style.top = (y0 + (y1 - y0) * easeIO(clamp(u)) - 28 - Math.sin(clamp(u) * Math.PI) * 80) + 'px';
+      h.style.opacity = vis ? Math.sin(clamp(u) * Math.PI) : 0; h.style.transform = 'scale(' + (0.7 + 0.5 * Math.sin(clamp(u) * Math.PI)) + ')'; });
+    friends.forEach((f, i) => { f.textContent = stop ? '😐' : FACES[i]; f.style.transform = 'scale(' + (1 + (stop ? 0 : pulse * 0.05)) + ')'; });
+    $('you').style.transform = 'scale(' + (1 + (stop ? 0 : pulse * 0.06)) + ')';
+    const gv = back(prog(t, p, p + 0.3));
+    $('gave').style.opacity = stop ? clamp(gv * 2) : 0; $('gave').style.transform = 'scale(' + Math.min(1.08, gv) + ')'; }
+  // 3: the inbox scrolls, every chat seen; the count climbs to 47; at the punchline it stops on Mom.
+  { const s = S[3], p = PUNCH[2], run = easeIO(prog(t, s.vo - 0.1, p - 0.05));
+    $('c3').textContent = Math.round(47 * run) + ' left on read';
+    const top = 140 - run * (rows.length - 4.4) * 130;
+    rows.forEach((r, i) => { const y = top + i * 130, focus = i === rows.length - 1 ? back(prog(t, p, p + 0.3)) : 0, dim = t >= p && i !== rows.length - 1;
+      r.style.top = (y - 120) + 'px'; r.style.opacity = dim ? 0.3 : 1;
+      r.style.transform = 'scale(' + (1 + focus * 0.06) + ')';
+      r.style.boxShadow = focus ? '0 0 0 4px #ff6b8b, 0 0 50px rgba(255,107,139,' + 0.6 * clamp(focus) + ')' : 'none'; }); }
+}
+
+function advice(t) {
+  const s = ADV, inn = back(prog(t, s.start + 0.05, s.start + 0.45)), out = prog(t, s.end - 0.2, s.end);
+  show('advice', clamp(inn * 2) * (1 - out), 'translateY(' + (1 - Math.min(1, inn)) * 200 + 'px) scale(' + (0.9 + 0.1 * Math.min(1, inn)) + ')');
+  tips.forEach((tp, i) => { const at = s.vo + 0.6 + i * 0.55, p = back(prog(t, at, at + 0.3)), tk = $('advice').querySelectorAll('.tick')[i];
+    tp.style.opacity = 0.35 + 0.65 * clamp(p * 2);
+    tk.style.background = p > 0 ? 'linear-gradient(135deg, #ff7a45, #e0457b)' : 'transparent'; tk.style.borderColor = p > 0 ? 'transparent' : '#e3d3ee';
+    tk.style.color = p > 0 ? '#fff' : 'transparent'; tk.style.transform = 'scale(' + (p > 0 ? Math.min(1.15, p) : 1) + ')'; });
+  // The setup line for the advice, as a heading above it.
+  if (!$('advLine')) { const d = mk('setup el', 'Then it tells you what to <b>actually do</b>.', $('setups')); d.id = 'advLine'; }
+  const ln = back(prog(t, s.vo - 0.2, s.vo + 0.2));
+  show('advLine', clamp(ln * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, ln)) + ')');
+}
+
+function ask(t, pulse) {
+  const s = CTA, words = [...$('ask').querySelectorAll('.small i')];
+  const on = t >= s.start - 0.05;
+  show('ask', on ? 1 : 0);
+  if (!on) { show('flame', 0); show('site', 0); return; }
+  const m1 = s.marks[1];
+  words.forEach((w, k) => { const at = s.vo + (m1 - 0.2 - s.vo) * k / words.length, p = back(prog(t, at, at + 0.25));
+    w.style.opacity = clamp(p * 2); w.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 20 + 'px)'; });
+  const big = back(prog(t, m1 - 0.1, m1 + 0.3));
+  const bg = $('ask').querySelector('.big'); bg.style.opacity = clamp(big * 2); bg.style.transform = 'scale(' + (Math.min(1.05, big) + pulse * 0.03) + ')';
+  const brave = back(prog(t, said(5, 'brave', m1 + 1) - 0.3, said(5, 'brave', m1 + 1)));
+  const br = $('ask').querySelector('.brave'); br.style.opacity = clamp(brave * 2); br.style.transform = 'scale(' + Math.min(1.05, brave) + ')';
+  const fl = back(prog(t, s.start, s.start + 0.4));
+  show('flame', clamp(fl * 2), 'scale(' + (Math.min(1.05, fl) + pulse * 0.12) + ') rotate(' + Math.sin(t * 4) * 6 + 'deg)');
+  const site = back(prog(t, s.voEnd - 0.1, s.voEnd + 0.3));
+  show('site', clamp(site * 2), 'translateX(-50%) scale(' + (Math.min(1.05, site) + pulse * 0.05 * Math.min(1, site)) + ')');
+}
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>
