@@ -140,14 +140,14 @@ REELS['relationship'] = {
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
 # The comparison reel: the same question asked of ChatGPT and of PsycheAI, both answers real and only trimmed,
-# never reworded ("Chat G P T" is how the voice says the name). ChatGPT's could fit anyone; PsycheAI's is drawn from the asker's own data. The career reel's
+# never reworded ("Chat G P T" is how the voice says the name, and "red" the past tense of read). ChatGPT's could fit anyone; PsycheAI's is drawn from the asker's own data. The career reel's
 # instruments in a key and tempo of their own; Ryan's voice, as the career reel.
 REELS['compare'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
         (['I asked Chat G P T and {B} the same question.'], 0.85, None),
         (['Chat G P T gave me a list that could fit anyone.'], 0.85, None),
-        (['{B} read my data first.'], 0.85, None),
+        (['{B} red my data first.'], 0.85, None),
         (['And it told me exactly why.'], 0.85, None),
         (['Same question.', 'Only one of them actually knew me.'], 0.85, True, 0.3),
         (['Your personal AI coach.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
@@ -164,6 +164,13 @@ REELS['compare'] = {
     'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
+# The comparison reel under other music, to compare: the same lines and tempo, so the same timeline and video.
+# `compare-strings` is the coach reel's rolling piano and strings; `compare-keys` the relationship reel's electric
+# piano groove; both in A minor to C.
+REELS['compare-strings'] = dict(REELS['compare'], mood='uplifting', calm_close=False, reveal_lead=0.45,
+                                chords=[[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], roots=[45, 41, 48, 43],
+                                melody=[[76, 72, 69, 72], [77, 72, 69, 72], [79, 76, 72, 76], [74, 71, 67, 71]])
+REELS['compare-keys'] = dict(REELS['compare-strings'], mood='relationship')
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +
@@ -202,7 +209,7 @@ BPM = R['bpm']; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 REVEAL = R['reveal']
 # The reveal lets the card land before the voice names it; every cut snaps to the half beat.
-EXTRA_LEAD = {REVEAL: 0.45 if R.get('mood') != 'uplifting' else 0.6}
+EXTRA_LEAD = {REVEAL: R.get('reveal_lead', 0.45 if R.get('mood') != 'uplifting' else 0.6)}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i in range(len(lines)):
