@@ -133,4 +133,119 @@ export const TOPICS = [
       ['Can I do it with my sister or brother?', 'Yes. Psyche Sync is for any two people who know each other.'],
     ],
   },
+
+  // ---------- drafts (October 2026), for the owner to check before they go live ----------
+  // `draft: true`: written to docs/ so they can be read at their address, but
+  // marked noindex and kept out of the sitemap and llms.txt. Delete the flag
+  // to publish. The comparisons describe each tool by how it works, not by a
+  // price, which changes; PsycheAI is named as ours.
+  {
+    draft: true,
+    slug: 'best-free-personality-tests',
+    title: 'Best free personality tests in 2026 | PsycheAI',
+    description: 'The best free personality tests in 2026 compared: 16Personalities, Truity, Big Five research tests, and PsycheAI, which asks no questions.',
+    h1: 'The best free personality tests in 2026',
+    lede: 'The short answer: for a quick, popular type, take 16Personalities; for research-grade Big Five scores, take an IPIP-based test; for a reading of how you actually behave rather than how you see yourself, try PsycheAI, which asks no questions at all. Most good tests give a free result and charge for a longer report.',
+    sections: [
+      ['The list', '<ol class="guide-list"><li><h3>16Personalities</h3><p>The best known. A questionnaire of about a dozen minutes gives you a four-letter type with a fifth letter for how assertive or turbulent you are, and a long free profile. Premium reports and courses are paid. <strong>Best for:</strong> a quick, widely recognised type to compare with friends.</p></li><li><h3>Truity</h3><p>Several free tests from one place: a 16-type test (TypeFinder), the Big Five, the Enneagram and career tests. Each gives a free basic result, with an optional paid full report. <strong>Best for:</strong> trying more than one framework, and career-focused results.</p></li><li><h3>IPIP-based Big Five tests</h3><p>Free questionnaires built on the International Personality Item Pool, the open set of items researchers use, offered by projects such as the Open-Source Psychometrics Project. Plain scores, little interpretation. <strong>Best for:</strong> the measure psychologists rely on most, without a sales pitch. <a href="/big-five-personality-test">More on the Big Five</a>.</p></li><li><h3>The official love languages quiz</h3><p>A free quiz from the five love languages books, on how you like to give and receive care. <strong>Best for:</strong> relationships, not personality as a whole. <a href="/love-language-test">More on love languages</a>.</p></li><li><h3>PsycheAI (ours)</h3><p>No questions. You load your own Instagram data (and, if you like, WhatsApp, Google or Facebook), and it reads your MBTI, Big Five, love languages, values and the character you are most like from how you actually behave, with the evidence for each result. Your first Psyche Card and Psyche Report are free. <strong>Best for:</strong> anyone tired of answering questions about themselves, or who suspects their answers would be wishful. <a href="/psyche-personality-test">How it works</a>.</p></li></ol>'],
+      ['Questionnaire or behaviour?', '<p>Every questionnaire measures how you see yourself on the day you answer: people answer as the person they would like to be, and their results drift between attempts. A reading from behaviour has the opposite strength and weakness: it is harder to fake, but it is an inference, and only as good as the data behind it. The two are best side by side. If a test from behaviour gives you a different type from a questionnaire, the difference is usually the interesting part.</p>'],
+      ['How to choose', '<ul class="ticks"><li><strong>Want a type to talk about with friends?</strong> 16Personalities, or the <a href="/mbti-test-no-questions">MBTI without questions</a>.</li><li><strong>Want the most scientific measure?</strong> An IPIP Big Five test.</li><li><strong>Want to see yourself as others see you?</strong> A reading from your own behaviour, like PsycheAI.</li><li><strong>Want it for a friendship?</strong> See <a href="/best-friendship-compatibility-tests">the best friendship compatibility tests</a>.</li></ul>'],
+    ],
+    faq: [
+      ['Which free personality test is the most accurate?', 'For the Big Five, tests built on the research item pool (IPIP) are the best studied. Type tests are popular rather than precise: many people get a different type on a second attempt. A reading from behaviour avoids self-report bias but is an inference, so it says how confident it is.'],
+      ['Is there a personality test with no questions?', 'Yes. PsycheAI reads your personality from your own Instagram data instead of a questionnaire. Your first reading is free.'],
+      ['Are free personality tests really free?', 'Most give a free result and sell a longer report. Check what the free result includes before you start.'],
+    ],
+  },
+  {
+    draft: true,
+    slug: 'best-ai-life-coach-apps',
+    title: 'Best AI life coach apps in 2026 | PsycheAI',
+    description: 'AI life coach apps in 2026 compared by what they know about you: chat, journals, goals or your own data. Rocky.ai, Rosebud, Pi, Purpose and more.',
+    h1: 'The best AI life coach apps in 2026',
+    lede: 'The short answer: almost every AI coach knows only what you tell it, in chat or a journal. Pick by how you like to work: daily goals (Rocky.ai), journaling (Rosebud, Mindsera), open conversation (Pi, ChatGPT, Claude) or a coach that challenges you (Purpose). PsycheAI is the one that starts from your actual behaviour, read from your own data.',
+    sections: [
+      ['The list', '<ol class="guide-list"><li><h3>Rocky.ai</h3><p>A daily coaching chat: reflective questions, goals and check-ins that hold you to them, with a free tier. <strong>Knows you from:</strong> what you tell it each day. <strong>Best for:</strong> building a habit of reflection.</p></li><li><h3>Rosebud and Mindsera</h3><p>AI journals: you write, and they reflect patterns back, ask follow-up questions and summarise your entries over time. <strong>Knows you from:</strong> your journal. <strong>Best for:</strong> people who already like writing things down.</p></li><li><h3>Pi, ChatGPT and Claude</h3><p>General assistants, warm and capable, and good to think aloud with. With memory turned on they remember what you have said before. <strong>Knows you from:</strong> your conversations, and whatever you upload. <strong>Best for:</strong> working through one problem at a time.</p></li><li><h3>Purpose</h3><p>A coaching app from the author Mark Manson, built to challenge your assumptions rather than reassure you. <strong>Knows you from:</strong> chat and a values intake. <strong>Best for:</strong> people who want to be pushed.</p></li><li><h3>BetterUp</h3><p>Human coaches with AI support, mostly through employers. <strong>Knows you from:</strong> assessments and sessions. <strong>Best for:</strong> work and leadership, if your company offers it.</p></li><li><h3>Ask PsycheAI (ours)</h3><p>Starts from a full personality study of your own Instagram data (and, if you like, WhatsApp, Google or Facebook): your type, traits, patterns and values, each with its evidence. You skip the background and ask the real question, such as <a href="/am-i-in-the-wrong-job">am I in the wrong job?</a> or <a href="/what-will-i-regret-when-im-old">what will I regret when I am old?</a> Your first question is free. <strong>Knows you from:</strong> what you actually do. <strong>Best for:</strong> deep questions about yourself.</p></li></ol>'],
+      ['Why where the advice comes from matters', '<p>A coach that knows only what you tell it can only work with the story you already believe about yourself. That is fine for goals and accountability. For the hard questions, what you are avoiding, what you will regret, why a pattern keeps repeating, the most useful evidence is often what you would not think to say. That is the gap a coach built on your own behaviour fills.</p>'],
+      ['A note on privacy', '<p>Uploading your raw Instagram or chat history to a general chatbot sends everything, names and all, to its servers as it is. PsycheAI reads your files on your own device and sends only a de-identified summary. <a href="/faq">How PsycheAI handles your data</a>.</p>'],
+    ],
+    faq: [
+      ['What is the best free AI life coach?', 'Several have free tiers: Rocky.ai for daily goals, Pi and ChatGPT for conversation. PsycheAI gives a free personality reading and one free question to its coach.'],
+      ['Can an AI coach replace a therapist?', 'No. AI coaches are for reflection and everyday decisions. For anything affecting your health or safety, talk to someone qualified.'],
+      ['Which AI coach knows me best?', 'Most know only what you tell them. PsycheAI starts from a study of your own data, so it can point to patterns you might not mention.'],
+    ],
+  },
+  {
+    draft: true,
+    slug: 'best-friendship-compatibility-tests',
+    title: 'Best friendship compatibility tests 2026 | PsycheAI',
+    description: 'Ways to test friendship compatibility in 2026: BFF quizzes, MBTI charts, love language quizzes, and Psyche Sync, which compares two real readings.',
+    h1: 'The best friendship compatibility tests in 2026',
+    lede: 'The short answer: BFF quiz apps test how well you know each other; MBTI compatibility charts guess from your types alone; love language quizzes compare how you show care. Psyche Sync, from PsycheAI, compares two full personality readings from each person’s own data, for free.',
+    sections: [
+      ['The list', '<ol class="guide-list"><li><h3>BFF quiz apps</h3><p>One friend writes ten questions about themselves and the other guesses. Fun, fast and free. <strong>Measures:</strong> how well you know each other, not whether you suit each other.</p></li><li><h3>MBTI compatibility charts</h3><p>Tables that rate each pair of the 16 types. Free and everywhere. <strong>Measures:</strong> a guess from four letters each, the same for every pair with those types. <a href="/mbti-types">The 16 types</a>.</p></li><li><h3>Love language quizzes</h3><p>Each of you takes the quiz and compares how you like to give and receive care. <strong>Measures:</strong> one thing, but a useful one. <a href="/love-language-test">Love languages without a quiz</a>.</p></li><li><h3>Psyche Sync (ours)</h3><p>Each of you makes a free Psyche Card from your own Instagram data, then one link compares them: where you align, where you differ, and what each of you can do for the other, with the evidence from both cards. No score and no verdict, and never romantic. <strong>Measures:</strong> your actual temperaments, side by side. <a href="/best-friend-compatibility-test">How Psyche Sync works</a>.</p></li></ol>'],
+      ['What makes a friendship test worth taking', '<ul class="ticks"><li><strong>It looks at you both, not your labels.</strong> Two people of the same type can be very different friends.</li><li><strong>It explains, rather than scores.</strong> A percentage invites a fight; a difference with a way to handle it is something you can share.</li><li><strong>It respects your privacy.</strong> Psyche Sync shares only each card’s short summary, never your data or messages.</li></ul>'],
+    ],
+    faq: [
+      ['Is there a free friendship compatibility test?', 'Yes. Psyche Sync is free, and so is each person’s first Psyche Card. BFF quiz apps and MBTI charts are usually free too.'],
+      ['Does MBTI compatibility work?', 'As a conversation starter. Type charts give the same answer for every pair with those letters, so they miss most of what makes a friendship work.'],
+      ['Can I compare with a sibling or parent?', 'Yes. Psyche Sync works for any two people who know each other.'],
+    ],
+  },
+  {
+    draft: true,
+    slug: 'am-i-in-the-wrong-job',
+    title: 'Am I in the wrong job? How to tell | PsycheAI',
+    description: 'Am I in the wrong job, or am I the problem? Signs it is the job, signs it is the part of the job, and how your own behaviour shows which part you love.',
+    h1: 'Am I in the wrong job?',
+    lede: 'The short answer: often it is not the whole job but the part of it you spend most time on. If every new job feels good for a few months and then the same feeling comes back, change what you do inside the job before you change the job. Your own behaviour, the work you talk about with energy, usually shows which part that is.',
+    sections: [
+      ['Signs it may be the job', '<ul class="ticks"><li>Your values clash with what the work asks of you, not just with a colleague.</li><li>You dread the work itself, not only Monday mornings.</li><li>The things you are best at are not used at all, and cannot be.</li><li>You feel better on holiday and worse within a day of coming back, every time.</li></ul>'],
+      ['Signs it is the part of the job', '<ul class="ticks"><li>You liked each new role at first, then the same feeling returned.</li><li>Some days fly by: the ones with a problem to solve, or a person to help.</li><li>What drains you is the same kind of task wherever you go: routine, approvals, waiting on others.</li><li>You talk about one part of your work with energy, and the rest not at all.</li></ul>'],
+      ['How to find the part you love', '<p>Notice what you talk about when no one asks: the projects you describe at length to friends, the problems you keep turning over, the help people come to you for. That is the evidence a careers test cannot ask about. A <a href="/psyche-personality-test">Psyche Report</a> reads it from your own Instagram data (and, if you like, WhatsApp, Google or Facebook): your edge, what is holding you back, and the kinds of work that suit you and drain you. Then <a href="/ai-personality-coach">Ask PsycheAI</a> the question directly.</p>'],
+      ['What to do next', '<ol class="guide-steps"><li>Write down the last three times work felt easy. What were you doing?</li><li>Ask for more of that in your current role before you leave it.</li><li>If there is none of it to be had, that is your answer: it is the job.</li></ol>'],
+    ],
+    faq: [
+      ['How do I know if I am in the wrong career or just burnt out?', 'If rest restores your interest, the job may be right and the load wrong. If rest does not, look at the work itself. If tiredness or low mood lasts, talk to someone qualified.'],
+      ['Will changing jobs make me happier?', 'Only if the new job changes the part that drains you. Many people carry the same routine tasks into a new role.'],
+      ['Can AI tell me what career suits me?', 'It can point to patterns. PsycheAI reads the careers that suit you, and the ones likely to drain you, from your own behaviour, with the evidence. Treat it as a starting point.'],
+    ],
+  },
+  {
+    draft: true,
+    slug: 'what-will-i-regret-when-im-old',
+    title: 'What will I regret most when I’m old? | PsycheAI',
+    description: 'The most common regrets at the end of life, from a palliative carer’s notes, and how to spot which apply to you from your own behaviour.',
+    h1: 'What will I regret most when I’m old?',
+    lede: 'The short answer: people near the end of life rarely regret what they did; they regret what they put off. Bronnie Ware, a palliative carer, heard the same five again and again: not living true to themselves, working too much, not saying how they felt, losing touch with friends, and not letting themselves be happier. Which one applies to you shows in how you spend your time now.',
+    sections: [
+      ['The five most common regrets', '<ol class="guide-list"><li><h3>Not living a life true to myself</h3><p>Living the life others expected instead of the one they wanted.</p></li><li><h3>Working too hard</h3><p>Missing time with family and friends for work.</p></li><li><h3>Not expressing my feelings</h3><p>Keeping the peace by keeping quiet.</p></li><li><h3>Losing touch with friends</h3><p>Letting friendships fade in the busy years.</p></li><li><h3>Not letting myself be happier</h3><p>Staying in old habits out of fear of change.</p></li></ol><p class="fineprint">From Bronnie Ware’s <em>The Top Five Regrets of the Dying</em> (2012), based on her years as a palliative carer: observations, not a scientific survey.</p>'],
+      ['Which one is yours?', '<p>Your future regrets are usually visible now, in small patterns: the friends you keep meaning to call, the plans you save and never book, the messages home that have shrunk to a word. They are easy to miss in yourself and plain in your own data. Asked this question, Ask PsycheAI answers from the patterns in your own Instagram data (and WhatsApp, Google or Facebook, if you add them), with the evidence, and says what to do this week. <a href="/ai-personality-coach">How Ask PsycheAI works</a>.</p>'],
+      ['Start this week', '<ul class="ticks"><li>Message one friend you have lost touch with.</li><li>Say one thing you have been holding back, kindly.</li><li>Book one thing you have saved and never done.</li><li>Leave work on time one day, on purpose.</li></ul>'],
+    ],
+    faq: [
+      ['What is the most common regret at the end of life?', 'In Bronnie Ware’s account, not having the courage to live a life true to oneself rather than the life others expected.'],
+      ['Can AI predict what I will regret?', 'Not predict, but it can point to patterns that tend to lead to regret, such as friendships fading or plans put off, and show you the evidence in your own data.'],
+      ['Is this about mental health?', 'No. It is about how you spend your time. If you are struggling, talk to someone you trust or someone qualified.'],
+    ],
+  },
+  {
+    draft: true,
+    slug: 'why-do-we-fight-over-small-things',
+    title: 'Why do we fight over small things? | PsycheAI',
+    description: 'Why couples and families fight over small things, what the fight is usually about, and how knowing how you love and handle conflict breaks the cycle.',
+    h1: 'Why do we fight over small things?',
+    lede: 'The short answer: the small thing is rarely the point. A fight about the dishes is usually about feeling unseen, unappreciated or not a priority, and it comes back in a different form until that is said. Relationship researchers John and Julie Gottman found that about 69% of couples’ conflicts are perpetual: they are never solved, only handled well or badly.',
+    sections: [
+      ['What the small fight is really about', '<ul class="ticks"><li><strong>Feeling second.</strong> “You always put your parents first” and “your work comes first” are the same complaint.</li><li><strong>Effort that goes unnoticed.</strong> If you show love by doing things, a small thing left undone can feel like your effort does not count.</li><li><strong>Different love languages.</strong> One of you gives help; the other wants to hear it. Both feel unloved.</li><li><strong>A build-up.</strong> Going quiet for days, then everything coming out over something small.</li></ul>'],
+      ['Different topic, same fight', '<p>If the arguments change subject but feel the same, you have found your perpetual problem. The Gottmans’ point is that the couples who do well are not the ones with fewer of these, but the ones who talk about them gently and with humour, instead of having the same fight about a new topic.</p><p class="fineprint">The 69% figure is from John and Julie Gottman’s research on couples.</p>'],
+      ['Knowing your side of it', '<p>You cannot read your partner’s mind, but you can know your own patterns: how you show care, how you want to receive it, and what you do in a disagreement. A <a href="/psyche-personality-test">Psyche Report</a> reads these from your own data: your love languages, your attachment style, how you handle conflict, and what you need from the person you love. It reads only your data, so it speaks for you, never for them. <a href="/love-language-test">More on love languages</a>.</p>'],
+      ['Try this next time', '<ol class="guide-steps"><li>Name the feeling, not the dishes: “I feel like I come second.”</li><li>Say what you need in one sentence.</li><li>Ask what they need, and listen to the answer.</li></ol>'],
+    ],
+    faq: [
+      ['Is it normal to fight over small things?', 'Yes. Most couples do. What matters is whether the real issue underneath gets talked about.'],
+      ['How do I stop fighting about the same thing?', 'Find what the fights have in common, say the feeling underneath, and agree on how to handle it rather than trying to win.'],
+      ['Can PsycheAI analyse my relationship?', 'It reads only your own data: how you love, your attachment style and how you handle conflict. Psyche Sync compares two people, but for friends and family, never romance. For serious difficulties, a couples counsellor can help.'],
+    ],
+  },
 ];

@@ -8043,10 +8043,15 @@ check('the schema requires evidence on where they align and differ',
       });
       setTimeout(async () => {
         const out = {};
-        for (const path of ${JSON.stringify(['/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/no-such-guide'])}.concat(${JSON.stringify(paths)})) {
+        for (const path of ${JSON.stringify(['/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/no-such-guide', '/faq.md', '/am-i-in-the-wrong-job.md', '/ffd11799b5d07d5cf6542ebb723deaff.txt'])}.concat(${JSON.stringify(paths)})) {
           const r = await fetch('http://localhost:${port}' + path);
           const body = await r.text();
-          out[path] = { status: r.status, type: r.headers.get('content-type'), canonical: (/rel="canonical" href="([^"]+)"/.exec(body) || [])[1] || null };
+          out[path] = { status: r.status, type: r.headers.get('content-type'), link: r.headers.get('link'), vary: r.headers.get('vary'), body: path.endsWith('.txt') ? body : '',
+            canonical: (/rel="canonical" href="([^"]+)"/.exec(body) || [])[1] || null };
+        }
+        for (const [key, accept] of [['md', 'text/markdown'], ['browser', 'text/html,application/xhtml+xml,*/*;q=0.8']]) {
+          const r = await fetch('http://localhost:${port}/faq', { headers: { accept } });
+          out['/faq as ' + key] = { status: r.status, type: r.headers.get('content-type'), vary: r.headers.get('vary') };
         }
         server.kill();
         process.stdout.write(JSON.stringify(out));
@@ -8086,6 +8091,45 @@ check('the schema requires evidence on where they align and differ',
     check('the front page links to none of the generated pages',
       generated.length === 30 && generated.every(p => !index.includes('href="' + p + '"') && !index.includes('href="' + p.slice(1) + '"')),
       generated.filter(p => index.includes('href="' + p + '"')).join());
+    // Dates, author and a Markdown copy on every dated page; drafts stay out of search.
+    const { TOPICS } = await import(join(root, 'tools', 'seo', 'topics.mjs'));
+    const dates = JSON.parse(readFileSync(join(root, 'tools', 'seo', 'dates.json'), 'utf8'));
+    const dated = pages.filter(([p]) => !['/privacy', '/terms', '/refunds'].includes(p));
+    const undated = dated.filter(([p, h]) => {
+      const d = dates[p.slice(1)];
+      const graph = JSON.parse((/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(h) || [, '{}'])[1])['@graph'] || [];
+      const a = graph.find(n => n['@type'] === 'Article') || {};
+      const md = existsSync(join(root, 'docs', p.slice(1) + '.md')) ? readFileSync(join(root, 'docs', p.slice(1) + '.md'), 'utf8') : '';
+      return !d || !/^\d{4}-\d{2}-\d{2}$/.test(d.published) || d.modified < d.published ||
+        a.datePublished !== d.published || a.dateModified !== d.modified || (a.author || {}).name !== 'Jared' ||
+        !sitemap.includes('<loc>https://psycheai.io' + p + '</loc><lastmod>' + d.modified + '</lastmod>') ||
+        !h.includes('<p class="guide-byline">By <a href="https://www.linkedin.com/in/jared-sia-cfa/"') || !h.includes('<time datetime="' + d.modified + '">') ||
+        !h.includes('<link rel="alternate" type="text/markdown" href="' + p + '.md">') ||
+        !md.startsWith('---\n') || !md.includes('canonical: https://psycheai.io' + p + '\n') || !md.includes('updated: ' + d.modified + '\n') || /<[a-z\/]/.test(md);
+    }).map(([p]) => p);
+    check('every guide and generated page carries its dates, its author and a clean Markdown copy, and the sitemap its last change',
+      dated.length === 36 && undated.length === 0, undated.join());
+    const drafts = TOPICS.filter(t => t.draft).map(t => '/' + t.slug);
+    const llmsText = readFileSync(join(root, 'docs', 'llms.txt'), 'utf8');
+    check('a draft page is written but kept out of search: noindex, undated, no Markdown copy, not in the sitemap or llms.txt',
+      drafts.length >= 1 && drafts.every(p => {
+        const h = readFileSync(join(root, 'docs', p.slice(1) + '.html'), 'utf8');
+        return /<meta name="robots" content="noindex, nofollow">/.test(h) && !/guide-byline|datePublished|text\/markdown/.test(h) &&
+          !existsSync(join(root, 'docs', p.slice(1) + '.md')) && !paths.includes(p) && !llmsText.includes(p) && !(p.slice(1) in dates);
+      }) && got['/am-i-in-the-wrong-job.md'].status === 404, drafts.join());
+    check('a Markdown copy is served as Markdown naming its page as canonical',
+      got['/faq.md'].status === 200 && /^text\/markdown/.test(got['/faq.md'].type) && got['/faq.md'].link === '<https://psycheai.io/faq>; rel="canonical"',
+      JSON.stringify(got['/faq.md']));
+    check('a page is sent as Markdown only to a reader that asks for it, and says it varies',
+      /^text\/markdown/.test(got['/faq as md'].type) && /^text\/html/.test(got['/faq as browser'].type) &&
+        /Accept,/.test(got['/faq as md'].vary) && /Accept,/.test(got['/faq as browser'].vary), JSON.stringify([got['/faq as md'], got['/faq as browser']]));
+    check('llms.txt points AI readers at the Markdown copies', /https:\/\/psycheai\.io\/faq\.md/.test(llmsText) && /\.md\)/.test(llmsText));
+    {
+      const key = (/const KEY = '([0-9a-f]{32})'/.exec(readFileSync(join(root, 'tools', 'indexnow.mjs'), 'utf8')) || [])[1];
+      check('the IndexNow key is served at the site\'s root as plain text, matching the script that pings with it',
+        key === 'ffd11799b5d07d5cf6542ebb723deaff' && got['/' + key + '.txt'].status === 200 && got['/' + key + '.txt'].body === key &&
+          /^text\/plain/.test(got['/' + key + '.txt'].type));
+    }
     check('the guides link to them instead',
       ['/characters', '/mbti-types', '/faq', '/sample-report'].every(p => pages.find(([q]) => q === '/instagram-personality-test')[1].includes('href="' + p + '"')));
     check('llms.txt describes the site for AI search, with the pages it should read',

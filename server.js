@@ -175,6 +175,9 @@ const bodyLimitFor = route => (LARGE_BODY_ROUTES.has(route) ? LARGE_BODY_BYTES :
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+// The address the pages give as their own (their <link rel="canonical">).
+const SITE_ORIGIN = 'https://psycheai.io';
+
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -188,6 +191,7 @@ const TYPES = {
   '.ico': 'image/x-icon',
   '.mp4': 'video/mp4',
   '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8',
   '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
@@ -1611,8 +1615,12 @@ function serveStatic(requestedPath, request, response) {
   // (/instagram-personality-test), so a path with no extension that names an
   // .html page beside it is that page.
   let route = requestedPath;
-  if (route !== '/' && !path.extname(route) && /^\/[a-z0-9-]+$/.test(route) &&
-      fs.existsSync(path.join(ROOT, route + '.html'))) route += '.html';
+  // A guide with a Markdown copy beside it (tools/seo-pages.mjs) is sent as
+  // that copy to a reader that asks for Markdown and not HTML.
+  const page = /^\/[a-z0-9-]+$/.test(route) ? route.slice(1) : '';
+  const twin = page && fs.existsSync(path.join(ROOT, page + '.md'));
+  if (twin && wantsMarkdown(request.headers.accept)) route += '.md';
+  else if (page && fs.existsSync(path.join(ROOT, page + '.html'))) route += '.html';
   const target = path.join(ROOT, route === '/' ? 'index.html' : route);
 
   // Never serve anything outside docs/, whatever the traversal attempt.
@@ -1632,7 +1640,24 @@ function serveStatic(requestedPath, request, response) {
   // An address that names no page gets the site's own "Page not found",
   // with a way home; a missing file of any other kind, a plain 404.
   const pageLike = !path.extname(resolved) || path.extname(resolved).toLowerCase() === '.html';
-  staticFiles.send(resolved, type, request, response, null, pageLike ? path.join(ROOT, '404.html') : null);
+  // The Markdown copy names its page as the one to index; either form of a
+  // page that has both varies with what was asked for.
+  const markdownOf = /^\/([a-z0-9-]+)\.md$/.exec(route);
+  const extra = markdownOf ? { Link: '<' + SITE_ORIGIN + '/' + markdownOf[1] + '>; rel="canonical"', Vary: 'Accept, Accept-Encoding' }
+    : twin ? { Vary: 'Accept, Accept-Encoding' } : null;
+  staticFiles.send(resolved, type, request, response, extra, pageLike ? path.join(ROOT, '404.html') : null);
+}
+
+// Asked for Markdown, and ranked above HTML (or HTML not asked for at all).
+function wantsMarkdown(accept) {
+  const rank = type => {
+    const part = String(accept || '').split(',').map(p => p.trim().split(';')).find(([t]) => t.trim().toLowerCase() === type);
+    if (!part) return -1;
+    const q = part.slice(1).map(p => p.trim().split('=')).find(([k]) => k === 'q');
+    return q ? Number(q[1]) || 0 : 1;
+  };
+  const markdown = rank('text/markdown');
+  return markdown > 0 && markdown > rank('text/html');
 }
 
 // A video is streamed, never read whole, and answers byte ranges: Safari and

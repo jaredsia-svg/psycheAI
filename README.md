@@ -2272,6 +2272,39 @@ example from the sample's *Bursts, then recovery* pattern, and its price). "AI c
 funded apps; the page goes for the longer "AI personality coach" and "AI coach that knows you". Both
 are linked from the guides' footer on the front page and every generated page. 63 pages in the sitemap. The description became *The Psyche AI personality test reads your Instagram, no quiz: MBTI, attachment style, career strengths, blind spots, and an AI coach that already knows you* (23 October), dropping "a free Psyche Card", which read as a sales line in the search result.
 
+**Dates, an author and Markdown copies** (23 October 2026). Search engines and AI answer engines
+weigh freshness and a named author, and AI crawlers read Markdown more cheaply than HTML.
+- **Dates.** `tools/seo/dates.json` records when each page was published and last changed, with a
+  hash of the page with its dates left out. `node tools/seo-pages.mjs` moves a page's "Updated" date
+  to today only when that hash moves, so regenerating unchanged pages never makes them look fresh.
+  First dates came from the day each file reached git. `SEO_TODAY=` pins today.
+- **Author.** Every guide and generated page (36: not the front page or the policies) carries a
+  visible byline, *By Jared, founder of PsycheAI · Updated …*, linking to his LinkedIn, and Article
+  data with `datePublished`, `dateModified`, the author and PsycheAI as publisher. The four
+  hand-written guides get the same, injected by the generator.
+- **The sitemap** gives each dated page its `<lastmod>`.
+- **Markdown copies.** Each dated page has `/<slug>.md`: front matter (title, description,
+  canonical, author, dates), then the page's words without nav, buttons or footer. The page links it
+  as `rel="alternate" type="text/markdown"`. The server sends a `.md` with
+  `Link: <https://psycheai.io/<slug>>; rel="canonical"` so it is never indexed as a second copy, and
+  sends the copy in place of the page to a reader whose `Accept` ranks `text/markdown` above HTML
+  (`Vary: Accept`). `llms.txt` now points at the copies.
+- **IndexNow.** `npm run indexnow` after a deploy tells Bing and the other IndexNow engines (which
+  also feed ChatGPT search and Copilot) that pages changed. The key is served at
+  `/ffd11799b5d07d5cf6542ebb723deaff.txt`; it is not a secret. `npm run indexnow -- /faq` sends only
+  the pages named.
+
+**Draft pages** (23 October 2026). A topic with `draft: true` is written as a page but with
+`noindex, nofollow`, no dates or byline, no Markdown copy, and left out of the sitemap and llms.txt,
+so it can be read at its address before it is meant to be found. Six are drafted for review: three
+honest lists (`/best-free-personality-tests`, `/best-ai-life-coach-apps`,
+`/best-friendship-compatibility-tests`, each naming PsycheAI as "ours" and saying what each other
+option is best for) and three questions people actually ask (`/am-i-in-the-wrong-job`,
+`/what-will-i-regret-when-im-old`, citing Bronnie Ware's five regrets, and
+`/why-do-we-fight-over-small-things`, citing Gottman's finding that 69% of a couple's conflicts are
+perpetual). Each opens with a one-sentence answer for AI summaries. Publishing one is deleting its
+`draft: true` and running the generator, then `npm run indexnow` after the deploy.
+
 ## Kept across deploys (Upstash)
 
 `lib/store.js` talks to Upstash Redis over its REST API (`UPSTASH_REDIS_REST_URL`,
