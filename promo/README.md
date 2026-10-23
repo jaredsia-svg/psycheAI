@@ -169,8 +169,9 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 Burns 1 to 3 are ash and ember rather than the brand's colours: a charcoal ground lit red from below, charcoal
 panels, desaturated pictures, a dark-red ROAST #n badge; the set-up shows whole as it is said, and the punchline
 slams in, in ember red, with a red flash in from the edges and a shake (a first cut in the brand's pinks and
-purples read as too friendly). The honest friend, by contrast, is on the full brand gradient, its card edged in
-it; the ask goes back to the brand's dusk.
+purples read as too friendly). The honest friend, by contrast, is in the brand's colours, but only its words:
+*an honest friend* and the card's heading in the gradient, the card edged in it, on a dark plum ground (a full
+gradient background was too loud); the ask goes back to the brand's dusk.
 
 The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
 romance, and simple enough to get on one hearing. Earlier ones were cut: "your thumb has never been in better
@@ -189,10 +190,11 @@ Each burn is recorded as set-up and punchline apart (`punch` in its entry): `sho
 punchline so it starts on a beat. The music is brass house, F major (F Dm Bb C) at 124: piano stabs and a soft
 kick under the nice card; a reversed crash and riser into four on the floor, open hats on the offbeat, a funky
 octave bass and a bright brass hook; the drums drop out for the beat before each punchline and a horn hit lands
-on it; a breakdown of held chords for the honest friend; and for the ask it lifts rather than stings, an
-anthem's chords (Bb C Dm F) on strings swelling bar by bar, a rolling piano with a melody on top and a soft kick,
-ending on an F chord rolled softly up the piano over the strings, with nothing struck under it (an earlier ending
-on a horn hit, then a struck piano chord, landed as a bang). Two earlier pieces were dropped: B flat at
+on it. From the honest friend to the end it is one calm, inspiring piece after the roast: the beat simply stops,
+and a gentle progression (Dm Bb F C) plays a chord a bar on a soft piano, broken a beat at a time, over a warm
+pad; for the ask, strings come in and swell bar by bar under a slow melody, with a low heartbeat on one and three
+and nothing struck; it ends on an F chord rolled softly up the piano. (Earlier endings, a horn hit, a struck piano
+chord, then an anthem over a house beat, landed as a bang or kept the roast's energy where it should let go.) Two earlier pieces were dropped: B flat at
 132 with a music box (too childish) and C minor trap at 140 (too sombre).
 
 ### The career reel
@@ -206,8 +208,8 @@ Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | Struggling with your job? | typed out on a dusk ground, a briefcase |
-| 1 | Wrong job? / Slow days? / Am I the problem? | each said big, while the same doubts pile up as recent searches under a search bar (searches are among what the app reads); spoken slowly, with room between them |
-| 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; Ask PsycheAI on a phone, the question asked |
+| 1 | Wrong job? / Slow days? / Am I the problem? | only a search bar: each doubt typed in as it is said, with a "?", piling up as recent searches (searches are among what the app reads); spoken slowly, with room between them |
+| 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; the dots after *PsycheAI* flicker while Instagram and WhatsApp fly into the phone and a *Reading your data…* bar fills; Ask PsycheAI, the question asked |
 | 3 | You don't hate your job. You hate the routine parts of it. | the answer typed in: the routine parts drain you, your longest, fastest messages are about untangling a problem; *A new job won't fix that. Go after the messy problems in the one you have.* (a sample reader's) |
 | 4 | Your Psyche Report goes further. Your edge at work, what's holding you back, and the careers that suit you best. | three cards from the report's career assessment as each is named: *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
 | 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |

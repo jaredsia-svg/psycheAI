@@ -85,8 +85,8 @@ REELS['roast'] = {
     'punch': (1, 2, 3),
     # Its own piece, brass house: F major (F Dm Bb C) at 124. Piano stabs and a soft kick under the nice card;
     # then four on the floor, open hats on the offbeat, a funky octave bass and a bright brass hook; the drums drop
-    # out for the beat before each punchline and a horn hit lands on it. A breakdown of held chords for the
-    # honest friend; for the ask it lifts instead, an anthem's chords on strings and a rolling piano, ending softly.
+    # out for the beat before each punchline and a horn hit lands on it. Then calm and inspiring for the honest friend
+    # and the ask: a gentle piano and pad, strings swelling for the ask, ending softly.
     'mood': 'roast', 'bpm': 124,
     'chords': [[65, 69, 72], [62, 65, 69], [58, 62, 65], [60, 64, 67]], 'roots': [41, 38, 46, 48],
     # The hook, in eighths (None a rest).
@@ -385,8 +385,8 @@ elif R.get('mood') == 'roast':
     END = sc[5]['voEnd'] + 0.4
     RIFF = R['riff']
     EIGHTH = BEAT / 2
-    UP, UP_ROOTS = [[58, 62, 65], [60, 64, 67], [62, 65, 69], [65, 69, 72]], [46, 48, 50, 41]
-    MEL_UP = [[77, 74, 72, 74], [76, 72, 79, 76], [77, 81, 79, 77], [81, 79, 77, 72]]  # the ask's melody, a beat a note
+    CALM, CALM_ROOTS = [[62, 65, 69], [58, 62, 65], [65, 69, 72], [60, 64, 67]], [38, 34, 41, 36]
+    CALM_MEL = [[77, 74], [74, 77], [81, 77], [79, 76]]  # the ask's melody, two notes a bar
 
     def lp(x, fc):
         # A gentle low-pass done in one go in the frequency domain (the sample-by-sample one is slow for this many notes).
@@ -441,27 +441,24 @@ elif R.get('mood') == 'roast':
             if e % 2 == 0: at(b, K, 0.35)
             if e in (0, 3, 6): at(b, stab(chord, EIGHTH * 1.5), 0.9, 0.2)
             if e % 2 == 1 and b > DROP - 2 * BAR: at(b, HO, 0.2, 0.3)
-        elif adv:
-            # The breakdown: held chords and a pad, the piano on the one, no drums.
-            if e == 0:
-                at(b, pad(chord, BAR * 1.02), 1.0); at(b, stab(chord + [chord[0] + 12], BAR * 0.9, 0.06), 1.0)
-                at(b, house_bass(root, BAR * 0.9) * 0.6, 0.7)
-        elif cta:
-            # The ask lifts, warm and generous rather than stinging: an anthem's chords (Bb C Dm F) on strings that
-            # swell bar by bar, a rolling piano, a melody on top, a soft kick and claps, the bass held.
-            ch, rt = UP[bar_i], UP_ROOTS[bar_i]
-            grow = min(1.0, 0.55 + 0.15 * ((b - CTA) / BAR))
+        elif adv or cta:
+            # After the roast, calm and inspiring, one piece from the honest friend to the end: a gentle progression
+            # (Dm Bb F C) a bar a chord, counted from the honest friend; a soft piano breaking each chord a beat at a
+            # time and a warm pad. Strings come in for the ask and swell bar by bar, with a slow melody on top and a
+            # low heartbeat on one and three; no beat, nothing struck.
+            k = int((b - ADVICE + 1e-6) / BAR); ch, rt = CALM[k % 4], CALM_ROOTS[k % 4]
             ending = b >= END - BAR
             if e == 0:
-                at(b, strings(ch, BAR * 1.05, 0.06), grow); at(b, pad(ch, BAR * 1.02, 0.04), 1.0)
-                if not ending: at(b, house_bass(rt, BAR * 0.95) * 0.7, 0.7)
-            roll = ch + [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12, ch[0] + 12, ch[2]]
-            if not ending:
-                at(b, piano(roll[e] + 12, 1.2, 0.06), 1.0, 0.25 if e % 2 else -0.25)
-                if e % 2 == 0: at(b, piano(MEL_UP[bar_i][e // 2], 1.6, 0.085), 1.0, 0.05)
-                if e % 2 == 0: at(b, K, 0.5)
-                else: at(b, HO, 0.18, 0.3)
-                if e in (2, 6): at(b, C, 0.4)
+                at(b, pad(ch, BAR * 1.05, 0.045), 1.0)
+                if not ending: at(b, piano(rt + 12, 2.4, 0.07), 1.0)
+            if not ending and e % 2 == 0:
+                arp = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12]
+                at(b, lp(piano(arp[e // 2], 1.8, 0.07).astype(np.float32), 2500), 1.0, 0.25 if e % 4 else -0.25)
+            if cta:
+                grow = min(1.0, 0.5 + 0.2 * ((b - CTA) / BAR))
+                if e == 0: at(b, strings(ch, BAR * 1.05, 0.06), grow)
+                if not ending and e in (0, 4): at(b, piano(CALM_MEL[k % 4][e // 4], 2.0, 0.08), 1.0, 0.05)
+                if not ending and e in (0, 4): at(b, K, 0.28)
         elif not held:
             # Four on the floor, an open hat on every offbeat, claps on two and four.
             if e % 2 == 0:
@@ -487,11 +484,8 @@ elif R.get('mood') == 'roast':
     # Each punchline: a horn hit and a crash.
     for p in PUNCH:
         at(p, brass(HIT, 0.8, 6000, 0.09), 1.0); at(p, crash(), 0.9); at(p, impact(), 0.6)
-    # Into the honest friend, the beat falls away; into the ask, it comes back with a hit.
-    at(ADVICE, crash(), 0.5)
-    # Into the ask, strings rising out of the honest friend rather than a hit; the last chord is F, rolled softly
-    # up the piano and left to ring on the strings, with nothing struck under it.
-    at(CTA - BAR, strings(UP[3], BAR, 0.04), 1.0)
+    # Into the honest friend the beat simply stops. The last chord is F, rolled softly up the piano and left to ring
+    # on the strings, with nothing struck under it.
     last = snap(END - BAR, BAR)
     for k, m in enumerate([53, 60, 65, 69, 72, 77]): at(last + k * 0.07, piano(m, 3.0, 0.055), 1.0)
     at(last, strings([65, 69, 72], 3.0, 0.05), 1.0)
