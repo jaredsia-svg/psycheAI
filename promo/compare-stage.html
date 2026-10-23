@@ -1,0 +1,169 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The comparison reel (shorts.py compare): the same question asked of ChatGPT (top) and PsycheAI (below). Both
+   answers are real and only trimmed: ChatGPT's could fit anyone, PsycheAI's is drawn from the asker's own data. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f1f8; }
+body { font-family: Inter, sans-serif; color: #2a1238; }
+.el { position: absolute; display: none; }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); }
+#b1 { width: 820px; height: 820px; left: -260px; top: 900px; background: #ffd6e7; }
+#b2 { width: 760px; height: 760px; right: -240px; top: 1200px; background: #e6dcff; }
+/* The hook. */
+#hook { z-index: 30; left: 60px; right: 60px; top: 720px; text-align: center; font-size: 92px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.06; }
+#hook .gpt { color: #3c3c43; }
+/* The two panels. */
+.panel { z-index: 10; left: 40px; right: 40px; height: 800px; border-radius: 48px; overflow: hidden; padding: 26px 40px; }
+#pA { top: 150px; background: #ffffff; border: 3px solid #e4e4e7; box-shadow: 0 24px 60px rgba(0,0,0,.08); }
+#pB { top: 975px; border: 5px solid transparent;
+  background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box; box-shadow: 0 30px 80px rgba(138,63,208,.22); }
+.label { font-size: 40px; font-weight: 900; letter-spacing: -0.01em; }
+#pA .label { color: #3c3c43; }
+.q { margin: 18px 0 0 auto; width: max-content; max-width: 92%; padding: 18px 28px; border-radius: 32px; font-size: 34px; font-weight: 650; line-height: 1.3; min-height: 78px; }
+#pA .q { background: #ececf1; color: #202123; }
+#pB .q { background: linear-gradient(90deg, #8a3fd0, #e0457b); color: #fff; }
+.ans { margin-top: 20px; font-size: 34px; line-height: 1.34; color: #2f2f35; }
+.ans p { margin-bottom: 12px; }
+.ans li { margin: 0 0 6px 34px; font-weight: 750; }
+#ansB p { font-size: 37px; line-height: 1.3; color: #2a1238; font-weight: 600; margin-bottom: 14px; }
+#ansB b { color: #c2407a; font-weight: 850; }
+.stamp { z-index: 25; padding: 12px 30px; border-radius: 20px; font-size: 42px; font-weight: 900; letter-spacing: .02em; white-space: nowrap; }
+#stA { right: 80px; top: 168px; color: #6b6b73; border: 6px solid #9a9aa3; background: rgba(255,255,255,.92); }
+#stB { right: 80px; top: 995px; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.4); }
+/* Loading into PsycheAI's panel. */
+#loading { margin-top: 26px; padding: 28px 32px; border-radius: 32px; background: #faf5fd; }
+#loading .ln { font-size: 34px; font-weight: 750; color: #4a2366; }
+#loading .files { display: flex; gap: 14px; margin-top: 16px; }
+#loading .files span { padding: 10px 20px; border-radius: 999px; font-size: 26px; font-weight: 800; color: #6b3f8f; background: #efe2f9; }
+#loading .track { margin-top: 20px; height: 18px; border-radius: 9px; background: #efe4f7; overflow: hidden; }
+#loading .fill { height: 100%; width: 0; border-radius: 9px; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); }
+.dots i { font-style: normal; }
+.app { z-index: 26; width: 170px; text-align: center; }
+.app .ic { position: relative; width: 170px; height: 170px; border-radius: 44px; box-shadow: 0 24px 60px rgba(90,40,120,.35); }
+.app .nm { margin-top: 12px; font-size: 32px; font-weight: 850; color: #4a2366; }
+#ig .ic { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+#ig .ic::before { content: ''; position: absolute; inset: 38px; border: 11px solid #fff; border-radius: 34px; }
+#ig .ic::after { content: ''; position: absolute; left: 63px; top: 63px; width: 44px; height: 44px; border: 11px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#gg .ic { background: #fff; }
+#gg .ic::before { content: 'G'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 114px/1 Inter, sans-serif;
+  background: conic-gradient(from -45deg, #ea4335 0 25%, #4285f4 0 50%, #34a853 0 75%, #fbbc05 0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#wa .ic { background: #25d366; }
+#wa .ic::before { content: ''; position: absolute; left: 36px; top: 32px; width: 98px; height: 98px; border: 11px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic::after { content: ''; position: absolute; left: 32px; top: 114px; width: 0; height: 0; border-left: 20px solid transparent; border-top: 27px solid #fff; transform: rotate(18deg); }
+/* The close. */
+#wait { z-index: 30; left: 60px; right: 60px; top: 560px; text-align: center; font-size: 54px; font-weight: 800; color: #6b3f8f; line-height: 1.2; }
+#brand { z-index: 30; left: 0; right: 0; top: 760px; text-align: center; font-size: 170px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+#tag { z-index: 30; left: 0; right: 0; top: 960px; text-align: center; font-size: 66px; font-weight: 850; letter-spacing: -0.02em; }
+#site { z-index: 30; left: 50%; top: 1130px; padding: 28px 64px; border-radius: 999px; font-size: 54px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.4); }
+#free { z-index: 30; left: 0; right: 0; top: 1300px; text-align: center; font-size: 42px; font-weight: 800; color: #6b3f8f; }
+#askBoth { z-index: 30; left: 0; right: 0; top: 1390px; text-align: center; font-size: 42px; font-weight: 800; color: #2a1238; }
+</style></head>
+<body>
+  <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
+  <div class="el" id="hook">I asked <span class="gpt">ChatGPT</span> and <span class="grad">PsycheAI</span> the same question.</div>
+  <div class="el panel" id="pA"><div class="label">ChatGPT</div><div class="q" id="qA"></div><div class="ans" id="ansA"></div></div>
+  <div class="el panel" id="pB"><div class="label grad">PsycheAI</div><div class="q" id="qB"></div>
+    <div id="loading"><div class="ln">Reading your data<span class="dots" id="dots"><i>.</i><i>.</i><i>.</i></span></div>
+      <div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span><span>🔎 Google</span></div><div class="track"><div class="fill"></div></div></div>
+    <div class="ans" id="ansB"></div></div>
+  <div class="el stamp" id="stA">Could be anyone</div>
+  <div class="el stamp" id="stB">Only me</div>
+  <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
+  <div class="el app" id="gg"><div class="ic"></div><div class="nm">Google</div></div>
+  <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
+  <div class="el" id="wait">Other AI coaches wait for you<br>to describe yourself.</div>
+  <div class="el" id="brand"><span class="grad">PsycheAI</span></div>
+  <div class="el" id="tag">your personal AI coach</div>
+  <div class="el" id="site">psycheai.io ↗</div>
+  <div class="el" id="free">Your first Psyche Card is free</div>
+  <div class="el" id="askBoth">Which question would you ask both? 👇</div>
+<script>
+const TL = __TIMELINE__;
+const S = TL.scenes, BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  if (tf !== undefined) el.style.transform = tf; };
+const [HOOK, GPT, LOAD, ANS, VERDICT, CLOSE] = S;
+
+// The question, exactly as it was asked of both.
+const QUESTION = 'What would I regret most about my life when I’m old?';
+// ChatGPT's real answer, trimmed only: its opening line and the headings of its list.
+const GPT_LINES = ['<p><b>You might regret the things you knew mattered to you but kept postponing because you thought you had more time.</b></p>',
+  '<li>Not being fully honest about what you wanted.</li>', '<li>Not loving people more openly.</li>',
+  '<li>Being too afraid to try.</li>', '<li>Trading too much of your life for approval or achievement.</li>', '<li>Not being present for your own life.</li>'];
+const gptEls = GPT_LINES.map(h => { const d = document.createElement('div'); d.innerHTML = h; $('ansA').appendChild(d); return d; });
+// PsycheAI's real answers, trimmed only, as excerpts typed in one after another.
+const PSY = ['“Your deepest regret will not be a missed business deal…”',
+  '“You let your <b>analytical shield</b> turn any form of intimacy into an audit.”',
+  '“You quoted <b>The Little Prince</b> in 2023, so you are already familiar with this trap, yet you still fall in.”',
+  '“You won’t regret getting hurt; you will regret <b>never having dared to let someone in completely.</b>”'];
+const psyWords = PSY.map(h => h.split(/(?<=\s)/));
+const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
+
+function render(t) {
+  const ph = (t % BEAT) / BEAT, pulse = t >= ANS.start ? Math.exp(-ph * 6) : 0;
+  $('b1').style.transform = 'translate(' + Math.sin(t * .5) * 120 + 'px,' + Math.cos(t * .4) * 140 + 'px)';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .45) * 140 + 'px,' + Math.sin(t * .35) * 160 + 'px)';
+  const closing = t >= CLOSE.start - 0.2;
+
+  // The hook, then the two panels slide in and the question types into both at once.
+  const hk = back(prog(t, HOOK.vo - 0.2, HOOK.vo + 0.2)), hkOut = prog(t, HOOK.voEnd + 0.1, HOOK.voEnd + 0.4);
+  show('hook', clamp(hk * 2) * (1 - hkOut), 'scale(' + (0.85 + 0.15 * Math.min(1, hk)) + ')');
+  const pin = easeIO(prog(t, HOOK.voEnd + 0.2, HOOK.voEnd + 0.7)), pout = easeIO(prog(t, CLOSE.start - 0.3, CLOSE.start + 0.2));
+  // Each panel is lit while it speaks and dimmed while the other does.
+  const litA = t < LOAD.start ? 1 : t < VERDICT.start ? 0.35 : 1, litB = t >= GPT.start - 0.1 && t < LOAD.start ? 0.35 : 1;
+  show('pA', pin * (1 - pout) * litA, 'translateY(' + ((1 - pin) * -200 - pout * 200) + 'px)');
+  show('pB', pin * (1 - pout) * litB, 'translateY(' + ((1 - pin) * 200 + pout * 200) + 'px)');
+  const qTyped = Math.round(QUESTION.length * prog(t, HOOK.voEnd + 0.6, HOOK.voEnd + 2.0));
+  $('qA').textContent = $('qB').textContent = QUESTION.slice(0, qTyped);
+  ['qA', 'qB'].forEach(id => { $(id).style.visibility = qTyped ? 'visible' : 'hidden'; });
+
+  // ChatGPT: its opening line and its list, line by line, then "Could be anyone".
+  gptEls.forEach((d, i) => { const a = GPT.vo + i * 0.4, p = ease(prog(t, a, a + 0.3)); d.style.opacity = p; d.style.transform = 'translateY(' + (1 - p) * 16 + 'px)'; });
+  const sa = back(prog(t, GPT.voEnd + 0.3, GPT.voEnd + 0.6));
+  show('stA', !closing && t >= GPT.voEnd + 0.3 ? clamp(sa * 2) * litA : 0, 'scale(' + (1 + (1 - Math.min(1, sa)) * 1.4) + ') rotate(-6deg)');
+
+  // PsycheAI: the data is read (Instagram, Google and WhatsApp fly into its panel), then its excerpts type in.
+  const flick = Math.floor(t * 6) % 4;
+  [...$('dots').children].forEach((d, i) => { d.style.opacity = i < flick ? (0.55 + 0.45 * Math.abs(Math.sin(t * 17 + i))) : 0; });
+  $('loading').style.display = t >= LOAD.start - 0.1 && t < ANS.vo ? 'block' : 'none';
+  $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, LOAD.vo, ANS.start - 0.1))) + '%';
+  [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, LOAD.vo + 0.5 + i * 0.25, LOAD.vo + 0.7 + i * 0.25); });
+  [['ig', -1, 0.0], ['gg', 0, 0.15], ['wa', 1, 0.3]].forEach(([id, side, delay]) => {
+    const a = LOAD.start + delay, fly = easeIO(prog(t, a + 0.3, a + 1.0)), pop = back(prog(t, a, a + 0.3));
+    const x0 = 540 + side * 330 - 85, y0 = 560, x1 = 455, y1 = 1230;
+    Object.assign($(id).style, { left: (x0 + (x1 - x0) * fly) + 'px', top: (y0 + (y1 - y0) * fly) + 'px' });
+    show(id, t < ANS.start ? clamp(pop * 2) * (1 - prog(fly, 0.75, 1)) : 0, 'scale(' + Math.min(1.05, pop) * (1 - 0.7 * fly) + ') rotate(' + side * 8 * (1 - fly) + 'deg)'); });
+  // The excerpts, typed one after another at reading pace.
+  const total = psyWords.reduce((a, w) => a + w.length, 0), typed = Math.round(total * prog(t, ANS.vo, ANS.end - 1.8));
+  let left = typed;
+  $('ansB').innerHTML = t >= ANS.vo ? psyWords.map(w => { const k = Math.min(w.length, Math.max(0, left)); left -= w.length;
+    return k ? '<p>' + fixTags(w.slice(0, k).join('')) + '</p>' : ''; }).join('') : '';
+  const sb = back(prog(t, ANS.end - 1.4, ANS.end - 1.1));
+  show('stB', !closing && t >= ANS.end - 1.4 ? clamp(sb * 2) : 0, 'scale(' + (1 + (1 - Math.min(1, sb)) * 1.4 + pulse * 0.03) + ') rotate(-4deg)');
+
+  // The close: the panels part; PsycheAI, your personal AI coach.
+  const w = back(prog(t, CLOSE.start, CLOSE.start + 0.4));
+  show('wait', closing ? clamp(w * 2) : 0, 'translateY(' + (1 - Math.min(1, w)) * 30 + 'px)');
+  const br = back(prog(t, CLOSE.vo - 0.15, CLOSE.vo + 0.25));
+  show('brand', closing ? clamp(br * 2) : 0, 'scale(' + (0.7 + 0.3 * Math.min(1, br) + pulse * 0.015) + ')');
+  const tg = back(prog(t, CLOSE.vo + 0.5, CLOSE.vo + 0.8));
+  show('tag', closing ? clamp(tg * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, tg)) + ')');
+  const st = back(prog(t, CLOSE.voEnd - 0.4, CLOSE.voEnd - 0.1));
+  show('site', closing ? clamp(st * 2) : 0, 'translateX(-50%) scale(' + (Math.min(1.05, st) + pulse * 0.04 * Math.min(1, st)) + ')');
+  const fr = ease(prog(t, CLOSE.voEnd, CLOSE.voEnd + 0.3)), ab = ease(prog(t, CLOSE.voEnd + 0.2, CLOSE.voEnd + 0.5));
+  show('free', closing ? fr : 0, 'translateY(' + (1 - fr) * 20 + 'px)');
+  show('askBoth', closing ? ab : 0, 'translateY(' + (1 - ab) * 20 + 'px)');
+}
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>

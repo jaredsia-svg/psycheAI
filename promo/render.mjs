@@ -6,7 +6,8 @@
 // The first argument is a version in config.json, privacy for the privacy reel (privacy-stage.html), or
 // notes, mbti, coach or coach-misunderstood for the short reels (shorts.py, shorts-stage.html), or roast for the
 // roast reel (shorts.py, roast-stage.html), or career for the career reel (shorts.py, career-stage.html),
-// or relationship for the relationship reel (shorts.py, relationship-stage.html).
+// relationship for the relationship reel (shorts.py, relationship-stage.html), or compare for the comparison reel
+// (shorts.py, compare-stage.html).
 //
 // The stage reads the timeline audio.py wrote, the card parts capture.mjs measured,
 // the brand mark from docs/copy.js, the closing link from config.json and the
@@ -29,7 +30,7 @@ const parts = JSON.stringify({ ...JSON.parse(readFileSync(dir + '/assets/card-pa
 const configs = JSON.parse(readFileSync(dir + '/config.json', 'utf8'));
 const config = JSON.stringify(configs[version] || configs.reel);
 // The short reels (shorts.py) share one stage.
-const stage = { privacy: 'privacy-stage.html', notes: 'shorts-stage.html', mbti: 'shorts-stage.html', coach: 'shorts-stage.html', 'coach-misunderstood': 'shorts-stage.html', roast: 'roast-stage.html', career: 'career-stage.html', relationship: 'relationship-stage.html' }[version] || 'stage.html';
+const stage = { privacy: 'privacy-stage.html', notes: 'shorts-stage.html', mbti: 'shorts-stage.html', coach: 'shorts-stage.html', 'coach-misunderstood': 'shorts-stage.html', roast: 'roast-stage.html', career: 'career-stage.html', relationship: 'relationship-stage.html', compare: 'compare-stage.html' }[version] || 'stage.html';
 const sandbox = { window: {} };
 sandbox.self = sandbox.window;
 sandbox.globalThis = sandbox;

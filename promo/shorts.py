@@ -139,6 +139,29 @@ REELS['relationship'] = {
     'melody': [[73, 69, 66, 69], [74, 69, 66, 69], [76, 73, 69, 73], [71, 68, 64, 68]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
+# The comparison reel: the same question asked of ChatGPT and of PsycheAI, both answers real and only trimmed,
+# never reworded ("Chat G P T" is how the voice says the name). ChatGPT's could fit anyone; PsycheAI's is drawn from the asker's own data. The career reel's
+# instruments in a key and tempo of their own; Ryan's voice, as the career reel.
+REELS['compare'] = {
+    'voice': 'en_US-ryan-high',
+    'lines': [
+        (['I asked Chat G P T and {B} the same question.'], 0.85, None),
+        (['Chat G P T gave me a list that could fit anyone.'], 0.85, None),
+        (['{B} read my data first.'], 0.85, None),
+        (['And it told me exactly why.'], 0.85, None),
+        (['Same question.', 'Only one of them actually knew me.'], 0.85, True, 0.3),
+        (['{B}, your personal AI coach.'], 0.85, None),
+    ],
+    'hold': {0: 2.4, 1: 1.6, 2: 0.9, 3: 6.6, 4: 0.8},  # 0: the question typed into both; 1 and 3: time to read each answer
+    # Its own key and tempo on the career reel's instruments: A minor (Am F C G) at 100 under ChatGPT's answer, a
+    # muffled piano and a slow pulse; a swell into C major (C G Am F) for PsycheAI's, with a light beat and a plucked
+    # tune; fuller for the verdict; a C chord rolled softly to close.
+    'mood': 'career', 'bpm': 100,
+    'chords': [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], 'roots': [45, 41, 48, 43],
+    'lift': [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], 'lift_roots': [36, 43, 45, 41],
+    'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
+    'reveal': 3, 'swing': 0.0, 'early_claps': False,
+}
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +

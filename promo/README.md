@@ -246,6 +246,31 @@ E) at 84 on an electric piano with a slow tremolo and a pad; a low pulse under t
 eighths; the piano alone for the asking; a soft groove for the answer (brushed snare, rim, bass, a vibraphone
 tune); a last A chord rolled softly up the electric piano.
 
+### The comparison reel
+
+```
+npm run promo:shorts -- compare   # out/PsycheAI-compare.mp4, about 30 s
+```
+
+The same question asked of ChatGPT and of PsycheAI, on one screen: ChatGPT's panel above, PsycheAI's below, each
+lit while it answers and dimmed while the other does. Its own stage, `compare-stage.html`; Ryan's voice, as the
+career reel; the career reel's instruments in a key and tempo of their own (A minor to C major at 100).
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | I asked ChatGPT and PsycheAI the same question. | the line, then both panels, and *What would I regret most about my life when I'm old?* typed into both at once |
+| 1 | ChatGPT gave me a list that could fit anyone. | ChatGPT's real answer, trimmed only: its opening line and the five headings of its list; a grey *Could be anyone* stamp |
+| 2 | PsycheAI read my data first. | Instagram, Google and WhatsApp fly into PsycheAI's panel; *Reading your data…* |
+| 3 | And it told me exactly why. | four excerpts of PsycheAI's real answers, typed in at reading pace; an *Only me* stamp in the gradient |
+| 4 | Same question. Only one of them actually knew me. | both panels lit, with their stamps |
+| 5 | PsycheAI, your personal AI coach. | *Other AI coaches wait for you to describe yourself.*, *PsycheAI*, *your personal AI coach*, the address, *Your first Psyche Card is free*, *Which question would you ask both? 👇* |
+
+The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
+only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
+reworded, and labelled in plain text rather than with ChatGPT's logo. Run it past someone for comparative
+advertising before paying to promote it. The voice says "Chat G P T"; written as one word it came out
+"chatgbke".
+
 ## The privacy post
 
 `node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the
