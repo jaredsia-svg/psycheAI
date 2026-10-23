@@ -17,6 +17,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .ember-text { background: linear-gradient(180deg, #ffe0c2 0%, #ff8a3d 45%, #e8261a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .fire { background: linear-gradient(90deg, #ffd166, #ff7a45 40%, #e0457b 75%, #b14fd8); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.heat { background: linear-gradient(90deg, #ffa21f, #ff5a0a); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* The hook: the nice card, then the site's own roast cover and its button. */
 #nice { z-index: 20; left: 60px; right: 60px; top: 250px; text-align: center; font-size: 82px; font-weight: 850; letter-spacing: -0.03em; line-height: 1.08; }
@@ -100,7 +101,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="glow"></div>
   <div id="embers"></div>
   <div id="world">
-    <div class="el" id="nice">My Psyche Card<br>was <span class="grad">so nice</span>.</div>
+    <div class="el" id="nice">My Psyche Card<br>was <span class="heat">so nice</span>.</div>
     <div class="el" id="then">Then I clicked…</div>
     <img class="el" id="card" src="assets/card-sherlock.png">
     <div class="el" id="cover"><div class="badge">✨ SECRET BONUS UNLOCKED</div><h2 class="grad">Let us roast you</h2>
@@ -195,7 +196,7 @@ function render(t) {
   const dark = easeIO(prog(t, DROP - 0.1, DROP + 0.25)), warm = easeIO(prog(t, ADV.start - 0.3, ADV.start + 0.4)) * (1 - easeIO(prog(t, CTA.start - 0.3, CTA.start + 0.2)));
   // The burns are ash and ember; the ask goes back to the brand's dusk.
   const asking = t >= CTA.start - 0.3;
-  document.body.style.background = dark < 0.01 ? 'radial-gradient(130% 90% at 50% 0%, #ffd6e7 0%, #fdf7fc 60%, #f3e6ff 100%)'
+  document.body.style.background = dark < 0.01 ? 'radial-gradient(130% 90% at 50% 0%, #ffe0c0 0%, #fff6ec 60%, #f6ece4 100%)'
     : asking ? 'radial-gradient(120% 80% at 50% 35%, #3a1240 0%, #1c0a24 60%, #0e0514 100%)'
     : warm > 0.5 ? 'radial-gradient(120% 80% at 50% 35%, #4a1d55 0%, #1c0a24 60%, #0e0514 100%)'
     : 'radial-gradient(120% 80% at 50% 35%, #2a1210 0%, #120807 60%, #060303 100%)';
@@ -230,7 +231,7 @@ function hook(t) {
   $('card').style.filter = gone ? 'sepia(' + gone + ') saturate(' + (1 + gone * 3) + ') hue-rotate(-' + gone * 30 + 'deg) brightness(' + (1 - gone * 0.6) + ')' : '';
   // A glow round the card, breathing.
   const gl = 0.75 + 0.25 * Math.sin(t * 3);
-  $('card').style.boxShadow = '0 0 ' + (60 + 20 * gl) + 'px ' + (16 + 10 * gl) + 'px rgba(224,69,123,' + 0.7 * gl + '), 0 0 ' + (120 + 30 * gl) + 'px ' + (30 + 15 * gl) + 'px rgba(138,63,208,' + 0.5 * gl + ')';
+  $('card').style.boxShadow = '0 0 ' + (60 + 20 * gl) + 'px ' + (16 + 10 * gl) + 'px rgba(255,120,20,' + 0.75 * gl + '), 0 0 ' + (120 + 30 * gl) + 'px ' + (30 + 15 * gl) + 'px rgba(255,170,50,' + 0.5 * gl + ')';
   // The cover rises in; the finger comes in and presses the button; the ring spreads.
   const cv = back(prog(t, m1, m1 + 0.4));
   const press = prog(t, tapAt, tapAt + 0.08) * (1 - prog(t, tapAt + 0.12, tapAt + 0.25));

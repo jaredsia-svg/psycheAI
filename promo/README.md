@@ -142,7 +142,7 @@ cover each), from `shorts.py` (voice, timeline, music) and one stage, `shorts-st
 | `notes` | Your Instagram has been taking notes on you for years. / It knows you're the one who organises every plan, you give more attention than you ask for, and you're the first to check on a friend who's gone quiet. / So I let PsycheAI read it. / I got Mulan. The organiser with a warm centre. / Comment card, and I'll send you the link. | a phone with a scrolling feed; three habits pop as they are said (Mulan's own patterns, so the reveal is earned; trivia like "saves recipes, never cooks" was tried first, and "goes quiet to recharge", which read as an introvert beside her ENFJ) and are drawn into the phone as it is read; the sample card flips in on the hit; *Comment "CARD"* |
 | `mbti` | I took the MBTI test three times, and got three different answers. / So I loaded my Instagram data instead. / No questions asked. Just what my online patterns actually show. / I got Odysseus. ENTP, with the evidence. / What does yours say? Comment your type. | three test results (INFJ, ESTP, INTP) and a "?"; Instagram on the phone; three of his own signature patterns as his card evidences them (*Rescues every plan with a plan B*, *Talks every group round*, *Same few friends hear it all first*); the Odysseus sample card (`assets/card-odysseus.png`) with its MBTI ringed; the sixteen types scrolling |
 
-| `coach` | Some questions are hard to ask anyone. / What am I most insecure about? / What do I keep trying to prove, and to whom? / What would I regret most, when I'm old? / PsycheAI answers from what your own data shows. / A coach that already knows you. / Ask yours at PsycheAI dot io. | the hook typed out as said, then each question alone on a dusk-plum ground, held for a breath (the regret one longer); the ground warms and Ask PsycheAI answers the regret question, typed in, in plain words (*You'll wish you'd spent more time with your parents and friends.* … *Don't wait. Call home. Message them. Book the trip.*: a sample reader's, from the kinds of evidence the app reads); *Ask yours*, the address, and last *Your first question is free* |
+| `coach` | Some questions are hard to ask anyone. / What am I most insecure about? / What do I keep trying to prove, and to whom? / What would I regret most, when I'm old? / PsycheAI answers from what your own data shows. / A coach that already knows you. / Ask yours at PsycheAI dot io. | the hook typed out as said, then each question alone on a dusk-plum ground, held for a breath (the regret one longer); the ground warms and, as the voice says PsycheAI answers from your own data, Instagram and WhatsApp fly into the phone and a *Reading your data…* bar fills with its dots flickering, so the claim is seen (added in October 2026, in the voice's own second person rather than the career reel's "So I asked"); then Ask PsycheAI answers the regret question, typed in, in plain words (*You'll wish you'd spent more time with your parents and friends.* … *Don't wait. Call home. Message them. Book the trip.*: a sample reader's, from the kinds of evidence the app reads); *Ask yours*, the address, and last *Your first question is free* |
 
 The music is the main video's instruments in a different key and feel each: `notes` in A minor
 (Am F C G) at 112, curious then bright; `mbti` in D (D A Bm G) at 124, with early claps and swung plucks.
@@ -159,7 +159,7 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) with a glow round it, then the site's roast cover; a finger presses the button |
+| 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) on a warm sand ground with an orange glow round it and *so nice* in orange (pink read as too sweet for a man's reel), then the site's roast cover; a finger presses the button |
 | 1 | You've saved three hundred cooking videos. / Your most cooked dish is instant noodles. | a saved grid of recipes counting to 300, greyed out under a *#1 most cooked 🍜* stamp |
 | 2 | You type K when you're angry. / You've sent K two hundred fourteen times. | a friend trying to make up, answered "k." each time, the count climbing to 214; then the chat floods with them |
 | 3 | You left forty seven people on red. / Including your dad. | an inbox of "Seen" chats stopping on *Dad: Proud of you. Call when you can 🙂* |
@@ -190,11 +190,11 @@ Each burn is recorded as set-up and punchline apart (`punch` in its entry): `sho
 punchline so it starts on a beat. The music is brass house, F major (F Dm Bb C) at 124: piano stabs and a soft
 kick under the nice card; a reversed crash and riser into four on the floor, open hats on the offbeat, a funky
 octave bass and a bright brass hook; the drums drop out for the beat before each punchline and a horn hit lands
-on it. From the honest friend to the end it is one calm, inspiring piece after the roast: the beat simply stops,
-and a gentle progression (Dm Bb F C) plays a chord a bar on a soft piano, broken a beat at a time, over a warm
-pad; for the ask, strings come in and swell bar by bar under a slow melody, with a low heartbeat on one and three
-and nothing struck; it ends on an F chord rolled softly up the piano. (Earlier endings, a horn hit, a struck piano
-chord, then an anthem over a house beat, landed as a bang or kept the roast's energy where it should let go.) Two earlier pieces were dropped: B flat at
+on it. From the honest friend to the end, a soft crash and then the breakdown: the same chords held, a pad, the
+piano on the one, the bass held, no drums; at the very end a reversed cymbal and a swell rise gently into a last
+held F, with nothing struck under it. (Endings tried and dropped: a horn hit and a struck piano chord, which
+landed as a bang; an anthem over a house beat, which kept the roast's energy; and a new calm piano piece, which
+broke from the rest of the reel.) Two earlier pieces were dropped: B flat at
 132 with a music box (too childish) and C minor trap at 140 (too sombre).
 
 ### The career reel

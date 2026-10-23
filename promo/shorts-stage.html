@@ -67,6 +67,23 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .ba { margin-top: 14px; max-width: 100%; padding: 16px 18px; border-radius: 20px 20px 20px 6px; background: #fff; color: #2a1238; font-size: 23px; line-height: 1.42;
   font-weight: 550; box-shadow: 0 8px 20px rgba(90,40,120,.14); }
 .ba b { color: #c2407a; }
+/* The coach reel's loading: the reader's Instagram and WhatsApp fly into the phone and are read before the answer. */
+.app { z-index: 25; width: 170px; text-align: center; }
+.app .ic { position: relative; width: 170px; height: 170px; border-radius: 44px; box-shadow: 0 24px 60px rgba(90,40,120,.35); }
+.app .nm { margin-top: 14px; font-size: 32px; font-weight: 850; color: #4a2366; }
+#ig .ic { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+#ig .ic::before { content: ''; position: absolute; inset: 38px; border: 11px solid #fff; border-radius: 34px; }
+#ig .ic::after { content: ''; position: absolute; left: 63px; top: 63px; width: 44px; height: 44px; border: 11px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic { background: #25d366; }
+#wa .ic::before { content: ''; position: absolute; left: 36px; top: 32px; width: 98px; height: 98px; border: 11px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic::after { content: ''; position: absolute; left: 32px; top: 114px; width: 0; height: 0; border-left: 20px solid transparent; border-top: 27px solid #fff; transform: rotate(18deg); }
+#loading { margin-top: 14px; padding: 16px 18px; border-radius: 20px; background: #fff; box-shadow: 0 8px 20px rgba(90,40,120,.14); display: none; }
+#loading .ln { font-size: 21px; font-weight: 750; color: #4a2366; }
+#loading .files { display: flex; gap: 8px; margin-top: 10px; }
+#loading .files span { padding: 5px 11px; border-radius: 999px; font-size: 15px; font-weight: 800; color: #6b3f8f; background: #f3e9fb; }
+#loading .track { margin-top: 12px; height: 10px; border-radius: 5px; background: #efe4f7; overflow: hidden; }
+#loading .fill { height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); }
+.dots i { font-style: normal; }
 </style></head>
 <body>
   <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
@@ -75,7 +92,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="heads"></div>
   <div class="el" id="hook"></div>
   <div id="qs"></div>
-  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="feed"></div><div id="chat"><h6>ASK PSYCHEAI</h6><div class="bq">What would I regret most, when I’m old?</div><div class="ba" id="answer"></div></div><div id="scan"></div><div id="igIcon"></div></div></div>
+  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="feed"></div><div id="chat"><h6>ASK PSYCHEAI</h6><div class="bq">What would I regret most, when I’m old?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span></div><div class="track"><div class="fill"></div></div></div><div class="ba" id="answer"></div></div><div id="scan"></div><div id="igIcon"></div></div></div>
   <div id="chips"></div>
   <div id="results"></div>
   <div class="el" id="huh">?</div>
@@ -85,6 +102,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el" id="types"></div>
   <div class="el" id="site">psycheai.io ↗</div>
   <div class="el" id="free"></div>
+  <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
+  <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
 <script>
 const TL = __TIMELINE__;
 const PARTS = __PARTS__;
@@ -273,9 +292,23 @@ function coach(t, pulse) {
   $('chat').style.display = 'block';
   const asked = back(prog(t, A.start + 0.45, A.start + 0.8));
   $('chat').querySelector('.bq').style.opacity = clamp(asked * 2); $('chat').querySelector('.bq').style.transform = 'scale(' + Math.min(1, asked) + ')';
-  const typed = Math.round(answerWords.length * prog(t, A.vo + 0.1, A.vo + 4.4));
+  // While the voice says the answer comes from your own data, the data is read: Instagram and WhatsApp fly into
+  // the phone, a bar fills and the dots flicker; then the answer types in.
+  const LOADED = A.vo + 1.9;
+  [['ig', -1, 0.0], ['wa', 1, 0.3]].forEach(([id, side, delay]) => {
+    const a = A.vo + delay, fly = easeIO(prog(t, a + 0.3, a + 1.0)), pop = back(prog(t, a, a + 0.3));
+    const x0 = 540 + side * 330 - 85, y0 = 430, x1 = 455, y1 = 880;
+    Object.assign($(id).style, { left: (x0 + (x1 - x0) * fly) + 'px', top: (y0 + (y1 - y0) * fly) + 'px' });
+    show(id, t < LOADED ? clamp(pop * 2) * (1 - prog(fly, 0.75, 1)) : 0, 'scale(' + Math.min(1.05, pop) * (1 - 0.7 * fly) + ') rotate(' + side * 8 * (1 - fly) + 'deg)'); });
+  const flick = Math.floor(t * 6) % 4;
+  [...$('dots').children].forEach((d, i) => { d.style.opacity = i < flick ? (0.55 + 0.45 * Math.abs(Math.sin(t * 17 + i))) : 0; });
+  $('loading').style.display = t >= A.start + 0.6 && t < LOADED ? 'block' : 'none';
+  $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, A.vo + 0.2, LOADED - 0.1))) + '%';
+  [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, A.vo + 0.7 + i * 0.3, A.vo + 0.9 + i * 0.3); });
+  $('answer').style.display = t >= LOADED ? 'block' : 'none';
+  const typed = Math.round(answerWords.length * prog(t, LOADED, LOADED + 4.0));
   $('answer').innerHTML = answerWords.slice(0, typed).join('') || '…';
-  $('answer').style.opacity = prog(t, A.start + 0.8, A.start + 1.0);
+  $('answer').style.opacity = prog(t, LOADED, LOADED + 0.15);
   // The ask.
   const cta = back(prog(t, CTA.start + 0.05, CTA.start + 0.45));
   $('cta').style.top = '820px';
