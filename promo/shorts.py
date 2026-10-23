@@ -374,9 +374,10 @@ elif R.get('mood') == 'career':
     # A swell into the answer, a lift into the report, and the last chord held.
     at(DROP - 2.0, swell(2.0) * 1.4, 1.0); at(DROP, impact(), 0.35)
     at(REPORT - 1.0, swell(1.0), 1.0)
+    # The last chord, D, rolled softly up the piano a note at a time over a pad already swelling, nothing struck at once.
     last = snap(END - BAR, BAR)
-    for m in LIFT[0] + [LIFT[0][0] + 12, LIFT[0][0] - 12]: at(last, felt(m, 3.0, 0.1), 1.0)
-    at(last, pad(LIFT[0], 3.0, 0.05), 1.0)
+    for k, m in enumerate([LIFT[0][0] - 12] + LIFT[0] + [LIFT[0][0] + 12]): at(last + k * 0.09, felt(m, 3.0, 0.055), 1.0)
+    at(last - 0.6, pad(LIFT[0], 3.6, 0.045), 1.0)
 elif R.get('mood') == 'roast':
     sc = scenes
     DROP = sc[1]['start']                         # the roast button: a riser, then the beat

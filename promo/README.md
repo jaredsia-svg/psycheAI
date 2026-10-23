@@ -218,7 +218,8 @@ Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
 following a plan you didn't help make", was hard to follow and did not match the evidence under it. The music:
 B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell into D major (D A Bm G) for
 the answer, with a light beat of kick, snaps and shaker, a warm bass and a plucked tune; fuller for the report;
-a held D chord to close.
+a D chord to close, rolled softly up the piano a note at a time over a swelling pad (struck all at once, it
+landed as a bang).
 
 ## The privacy post
 
