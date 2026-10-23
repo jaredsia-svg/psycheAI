@@ -150,13 +150,15 @@ REELS['compare'] = {
         (['{B} read my data first.'], 0.85, None),
         (['And it told me exactly why.'], 0.85, None),
         (['Same question.', 'Only one of them actually knew me.'], 0.85, True, 0.3),
-        (['{B}, your personal AI coach.'], 0.85, None),
+        (['Your personal AI coach.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
     ],
     'hold': {0: 2.4, 1: 1.6, 2: 0.9, 3: 6.6, 4: 0.8},  # 0: the question typed into both; 1 and 3: time to read each answer
+    'lead': {5: 1.6},  # 5: the closing thought is read before the voice comes in
     # Its own key and tempo on the career reel's instruments: A minor (Am F C G) at 100 under ChatGPT's answer, a
     # muffled piano and a slow pulse; a swell into C major (C G Am F) for PsycheAI's, with a light beat and a plucked
-    # tune; fuller for the verdict; a C chord rolled softly to close.
-    'mood': 'career', 'bpm': 100,
+    # tune; fuller for the verdict; the beat stops for the close (`calm_close`), the piano carrying it to a C chord
+    # rolled softly.
+    'mood': 'career', 'bpm': 100, 'calm_close': True,
     'chords': [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], 'roots': [45, 41, 48, 43],
     'lift': [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], 'lift_roots': [36, 43, 45, 41],
     'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
@@ -467,7 +469,7 @@ elif R.get('mood') == 'career':
             # A slow pulse from the questions on: a soft low kick on the beat, the bass held.
             if b >= QUESTIONS and e % 2 == 0: at(b, K, 0.35 if e == 0 else 0.2)
             if b >= QUESTIONS and e == 0: at(b, warm_bass(root - 12, BAR * 0.95), 0.8)
-        elif b < CLOSE + BAR:
+        elif b < (CLOSE if R.get('calm_close') else CLOSE + BAR):
             # The light beat: kick on one and three (and the and of two), snaps on two and four, a shaker in sixteenths.
             if e in (0, 3, 4):
                 at(b, K, 0.75)

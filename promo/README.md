@@ -263,9 +263,11 @@ career reel; the career reel's instruments in a key and tempo of their own (A mi
 | 2 | PsycheAI read my data first. | Instagram, Google and WhatsApp fly into PsycheAI's panel; *Reading your data…* |
 | 3 | And it told me exactly why. | four excerpts of PsycheAI's real answers, typed in at reading pace; an *Only me* stamp in the gradient |
 | 4 | Same question. Only one of them actually knew me. | both panels lit, with their stamps |
-| 5 | PsycheAI, your personal AI coach. | *Other AI coaches wait for you to describe yourself.*, *PsycheAI*, *your personal AI coach*, the address, *Your first Psyche Card is free*, *Which question would you ask both? 👇* |
+| 5 | Your personal AI coach. Try it at PsycheAI dot I O. | first, before the voice, one complete thought: *Other AI coaches wait for you to describe yourself. PsycheAI already knew you from the start.*; then *Your personal AI coach* and the address |
 
-The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
+The camera moves in on each panel while its answer comes in (ChatGPT's, then PsycheAI's as its data loads), and
+back out as the verdict lands on the beat. The beat stops for the close (`calm_close`), so the piano carries it to
+a softly rolled chord. The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
 only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
 reworded, and labelled in plain text rather than with ChatGPT's logo. Run it past someone for comparative
 advertising before paying to promote it. The voice says "Chat G P T"; written as one word it came out

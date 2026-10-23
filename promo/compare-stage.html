@@ -12,6 +12,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .blob { position: absolute; border-radius: 50%; filter: blur(90px); }
 #b1 { width: 820px; height: 820px; left: -260px; top: 900px; background: #ffd6e7; }
 #b2 { width: 760px; height: 760px; right: -240px; top: 1200px; background: #e6dcff; }
+#cam { position: absolute; inset: 0; transform-origin: 540px 960px; }
 /* The hook. */
 #hook { z-index: 30; left: 60px; right: 60px; top: 720px; text-align: center; font-size: 92px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.06; }
 #hook .gpt { color: #3c3c43; }
@@ -54,17 +55,16 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #wa .ic::before { content: ''; position: absolute; left: 36px; top: 32px; width: 98px; height: 98px; border: 11px solid #fff; border-radius: 50%; box-sizing: border-box; }
 #wa .ic::after { content: ''; position: absolute; left: 32px; top: 114px; width: 0; height: 0; border-left: 20px solid transparent; border-top: 27px solid #fff; transform: rotate(18deg); }
 /* The close. */
-#wait { z-index: 30; left: 60px; right: 60px; top: 560px; text-align: center; font-size: 54px; font-weight: 800; color: #6b3f8f; line-height: 1.2; }
-#brand { z-index: 30; left: 0; right: 0; top: 760px; text-align: center; font-size: 170px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
-#tag { z-index: 30; left: 0; right: 0; top: 960px; text-align: center; font-size: 66px; font-weight: 850; letter-spacing: -0.02em; }
+#wait { z-index: 30; left: 70px; right: 70px; top: 520px; text-align: center; font-size: 66px; font-weight: 800; color: #6b3f8f; line-height: 1.18; letter-spacing: -0.02em; }
+#brand { z-index: 30; left: 40px; right: 40px; top: 730px; text-align: center; font-size: 74px; white-space: nowrap; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
+#tag { z-index: 30; left: 0; right: 0; top: 1010px; text-align: center; font-size: 60px; font-weight: 850; letter-spacing: -0.02em; }
 #site { z-index: 30; left: 50%; top: 1130px; padding: 28px 64px; border-radius: 999px; font-size: 54px; font-weight: 900; color: #fff; white-space: nowrap;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.4); }
-#free { z-index: 30; left: 0; right: 0; top: 1300px; text-align: center; font-size: 42px; font-weight: 800; color: #6b3f8f; }
-#askBoth { z-index: 30; left: 0; right: 0; top: 1390px; text-align: center; font-size: 42px; font-weight: 800; color: #2a1238; }
 </style></head>
 <body>
   <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
   <div class="el" id="hook">I asked <span class="gpt">ChatGPT</span> and <span class="grad">PsycheAI</span> the same question.</div>
+  <div id="cam">
   <div class="el panel" id="pA"><div class="label">ChatGPT</div><div class="q" id="qA"></div><div class="ans" id="ansA"></div></div>
   <div class="el panel" id="pB"><div class="label grad">PsycheAI</div><div class="q" id="qB"></div>
     <div id="loading"><div class="ln">Reading your data<span class="dots" id="dots"><i>.</i><i>.</i><i>.</i></span></div>
@@ -75,12 +75,11 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
   <div class="el app" id="gg"><div class="ic"></div><div class="nm">Google</div></div>
   <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
+  </div>
   <div class="el" id="wait">Other AI coaches wait for you<br>to describe yourself.</div>
-  <div class="el" id="brand"><span class="grad">PsycheAI</span></div>
-  <div class="el" id="tag">your personal AI coach</div>
+  <div class="el" id="brand"><span class="grad">PsycheAI</span> already knew you<br>from the start.</div>
+  <div class="el" id="tag">Your personal AI coach</div>
   <div class="el" id="site">psycheai.io ↗</div>
-  <div class="el" id="free">Your first Psyche Card is free</div>
-  <div class="el" id="askBoth">Which question would you ask both? 👇</div>
 <script>
 const TL = __TIMELINE__;
 const S = TL.scenes, BEAT = 60 / TL.bpm;
@@ -114,6 +113,11 @@ function render(t) {
   $('b1').style.transform = 'translate(' + Math.sin(t * .5) * 120 + 'px,' + Math.cos(t * .4) * 140 + 'px)';
   $('b2').style.transform = 'translate(' + Math.cos(t * .45) * 140 + 'px,' + Math.sin(t * .35) * 160 + 'px)';
   const closing = t >= CLOSE.start - 0.2;
+  // The camera: in on ChatGPT's panel while it answers, across to PsycheAI's while its data loads and it answers,
+  // and back out as the verdict lands on the beat.
+  const zA = easeIO(prog(t, GPT.start - 0.1, GPT.start + 0.45)) * (1 - easeIO(prog(t, LOAD.start - 0.2, LOAD.start + 0.35)));
+  const zB = easeIO(prog(t, LOAD.start - 0.2, LOAD.start + 0.35)) * (1 - easeIO(prog(t, VERDICT.start - 0.4, VERDICT.start)));
+  $('cam').style.transform = 'translateY(' + (zA * 410 - zB * 415) + 'px) scale(' + (1 + 0.08 * (zA + zB)) + ')';
 
   // The hook, then the two panels slide in and the question types into both at once.
   const hk = back(prog(t, HOOK.vo - 0.2, HOOK.vo + 0.2)), hkOut = prog(t, HOOK.voEnd + 0.1, HOOK.voEnd + 0.4);
@@ -151,18 +155,15 @@ function render(t) {
   const sb = back(prog(t, ANS.end - 1.4, ANS.end - 1.1));
   show('stB', !closing && t >= ANS.end - 1.4 ? clamp(sb * 2) : 0, 'scale(' + (1 + (1 - Math.min(1, sb)) * 1.4 + pulse * 0.03) + ') rotate(-4deg)');
 
-  // The close: the panels part; PsycheAI, your personal AI coach.
+  // The close: the panels part; other coaches wait, PsycheAI already knew you; your personal AI coach.
   const w = back(prog(t, CLOSE.start, CLOSE.start + 0.4));
   show('wait', closing ? clamp(w * 2) : 0, 'translateY(' + (1 - Math.min(1, w)) * 30 + 'px)');
-  const br = back(prog(t, CLOSE.vo - 0.15, CLOSE.vo + 0.25));
+  const br = back(prog(t, CLOSE.start + 0.5, CLOSE.start + 0.9));
   show('brand', closing ? clamp(br * 2) : 0, 'scale(' + (0.7 + 0.3 * Math.min(1, br) + pulse * 0.015) + ')');
-  const tg = back(prog(t, CLOSE.vo + 0.5, CLOSE.vo + 0.8));
+  const tg = back(prog(t, CLOSE.vo - 0.1, CLOSE.vo + 0.25));
   show('tag', closing ? clamp(tg * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, tg)) + ')');
-  const st = back(prog(t, CLOSE.voEnd - 0.4, CLOSE.voEnd - 0.1));
+  const st = back(prog(t, CLOSE.marks[1] - 0.1, CLOSE.marks[1] + 0.25));
   show('site', closing ? clamp(st * 2) : 0, 'translateX(-50%) scale(' + (Math.min(1.05, st) + pulse * 0.04 * Math.min(1, st)) + ')');
-  const fr = ease(prog(t, CLOSE.voEnd, CLOSE.voEnd + 0.3)), ab = ease(prog(t, CLOSE.voEnd + 0.2, CLOSE.voEnd + 0.5));
-  show('free', closing ? fr : 0, 'translateY(' + (1 - fr) * 20 + 'px)');
-  show('askBoth', closing ? ab : 0, 'translateY(' + (1 - ab) * 20 + 'px)');
 }
 window.render = render;
 window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
