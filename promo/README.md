@@ -151,7 +151,7 @@ Both end like the main video: riser, hit, the full beat. `coach-misunderstood` i
 ### The roast reel
 
 ```
-npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 27 s
+npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 31 s
 ```
 
 Built by `shorts.py` like the others, but with a stage of its own, `roast-stage.html`, and music of its own.
@@ -160,21 +160,23 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) with hearts, then the site's roast cover; a finger presses the button |
-| 1–3 | Six hundred workout videos saved. / Zero workouts done. · Your friends like every post you make. / You never like theirs back. · You left forty seven people on read. / Including your mom. | a dark, ember-lit ground; a ROAST #n badge; the set-up word by word; one graphic each: a saved grid counting to 600 then stamped *0 workouts done*, hearts raining from friends to you with *Likes you gave back: 0*, an inbox of "Seen" chats stopping on Mom; the punchline slams in, with a flash and a shake |
-| 4 | Then it tells you what to actually do. | *What an honest friend would tell you* (the report's `bonusAdvice`), one tip ticked for each burn |
+| 1–3 | Six hundred workout videos saved. / Zero workouts done. · Your friends like every post you make. / You never like theirs back. · You left forty seven people on read. / Including your mum. | a dark, ember-lit ground; a ROAST #n badge; the set-up word by word; one graphic each: a saved grid counting to 600 then stamped *0 workouts done*, hearts raining from friends to you with *Likes you gave back: 0*, an inbox of "Seen" chats stopping on Mum; the punchline slams in, with a flash and a shake |
+| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy, and you're not cold.* … *Stop collecting. Start answering.*: what is under all three burns, not the burns turned round (a first cut ticked off one tip per burn, which read as the roast in reverse) |
 | 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
 
 The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
 romance, and simple enough to get on one hearing (a first draft's "your thumb has never been in better
 shape" and "combined revenue: the likes" were too clever by half). Sherlock rather than Mulan or the Tin Man:
 his card's late-night saves and small circle set the burns up, where the Tin Man's checking in on quiet
-friends would contradict "left 47 people on read". The voice is quicker than the other reels (0.85).
+friends would contradict "left 47 people on read". Its voice is British and male, for Sherlock: Piper's `en_GB-alan-medium` (`voice` in its entry, passed to `vo.py` as `PROMO_VOICE`; download it into `.cache/voices` like the others), at 0.8. LJSpeech was tried first and read as too light against him.
 
 Each burn is recorded as set-up and punchline apart (`punch` in its entry): `shorts.py` puts silence
-before the punchline so it starts on a beat. The music: B flat (Bb Gm Eb F) at 132, a music box under the
-nice card, a scratch into four-on-the-floor with synth brass, a sliding bass and a four-note riff; the drums
-drop out for the beat before each punchline and a brass hit and crash land on it; half time for the advice,
-everything back for the ask, a last held brass chord.
+before the punchline so it starts on a beat. The music: C minor (Cm Ab Eb Bb) at 140 in half time, dark and heavy: a
+clock-like tick, a low pad and plucked strings under the nice card; a reversed crash and riser into a low brass
+hit, then 808s, a half-time snare and clap, hats that roll into each hit and a low brass riff; the drums drop
+out for the beat before each punchline and a brass hit, crash and falling 808 land on it; piano and a pad for the
+honest friend; everything back for the ask, ending on a held hit. A first version in B flat at 132, with a music
+box, bells and a bouncy riff, sounded too childish.
 
 ## The privacy post
 

@@ -68,26 +68,28 @@ REELS = {
 }
 # The roast: the card is nice, then the roast button is pressed and three burns land, each punchline on a beat.
 # Every line is a phrase pair, set-up then punchline, recorded apart so the punchline can be moved onto the beat
-# (`punch`). The numbers are a made-up sample, written as said.
+# (`punch`). The numbers are a made-up sample, written as said. Its own voice: British and male, for Sherlock.
 REELS['roast'] = {
+    'voice': 'en_GB-alan-medium',
     'lines': [
-        (['My Psyche Card was so nice.', 'Then I clicked, reveal my roast.'], 0.85, True, 0.2),
-        (['Six hundred workout videos saved.', 'Zero workouts done.'], 0.85, True, 0.15),
-        (['Your friends like every post you make.', 'You never like theirs back.'], 0.85, True, 0.15),
-        (['You left forty seven people on read.', 'Including your mom.'], 0.85, True, 0.15),
-        (['Then it tells you what to actually do.'], 0.85, None),
-        (['Your roast is free with every card.', "Comment roast, if you're brave."], 0.85, True, 0.15),
+        (['My Psyche Card was so nice.', 'Then I clicked, reveal my roast.'], 0.8, True, 0.2),
+        (['Six hundred workout videos saved.', 'Zero workouts done.'], 0.8, True, 0.15),
+        (['Your friends like every post you make.', 'You never like theirs back.'], 0.8, True, 0.15),
+        (['You left forty seven people on read.', 'Including your mum.'], 0.8, True, 0.15),
+        (['Then it tells you what an honest friend would.'], 0.8, None),
+        (['Your roast is free with every card.', "Comment roast, if you're brave."], 0.8, True, 0.15),
     ],
-    'hold': {1: 0.2, 2: 0.2, 3: 0.45, 4: 1.0},
+    'hold': {1: 0.15, 2: 0.15, 3: 0.4, 4: 3.2},  # 4: time to read the honest friend
     'punch': (1, 2, 3),
-    # Its own piece, bouncy and cheeky: B flat major (Bb Gm Eb F) at 132, a music box under the nice card, then a
-    # scratch into four-on-the-floor with synth brass, a sliding bass and a riff that comes back between burns;
-    # the drums drop out for a beat before each punchline and a brass hit lands on it. Half time for the advice.
-    'mood': 'roast', 'bpm': 132,
-    'chords': [[58, 62, 65], [55, 58, 62], [55, 58, 63], [53, 57, 60]], 'roots': [34, 31, 39, 41],
-    # The riff, in eighths (None a rest): two bars of question, two of answer.
-    'riff': [[77, None, 74, 77, None, 82, None, 77], [79, None, 74, 79, None, 82, None, 79],
-             [79, None, 75, 79, None, 82, None, 84], [81, None, 77, 81, 84, None, 82, None]],
+    # Its own piece, dark and heavy: C minor (Cm Ab Eb Bb) at 140 in half time. A low ticking pulse and plucked
+    # strings under the nice card; a riser and a low brass hit into 808s, a half-time snare, rolling hats and a
+    # brass riff; the drums drop out for the beat before each punchline and a hit lands on it. Piano and a low
+    # pad for the honest friend, everything back for the ask.
+    'mood': 'roast', 'bpm': 140,
+    'chords': [[48, 51, 55], [44, 48, 51], [43, 46, 51], [46, 50, 53]], 'roots': [36, 32, 39, 34],
+    # The riff, in eighths (None a rest).
+    'riff': [[72, None, None, 72, 70, None, 67, None], [68, None, None, 68, 67, None, 63, None],
+             [67, None, None, 67, 70, None, 72, None], [70, None, None, 70, 74, None, 72, 70]],
     'reveal': 1, 'swing': 0.0, 'early_claps': False,
 }
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
@@ -99,7 +101,8 @@ LINES = R['lines']
 BUILD = HERE + '/build/' + REEL
 os.makedirs(BUILD, exist_ok=True)
 
-names = ['p' + hashlib.sha1(json.dumps(line).encode()).hexdigest()[:10] for line in LINES]
+names = ['p' + hashlib.sha1(json.dumps([line, R['voice']] if 'voice' in R else line).encode()).hexdigest()[:10] for line in LINES]
+if 'voice' in R: os.environ['PROMO_VOICE'] = R['voice']
 stored = json.load(open(BUILD + '/marks.json')) if os.path.exists(BUILD + '/marks.json') else {'lines': {}, 'words': {}}
 todo = [(name, line) for name, line in zip(names, LINES)
         if '--vo' in sys.argv or name not in stored['lines'] or not os.path.exists(f'{BUILD}/{name}.wav')]
@@ -289,92 +292,118 @@ if R.get('mood') == 'uplifting':
     at(TOTAL - 2.4, strings([67, 71, 74, 79], 2.4, 0.07), 1.0)
 elif R.get('mood') == 'roast':
     sc = scenes
-    DROP = sc[1]['start']                      # the roast button: a scratch, then the beat
-    ADVICE, CTA = sc[4]['start'], sc[5]['start']  # half time for the advice, everything back for the ask
+    DROP = sc[1]['start']                         # the roast button: a riser, then the beat
+    ADVICE, CTA = sc[4]['start'], sc[5]['start']  # the honest friend, then everything back for the ask
     PUNCH = [sc[i]['marks'][1] for i in R['punch']]
     END = sc[5]['voEnd'] + 0.4
     RIFF = R['riff']
+    EIGHTH = BEAT / 2
 
-    def brass(chord, length, bright=4200):
-        # Synth brass: detuned saws that scoop up into the note, the filter opening on the attack then closing.
-        L = int(length * SR); x = np.arange(L) / SR; s = np.zeros(L, np.float32)
-        scoop = 1 - 0.025 * np.exp(-x * 45)
+    def drive(x, k): return np.tanh(k * x) / np.tanh(k)
+    def brass(chord, length, bright=3000, gain=0.05):
+        # Low synth brass: detuned saws that scoop into the note, the filter opening on the attack, a little drive.
+        L = int(length * SR); x = np.arange(L) / SR; s_ = np.zeros(L, np.float32)
+        scoop = 1 - 0.02 * np.exp(-x * 40)
         for m in chord:
-            for det in (-0.1, 0.1):
-                ph = np.cumsum(hz(m) * (1 + det / 100) * scoop) / SR; s += 2 * (ph % 1) - 1
-        e = np.minimum(1, x / 0.008) * np.minimum(1, (length - x) / 0.03).clip(0)
-        dull, sharp = lowpass(s * e, 900), lowpass(s * e, bright)
-        return (dull + (sharp - dull) * np.exp(-x * 9)) * 0.05
-    def slide(m0, m1, length):
-        # The bass sliding up into a new line.
+            for det in (-0.12, 0.0, 0.12):
+                ph = np.cumsum(hz(m) * (1 + det / 100) * scoop) / SR; s_ += 2 * (ph % 1) - 1
+        e = np.minimum(1, x / 0.01) * np.minimum(1, (length - x) / 0.05).clip(0)
+        dull, sharp = lowpass(s_ * e, 500), lowpass(s_ * e, bright)
+        return drive((dull + (sharp - dull) * np.exp(-x * 6)) * 0.35, 1.6) * gain * 6
+    def braam(chord, length):
+        # The hit: brass two octaves down and one up, swelling open, with a sub under it.
         L = int(length * SR); x = np.arange(L) / SR
-        f = hz(m0) * (hz(m1) / hz(m0)) ** np.clip(x / (length * 0.8), 0, 1)
-        return np.tanh(1.8 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * env(L, 0.01, 0.05) * 0.32
-    def scratch():
-        # A record scratch: a chord and some hiss pushed forwards and back under the needle, twice.
-        src = brass(CHORDS[0], 0.7, 3000) * 6 + lowpass(rng.standard_normal(int(0.7 * SR)).astype(np.float32), 2500) * 0.08
-        L = int(0.36 * SR); x = np.arange(L) / SR
-        pos = (0.16 + 0.14 * np.sin(2 * np.pi * x / 0.18)) * SR
-        y = np.interp(pos, np.arange(len(src)), src)
-        y = y - lowpass(y, 250)
-        return y * env(L, 0.005, 0.04) * 1.4
+        low = brass([m - 12 for m in chord] + [chord[0] - 24], length, 1800, 0.07)
+        sub = np.sin(2 * np.pi * hz(chord[0] - 24) * x) * np.exp(-x * 1.5) * 0.4
+        return low + sub
+    def eight08(m, length, glide_from=None):
+        # An 808: a sine with a click and a quick drop in pitch, long, driven.
+        L = int(length * SR); x = np.arange(L) / SR
+        f = hz(m) * (1 + 1.5 * np.exp(-x * 60))
+        if glide_from is not None: f = f * (hz(glide_from) / hz(m)) ** np.exp(-x * 9)
+        y = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.minimum(1, x / 0.003) * np.minimum(1, (length - x) / 0.04).clip(0)
+        return drive(y * np.exp(-x * 1.6), 2.2) * 0.5
+    def snare():
+        L = int(0.3 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+        body = np.sin(2 * np.pi * 190 * x) * np.exp(-x * 30) * 0.6
+        return (lowpass(noise - lowpass(noise, 1200), 8000) * np.exp(-x * 16) * 0.55 + body) * 0.9
+    def tick():
+        L = int(0.03 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+        return (noise - lowpass(noise, 3000)) * np.exp(-x * 160) * 0.35
+    def string_pluck(m):
+        # A dark plucked string, for the detective's intro.
+        L = int(0.7 * SR); x = np.arange(L) / SR
+        y = sum(np.sin(2 * np.pi * hz(m) * k * x) * np.exp(-x * (4 + 3 * k)) / k for k in (1, 2, 3, 4))
+        return lowpass(y.astype(np.float32), 2500) * 0.16
+    def pad(chord, length, gain=0.04):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord:
+            for det in (-0.15, 0.15): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x) + 0.3 * (2 * (x * hz(m) % 1) - 1)
+        return lowpass(y * np.minimum(1, x / 0.6) * np.minimum(1, (length - x) / 0.5).clip(0), 900) * gain
     def crash():
-        L = int(1.6 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
-        return (noise - lowpass(noise, 5000)) * np.exp(-x * 2.6) * 0.3
+        L = int(1.8 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+        return (noise - lowpass(noise, 5000)) * np.exp(-x * 2.4) * 0.28
+    def reverse_crash(length):
+        return crash()[:int(length * SR)][::-1].copy() * 1.3
     notes = {}
     def riff_note(m, length):
         key = (m, round(length, 3))
-        if key not in notes: notes[key] = brass([m, m - 12], length, 5200)
+        if key not in notes: notes[key] = brass([m - 12, m - 24], length, 2600, 0.045)
         return notes[key]
 
-    K, C, H, HO = kick(), clap(), hat(), hat(True)
+    K, C, SN, H, HO, TK = kick(), clap(), snare(), hat(), hat(True), tick()
     pump = np.ones(n, np.float32)
     b = 0.0
     while b < END:
-        bar_i = int(round(b / BEAT)) // 4 % 4; beat_i = int(round(b / BEAT)) % 4
+        k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8
         chord, root = CHORDS[bar_i], ROOTS[bar_i]
         hook, adv, cta = b < DROP, ADVICE <= b < CTA, b >= CTA
         # The beat drops out for the beat before each punchline.
         held = any(p - BEAT - 0.01 <= b < p - 0.01 for p in PUNCH)
+        roll = any(p - 2 * BEAT - 0.01 <= b < p - BEAT - 0.01 for p in PUNCH) or (CTA - BEAT - 0.01 <= b < CTA - 0.01)
         if hook:
-            # The nice card: a music box playing the riff, sweetly, over soft plucked chords.
-            for k, m in enumerate(RIFF[bar_i][beat_i * 2: beat_i * 2 + 2]):
-                if m: at(b + k * BEAT / 2, bell(m + 12), 0.7, 0.2 if k else -0.2)
-            at(b, pluck(chord[beat_i % 3] + 12, 0.08), 1.0)
+            # The nice card, but something is coming: a clock-like tick, a low pad and a plucked figure.
+            at(b, TK, 0.8 if e % 2 == 0 else 0.4, 0.3)
+            if e == 0: at(b, pad(chord, BAR * 1.02), 1.0)
+            if e in (0, 3, 6): at(b, string_pluck(chord[(e // 3) % 3] + 12), 1.0, -0.2)
+            if e == 0: at(b, eight08(root, BAR * 0.9) * 0.4, 0.6)
         elif adv:
-            # Half time: a kick on one, a clap on three, warm piano chords, the bass held.
-            if beat_i == 0: at(b, K, 0.7); at(b, bass(root, BAR * 0.9) * 0.7, 0.7)
-            if beat_i == 2: at(b, C, 0.6)
-            if beat_i in (0, 2):
-                for m in chord + [chord[0] + 12]: at(b, piano(m, 1.4, 0.09), 1.0)
-            at(b + BEAT / 2, H, 0.3, 0.3)
+            # The honest friend: piano chords, a low pad, a soft kick on the one.
+            if e == 0:
+                at(b, pad(chord, BAR * 1.02, 0.05), 1.0); at(b, K, 0.5); at(b, eight08(root, BAR * 0.9) * 0.6, 0.6)
+                for m in chord + [chord[0] + 12]: at(b, piano(m + 12, 2.0, 0.08), 1.0)
+            if e == 4:
+                for m in chord: at(b, piano(m + 24, 1.4, 0.05), 1.0)
         elif not held:
-            at(b, K, 0.95)
-            a = int(b * SR); L = int(0.2 * SR)
-            if a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.4 + 0.6 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
-            if beat_i in (1, 3): at(b, C, 0.9)
-            at(b + BEAT / 2, HO, 0.45, -0.3)
-            for k in range(4): at(b + k * BEAT / 4, H, 0.5 if k % 2 else 0.3, 0.3)
-            # The bass bounces root then octave in eighths.
-            at(b, bass(root, BEAT * 0.4), 0.9); at(b + BEAT / 2, bass(root + 12, BEAT * 0.35), 0.8)
-            if beat_i in (0, 2): at(b, brass(chord, BEAT * 0.35), 0.8)
-            # The riff: under the voice (the mix ducks it), and out in front for the ask.
-            for k, m in enumerate(RIFF[bar_i][beat_i * 2: beat_i * 2 + 2]):
-                if m: at(b + k * BEAT / 2, riff_note(m, BEAT * 0.42), 1.25 if cta else 0.75, 0.15)
-        b += BEAT
+            # Half time: kicks with an 808 under them, the snare and clap on three, hats in eighths that roll into a hit.
+            if e in (0, 3) or (e == 6 and bar_i % 2):
+                at(b, K, 1.0); at(b, eight08(root, EIGHTH * (3 if e == 0 else 2.5), glide_from=root + 7 if e == 6 else None), 1.0)
+                a_ = int(b * SR); L = int(0.25 * SR)
+                if a_ < n: pump[a_:a_ + L] = np.minimum(pump[a_:a_ + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a_)) ** 0.6)
+            if e == 4: at(b, SN, 1.0); at(b, C, 0.7)
+            if roll:
+                for k in range(3): at(b + k * EIGHTH / 3, H, 0.4 + 0.15 * k, 0.3)
+            else:
+                at(b, H, 0.45 if e % 2 else 0.6, 0.3)
+            if e == 7 and bar_i % 2: at(b, HO, 0.5, -0.3)
+            if e == 0: at(b, brass(chord, BAR * 0.95, 1400, 0.03), 1.0)
+            # The riff: under the voice (the mix ducks it), out in front for the ask.
+            m = RIFF[bar_i][e]
+            if m: at(b, riff_note(m, EIGHTH * 0.8), 1.3 if cta else 0.8, 0.12)
+        b += EIGHTH
 
-    # The roast button: a scratch, then a crash and a brass hit as the beat drops.
-    at(DROP - 0.4, scratch(), 1.0)
-    at(DROP, impact(), 0.8); at(DROP, crash(), 1.0); at(DROP, brass([58, 65, 70, 74], 0.6), 2.2)
-    # Each punchline: the bass slides up to it, a brass hit and a crash land on it.
+    # The roast button: a reversed crash and riser into a low brass hit as the beat drops.
+    at(DROP - 1.4, reverse_crash(1.4), 0.9); at(DROP - 1.4, riser(1.4), 0.6)
+    at(DROP, impact(), 1.0); at(DROP, crash(), 1.0); at(DROP, braam(CHORDS[0], 1.8), 1.6)
+    # Each punchline: a hit, a crash and the 808 dropping in under it.
     for p in PUNCH:
-        at(p - BEAT, slide(ROOTS[0] - 5, ROOTS[0] + 12, BEAT), 1.0)
-        at(p, brass([58, 62, 65, 70], 0.5), 2.4); at(p, crash(), 0.9); at(p, impact(), 0.5)
-    # Into the ask: a swell and a scratch back to the full beat; the last hit, held.
-    at(CTA - 1.2, swell(1.2) * 1.6, 1.0); at(CTA - 0.36, scratch(), 0.7)
-    at(CTA, crash(), 1.0)
+        at(p, braam(CHORDS[0], 1.2), 1.5); at(p, crash(), 0.9); at(p, impact(), 0.8); at(p, eight08(ROOTS[0] - 12, 1.0, glide_from=ROOTS[0]), 0.9)
+    # Into the honest friend, the beat falls away; into the ask, it comes back with a hit.
+    at(ADVICE, crash(), 0.5)
+    at(CTA - 1.4, reverse_crash(1.4), 0.9); at(CTA - 1.2, swell(1.2) * 1.6, 1.0)
+    at(CTA, crash(), 1.0); at(CTA, braam(CHORDS[0], 1.4), 1.3); at(CTA, impact(), 0.8)
     last = snap(END - 0.2, BEAT)
-    at(last, brass([46, 58, 62, 65, 70], 1.6), 2.4); at(last, impact(), 0.7); at(last, crash(), 0.8)
+    at(last, braam(CHORDS[0], 2.4), 1.8); at(last, impact(), 1.0); at(last, crash(), 0.9)
 else:
     sc = scenes
     MID = sc[1]['start']       # a light pulse comes in after the hook

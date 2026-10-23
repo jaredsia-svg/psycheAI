@@ -75,11 +75,12 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .row.mom { background: rgba(255,255,255,.1); }
 .row.mom .seen { color: #ff6b8b; }
 /* The advice: the honest friend, on a warmer ground. */
-#advice { z-index: 30; left: 90px; width: 900px; top: 620px; padding: 50px 50px 30px; border-radius: 48px; background: #fff; box-shadow: 0 40px 100px rgba(0,0,0,.35); }
-#advice h3 { font-size: 40px; font-weight: 900; color: #2a1238; letter-spacing: -0.01em; margin-bottom: 26px; }
-.tip { display: flex; align-items: center; gap: 26px; padding: 22px 0; border-top: 2px solid #f1e6f7; font-size: 42px; font-weight: 750; color: #2a1238; }
-.tick { flex: none; width: 66px; height: 66px; border-radius: 50%; border: 5px solid #e3d3ee; display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: 900; color: #fff; }
+#advice { z-index: 30; left: 80px; width: 920px; top: 600px; padding: 50px 56px 56px; border-radius: 48px; background: #fff; box-shadow: 0 40px 100px rgba(0,0,0,.35); }
+#advice h3 { font-size: 31px; font-weight: 850; color: #8a3fd0; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 26px; }
+#read { font-size: 48px; line-height: 1.36; font-weight: 600; color: #2a1238; min-height: 660px; }
+#read p { margin-bottom: 26px; }
+#read b { font-weight: 900; }
+#read .last { color: #c2407a; }
 /* The ask. */
 #ask { z-index: 30; left: 50px; right: 50px; top: 640px; text-align: center; color: #fff; }
 #ask .small { font-size: 52px; font-weight: 800; color: #ffd9ec; line-height: 1.2; }
@@ -111,7 +112,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
       <div id="got"></div><div id="gave">Likes you gave back: 0 💔</div></div>
     <div class="el panel" id="p3"><div class="bar"><span>💬 Messages</span><span class="count" id="c3">0 left on read</span></div><div id="list"></div></div>
 
-    <div class="el" id="advice"><h3>💡 What an honest friend would tell you</h3></div>
+    <div class="el" id="advice"><h3>What an honest friend would tell you</h3><div id="read"></div></div>
     <div class="el" id="flame">🔥</div>
     <div class="el" id="ask"></div>
     <div class="el" id="site">psycheai.io ↗</div>
@@ -140,7 +141,7 @@ const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
 const BURNS = [
   { badge: 'ROAST #1 🔥', setup: '<b>600</b> workout videos saved.', punch: 'Zero workouts done.' },
   { badge: 'ROAST #2 🔥', setup: 'Your friends like every post you make.', punch: 'You never like theirs back.' },
-  { badge: 'ROAST #3 🔥', setup: 'You left <b>47</b> people on read.', punch: 'Including your mom.' },
+  { badge: 'ROAST #3 🔥', setup: 'You left <b>47</b> people on read.', punch: 'Including your mum.' },
 ];
 const setups = BURNS.map(b => { const d = mk('setup el', '', $('setups'));
   d.innerHTML = b.setup.split(' ').map(w => '<i>' + w + '</i>').join(' '); return d; });
@@ -166,16 +167,19 @@ const friends = FACES.map((f, i) => { const d = mk('av', f, $('friends')); d.sty
 $('you').style.left = (430 - 115) + 'px'; $('you').style.top = '360px';
 $('youName').style.top = '600px'; $('got').style.top = '660px'; $('gave').style.top = '230px';
 const hearts = Array.from({ length: 18 }, (_, i) => mk('fh', '❤️', $('flying')));
-// 3: the inbox, every chat seen and not answered, Mom's last.
+// 3: the inbox, every chat seen and not answered, Mum's last.
 const CHATS = [['Sam', '😄', 'are we still on for tonight?? 👀', '2d'], ['Group chat 🎂', '🥳', 'who’s bringing the cake', '3d'],
   ['Jess', '🤩', 'omg look at this 😂😂', '3d'], ['Alex', '🙂', 'hey, you free this week?', '4d'], ['Coach Dan', '😊', 'you coming saturday?', '5d'],
-  ['Priya', '😄', 'happy birthday!!! 🎉', '6d'], ['Leo', '🤩', 'did you see my message?', '1w'], ['Mom ❤️', '👩', 'Did you eat? Call me back 🙂', '4d']];
+  ['Priya', '😄', 'happy birthday!!! 🎉', '6d'], ['Leo', '🤩', 'did you see my message?', '1w'], ['Mum ❤️', '👩', 'Did you eat? Call me back 🙂', '4d']];
 const rows = CHATS.map(([nm, pic, pv, when], i) => { const d = mk('row' + (i === CHATS.length - 1 ? ' mom' : ''),
   '<div class="pic">' + pic + '</div><div class="txt"><div class="nm">' + nm + '</div><div class="pv">' + pv + '</div></div><div class="seen">Seen ' + when + '</div>', $('list'));
   return d; });
-// The advice: one tip for each burn.
-const TIPS = ['💬 Text your mom back', '🏋️ Do one workout from your saves', '❤️ Like your friends’ posts back'];
-const tips = TIPS.map(tx => mk('tip', '<div class="tick">✓</div><div>' + tx + '</div>', $('advice')));
+// The honest friend: not the burns turned round, but what is under all three, typed in as it is read.
+const READ = [['<b>You’re not lazy, and you’re not cold.</b>'],
+  ['Saving something feels like starting it, without the risk of failing at it.'],
+  ['And you assume people are fine without you. The ones who keep writing aren’t.'],
+  ['<b class="last">Stop collecting. Start answering.</b>']];
+const readWords = READ.map(([html]) => html.split(/(?<=\s)/));
 $('ask').innerHTML = '<div class="small">' + 'Your roast is free with every card'.split(' ').map(w => '<i style="font-style:normal;display:inline-block">' + w + '</i>').join(' ') +
   '</div><div class="big">Comment<br><span class="fire">“ROAST”</span></div><div class="brave">if you’re brave 😈</div>';
 // The hook's hearts around the nice card, and the embers after.
@@ -272,7 +276,7 @@ function burns(t, pulse) {
     $('you').style.transform = 'scale(' + (1 + (stop ? 0 : pulse * 0.06)) + ')';
     const gv = back(prog(t, p, p + 0.3));
     $('gave').style.opacity = stop ? clamp(gv * 2) : 0; $('gave').style.transform = 'scale(' + Math.min(1.08, gv) + ')'; }
-  // 3: the inbox scrolls, every chat seen; the count climbs to 47; at the punchline it stops on Mom.
+  // 3: the inbox scrolls, every chat seen; the count climbs to 47; at the punchline it stops on Mum.
   { const s = S[3], p = PUNCH[2], run = easeIO(prog(t, s.vo - 0.1, p - 0.05));
     $('c3').textContent = Math.round(47 * run) + ' left on read';
     const top = 140 - run * (rows.length - 4.4) * 130;
@@ -282,15 +286,18 @@ function burns(t, pulse) {
       r.style.boxShadow = focus ? '0 0 0 4px #ff6b8b, 0 0 50px rgba(255,107,139,' + 0.6 * clamp(focus) + ')' : 'none'; }); }
 }
 
+// A paragraph cut part way through a bold run: close the tag so the typed part still reads bold.
+const fixTags = h => /<b[^>]*>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 function advice(t) {
   const s = ADV, inn = back(prog(t, s.start + 0.05, s.start + 0.45)), out = prog(t, s.end - 0.2, s.end);
   show('advice', clamp(inn * 2) * (1 - out), 'translateY(' + (1 - Math.min(1, inn)) * 200 + 'px) scale(' + (0.9 + 0.1 * Math.min(1, inn)) + ')');
-  tips.forEach((tp, i) => { const at = s.vo + 0.6 + i * 0.55, p = back(prog(t, at, at + 0.3)), tk = $('advice').querySelectorAll('.tick')[i];
-    tp.style.opacity = 0.35 + 0.65 * clamp(p * 2);
-    tk.style.background = p > 0 ? 'linear-gradient(135deg, #ff7a45, #e0457b)' : 'transparent'; tk.style.borderColor = p > 0 ? 'transparent' : '#e3d3ee';
-    tk.style.color = p > 0 ? '#fff' : 'transparent'; tk.style.transform = 'scale(' + (p > 0 ? Math.min(1.15, p) : 1) + ')'; });
+  // Typed in a paragraph at a time, at reading pace, the last line once the rest has been read.
+  const total = readWords.reduce((a, w) => a + w.length, 0), typed = Math.round(total * prog(t, s.vo + 0.5, s.end - 1.6));
+  let left = typed;
+  $('read').innerHTML = readWords.map(w => { const k = Math.min(w.length, Math.max(0, left)); left -= w.length;
+    return k ? '<p>' + fixTags(w.slice(0, k).join('')) + '</p>' : ''; }).join('');
   // The setup line for the advice, as a heading above it.
-  if (!$('advLine')) { const d = mk('setup el', 'Then it tells you what to <b>actually do</b>.', $('setups')); d.id = 'advLine'; }
+  if (!$('advLine')) { const d = mk('setup el', 'Then it tells you what<br><b>an honest friend</b> would.', $('setups')); d.id = 'advLine'; d.style.top = '330px'; }
   const ln = back(prog(t, s.vo - 0.2, s.vo + 0.2));
   show('advLine', clamp(ln * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, ln)) + ')');
 }

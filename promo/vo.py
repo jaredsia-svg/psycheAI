@@ -14,7 +14,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = HERE + '/build/vo'
 os.makedirs(OUT, exist_ok=True)
 CONFIG = json.load(open(HERE + '/config.json'))
-M = HERE + '/.cache/voices/vits-piper-en_US-ljspeech-high/en_US-ljspeech-high'
+# The voice: LJSpeech unless a reel names another Piper voice in PROMO_VOICE (the roast reel's is British
+# and male, for Sherlock). Each is downloaded into .cache/voices.
+VOICE = os.environ.get('PROMO_VOICE', 'en_US-ljspeech-high')
+M = HERE + f'/.cache/voices/vits-piper-{VOICE}/{VOICE}'
 v = PiperVoice.load(M + '.onnx', config_path=M + '.onnx.json')
 SR = v.config.sample_rate
 W = HERE + '/.cache/asr/sherpa-onnx-whisper-base.en/base.en-'
