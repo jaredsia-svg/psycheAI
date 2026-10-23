@@ -3926,6 +3926,11 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
     room (`body.ask-docked`), which moved the report away from where the reader was looking. Both
     the button and the panel are placed from the left edge, as the column is measured: the gutter
     kept for the scrollbar (`scrollbar-gutter: stable`) put a `right` offset about 15px short.
+  - **Expand, on a laptop** (October 2026): a round button beside – (`#ask-expand`, *Expand* / *Back
+    to the side*) makes the panel fill the screen under the site's header (`.ask-dialog.is-wide`), the
+    conversation and the box kept to 820px in the middle and set a little larger, for reading long
+    answers; again, it goes back to the side. It stays as it is through minimising. A phone has no such
+    button: its sheet already fills the screen.
   - **Minimising:** the – button, the handle, or Escape anywhere on the page (unless another popout
     is open on top). The floating button reads **Ask PsycheAI** on a laptop, sitting at the
     bottom just right of the report's column, outside it, rather than in the window's corner (inside
@@ -3936,7 +3941,9 @@ characters (`ASK_QUESTION_MAX`), the report to 150,000.
     up. `show()` counts the entries it has to give back (the page's and the panel's) and gives them back
     in one `history.go(-n)`, reusing one for a page it is about to push, since two `history.back()` calls
     in a row, or one followed by `pushState`, race each other. It leaves a floating **Ask PsycheAI** button (`#ask-fab`) at the bottom right of
-    My Psyche and My Report, shown only once the reader has the report. An answer that lands while
+    My Psyche and My Report, shown only once the reader has the report. The button is one slim line
+    (`white-space: nowrap`, a smaller mark and padding): on a small laptop, placed just right of the
+    report where the margin is narrow, it used to wrap into a fat two-line pill. An answer that lands while
     minimised turns it into **Answer ready**, with a soft pulse, until it is opened.
   - **Nothing is lost:** the conversation, a half-typed question and an answer still coming all stay.
   - **Not a separate nav page:** on a phone the nav already has four short labels, and Ask PsycheAI is

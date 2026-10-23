@@ -10639,6 +10639,7 @@
     $('#ask-ideas-title').textContent = A.ideasTitle;
     $('#ask-close').setAttribute('aria-label', A.minimise);
     $('#ask-handle').setAttribute('aria-label', A.minimise);
+    labelAskExpand();
     $('#ask-ideas-close').setAttribute('aria-label', A.ideasClose);
     // From the floating button the ideas open at once, over the lower half of
     // the conversation; ✕ folds them back under the Ideas button.
@@ -10763,6 +10764,20 @@
   }
   $('#ask-close').addEventListener('click', minimiseAsk);
   $('#ask-handle').addEventListener('click', minimiseAsk);
+  // Expand (a laptop only, styles.css): the panel fills the screen under the
+  // header; again, it goes back to the side. Kept as it is through minimising.
+  function labelAskExpand() {
+    const wide = $('#ask-dialog').classList.contains('is-wide');
+    const A = Copy.STRUCTURED.ask;
+    $('#ask-expand').setAttribute('aria-pressed', String(wide));
+    $('#ask-expand').setAttribute('aria-label', wide ? A.shrink : A.expand);
+    $('#ask-expand').title = wide ? A.shrink : A.expand;
+  }
+  $('#ask-expand').addEventListener('click', () => {
+    $('#ask-dialog').classList.toggle('is-wide');
+    labelAskExpand();
+    placeAsk();
+  });
   // The sheet follows the finger down from the handle or the title bar
   // (touch-action: none there in styles.css, or the browser takes the drag
   // as a scroll and cancels it); let go past 60px and it minimises,
@@ -10861,7 +10876,8 @@
     fab.style.right = 'auto';
     fab.style.transform = outside ? '' : 'translateX(-100%)';
     const room = width - box.right - gap - 16;
-    if (room >= 320) {
+    // Expanded, the panel's place is in styles.css (the whole screen under the header).
+    if (!panel.classList.contains('is-wide') && room >= 320) {
       panel.style.left = Math.round(box.right + gap) + 'px';
       panel.style.right = 'auto';
       panel.style.width = Math.min(400, Math.floor(room)) + 'px';

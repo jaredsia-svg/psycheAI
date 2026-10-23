@@ -1300,6 +1300,9 @@
       emptyHint: 'Ask PsycheAI anything about yourself.',
       ideasClose: 'Hide ideas',
       minimise: 'Minimise',
+      // The laptop's button to fill the screen with the panel, and to put it back.
+      expand: 'Expand',
+      shrink: 'Back to the side',
       // The report's appendix: every question and its answer, folded.
       // Appendix 1 is the roast, Appendix 2 these questions; a report with
       // no roast has one unnumbered appendix.

@@ -633,8 +633,9 @@
 <!-- Ask PsycheAI: questions about the reader's own Psyche Report, one credit
      each. A panel rather than a page: opened without a backdrop (show(), not
      showModal()), so the report stays readable and scrollable beside it — a
-     bottom sheet on a phone, docked at the right on a laptop — and minimised
-     to the floating button (#ask-fab) rather than closed. The thread is kept
+     bottom sheet on a phone, docked at the right on a laptop, where it can be
+     expanded to fill the screen (#ask-expand) — and minimised to the floating
+     button (#ask-fab) rather than closed. The thread is kept
      in this browser (psycheai_ask) and drawn by openAsk in app.js; the words
      are in copy.js (STRUCTURED.ask). -->
 <dialog id="ask-dialog" class="ask-dialog" aria-labelledby="ask-title">
@@ -646,6 +647,7 @@
       <p class="ask-sub" id="ask-sub"></p>
     </div>
     <span class="ask-credits" id="ask-credits" hidden></span>
+    <button class="ask-expand" id="ask-expand" type="button" aria-pressed="false" aria-label="Expand"><svg class="ask-expand-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg><svg class="ask-expand-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg></button>
     <button class="ask-close" id="ask-close" type="button" aria-label="Minimise"><span aria-hidden="true">–</span></button>
   </div>
   <div class="ask-thread" id="ask-thread" aria-live="polite"></div>

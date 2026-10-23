@@ -11799,8 +11799,34 @@ try {
             JSON.stringify({ open, shut }));
           check('and, minimised, the button sits just right of the report, outside it',
             shut.fabLeft >= shut.page && shut.fabLeft - shut.page <= 20, JSON.stringify(shut));
+          // A small laptop: the margin is narrow, and the button must stay one slim line, not wrap into two.
+          await sp.setViewportSize({ width: 1280, height: 720 });
+          await sp.waitForTimeout(150);
+          const slim = await sp.evaluate(() => { const r = document.querySelector('#ask-fab').getBoundingClientRect();
+            return { h: Math.round(r.height), w: Math.round(r.width), text: document.querySelector('#ask-fab-text').innerText }; });
+          check('on a small laptop the minimised button is one slim line',
+            slim.h <= 44 && slim.text === 'Ask PsycheAI' && !slim.text.includes('\n'), JSON.stringify(slim));
+          await sp.setViewportSize({ width: 1920, height: 1000 });
           await sp.click('#ask-fab');
           await sp.waitForSelector('#ask-dialog[open]', { timeout: 5000 });
+          await settle(sp, '#ask-dialog');
+          // Expand fills the screen under the header; pressed again, the panel goes back to the side.
+          await sp.click('#ask-expand');
+          await sp.waitForTimeout(150);
+          const wide = await sp.evaluate(() => { const r = document.querySelector('#ask-dialog').getBoundingClientRect(), b = document.querySelector('#ask-expand');
+            return { w: Math.round(r.width), left: Math.round(r.left), pressed: b.getAttribute('aria-pressed'), label: b.getAttribute('aria-label') }; });
+          if (process.env.UITEST_SHOTS) await sp.screenshot({ path: process.env.UITEST_SHOTS + '/ask-expanded.png' });
+          await sp.click('#ask-expand');
+          await sp.waitForTimeout(150);
+          const back = await sp.evaluate(() => { const r = document.querySelector('#ask-dialog').getBoundingClientRect(), b = document.querySelector('#ask-expand');
+            return { w: Math.round(r.width), pressed: b.getAttribute('aria-pressed'), label: b.getAttribute('aria-label') }; });
+          check('on a laptop Expand fills the screen with Ask PsycheAI, and again puts it back to the side',
+            wide.w >= 1800 && wide.left <= 40 && wide.pressed === 'true' && wide.label === 'Back to the side' &&
+            back.w <= 400 && back.pressed === 'false' && back.label === 'Expand', JSON.stringify({ wide, back }));
+          await sp.setViewportSize({ width: 390, height: 844 });
+          await sp.waitForTimeout(150);
+          check('on a phone there is no Expand button: the sheet already fills the screen',
+            await sp.evaluate(() => getComputedStyle(document.querySelector('#ask-expand')).display === 'none'));
           await sp.setViewportSize(vp);
           await settle(sp, '#ask-dialog');
         }

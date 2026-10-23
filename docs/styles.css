@@ -4647,12 +4647,22 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .ask-credits[hidden] { display: none; }
 /* Minimise: a filled round button, so it reads as a button rather than a dash. */
-.ask-close {
+.ask-close, .ask-expand {
   flex: none; appearance: none; border: 0; cursor: pointer; display: grid; place-items: center;
   width: 2.1rem; height: 2.1rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
   font-size: 1.15rem; font-weight: 900; line-height: 1;
 }
-.ask-close:hover, .ask-close:focus-visible { background: var(--accent); color: #fff; }
+.ask-close:hover, .ask-close:focus-visible, .ask-expand:hover, .ask-expand:focus-visible { background: var(--accent); color: #fff; }
+/* Expand, on a laptop only: the panel fills the screen under the site's header,
+   the conversation kept to a readable width in the middle of it. A phone's
+   bottom sheet already fills the screen, so it has no such button. */
+.ask-expand-off, .ask-dialog.is-wide .ask-expand-on { display: none; }
+.ask-dialog.is-wide .ask-expand-off { display: block; }
+@media (min-width: 761px) {
+  .ask-dialog.is-wide { inset: 4.25rem 1rem 1rem 1rem; width: auto; }
+  .ask-dialog.is-wide .ask-thread, .ask-dialog.is-wide .ask-foot { padding-left: max(1.1rem, calc((100% - 820px) / 2)); padding-right: max(1.1rem, calc((100% - 820px) / 2)); }
+  .ask-dialog.is-wide .ask-q, .ask-dialog.is-wide .ask-a { font-size: 1rem; }
+}
 /* min-height 0: the conversation gives way first, so the box and "Get 5 questions" are never pushed out. */
 .ask-thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1rem 1.1rem; display: grid; gap: 1rem; align-content: start; }
 .ask-intro { margin: auto 0; text-align: center; font-size: .9rem; line-height: 1.5; color: var(--ink-soft); }
@@ -4675,18 +4685,20 @@ details.more[open] > summary::after { content: ' ▴'; }
   padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink-soft);
 }
 .ask-ideas-toggle:hover, .ask-ideas-toggle.is-open { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-/* Ask PsycheAI minimised: a pill at the bottom right of My Psyche and My Report. */
+/* Ask PsycheAI minimised: a pill at the bottom right of My Psyche and My Report.
+   One line always (nowrap): placed just right of the report on a laptop, it
+   would otherwise wrap into a fat two-line pill where the margin is narrow. */
 .ask-fab {
   position: fixed; z-index: 45; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-  display: inline-flex; align-items: center; gap: .5rem; padding: .45rem 1rem .45rem .45rem;
-  border: 0; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700; font-size: .92rem; color: #fff;
+  display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .85rem .3rem .3rem; white-space: nowrap;
+  border: 0; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700; font-size: .88rem; color: #fff;
   background: linear-gradient(100deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 28px rgba(60, 20, 90, .35);
 }
 .ask-fab[hidden] { display: none; }
 /* Its full name on a laptop, "Ask" on a phone. */
 .ask-fab-short { display: none; }
 @media (max-width: 760px) { .ask-fab-long { display: none; } .ask-fab-short { display: inline; } }
-.ask-fab .ask-mark { width: 2rem; height: 2rem; border-radius: 999px; background: rgba(255, 255, 255, .22); }
+.ask-fab .ask-mark { width: 1.7rem; height: 1.7rem; border-radius: 999px; background: rgba(255, 255, 255, .22); }
 .ask-fab:hover, .ask-fab:focus-visible { filter: brightness(1.06); }
 .ask-fab.is-ready { animation: ask-ready 1.6s ease-in-out infinite; }
 @keyframes ask-ready { 0%, 100% { box-shadow: 0 10px 28px rgba(60, 20, 90, .35); } 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent); } }
@@ -4757,6 +4769,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   .ask-handle {
     display: block; flex: none; appearance: none; border: 0; background: none; cursor: pointer; padding: .5rem 0 .1rem; width: 100%;
   }
+  .ask-expand { display: none; }
   .ask-handle span { display: block; width: 2.6rem; height: .3rem; margin: 0 auto; border-radius: 999px; background: var(--line); }
   .ask-head { padding-top: .4rem; }
   /* Dragged down to minimise (app.js): the browser must not take it as a scroll. */
