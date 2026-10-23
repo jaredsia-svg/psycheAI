@@ -145,14 +145,14 @@ REELS['relationship'] = {
 REELS['compare'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
-        (['I asked Chat G P T and {B} the same question.'], 0.85, None),
+        (['I asked Chat G P T and {B} the same question.', "What would I regret most about my life when I'm old?"], 0.85, True, 0.5),
         (['Chat G P T gave me a list that could fit anyone.'], 0.85, None),
         (['{B} red my data first.'], 0.85, None),
         (['And it told me exactly why.'], 0.85, None),
         (['Same question.', 'Only one of them actually knew me.'], 0.85, True, 0.3),
         (['Your personal AI coach.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
     ],
-    'hold': {0: 2.4, 1: 1.6, 2: 0.9, 3: 6.6, 4: 0.8},  # 0: the question typed into both; 1 and 3: time to read each answer
+    'hold': {0: 0.6, 1: 3.1, 2: 0.9, 3: 6.6, 4: 0.8},  # 1 and 3: time to read each answer
     'lead': {5: 1.6},  # 5: the closing thought is read before the voice comes in
     # Its own key and tempo on the career reel's instruments: A minor (Am F C G) at 100 under ChatGPT's answer, a
     # muffled piano and a slow pulse; a swell into C major (C G Am F) for PsycheAI's, with a light beat and a plucked

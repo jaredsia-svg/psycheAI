@@ -119,15 +119,16 @@ function render(t) {
   const zB = easeIO(prog(t, LOAD.start - 0.2, LOAD.start + 0.35)) * (1 - easeIO(prog(t, VERDICT.start - 0.4, VERDICT.start)));
   $('cam').style.transform = 'translateY(' + (zA * 410 - zB * 415) + 'px) scale(' + (1 + 0.08 * (zA + zB)) + ')';
 
-  // The hook, then the two panels slide in and the question types into both at once.
-  const hk = back(prog(t, HOOK.vo - 0.2, HOOK.vo + 0.2)), hkOut = prog(t, HOOK.voEnd + 0.1, HOOK.voEnd + 0.4);
+  // The hook, then, as the voice reads the question out, the panels slide in and it types into both at once.
+  const Q = HOOK.marks[1];
+  const hk = back(prog(t, HOOK.vo - 0.2, HOOK.vo + 0.2)), hkOut = prog(t, Q - 0.45, Q - 0.15);
   show('hook', clamp(hk * 2) * (1 - hkOut), 'scale(' + (0.85 + 0.15 * Math.min(1, hk)) + ')');
-  const pin = easeIO(prog(t, HOOK.voEnd + 0.2, HOOK.voEnd + 0.7)), pout = easeIO(prog(t, CLOSE.start - 0.3, CLOSE.start + 0.2));
+  const pin = easeIO(prog(t, Q - 0.4, Q + 0.05)), pout = easeIO(prog(t, CLOSE.start - 0.3, CLOSE.start + 0.2));
   // Each panel is lit while it speaks and dimmed while the other does.
   const litA = t < LOAD.start ? 1 : t < VERDICT.start ? 0.35 : 1, litB = t >= GPT.start - 0.1 && t < LOAD.start ? 0.35 : 1;
   show('pA', pin * (1 - pout) * litA, 'translateY(' + ((1 - pin) * -200 - pout * 200) + 'px)');
   show('pB', pin * (1 - pout) * litB, 'translateY(' + ((1 - pin) * 200 + pout * 200) + 'px)');
-  const qTyped = Math.round(QUESTION.length * prog(t, HOOK.voEnd + 0.6, HOOK.voEnd + 2.0));
+  const qTyped = Math.round(QUESTION.length * prog(t, Q, HOOK.voEnd));
   $('qA').textContent = $('qB').textContent = QUESTION.slice(0, qTyped);
   ['qA', 'qB'].forEach(id => { $(id).style.visibility = qTyped ? 'visible' : 'hidden'; });
 
