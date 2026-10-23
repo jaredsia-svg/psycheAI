@@ -150,7 +150,7 @@ REELS['compare'] = {
         (['{B} red my data first.'], 0.85, None),
         (['And it told me exactly why.'], 0.85, None),
         (['Same question.', 'Only one of them actually knew me.'], 0.85, True, 0.3),
-        (['Your personal AI coach.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
+        (['Your personal AI coach.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.2),
     ],
     'hold': {0: 0.6, 1: 2.1, 2: 0.9, 3: 6.6, 4: 0.8},  # 1 and 3: time to read each answer; the question is said slower
     'lead': {5: 1.6},  # 5: the closing thought is read before the voice comes in

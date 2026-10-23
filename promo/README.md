@@ -275,7 +275,8 @@ and the reel says
 only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
 reworded, and labelled in plain text rather than with ChatGPT's logo. Run it past someone for comparative
 advertising before paying to promote it. The voice says "Chat G P T"; written as one word it came out
-"chatgbke".
+"chatgbke". The address is `{PsycheAIdotIO}` in `vo.py`, seven even syllables with "Psyche"
+said as "sigh key": given the brand's own sounds, Ryan ran the A and I together.
 
 ## The privacy post
 

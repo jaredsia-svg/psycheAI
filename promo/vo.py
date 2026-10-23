@@ -62,7 +62,10 @@ END = 'Your first Psyche Card is free!'
 
 # Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen") and
 # {Odysseus} ("Utysis"). The recogniser hears them as the plain word.
-NAMES = {'{Mulan}': list('muːlˈæn'), '{Odysseus}': list('oʊdˈɪsiːəs')}
+NAMES = {'{Mulan}': list('muːlˈæn'), '{Odysseus}': list('oʊdˈɪsiːəs'),
+         # The address said as seven even syllables, Psy-che-A-I-dot-I-O, for the male voices: given the brand's
+         # sounds (BRAND), Ryan runs the A and I together, and "Psyche" said as "sigh key" keeps them apart.
+         '{PsycheAIdotIO}': list('sˈaɪ kˈiːʲ ˌeɪˈaɪ dˈɑːt aɪ ˈoʊ')}
 
 def named(text):
     """Phonemes for a line with a {Name} in it: the words around it phonemized, the name as given."""
@@ -105,7 +108,7 @@ def heard(a):
     s = rec.create_stream(); s.accept_waveform(SR, np.concatenate([pad, a, pad])); rec.decode_stream(s); return s.result.text
 
 def words(text):
-    text = text.replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
+    text = text.replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
     # The recogniser writes a spoken address as one: "psyche ai dot app" comes back "psycheai.app".
     text = re.sub(r'(?<=[a-z])\.(?=[a-z])', ' dot ', text).replace('psycheai', 'psyche ai')
     # A spelled-out ending, "dot I O", is heard as ".io", and a spelled-out type, "E N T P", as "ENTP".
