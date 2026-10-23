@@ -208,13 +208,13 @@ Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | Struggling with your job? | typed out on a dusk ground, a briefcase |
-| 1 | Wrong job? / Slow days? / Am I the problem? | only a search bar: each doubt typed in as it is said, with a "?", piling up as recent searches (searches are among what the app reads); spoken slowly, with room between them |
+| 1 | Am I in the wrong job? / Am I the problem? | only a search bar: three doubts typed in, each with a "?", piling up as recent searches (searches are among what the app reads); the voice says the first and last, and *why does my workday go so slowly?* is typed in the pause between them |
 | 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; the dots after *PsycheAI* flicker while Instagram and WhatsApp fly into the phone and a *Reading your data…* bar fills; Ask PsycheAI, the question asked |
 | 3 | You don't hate your job. You hate the routine parts of it. | the answer typed in: the routine parts drain you, your longest, fastest messages are about untangling a problem; *A new job won't fix that. Go after the messy problems in the one you have.* (a sample reader's) |
 | 4 | Your Psyche Report goes further. Your edge at work, what's holding you back, and the careers that suit you best. | three cards from the report's career assessment as each is named: *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
 | 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
 
-"Your edge," on its own came out garbled, so it is said "your edge at work,". The first answer, "you hate
+The answer is held a second and a half once it is fully typed. "Your edge," on its own came out garbled, so it is said "your edge at work,". The first answer, "you hate
 following a plan you didn't help make", was hard to follow and did not match the evidence under it. The music:
 B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell into D major (D A Bm G) for
 the answer, with a light beat of kick, snaps and shaker, a warm bass and a plucked tune; fuller for the report;

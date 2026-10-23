@@ -112,7 +112,8 @@ const [HOOK, QS, ASK, ANS, REP, CLOSE] = S;
 
 // The hook, letter by letter.
 const hookChars = [...'Struggling with your job?'].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
-// The questions: typed into a search bar one after another as they are said, piling up as recent searches.
+// The questions: typed into a search bar one after another, piling up as recent searches. The voice says the first
+// and the last; the middle one is typed in the pause between them.
 const SEARCHES = ['am I in the wrong job?', 'why does my workday go so slowly?', 'am I the problem?'];
 const rows = SEARCHES.map(tx => mk('rs', '<span>🕘</span><div>' + tx + '</div>', $('recent')));
 // The answer: a sample reader's, from the kinds of evidence the app reads; the first sentence is what the voice says.
@@ -157,10 +158,11 @@ function render(t) {
   const sIn = back(prog(t, QS.start, QS.start + 0.4));
   show('search', qOn ? clamp(sIn * 2) * (1 - qOut) : 0, 'translateY(' + (1 - Math.min(1, sIn)) * 120 + 'px)');
   // The bar types the newest search while the rows pile up above the older ones.
-  const k = QS.marks.filter(m => t >= m - 0.1).length - 1, cur = SEARCHES[Math.max(0, k)];
-  const typed = Math.round(cur.length * prog(t, QS.marks[Math.max(0, k)] - 0.1, QS.marks[Math.max(0, k)] + 0.5));
+  const QT = [QS.marks[0], (QS.marks[0] + QS.marks[1]) / 2 + 0.15, QS.marks[1]];
+  const k = QT.filter(m => t >= m - 0.1).length - 1, cur = SEARCHES[Math.max(0, k)];
+  const typed = Math.round(cur.length * prog(t, QT[Math.max(0, k)] - 0.1, QT[Math.max(0, k)] + 0.5));
   $('q').innerHTML = cur.slice(0, typed) + '<span class="caret" style="opacity:' + (Math.sin(t * 12) > 0 ? 1 : 0) + '"></span>';
-  rows.forEach((r, i) => { const a = QS.marks[i] + 0.45, p = back(prog(t, a, a + 0.3));
+  rows.forEach((r, i) => { const a = QT[i] + 0.45, p = back(prog(t, a, a + 0.3));
     r.style.opacity = clamp(p * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, p)) * -60 + 'px)'; });
 
   // Asking PsycheAI: the line, then the phone with the question; the answer typed in.
@@ -184,7 +186,7 @@ function render(t) {
   $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, ASK.start + 0.8, ANS.start - 0.1))) + '%';
   [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, ASK.start + 1.2 + i * 0.3, ASK.start + 1.4 + i * 0.3); });
   $('answer').style.display = t >= ANS.vo - 0.05 ? 'block' : 'none';
-  const typedW = Math.round(answerWords.length * prog(t, ANS.vo, ANS.end - 0.9));
+  const typedW = Math.round(answerWords.length * prog(t, ANS.vo, ANS.end - 1.4));
   $('answer').innerHTML = fixTags(answerWords.slice(0, typedW).join('')) || '<span style="opacity:.5">● ● ●</span>';
   $('source').textContent = typedW >= answerWords.length ? 'From your messages, posts and saves' : '';
 
