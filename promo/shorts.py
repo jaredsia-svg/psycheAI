@@ -22,7 +22,7 @@ REELS = {
         'lines': [
             (['Your Instagram has been taking notes on you for years.'], 0.92, None),
             (["It knows you're the one who organizes every plan,", 'you give more attention than you ask for,',
-              'and you go quiet when you need to recharge.'], 0.92, True, 0.08),
+              "and you're the first to check on a friend who's gone quiet."], 0.92, True, 0.08),
             (['So I let {B} read it.'], 0.92, None),
             (['I got {Mulan}. The organizer with a warm center.'], 0.92, None),
             (["Comment card, and I'll send you the link."], 0.92, None),
