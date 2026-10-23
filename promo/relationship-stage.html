@@ -49,6 +49,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #ig .ic { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
 #ig .ic::before { content: ''; position: absolute; inset: 42px; border: 12px solid #fff; border-radius: 38px; }
 #ig .ic::after { content: ''; position: absolute; left: 71px; top: 71px; width: 48px; height: 48px; border: 12px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#gg .ic { background: #fff; }
+#gg .ic::before { content: 'G'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 128px/1 Inter, sans-serif;
+  background: conic-gradient(from -45deg, #ea4335 0 25%, #4285f4 0 50%, #34a853 0 75%, #fbbc05 0); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #wa .ic { background: #25d366; }
 #wa .ic::before { content: ''; position: absolute; left: 40px; top: 36px; width: 110px; height: 110px; border: 12px solid #fff; border-radius: 50%; box-sizing: border-box; }
 #wa .ic::after { content: ''; position: absolute; left: 36px; top: 128px; width: 0; height: 0; border-left: 22px solid transparent; border-top: 30px solid #fff; transform: rotate(18deg); }
@@ -60,11 +63,11 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #loading .fill { height: 100%; width: 0; border-radius: 9px; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); }
 .dots i { font-style: normal; }
 /* What the report adds. */
-#more { z-index: 20; left: 60px; right: 60px; top: 260px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
-.rc { z-index: 15; left: 80px; width: 920px; padding: 38px 44px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(90,40,120,.2); }
+#more { z-index: 20; left: 60px; right: 60px; top: 220px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
+.rc { z-index: 15; left: 80px; width: 920px; padding: 30px 40px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(90,40,120,.2); }
 .rc small { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 850; letter-spacing: .07em; color: #8a3fd0; text-transform: uppercase; }
 .rc small span { font-size: 44px; }
-.rc p { margin-top: 14px; font-size: 44px; font-weight: 800; line-height: 1.2; color: #2a1238; }
+.rc p { margin-top: 10px; font-size: 40px; font-weight: 800; line-height: 1.2; color: #2a1238; }
 .cols { display: flex; gap: 26px; margin-top: 18px; }
 .cols div { flex: 1; padding: 20px 24px; border-radius: 26px; font-size: 32px; font-weight: 700; line-height: 1.35; }
 .cols b { display: block; font-size: 26px; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
@@ -89,8 +92,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el cap" id="ask1">So I asked <span class="grad">PsycheAI</span><span class="dots" id="dots1"><i>.</i><i>.</i><i>.</i></span></div>
   <div class="el cap" id="ask2">…and it answered from my own data</div>
   <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="chat"><h6>ASK PSYCHEAI</h6>
-    <div class="bq">Why do we keep fighting over small things?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
+    <div class="bq">Why do we keep fighting over small things?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span><span>🔎 Google</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
   <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
+  <div class="el app" id="gg"><div class="ic"></div><div class="nm">Google</div></div>
   <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
   <div class="el" id="more">Your <span class="grad">Psyche Report</span><br>shows</div>
   <div id="cards"></div>
@@ -124,16 +128,17 @@ const ANSWER = '<b>It’s not the dishes. It’s feeling like you come second.</
   '‘fine’, ‘whatever’ – then long, two days later. <b>Say what you need before it builds: “I need to feel like a priority.”</b>';
 const answerWords = ANSWER.split(/(?<=\s)/);
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
-// What the report covers, part by part, as the voice names each: how you love, how you deal with conflict, what you
-// need in a partner (all read from her data alone).
+// What the report covers, part by part, as the voice names each: how you love, your attachment style, how you deal
+// with conflict, what you need in a partner (all read from her data alone).
 const CARDS = [
   ['💞', 'How you show love', '<div class="cols"><div class="yes"><b>You give</b>Acts of service: planning, remembering, checking in</div>' +
-    '<div class="no"><b>You need</b>To be noticed and told</div></div>'],
+    '<div class="no"><b>You need</b>Words of affirmation: to be noticed and told</div></div>'],
+  ['🔗', 'Attachment style', '<p>Leans anxious: you need reassurance most when things go quiet</p>'],
   ['⚡', 'How you deal with conflict', '<p>Quiet first, then it all comes out over something small</p>'],
   ['🧭', 'What you need in a partner', '<p>Someone who notices the effort, and says so</p>'],
 ];
 const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
-  d.style.top = [500, 950, 1220][i] + 'px'; return d; });
+  d.style.top = [450, 865, 1095, 1325][i] + 'px'; return d; });
 const motes = Array.from({ length: 26 }, (_, i) => { const d = document.createElement('div'); d.className = 'mote'; $('motes').appendChild(d);
   return { el: d, x: hash(i) * 1080, speed: 30 + hash(i + 4) * 50, phase: hash(i + 8), size: 3 + hash(i + 2) * 6 }; });
 
@@ -180,15 +185,15 @@ function render(t) {
   // The dots: one, two, three, flickering, while the data loads.
   const flick = Math.floor(t * 6) % 4;
   ['dots1', 'dots2'].forEach(id => [...$(id).children].forEach((d, i) => { d.style.opacity = i < flick ? (0.55 + 0.45 * Math.abs(Math.sin(t * 17 + i))) : 0; }));
-  // Instagram and WhatsApp fly into the phone, one from each side.
-  [['ig', -1, 0.15], ['wa', 1, 0.45]].forEach(([id, side, delay]) => {
+  // Instagram, Google and WhatsApp fly into the phone, from the left, the top and the right.
+  [['ig', -1, 0.15], ['gg', 0, 0.3], ['wa', 1, 0.45]].forEach(([id, side, delay]) => {
     const a = ASK.start + delay, fly = easeIO(prog(t, a + 0.35, a + 1.1)), pop = back(prog(t, a, a + 0.35));
-    const x0 = 540 + side * 330 - 95, y0 = 380, x1 = 445, y1 = 880;
+    const x0 = 540 + side * 330 - 95, y0 = side ? 380 : 420, x1 = 445, y1 = 880;
     Object.assign($(id).style, { left: (x0 + (x1 - x0) * fly) + 'px', top: (y0 + (y1 - y0) * fly) + 'px' });
     show(id, askOn && t < ANS.start ? clamp(pop * 2) * (1 - prog(fly, 0.75, 1)) : 0, 'scale(' + Math.min(1.05, pop) * (1 - 0.7 * fly) + ') rotate(' + side * 8 * (1 - fly) + 'deg)'); });
   $('loading').style.display = t < ANS.vo - 0.05 ? 'block' : 'none';
   $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, ASK.start + 0.8, ANS.start - 0.1))) + '%';
-  [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, ASK.start + 1.2 + i * 0.3, ASK.start + 1.4 + i * 0.3); });
+  [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, ASK.start + 1.1 + i * 0.25, ASK.start + 1.3 + i * 0.25); });
   $('answer').style.display = t >= ANS.vo - 0.05 ? 'block' : 'none';
   const typedW = Math.round(answerWords.length * prog(t, ANS.vo, ANS.end - 1.4));
   $('answer').innerHTML = fixTags(answerWords.slice(0, typedW).join('')) || '<span style="opacity:.5">● ● ●</span>';
@@ -198,7 +203,7 @@ function render(t) {
   const repOn = t >= REP.start - 0.05 && t < CLOSE.start, repOut = prog(t, REP.end - 0.25, REP.end);
   const mr = back(prog(t, REP.vo - 0.2, REP.vo + 0.2));
   show('more', repOn ? clamp(mr * 2) * (1 - repOut) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, mr) + pulse * 0.01) + ')');
-  const CT = [REP.marks[1] - 0.9, REP.marks[1], REP.marks[2]];
+  const CT = [REP.marks[1] - 0.9, REP.marks[1], REP.marks[2], REP.marks[3]];
   cards.forEach((c, i) => { const a = CT[i] - 0.15, p = back(prog(t, a, a + 0.35));
     show(c, repOn ? clamp(p * 2) * (1 - repOut) : 0, 'perspective(1600px) rotateX(' + (1 - Math.min(1, p)) * -70 + 'deg) scale(' + (0.9 + 0.1 * Math.min(1, p)) + ')'); });
 

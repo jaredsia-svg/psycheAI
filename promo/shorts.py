@@ -126,7 +126,7 @@ REELS['relationship'] = {
         (['Different topic.', 'Same fight.'], 0.85, True, 0.3),
         (['So I asked {B} why we keep fighting over small things,', 'and it answered from my own data.'], 0.85, True, 0.15),
         (["It's not the dishes.", "It's feeling like you come second."], 0.85, True, 0.3),
-        (['Your Psyche Report shows how you love,', 'how you handle conflict,', 'and what you need from the person you love.'], 0.85, True, [0.1, 0.1]),
+        (['Your Psyche Report shows how you love,', 'your attachment style,', 'how you handle conflict,', 'and what you need from the person you love.'], 0.85, True, [0.1, 0.1, 0.1]),
         (['A coach that already knows you.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
     ],
     'lead': {1: 2.8},                  # 1: the fights stack up before the voice names them
