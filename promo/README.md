@@ -254,7 +254,10 @@ npm run promo:shorts -- compare   # out/PsycheAI-compare.mp4, about 30 s
 
 The same question asked of ChatGPT and of PsycheAI, on one screen: ChatGPT's panel above, PsycheAI's below, each
 lit while it answers and dimmed while the other does. Its own stage, `compare-stage.html`; Ryan's voice, as the
-career reel; the career reel's instruments in a key and tempo of their own (A minor to C major at 100).
+career reel. The music is the relationship reel's electric piano groove in A minor to C, chosen from three tried
+under the same video: a low pulse tightens under ChatGPT's answer, a soft brushed groove with a vibraphone tune
+comes in for PsycheAI's, and its ending stays in its own key, F then G home to a rolled C (the relationship reel's
+ending, in A, sounded like a change of key here).
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
@@ -266,11 +269,10 @@ career reel; the career reel's instruments in a key and tempo of their own (A mi
 | 5 | Your personal AI coach. Try it at PsycheAI dot I O. | first, before the voice, one complete thought: *Other AI coaches wait for you to describe yourself. PsycheAI already knew you from the start.*; then *Your personal AI coach* and the address |
 
 The camera moves in on each panel while its answer comes in (ChatGPT's, then PsycheAI's as its data loads), and
-back out as the verdict lands on the beat. The beat stops for the close (`calm_close`), so the piano carries it to
-a softly rolled chord. Two other pieces can be heard under the same video, same lines and tempo so the same
-timeline: `npm run promo:shorts -- compare-strings` (the coach reel's rolling piano and strings) and
-`compare-keys` (the relationship reel's electric piano groove); `reveal_lead` keeps the first one's timing the
-same. The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
+back out as the verdict lands on the beat. The beat stops for the close, so the piano carries it to
+its last chord. The two pieces not chosen can still be heard under the same video, same lines and tempo so the
+same timeline: `npm run promo:shorts -- compare-plain` (the career reel's instruments, the first cut) and
+`compare-strings` (the coach reel's rolling piano and strings; `reveal_lead` keeps its timing the same). The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
 only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
 reworded, and labelled in plain text rather than with ChatGPT's logo. Run it past someone for comparative
 advertising before paying to promote it. The voice says "Chat G P T"; written as one word it came out

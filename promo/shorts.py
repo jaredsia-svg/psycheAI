@@ -164,13 +164,17 @@ REELS['compare'] = {
     'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
-# The comparison reel under other music, to compare: the same lines and tempo, so the same timeline and video.
-# `compare-strings` is the coach reel's rolling piano and strings; `compare-keys` the relationship reel's electric
-# piano groove; both in A minor to C.
+# The comparison reel's music, chosen from three tried under the same video (same lines and tempo, so the same
+# timeline): the relationship reel's electric piano groove, in A minor to C, its ending kept in that key (F then G,
+# home to C; the relationship reel's own ending is in A). The two not chosen are kept to hear again:
+# `compare-plain` (the career reel's instruments, the first cut) and `compare-strings` (the coach reel's rolling
+# piano and strings; `reveal_lead` keeps its timing the same).
+REELS['compare-plain'] = REELS['compare']
 REELS['compare-strings'] = dict(REELS['compare'], mood='uplifting', calm_close=False, reveal_lead=0.45,
                                 chords=[[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], roots=[45, 41, 48, 43],
                                 melody=[[76, 72, 69, 72], [77, 72, 69, 72], [79, 76, 72, 76], [74, 71, 67, 71]])
-REELS['compare-keys'] = dict(REELS['compare-strings'], mood='relationship')
+REELS['compare'] = dict(REELS['compare-strings'], mood='relationship',
+                        cadence=[([53, 57, 60], 41), ([55, 59, 62], 43)], end_chord=[36, 48, 52, 55, 60, 64])
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +
@@ -403,12 +407,15 @@ elif R.get('mood') == 'relationship':
         return lp(y * np.minimum(1, x / 0.6) * np.clip((length - x) / 0.5, 0, 1), 1500) * gain
     K = kick()
     pump = np.ones(n, np.float32)
+    # The ending: the last chord on its own bar; a reel may lead into it with a cadence, a bar of two chords.
+    last = snap(END - BAR, BAR)
+    CADENCE = R.get('cadence')
+    stop = last - BAR if CADENCE else END - BAR
     b = 0.0
     while b < END:
         k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8; beat_i = e // 2
         chord, root = CHORDS[bar_i], ROOTS[bar_i]
-        ending = b >= END - BAR
-        if ending: b += EIGHTH; continue
+        if b >= stop: b += EIGHTH; continue
         # The electric piano: the chord on the one and the and of two, the top note answering.
         if e in (0, 3):
             for m in chord: at(b, rhodes(m + 12, 2.2, 0.05), 1.0, -0.15)
@@ -428,11 +435,19 @@ elif R.get('mood') == 'relationship':
             if e in (0, 3, 4): at(b, soft_bass(root - 12, EIGHTH * 1.7), 1.0)
             if e % 2 == 0: at(b, vibes(MELODY[bar_i][beat_i], 0.06 if full else 0.045), 1.0, 0.15)
         b += EIGHTH
-    # A swell into the answer; the last chord, A, rolled softly up the electric piano over a swelling pad.
+    # A swell into the answer. The cadence, if any: its two chords on the electric piano over the bass, the tune's
+    # last notes on the vibraphone. Then the last chord (the reel's home key; A for this one) rolled softly up the
+    # electric piano over a swelling pad.
     at(DROP - 1.6, swell(1.6), 0.8)
-    last = snap(END - BAR, BAR)
-    for k, m in enumerate([45, 57, 61, 64, 69, 73]): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
-    at(last - 0.6, pad([57, 61, 64], 3.8, 0.04), 1.0)
+    if CADENCE:
+        for k, (ch, rt) in enumerate(CADENCE):
+            at(last - BAR + k * BAR / 2, pad(ch, BAR / 2 + 0.1, 0.035), 1.0); at(last - BAR + k * BAR / 2, soft_bass(rt - 12, BAR / 2), 0.9)
+            for m in ch: at(last - BAR + k * BAR / 2, rhodes(m + 12, 2.0, 0.05), 1.0, -0.15)
+            at(last - BAR + k * BAR / 2 + BEAT, vibes(ch[-1] + 12, 0.045), 1.0, 0.15)
+    end = R.get('end_chord', [45, 57, 61, 64, 69, 73])
+    for k, m in enumerate(end): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
+    at(last - 0.6, pad(end[1:4], 3.8, 0.04), 1.0)
+    if CADENCE: at(last + 0.6, vibes(end[-1] + 12, 0.04), 1.0, 0.15)
 elif R.get('mood') == 'career':
     sc = scenes
     QUESTIONS, DROP, REPORT, CLOSE = sc[1]['start'], sc[3]['start'], sc[4]['start'], sc[5]['start']
