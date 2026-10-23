@@ -2883,6 +2883,12 @@ de-identification list twice. Each answer now says its own thing once:
 - *Is my data used to train AI?* is the no, and why, in one sentence.
 - *Can the digest be linked back to me?* keeps the specifics ([P1], [N1], dates cut to the month) and the
   encryption line ("stored encrypted", not "encrypted at rest").
+- *Why not just upload my data to ChatGPT?* (added late October 2026, from a reader's question) answers on
+  privacy first: a raw export goes to the cloud as it is, nothing de-identified, kept in the chat history, and on
+  ChatGPT's personal plans it may be used for training unless turned off; against that, files read on the
+  device, a de-identified digest, an enterprise service that does not train, no copy and no account, and the
+  people in the messages never uploaded. Then that it works better: an export is usually more than a chatbot
+  can take in at once. It calls ChatGPT capable, and states its settings rather than how good it is.
 - *Can anyone else access my data?* is two paragraphs: nothing stored to take, the administrator cannot see it,
   the privacy policy lists what is kept; shared cards and syncs are locked with a key only the link holds.
 - *Does PsycheAI count anything?*, *How does Psyche Sync work?* and *How do I keep my report?* are shorter.

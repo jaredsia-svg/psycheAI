@@ -10333,6 +10333,7 @@ try {
       'Do I need to give my Instagram password?',
       'Is my data used to train AI?',
       'Can the digest be linked back to me?',
+      'Why not just upload my data to ChatGPT?',
       'Can anyone else access my data?',
       'What if PsycheAI gets hacked?',
       'Does PsycheAI count anything?',
