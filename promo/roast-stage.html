@@ -18,7 +18,6 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #nice { z-index: 20; left: 60px; right: 60px; top: 250px; text-align: center; font-size: 82px; font-weight: 850; letter-spacing: -0.03em; line-height: 1.08; }
 #then { z-index: 20; left: 60px; right: 60px; top: 250px; text-align: center; font-size: 82px; font-weight: 850; letter-spacing: -0.03em; }
 #card { z-index: 10; left: 290px; top: 470px; width: 500px; border-radius: 26px; box-shadow: 0 40px 90px rgba(90,40,120,.3); transform-origin: 50% 0; }
-.heart { position: absolute; z-index: 11; font-size: 64px; }
 #cover { z-index: 12; left: 90px; width: 900px; top: 1000px; padding: 44px 40px 52px; border-radius: 44px; text-align: center; border: 5px solid transparent;
   background: linear-gradient(160deg, #fbeefa, #fff 70%) padding-box, linear-gradient(120deg, #e0457b, #8a3fd0, #ff7a45, #e0457b) border-box;
   box-shadow: 0 40px 90px rgba(90,40,120,.25); }
@@ -45,7 +44,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .panel .bar { position: absolute; left: 0; right: 0; top: 0; height: 120px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px;
   color: #fff; font-size: 40px; font-weight: 800; border-bottom: 2px solid rgba(255,255,255,.12); background: #2b1236; z-index: 3; }
 .count { padding: 10px 26px; border-radius: 999px; font-size: 38px; font-weight: 900; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b); }
-/* 1: saved workouts */
+/* 1: saved cooking videos */
 #grid { position: absolute; left: 34px; right: 34px; top: 150px; }
 .tile { position: absolute; width: 184px; height: 184px; border-radius: 28px; display: flex; align-items: center; justify-content: center; font-size: 92px; }
 .tile::after { content: '▶'; position: absolute; right: 14px; bottom: 10px; font-size: 26px; color: rgba(255,255,255,.9); }
@@ -55,14 +54,14 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   padding-top: 34px; text-align: center; font-weight: 900; background: rgba(30,8,24,.9); box-shadow: 0 0 60px rgba(255,61,110,.45); }
 #stamp b { display: block; font-size: 160px; line-height: 1; }
 #stamp small { display: block; margin-top: 6px; font-size: 44px; letter-spacing: .12em; }
-/* 2: likes */
-.av { position: absolute; width: 150px; height: 150px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 84px;
-  background: linear-gradient(135deg, #ffd6a5, #ff9ec4); border: 6px solid rgba(255,255,255,.85); }
-#you { width: 230px; height: 230px; font-size: 130px; background: linear-gradient(135deg, #c792ff, #ff7eb3); }
-#youName { position: absolute; left: 0; right: 0; text-align: center; color: #fff; font-size: 40px; font-weight: 850; }
-.fh { position: absolute; font-size: 56px; }
-#got, #gave { position: absolute; left: 40px; right: 40px; text-align: center; font-size: 46px; font-weight: 850; color: #fff; }
-#gave { color: #ff6b8b; }
+/* 2: the "k." chat */
+#thread { position: absolute; left: 30px; right: 30px; top: 150px; bottom: 30px; overflow: hidden; }
+.msg { position: absolute; max-width: 78%; padding: 20px 30px; border-radius: 34px; font-size: 38px; font-weight: 650; line-height: 1.25; }
+.msg.them { left: 0; background: rgba(255,255,255,.14); color: #fff; border-bottom-left-radius: 10px; }
+.msg.you { right: 0; color: #fff; font-weight: 900; background: linear-gradient(90deg, #8a3fd0, #e0457b); border-bottom-right-radius: 10px; }
+.kk { position: absolute; z-index: 26; padding: 16px 30px; border-radius: 30px; color: #fff; font-size: 46px; font-weight: 900;
+  background: linear-gradient(90deg, #8a3fd0, #e0457b); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+#c2.hot { background: #ff3d6e; }
 /* 3: messages */
 #list { position: absolute; left: 0; right: 0; top: 120px; }
 .row { position: absolute; left: 24px; right: 24px; height: 118px; display: flex; align-items: center; gap: 24px; padding: 0 22px; border-radius: 28px; }
@@ -94,10 +93,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="glow"></div>
   <div id="embers"></div>
   <div id="world">
-    <div class="el" id="nice">My Psyche Card<br>was <span class="grad">so nice</span> 🥰</div>
+    <div class="el" id="nice">My Psyche Card<br>was <span class="grad">so nice</span>.</div>
     <div class="el" id="then">Then I clicked…</div>
     <img class="el" id="card" src="assets/card-sherlock.png">
-    <div id="hearts"></div>
     <div class="el" id="cover"><div class="badge">✨ SECRET BONUS UNLOCKED</div><h2 class="grad">Let us roast you</h2>
       <p>Your card is the nice version.<br>This is the other one.</p><div id="btn">🔥 Reveal my roast</div></div>
     <div class="el" id="ring"></div>
@@ -106,10 +104,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div class="el" id="badge"></div>
     <div id="setups"></div>
     <div id="punches"></div>
-    <div class="el panel" id="p1"><div class="bar"><span>🔖 Saved · Workouts</span><span class="count" id="c1">0</span></div><div id="grid"></div></div>
-    <div class="el" id="stamp"><b>0</b><small>WORKOUTS DONE</small></div>
-    <div class="el panel" id="p2"><div id="friends"></div><div id="flying"></div><div class="av" id="you">😎</div><div id="youName">You</div>
-      <div id="got"></div><div id="gave">Likes you gave back: 0 💔</div></div>
+    <div class="el panel" id="p1"><div class="bar"><span>🔖 Saved · Cooking</span><span class="count" id="c1">0</span></div><div id="grid"></div></div>
+    <div class="el" id="stamp"><b>🍜</b><small>#1 MOST COOKED</small></div>
+    <div class="el panel" id="p2"><div class="bar"><span>💬 Alex</span><span class="count" id="c2">0 “k.” sent</span></div><div id="thread"></div></div>
+    <div id="kks"></div>
     <div class="el panel" id="p3"><div class="bar"><span>💬 Messages</span><span class="count" id="c3">0 left on read</span></div><div id="list"></div></div>
 
     <div class="el" id="advice"><h3>What an honest friend would tell you</h3><div id="read"></div></div>
@@ -139,51 +137,47 @@ const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
 
 // The setups, word by word as they are said, and the punchlines.
 const BURNS = [
-  { badge: 'ROAST #1 🔥', setup: '<b>600</b> workout videos saved.', punch: 'Zero workouts done.' },
-  { badge: 'ROAST #2 🔥', setup: 'Your friends like every post you make.', punch: 'You never like theirs back.' },
-  { badge: 'ROAST #3 🔥', setup: 'You left <b>47</b> people on read.', punch: 'Including your mum.' },
+  { badge: 'ROAST #1 🔥', setup: 'You’ve saved <b>300</b> cooking videos.', punch: 'Your most-cooked dish is instant noodles.', size: 92 },
+  { badge: 'ROAST #2 🔥', setup: 'You type <b>“k.”</b> when you’re angry.', punch: 'You’ve sent “k.” 214 times.', size: 100 },
+  { badge: 'ROAST #3 🔥', setup: 'You left <b>47</b> people on read.', punch: 'Including your dad.' },
 ];
 const setups = BURNS.map(b => { const d = mk('setup el', '', $('setups'));
   d.innerHTML = b.setup.split(' ').map(w => '<i>' + w + '</i>').join(' '); return d; });
-const punches = BURNS.map(b => mk('punch el fire', b.punch, $('punches')));
-// Setup words: spread over the times the voice says the setup.
+const punches = BURNS.map(b => { const d = mk('punch el fire', b.punch, $('punches')); if (b.size) d.style.fontSize = b.size + 'px'; return d; });
+// The setup: the whole line at once, as the voice starts it.
 function wordsIn(el, i, t) {
-  const ws = (S[i].words || []).filter(([, at]) => at < S[i].marks[1] - 0.05);
-  const a = ws.length ? ws[0][1] : S[i].vo, b = ws.length ? ws[ws.length - 1][1] : S[i].vo + 1.5;
-  const items = [...el.children];
-  items.forEach((w, k) => { const at = a + (b - a) * k / Math.max(1, items.length - 1) - 0.08, p = back(prog(t, at, at + 0.25));
-    w.style.opacity = clamp(p * 2); w.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px) scale(' + (0.6 + 0.4 * p) + ')'; });
+  const p = back(prog(t, S[i].vo - 0.15, S[i].vo + 0.2));
+  [...el.children].forEach(w => { w.style.opacity = clamp(p * 2); w.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px) scale(' + (0.8 + 0.2 * Math.min(1, p)) + ')'; });
 }
 
 // 1: the saved grid, scrolling up as it fills.
-const EMO = ['🏋️', '🧘', '🏃', '💪', '🤸', '🚴', '🥊', '🏊', '🧗', '⛹️', '🤾', '🏋️‍♀️'];
+const EMO = ['🍝', '🥘', '🍲', '🥗', '🍰', '🍣', '🥞', '🌮', '🥧', '🍛', '🥐', '🍤'];
 const GRADS = ['#ff9a5a,#e0457b', '#8a3fd0,#e0457b', '#ffb347,#ff6b8b', '#5a7bff,#b14fd8', '#ff6b8b,#ffb36b', '#c792ff,#6b5bff'];
 const tiles = Array.from({ length: 24 }, (_, i) => { const d = mk('tile', EMO[i % EMO.length], $('grid'));
   d.style.left = (i % 4) * 202 + 'px'; d.style.top = Math.floor(i / 4) * 202 + 'px';
   d.style.background = 'linear-gradient(135deg,' + GRADS[(i * 5) % GRADS.length] + ')'; return d; });
-// 2: friends' likes raining down on you, none going back.
-const FACES = ['😄', '🥳', '😊', '🤩', '🙂'];
-const friends = FACES.map((f, i) => { const d = mk('av', f, $('friends')); d.style.left = (40 + i * 160) + 'px'; d.style.top = '50px'; return d; });
-$('you').style.left = (430 - 115) + 'px'; $('you').style.top = '360px';
-$('youName').style.top = '600px'; $('got').style.top = '660px'; $('gave').style.top = '230px';
-const hearts = Array.from({ length: 18 }, (_, i) => mk('fh', '❤️', $('flying')));
-// 3: the inbox, every chat seen and not answered, Mum's last.
+// 2: a friend trying, and "k." every time; then a flood of them.
+const CHAT = [['them', 'can we talk about earlier?'], ['you', 'k.'], ['them', 'you seem upset'], ['you', 'k.'],
+  ['them', 'I said I’m sorry 😕'], ['you', 'k.'], ['them', 'are you mad at me?'], ['you', 'k.']];
+const msgs = CHAT.map(([who, tx]) => mk('msg ' + who, tx, $('thread')));
+const kks = Array.from({ length: 26 }, (_, i) => { const d = mk('kk el', 'k.', $('kks'));
+  d.style.left = (130 + hash(i + 40) * 700) + 'px'; d.style.top = (640 + hash(i + 70) * 620) + 'px'; return d; });
+// 3: the inbox, every chat seen and not answered, Dad's last.
 const CHATS = [['Sam', '😄', 'are we still on for tonight?? 👀', '2d'], ['Group chat 🎂', '🥳', 'who’s bringing the cake', '3d'],
   ['Jess', '🤩', 'omg look at this 😂😂', '3d'], ['Alex', '🙂', 'hey, you free this week?', '4d'], ['Coach Dan', '😊', 'you coming saturday?', '5d'],
-  ['Priya', '😄', 'happy birthday!!! 🎉', '6d'], ['Leo', '🤩', 'did you see my message?', '1w'], ['Mum ❤️', '👩', 'Did you eat? Call me back 🙂', '4d']];
+  ['Priya', '😄', 'happy birthday!!! 🎉', '6d'], ['Leo', '🤩', 'did you see my message?', '1w'], ['Dad', '👨', 'Proud of you. Call when you can 🙂', '4d']];
 const rows = CHATS.map(([nm, pic, pv, when], i) => { const d = mk('row' + (i === CHATS.length - 1 ? ' mom' : ''),
   '<div class="pic">' + pic + '</div><div class="txt"><div class="nm">' + nm + '</div><div class="pv">' + pv + '</div></div><div class="seen">Seen ' + when + '</div>', $('list'));
   return d; });
 // The honest friend: not the burns turned round, but what is under all three, typed in as it is read.
 const READ = [['<b>You’re not lazy, and you’re not cold.</b>'],
   ['Saving something feels like starting it, without the risk of failing at it.'],
-  ['And you assume people are fine without you. The ones who keep writing aren’t.'],
-  ['<b class="last">Stop collecting. Start answering.</b>']];
+  ['And “k.” is easier than saying what actually hurt.'],
+  ['<b class="last">Start the thing. Call your dad.</b>']];
 const readWords = READ.map(([html]) => html.split(/(?<=\s)/));
 $('ask').innerHTML = '<div class="small">' + 'Your roast is free with every card'.split(' ').map(w => '<i style="font-style:normal;display:inline-block">' + w + '</i>').join(' ') +
   '</div><div class="big">Comment<br><span class="fire">“ROAST”</span></div><div class="brave">if you’re brave 😈</div>';
-// The hook's hearts around the nice card, and the embers after.
-const niceHearts = ['💖', '✨', '💗', '⭐', '💕', '✨'].map((h, i) => { const d = mk('heart el', h, $('hearts')); return d; });
+// The embers, after the drop.
 const embers = Array.from({ length: 34 }, (_, i) => { const d = document.createElement('div'); d.className = 'ember'; $('embers').appendChild(d);
   return { el: d, x: hash(i) * 1080, speed: 90 + hash(i + 9) * 160, phase: hash(i + 3), size: 4 + hash(i + 5) * 9 }; });
 
@@ -222,9 +216,9 @@ function hook(t) {
   show('card', clamp(cardIn * 2) * (1 - gone), 'translateY(' + ((1 - Math.min(1, cardIn)) * 160 - 60 * up + Math.sin(t * 2.4) * 8 + gone * 300) + 'px) ' +
     'rotate(' + (Math.sin(t * 1.7) * 2 + gone * 25) + 'deg) scale(' + (1 - 0.38 * up) * (1 - 0.5 * gone) + ')');
   $('card').style.filter = gone ? 'sepia(' + gone + ') saturate(' + (1 + gone * 3) + ') hue-rotate(-' + gone * 30 + 'deg) brightness(' + (1 - gone * 0.6) + ')' : '';
-  niceHearts.forEach((h, i) => { const a = i / niceHearts.length * Math.PI * 2 + t * 0.6, r = 330 + Math.sin(t * 2 + i) * 20, p = back(prog(t, 0.3 + i * 0.12, 0.6 + i * 0.12));
-    h.style.left = (540 + Math.cos(a) * r - 32) + 'px'; h.style.top = (900 + Math.sin(a) * r * 1.3 - 32) + 'px';
-    show(h, clamp(p * 2) * (1 - prog(t, m1 - 0.2, m1 + 0.1)), 'scale(' + Math.min(1.1, p) + ')'); });
+  // A glow round the card, breathing.
+  const gl = 0.75 + 0.25 * Math.sin(t * 3);
+  $('card').style.boxShadow = '0 0 ' + (60 + 20 * gl) + 'px ' + (16 + 10 * gl) + 'px rgba(224,69,123,' + 0.7 * gl + '), 0 0 ' + (120 + 30 * gl) + 'px ' + (30 + 15 * gl) + 'px rgba(138,63,208,' + 0.5 * gl + ')';
   // The cover rises in; the finger comes in and presses the button; the ring spreads.
   const cv = back(prog(t, m1, m1 + 0.4));
   const press = prog(t, tapAt, tapAt + 0.08) * (1 - prog(t, tapAt + 0.12, tapAt + 0.25));
@@ -255,28 +249,28 @@ function burns(t, pulse) {
     const pin = back(prog(t, s.start, s.start + 0.4));
     show('p' + (k + 1), on ? clamp(pin * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, pin)) * 260 + 'px) scale(' + (0.9 + 0.1 * Math.min(1, pin)) + ')');
   });
-  // 1: the grid fills and scrolls as the count runs to 600; at the punchline it greys and the stamp lands.
+  // 1: the grid fills and scrolls as the count runs to 300; at the punchline it greys and the noodles land.
   { const s = S[1], fill = prog(t, s.vo - 0.1, PUNCH[0] - 0.2), dead = prog(t, PUNCH[0], PUNCH[0] + 0.2);
-    $('c1').textContent = Math.round(600 * easeIO(fill)) + ' saved';
+    $('c1').textContent = Math.round(300 * easeIO(fill)) + ' saved';
     $('grid').style.transform = 'translateY(' + (-404 * easeIO(fill)) + 'px)';
     tiles.forEach((d, i) => { const p = back(prog(t, s.start + 0.15 + i * 0.05, s.start + 0.4 + i * 0.05)); d.style.opacity = clamp(p * 2);
       d.style.transform = 'scale(' + Math.min(1.05, p) * (1 - dead * 0.06) + ')'; d.style.filter = 'grayscale(' + dead + ') brightness(' + (1 - dead * 0.5) + ')'; });
     const st = prog(t, PUNCH[0], PUNCH[0] + 0.18);
     show('stamp', t >= PUNCH[0] && t < s.end ? clamp(st * 3) * (1 - prog(t, s.end - 0.15, s.end)) : 0, 'scale(' + (1 + (1 - ease(st)) * 1.6) + ') rotate(-10deg)'); }
-  // 2: hearts fall from friends to you, the count climbing; at the punchline one heart tries to go back and breaks.
-  { const s = S[2], p = PUNCH[1], stop = t >= p;
-    const got = Math.round(1284 * easeIO(prog(t, s.vo, p)));
-    $('got').textContent = '❤️ ' + got.toLocaleString('en') + ' likes from friends';
-    hearts.forEach((h, i) => { const life = 0.9, born = s.start + 0.2 + i * 0.16, u = (t - born) / life;
-      const f = i % 5, x0 = 115 + f * 160, y0 = 140, x1 = 430, y1 = 470;
-      const vis = u > 0 && u < 1 && t < p;
-      h.style.left = (x0 + (x1 - x0) * easeIO(clamp(u)) - 28) + 'px'; h.style.top = (y0 + (y1 - y0) * easeIO(clamp(u)) - 28 - Math.sin(clamp(u) * Math.PI) * 80) + 'px';
-      h.style.opacity = vis ? Math.sin(clamp(u) * Math.PI) : 0; h.style.transform = 'scale(' + (0.7 + 0.5 * Math.sin(clamp(u) * Math.PI)) + ')'; });
-    friends.forEach((f, i) => { f.textContent = stop ? '😐' : FACES[i]; f.style.transform = 'scale(' + (1 + (stop ? 0 : pulse * 0.05)) + ')'; });
-    $('you').style.transform = 'scale(' + (1 + (stop ? 0 : pulse * 0.06)) + ')';
-    const gv = back(prog(t, p, p + 0.3));
-    $('gave').style.opacity = stop ? clamp(gv * 2) : 0; $('gave').style.transform = 'scale(' + Math.min(1.08, gv) + ')'; }
-  // 3: the inbox scrolls, every chat seen; the count climbs to 47; at the punchline it stops on Mum.
+  // 2: the friend tries, you answer "k.", the count climbing; at the punchline the screen floods with them.
+  { const s = S[2], p = PUNCH[1], on = t >= s.start - 0.05 && t < s.end, out = prog(t, s.end - 0.15, s.end);
+    $('c2').textContent = Math.round(214 * easeIO(prog(t, s.vo, p))) + ' “k.” sent';
+    $('c2').className = 'count' + (t >= p ? ' hot' : '');
+    // One message after another, each pushing the thread up; the newest at the bottom.
+    const shown = prog(t, s.start + 0.2, p - 0.1) * msgs.length;
+    let y = 0; const heights = msgs.map(m => m.offsetHeight + 18);
+    const visible = Math.min(msgs.length, Math.floor(shown) + 1), lift = heights.slice(0, visible).reduce((a, h) => a + h, 0);
+    msgs.forEach((m, i) => { const pp = back(clamp(shown - i)); m.style.top = (590 - lift + y) + 'px'; y += heights[i];
+      m.style.opacity = i < visible ? clamp(pp * 2) : 0; m.style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1, pp)) + ')';
+      m.style.transformOrigin = m.classList.contains('you') ? '100% 100%' : '0 100%'; });
+    kks.forEach((d, i) => { const at = p + i * 0.03, pp = back(prog(t, at, at + 0.2));
+      show(d, on && t >= at ? clamp(pp * 2) * (1 - out) : 0, 'scale(' + Math.min(1.1, pp) + ') rotate(' + ((hash(i + 9) - 0.5) * 30) + 'deg)'); }); }
+  // 3: the inbox scrolls, every chat seen; the count climbs to 47; at the punchline it stops on Dad.
   { const s = S[3], p = PUNCH[2], run = easeIO(prog(t, s.vo - 0.1, p - 0.05));
     $('c3').textContent = Math.round(47 * run) + ' left on read';
     const top = 140 - run * (rows.length - 4.4) * 130;

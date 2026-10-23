@@ -151,7 +151,7 @@ Both end like the main video: riser, hit, the full beat. `coach-misunderstood` i
 ### The roast reel
 
 ```
-npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 31 s
+npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 28 s
 ```
 
 Built by `shorts.py` like the others, but with a stage of its own, `roast-stage.html`, and music of its own.
@@ -159,24 +159,59 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) with hearts, then the site's roast cover; a finger presses the button |
-| 1–3 | Six hundred workout videos saved. / Zero workouts done. · Your friends like every post you make. / You never like theirs back. · You left forty seven people on read. / Including your mum. | a dark, ember-lit ground; a ROAST #n badge; the set-up word by word; one graphic each: a saved grid counting to 600 then stamped *0 workouts done*, hearts raining from friends to you with *Likes you gave back: 0*, an inbox of "Seen" chats stopping on Mum; the punchline slams in, with a flash and a shake |
-| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy, and you're not cold.* … *Stop collecting. Start answering.*: what is under all three burns, not the burns turned round (a first cut ticked off one tip per burn, which read as the roast in reverse) |
+| 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) with a glow round it, then the site's roast cover; a finger presses the button |
+| 1 | You've saved three hundred cooking videos. / Your most cooked dish is instant noodles. | a saved grid of recipes counting to 300, greyed out under a *#1 most cooked 🍜* stamp |
+| 2 | You type K when you're angry. / You've sent K two hundred fourteen times. | a friend trying to make up, answered "k." each time, the count climbing to 214; then the chat floods with them |
+| 3 | You left forty seven people on red. / Including your dad. | an inbox of "Seen" chats stopping on *Dad: Proud of you. Call when you can 🙂* |
+| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy, and you're not cold.* … *And "k." is easier than saying what actually hurt.* *Start the thing. Call your dad.* |
 | 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
 
-The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
-romance, and simple enough to get on one hearing (a first draft's "your thumb has never been in better
-shape" and "combined revenue: the likes" were too clever by half). Sherlock rather than Mulan or the Tin Man:
-his card's late-night saves and small circle set the burns up, where the Tin Man's checking in on quiet
-friends would contradict "left 47 people on read". Its voice is British and male, for Sherlock: Piper's `en_GB-alan-medium` (`voice` in its entry, passed to `vo.py` as `PROMO_VOICE`; download it into `.cache/voices` like the others), at 0.8. LJSpeech was tried first and read as too light against him.
+Burns 1 to 3 are on a dark, ember-lit ground with a ROAST #n badge; the set-up shows whole as it is said, and
+the punchline slams in, with a flash and a shake.
 
-Each burn is recorded as set-up and punchline apart (`punch` in its entry): `shorts.py` puts silence
-before the punchline so it starts on a beat. The music: C minor (Cm Ab Eb Bb) at 140 in half time, dark and heavy: a
-clock-like tick, a low pad and plucked strings under the nice card; a reversed crash and riser into a low brass
-hit, then 808s, a half-time snare and clap, hats that roll into each hit and a low brass riff; the drums drop
-out for the beat before each punchline and a brass hit, crash and falling 808 land on it; piano and a pad for the
-honest friend; everything back for the ask, ending on a held hit. A first version in B flat at 132, with a music
-box, bells and a bouncy riff, sounded too childish.
+The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
+romance, and simple enough to get on one hearing. Earlier ones were cut: "your thumb has never been in better
+shape" and "combined revenue: the likes" were too clever by half; 600 workout videos was too trivial (a skill
+everyone wants, cooking, replaced it); "you never like theirs back" gave way to temper. The honest friend is
+what is under all three burns, not the burns turned round (a first cut ticked off one tip per burn). Sherlock
+rather than Mulan or the Tin Man: his card's late-night saves and small circle set the burns up, where the Tin
+Man's checking in on quiet friends would contradict "left 47 people on read"; and the start has no hearts or
+sparkles, only a glow, for a reel in a man's voice.
+
+The voice is Piper's Ryan (`en_US-ryan-high`, `voice` in its entry, passed to `vo.py` as `PROMO_VOICE`; download
+it into `.cache/voices` like the others), at 0.85. LJSpeech, then a British voice (Alan), then a darker one were
+tried: too light against Sherlock, then too deep. "Read" is written "red", or the voice says it in the present.
+
+Each burn is recorded as set-up and punchline apart (`punch` in its entry): `shorts.py` puts silence before the
+punchline so it starts on a beat. The music is brass house, F major (F Dm Bb C) at 124: piano stabs and a soft
+kick under the nice card; a reversed crash and riser into four on the floor, open hats on the offbeat, a funky
+octave bass and a bright brass hook; the drums drop out for the beat before each punchline and a horn hit lands
+on it; a breakdown of held chords for the honest friend; and for the ask it lifts rather than stings, an
+anthem's chords (Bb C Dm F) on piano and a pad, ending on a held F. Two earlier pieces were dropped: B flat at
+132 with a music box (too childish) and C minor trap at 140 (too sombre).
+
+### The career reel
+
+```
+npm run promo:shorts -- career   # out/PsycheAI-career.mp4, about 29 s
+```
+
+Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | Struggling with your job? | typed out on a dusk ground, a briefcase |
+| 1 | Wrong job? / Slow days? / Am I the problem? | each said big, while the same doubts pile up as recent searches under a search bar (searches are among what the app reads); spoken slowly, with room between them |
+| 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; Ask PsycheAI on a phone, the question asked |
+| 3 | You don't hate your job. You hate the routine parts of it. | the answer typed in: the routine parts drain you, your longest, fastest messages are about untangling a problem; *A new job won't fix that. Go after the messy problems in the one you have.* (a sample reader's) |
+| 4 | Your Psyche Report goes further. Your edge at work, what's holding you back, and the careers that suit you best. | three cards from the report's career assessment as each is named: *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
+| 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
+
+"Your edge," on its own came out garbled, so it is said "your edge at work,". The first answer, "you hate
+following a plan you didn't help make", was hard to follow and did not match the evidence under it. The music:
+B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell into D major (D A Bm G) for
+the answer, with a light beat of kick, snaps and shaker, a warm bass and a plucked tune; fuller for the report;
+a held D chord to close.
 
 ## The privacy post
 
