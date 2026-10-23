@@ -166,8 +166,11 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 | 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy, and you're not cold.* … *And "k." is easier than saying what actually hurt.* *Start the thing. Call your dad.* |
 | 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
 
-Burns 1 to 3 are on a dark, ember-lit ground with a ROAST #n badge; the set-up shows whole as it is said, and
-the punchline slams in, with a flash and a shake.
+Burns 1 to 3 are ash and ember rather than the brand's colours: a charcoal ground lit red from below, charcoal
+panels, desaturated pictures, a dark-red ROAST #n badge; the set-up shows whole as it is said, and the punchline
+slams in, in ember red, with a red flash in from the edges and a shake (a first cut in the brand's pinks and
+purples read as too friendly). The honest friend, by contrast, is on the full brand gradient, its card edged in
+it; the ask goes back to the brand's dusk.
 
 The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
 romance, and simple enough to get on one hearing. Earlier ones were cut: "your thumb has never been in better
@@ -187,7 +190,9 @@ punchline so it starts on a beat. The music is brass house, F major (F Dm Bb C) 
 kick under the nice card; a reversed crash and riser into four on the floor, open hats on the offbeat, a funky
 octave bass and a bright brass hook; the drums drop out for the beat before each punchline and a horn hit lands
 on it; a breakdown of held chords for the honest friend; and for the ask it lifts rather than stings, an
-anthem's chords (Bb C Dm F) on piano and a pad, ending on a held F. Two earlier pieces were dropped: B flat at
+anthem's chords (Bb C Dm F) on strings swelling bar by bar, a rolling piano with a melody on top and a soft kick,
+ending on an F chord rolled softly up the piano over the strings, with nothing struck under it (an earlier ending
+on a horn hit, then a struck piano chord, landed as a bang). Two earlier pieces were dropped: B flat at
 132 with a music box (too childish) and C minor trap at 140 (too sombre).
 
 ### The career reel

@@ -86,7 +86,7 @@ REELS['roast'] = {
     # Its own piece, brass house: F major (F Dm Bb C) at 124. Piano stabs and a soft kick under the nice card;
     # then four on the floor, open hats on the offbeat, a funky octave bass and a bright brass hook; the drums drop
     # out for the beat before each punchline and a horn hit lands on it. A breakdown of held chords for the
-    # honest friend; for the ask it lifts instead, an anthem's chords on piano and a pad, ending on a held chord.
+    # honest friend; for the ask it lifts instead, an anthem's chords on strings and a rolling piano, ending softly.
     'mood': 'roast', 'bpm': 124,
     'chords': [[65, 69, 72], [62, 65, 69], [58, 62, 65], [60, 64, 67]], 'roots': [41, 38, 46, 48],
     # The hook, in eighths (None a rest).
@@ -386,6 +386,7 @@ elif R.get('mood') == 'roast':
     RIFF = R['riff']
     EIGHTH = BEAT / 2
     UP, UP_ROOTS = [[58, 62, 65], [60, 64, 67], [62, 65, 69], [65, 69, 72]], [46, 48, 50, 41]
+    MEL_UP = [[77, 74, 72, 74], [76, 72, 79, 76], [77, 81, 79, 77], [81, 79, 77, 72]]  # the ask's melody, a beat a note
 
     def lp(x, fc):
         # A gentle low-pass done in one go in the frequency domain (the sample-by-sample one is slow for this many notes).
@@ -446,19 +447,21 @@ elif R.get('mood') == 'roast':
                 at(b, pad(chord, BAR * 1.02), 1.0); at(b, stab(chord + [chord[0] + 12], BAR * 0.9, 0.06), 1.0)
                 at(b, house_bass(root, BAR * 0.9) * 0.6, 0.7)
         elif cta:
-            # The ask lifts rather than stings: an anthem's chords (Bb C Dm F), warm piano and a pad, a softer beat,
-            # the hook on a bright pluck an octave up, the bass held.
+            # The ask lifts, warm and generous rather than stinging: an anthem's chords (Bb C Dm F) on strings that
+            # swell bar by bar, a rolling piano, a melody on top, a soft kick and claps, the bass held.
             ch, rt = UP[bar_i], UP_ROOTS[bar_i]
+            grow = min(1.0, 0.55 + 0.15 * ((b - CTA) / BAR))
+            ending = b >= END - BAR
             if e == 0:
-                at(b, pad(ch, BAR * 1.02, 0.05), 1.0); at(b, house_bass(rt, BAR * 0.9) * 0.8, 0.8)
-                for m in ch + [ch[0] + 12]: at(b, piano(m, 2.2, 0.08), 1.0)
-            if e in (3, 6): at(b, stab(ch, EIGHTH * 1.5, 0.05), 1.0, 0.2)
-            if b < END - BAR:
-                if e % 2 == 0: at(b, K, 0.7)
-                else: at(b, HO, 0.25, 0.3)
-                if e in (2, 6): at(b, C, 0.6)
-            m = RIFF[bar_i][e]
-            if m and b < END - BAR: at(b, pluck(m + 12, 0.07), 1.0, -0.1); at(b, pluck(m, 0.05), 1.0, 0.1)
+                at(b, strings(ch, BAR * 1.05, 0.06), grow); at(b, pad(ch, BAR * 1.02, 0.04), 1.0)
+                if not ending: at(b, house_bass(rt, BAR * 0.95) * 0.7, 0.7)
+            roll = ch + [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 12, ch[0] + 12, ch[2]]
+            if not ending:
+                at(b, piano(roll[e] + 12, 1.2, 0.06), 1.0, 0.25 if e % 2 else -0.25)
+                if e % 2 == 0: at(b, piano(MEL_UP[bar_i][e // 2], 1.6, 0.085), 1.0, 0.05)
+                if e % 2 == 0: at(b, K, 0.5)
+                else: at(b, HO, 0.18, 0.3)
+                if e in (2, 6): at(b, C, 0.4)
         elif not held:
             # Four on the floor, an open hat on every offbeat, claps on two and four.
             if e % 2 == 0:
@@ -486,11 +489,12 @@ elif R.get('mood') == 'roast':
         at(p, brass(HIT, 0.8, 6000, 0.09), 1.0); at(p, crash(), 0.9); at(p, impact(), 0.6)
     # Into the honest friend, the beat falls away; into the ask, it comes back with a hit.
     at(ADVICE, crash(), 0.5)
-    # Into the ask, a swell rather than a hit; the last chord is F, held on piano and pad.
-    at(CTA - 1.6, swell(1.6) * 1.4, 1.0)
+    # Into the ask, strings rising out of the honest friend rather than a hit; the last chord is F, rolled softly
+    # up the piano and left to ring on the strings, with nothing struck under it.
+    at(CTA - BAR, strings(UP[3], BAR, 0.04), 1.0)
     last = snap(END - BAR, BAR)
-    for m in [53, 60, 65, 69, 72, 77]: at(last, piano(m, 3.0, 0.09), 1.0)
-    at(last, pad([65, 69, 72], 3.0, 0.06), 1.0)
+    for k, m in enumerate([53, 60, 65, 69, 72, 77]): at(last + k * 0.07, piano(m, 3.0, 0.055), 1.0)
+    at(last, strings([65, 69, 72], 3.0, 0.05), 1.0)
 else:
     sc = scenes
     MID = sc[1]['start']       # a light pulse comes in after the hook
