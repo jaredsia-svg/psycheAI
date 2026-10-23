@@ -2884,8 +2884,10 @@ de-identification list twice. Each answer now says its own thing once:
 - *Can the digest be linked back to me?* keeps the specifics ([P1], [N1], dates cut to the month) and the
   encryption line ("stored encrypted", not "encrypted at rest").
 - *Why not just upload my data to ChatGPT?* (added late October 2026, from a reader's question) answers on
-  privacy first: a raw export goes to the cloud as it is, nothing de-identified, kept in the chat history, and on
-  ChatGPT's personal plans it may be used for training unless turned off; against that, files read on the
+  privacy first: a raw export goes to its servers as it is, nothing de-identified; on ChatGPT's personal plans
+  it may be used for training unless turned off, and turning that off deletes nothing: it stays in the history
+  until deleted and up to 30 days after, or longer when required for legal or security reasons (OpenAI's own
+  wording; a 2025 court order to keep even deleted chats is left out, its status unconfirmed); against that, files read on the
   device, a de-identified digest, an enterprise service that does not train, no copy and no account, and the
   people in the messages never uploaded. Then that it works better: an export is usually more than a chatbot
   can take in at once. It calls ChatGPT capable, and states its settings rather than how good it is.
