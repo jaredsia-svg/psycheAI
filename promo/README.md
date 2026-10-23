@@ -269,8 +269,8 @@ ending, in A, sounded like a change of key here).
 | 5 | Your personal AI coach. Try it at PsycheAI dot I O. | first, before the voice, one complete thought: *Other AI coaches wait for you to describe yourself. PsycheAI already knew you from the start.*; then *Your personal AI coach* and the address |
 
 The camera moves in on each panel while its answer comes in (ChatGPT's, then PsycheAI's as its data loads), and
-back out as the verdict lands on the beat. The beat stops for the close, so the piano carries it to
-its last chord. The two pieces not chosen can still be heard under the same video, same lines and tempo so the
+back out as the verdict lands on the beat. The groove carries the close until a bar of F and G leads it home
+to the last chord. The two pieces not chosen can still be heard under the same video, same lines and tempo so the
 same timeline: `npm run promo:shorts -- compare-plain` (the career reel's instruments, the first cut) and
 `compare-strings` (the coach reel's rolling piano and strings; `reveal_lead` keeps its timing the same). The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
 only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
