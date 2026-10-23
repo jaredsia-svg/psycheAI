@@ -1209,10 +1209,11 @@
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts.',
-      // Beside the price in the head: the first one free with the first card
-      // (PSYCHEAI_FIRST_RUN merged), then the price for a re-run.
-      premiumFree: 'Your first one is free!',
-      premiumThen: 'then',
+      // The report carries the card's green "Free" badge (freeBadge): the first
+      // one comes free with the first card (PSYCHEAI_FIRST_RUN merged). The price
+      // of a re-run is a footnote under what comes with it, in the reader's own
+      // currency, the one checkout charges.
+      premiumRerun: price => 'Re-runs are ' + price + '.',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',

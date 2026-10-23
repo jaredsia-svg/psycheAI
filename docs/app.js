@@ -2909,13 +2909,10 @@
       '</div>' +
     '</div>' +
     '<div class="insight-tier insight-premium premium-tier">' +
+      // Free, as the card is: the same green badge over the title.
+      '<p class="tier-badges"><span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span></p>' +
       '<div class="premium-tier-head">' +
         '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
-        // The first one free, then the price of a re-run, on one line.
-        '<span class="premium-tier-pricebox">' +
-        '<span class="premium-free-badge">' + Copy.lineIcon('🎁') + '<span>' + esc(I.premiumFree) + '</span></span>' +
-        '<span class="premium-tier-then">' + esc(I.premiumThen) + '</span>' +
-        '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span></span>' +
       '</div>' +
       '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +
       '<ol class="insight-parts">' + parts.map((key, i) =>
@@ -2926,8 +2923,10 @@
           (sectionsOf[key].length ? '<p class="insight-part-chips">' + sectionsOf[key].map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' : '') +
         '</div></li>').join('') + '</ol>' +
       '<div class="insight-premium-foot">' +
-        '<ul class="insight-extras">' + I.extras.map(([icon, text]) =>
+        // What comes with it, then the price of a re-run as a footnote under it.
+        '<div class="insight-premium-what"><ul class="insight-extras">' + I.extras.map(([icon, text]) =>
           '<li><span aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' + esc(text) + '</li>').join('') + '</ul>' +
+        '<p class="insight-rerun">' + esc(I.premiumRerun(TEXT.premiumPriceLabel)) + '</p></div>' +
         '<button class="btn btn-outline" id="insight-sample" type="button">' + esc(I.sampleButton) + '</button>' +
       '</div>' +
     '</div>' +

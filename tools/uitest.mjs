@@ -1543,12 +1543,12 @@ try {
       await sgPage.reload();
       await sgPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
       const shown = await sgPage.evaluate(() => ({
-        tiers: [...document.querySelectorAll('.premium-tier-price')].map(node => node.textContent.trim()),
+        tiers: [...document.querySelectorAll('.premium-tier-price, .insight-rerun')].map(node => node.textContent.trim()),
         faq: [...document.querySelectorAll('[data-price]')].map(node => node.dataset.price + '=' + node.textContent.trim()),
         dollars: /US\$\d/.test(document.body.innerText),
       }));
       check('a reader in Singapore is shown the Psyche Report at S$7',
-        shown.tiers.length > 0 && shown.tiers.every(text => /^S\$7\b/.test(text)), shown.tiers.join(' | '));
+        shown.tiers.length > 0 && shown.tiers.every(text => /^(Re-runs are )?S\$7\b/.test(text)), shown.tiers.join(' | '));
       check('and the FAQ quotes the same local prices',
         shown.faq.length > 0 && shown.faq.every(entry => /^(unlock|ask)=S\$7$/.test(entry)) && !shown.faq.some(entry => /^analysis=/.test(entry)),
         shown.faq.join(' | '));
@@ -3918,31 +3918,28 @@ try {
       connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       careerChips: tier ? [...tier.querySelectorAll('.insight-part')[3].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       togetherChips: tier ? tier.querySelectorAll('.insight-part')[4].querySelectorAll('.insight-part-chips').length : -1,
-      how: tier && tier.querySelector('.premium-tier-pricebox .premium-free-badge') ? tier.querySelector('.premium-free-badge').textContent : '',
       oldLine: tier ? tier.querySelectorAll('.insight-premium-how').length : -1,
     };
   });
-  check('the front page\'s Psyche Report shows a gift tag, the first one free, then its price',
-    premiumTier.how === 'Your first one is free!' && premiumTier.oldLine === 0 &&
-      await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-pricebox').textContent.replace(/\s+/g, ' ').trim().startsWith('Your first one is free!then')),
-    JSON.stringify(premiumTier.how));
-  {
-    const lines = {};
-    const vp = page.viewportSize();
-    for (const width of [1280, 390, 320]) {
-      await page.setViewportSize({ width, height: 800 });
-      lines[width] = await page.evaluate(() => {
-        const tag = document.querySelector('#view-welcome .insight-premium .premium-free-badge').getBoundingClientRect();
-        const price = document.querySelector('#view-welcome .insight-premium .premium-tier-price').getBoundingClientRect();
-        const tier = document.querySelector('#view-welcome .insight-premium').getBoundingClientRect();
-        return tag.right <= price.left && Math.abs((tag.top + tag.bottom) / 2 - (price.top + price.bottom) / 2) < 4 &&
-          price.right <= tier.right + 1 && tag.left >= tier.left - 1;
-      });
-    }
-    await page.setViewportSize(vp);
-    check('the gift tag sits left of the price on one line, on a laptop and a phone',
-      Object.values(lines).every(Boolean), JSON.stringify(lines));
-  }
+  // Free, as the card is: the card's own green badge over the title, and no price in the head.
+  check('the front page\'s Psyche Report wears the card\'s green "Free" badge, with no price in its head',
+    await page.evaluate(() => {
+      const tier = document.querySelector('#view-welcome .insight-premium');
+      const badge = tier && tier.querySelector('.tier-badges .tier-badge-free');
+      const card = document.querySelector('#view-welcome .insight-free .tier-badge-free');
+      const look = el => el && [getComputedStyle(el).backgroundColor, getComputedStyle(el).color].join();
+      return Boolean(badge && card) && badge.textContent === 'Free' && look(badge) === look(card) &&
+        badge.getBoundingClientRect().bottom <= tier.querySelector('.tier-title').getBoundingClientRect().top + 1 &&
+        !tier.querySelector('.premium-tier-head .premium-tier-price') && !/first one is free/i.test(tier.textContent);
+    }) && premiumTier.oldLine === 0);
+  // The price of a re-run: a footnote under what comes with the report, in the currency checkout charges.
+  check('and under "Evidence behind every finding", a footnote gives the price of a re-run',
+    await page.evaluate(() => {
+      const note = document.querySelector('#view-welcome .insight-premium .insight-rerun');
+      const last = [...document.querySelectorAll('#view-welcome .insight-premium .insight-extras li')].pop();
+      return Boolean(note && last) && note.textContent === 'Re-runs are ' + window.PsycheCopy.TEXT.premiumPriceLabel + '.' &&
+        /US\$5/.test(note.textContent) && note.getBoundingClientRect().top >= last.getBoundingClientRect().bottom - 1;
+    }));
   check('the premium tier is the Psyche Report, by its five numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04,05' &&
       premiumTier.parts.join('|') === 'Who you are|What drives you|How you connect|How you work|Putting it together',
@@ -4036,13 +4033,13 @@ try {
     await settle(page);
     const row = await page.evaluate(() => {
       const button = document.querySelector('#insight-sample').getBoundingClientRect();
-      const last = [...document.querySelectorAll('.insight-premium .insight-extras li')].pop().getBoundingClientRect();
-      return { sameLine: Math.abs((button.top + button.bottom) / 2 - (last.top + last.bottom) / 2) < 12,
+      const last = document.querySelector('.insight-premium .insight-rerun').getBoundingClientRect();
+      return { sameLine: Math.abs((button.top + button.bottom) / 2 - (last.top + last.bottom) / 2) < 14,
         text: document.querySelector('#insight-sample').textContent.trim(),
         extras: [...document.querySelectorAll('.insight-premium .insight-extras li')].map(li => li.textContent.trim()),
         icons: document.querySelectorAll('.insight-premium .insight-extras li svg.line-icon').length };
     });
-    check('on a laptop "See sample" shares the last line of what comes with the report',
+    check('on a laptop "See sample" shares the last line of what comes with the report, the re-run footnote',
       row.sameLine && row.text === 'See sample' &&
         row.extras.join('|') === 'A PDF to keep|Evidence behind every finding' && row.icons === 2, JSON.stringify(row));
   }

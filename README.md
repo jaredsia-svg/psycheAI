@@ -3551,7 +3551,7 @@ A run with no account to hold it to gets the card alone.
   (judgeGuess still mints a report grant when called without `creditTo`; the server no longer does). The cast
   says "win a free credit"; the popout says the credit is on their link. Counted as `guess_won_credit`; the
   first read itself as `first_full`.
-- **The price wording** (the front page's Psyche Report badge, "Your first one is free! then S$7", the FAQ, the guides, the search pages, llms.txt and the re-run sheet) now says the
+- **The price wording** (the front page's Psyche Report badge, now a green "Free" with the re-run price as a footnote, the FAQ, the guides, the search pages, llms.txt and the re-run sheet) now says the
   first Psyche Card and Psyche Report are free and a re-run is US$5. That is true only while the switch is
   `merged`: going back to `card` should take the wording back too (the re-run sheet follows the switch on its
   own; the static pages and the front page's badge do not).
@@ -4041,10 +4041,12 @@ report, its digest and the question go to Google Gemini for that one answer and 
 none of them. The
 privacy page also lists the question counts, and the terms describe the questions.
 
-**On the front page** the Psyche Report's price has a gift tag under it, *Share with a friend and
-get it free!* (`.premium-free-badge`). It replaced the longer line under the blurb. Since October
-2026 the tag sits left of the price on one line, on a laptop and a phone alike; under 400px the tag's
-text is a size down, and under 360px it drops its gift icon so the line still fits at 320px.
+**On the front page** the Psyche Report wears the Psyche Card's own green **Free** badge over its
+title (`.tier-badge-free`), and its head carries no price. The price of a re-run is a footnote under
+what comes with the report, *Re-runs are US$5.* (`.insight-rerun`, `premiumRerun`), in the reader's own
+currency, the one checkout charges (S$7 in Singapore). It replaced, in late October 2026, a gift tag
+beside the price in the head, *Your first one is free! then S$7* (`.premium-free-badge`), which read as
+a price first and a gift second; before that the tag said *Share with a friend and get it free!*.
 
 **The privacy note on the upload card** is a lead line, *We take the privacy of your data seriously.*,
 then four points: the Instagram file never leaves the device; only a de-identified summary, checked
