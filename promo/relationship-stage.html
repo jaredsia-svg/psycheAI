@@ -1,0 +1,215 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The relationship reel (shorts.py relationship): a fight about the dishes, the fights that keep coming back as
+   messages, PsycheAI asked and answering from her own data, then what the report covers. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fdf7fc; }
+body { font-family: Inter, sans-serif; color: #2a1238; }
+.el { position: absolute; display: none; }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#dusk { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 30%, #5a2346 0%, #2e1226 55%, #170a14 100%); }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); }
+#b1 { width: 820px; height: 820px; left: -200px; top: 60px; background: #ffd6e7; }
+#b2 { width: 760px; height: 760px; right: -220px; top: 900px; background: #e6dcff; }
+.mote { position: absolute; border-radius: 50%; background: #fff; }
+/* The hook. */
+#hook { z-index: 20; left: 70px; right: 70px; top: 820px; text-align: center; color: #fff; font-size: 96px; font-weight: 900; line-height: 1.05; letter-spacing: -0.035em; }
+#again { z-index: 20; left: 0; right: 0; top: 1060px; text-align: center; font-size: 110px; font-weight: 900; letter-spacing: -0.035em; color: #ff8fb8; }
+#hook i { font-style: normal; }
+#hookIcon { z-index: 19; left: 0; right: 0; top: 560px; text-align: center; font-size: 170px; }
+/* The fights, as messages that keep coming. */
+.fight { z-index: 15; max-width: 760px; padding: 26px 36px; border-radius: 40px; font-size: 44px; font-weight: 750; line-height: 1.22; color: #fff;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+.fight.l { left: 70px; background: #4a1f3a; border-bottom-left-radius: 12px; }
+.fight.r { right: 70px; background: #9c2f5e; border-bottom-right-radius: 12px; }
+#same1 { z-index: 30; left: 0; right: 0; top: 760px; text-align: center; color: #fff; font-size: 96px; font-weight: 900; letter-spacing: -0.035em; }
+#same2 { z-index: 30; left: 0; right: 0; top: 880px; text-align: center; font-size: 130px; font-weight: 900; letter-spacing: -0.04em; color: #ff8fb8; }
+/* Asking PsycheAI: the phone. */
+.cap { z-index: 20; left: 60px; right: 60px; text-align: center; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
+#ask1 { top: 200px; font-size: 84px; }
+#ask2 { top: 300px; font-size: 56px; font-weight: 800; color: #6b3f8f; }
+#phone { z-index: 10; left: 110px; top: 430px; width: 860px; height: 1300px; border-radius: 90px; background: #2a1238; padding: 20px;
+  box-shadow: 0 50px 120px rgba(90,40,120,.35); }
+#screen { position: absolute; inset: 20px; border-radius: 72px; overflow: hidden; background: linear-gradient(170deg, #fff, #f6ecfd); }
+#notch { position: absolute; left: 50%; top: 34px; width: 180px; height: 44px; margin-left: -90px; border-radius: 22px; background: #2a1238; }
+#chat { position: absolute; left: 40px; right: 40px; top: 110px; }
+#chat h6 { margin: 0 0 26px; text-align: center; font-size: 30px; font-weight: 850; color: #8a3fd0; letter-spacing: .06em; }
+.bq { margin-left: auto; width: max-content; max-width: 88%; padding: 22px 30px; border-radius: 36px 36px 10px 36px; color: #fff; font-size: 38px; font-weight: 700;
+  line-height: 1.3; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+#answer { margin-top: 26px; padding: 30px 34px; border-radius: 36px 36px 36px 10px; background: #fff; color: #2a1238; font-size: 39px; line-height: 1.42;
+  font-weight: 550; box-shadow: 0 10px 30px rgba(90,40,120,.14); }
+#answer b { color: #c2407a; font-weight: 850; }
+#source { margin-top: 18px; font-size: 26px; font-weight: 700; color: #8a7a99; }
+/* Loading the reader's data: the two apps fly into the phone, a bar fills, the dots flicker. */
+.app { z-index: 25; width: 190px; text-align: center; }
+.app .ic { position: relative; width: 190px; height: 190px; border-radius: 50px; box-shadow: 0 24px 60px rgba(90,40,120,.35); }
+.app .nm { margin-top: 16px; font-size: 36px; font-weight: 850; color: #4a2366; }
+#ig .ic { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+#ig .ic::before { content: ''; position: absolute; inset: 42px; border: 12px solid #fff; border-radius: 38px; }
+#ig .ic::after { content: ''; position: absolute; left: 71px; top: 71px; width: 48px; height: 48px; border: 12px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic { background: #25d366; }
+#wa .ic::before { content: ''; position: absolute; left: 40px; top: 36px; width: 110px; height: 110px; border: 12px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic::after { content: ''; position: absolute; left: 36px; top: 128px; width: 0; height: 0; border-left: 22px solid transparent; border-top: 30px solid #fff; transform: rotate(18deg); }
+#loading { margin-top: 26px; padding: 30px 34px; border-radius: 36px; background: #fff; box-shadow: 0 10px 30px rgba(90,40,120,.14); }
+#loading .ln { font-size: 34px; font-weight: 750; color: #4a2366; }
+#loading .files { display: flex; gap: 16px; margin-top: 18px; }
+#loading .files span { padding: 10px 20px; border-radius: 999px; font-size: 26px; font-weight: 800; color: #6b3f8f; background: #f3e9fb; }
+#loading .track { margin-top: 22px; height: 18px; border-radius: 9px; background: #efe4f7; overflow: hidden; }
+#loading .fill { height: 100%; width: 0; border-radius: 9px; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); }
+.dots i { font-style: normal; }
+/* What the report adds. */
+#more { z-index: 20; left: 60px; right: 60px; top: 260px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
+.rc { z-index: 15; left: 80px; width: 920px; padding: 38px 44px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(90,40,120,.2); }
+.rc small { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 850; letter-spacing: .07em; color: #8a3fd0; text-transform: uppercase; }
+.rc small span { font-size: 44px; }
+.rc p { margin-top: 14px; font-size: 44px; font-weight: 800; line-height: 1.2; color: #2a1238; }
+.cols { display: flex; gap: 26px; margin-top: 18px; }
+.cols div { flex: 1; padding: 20px 24px; border-radius: 26px; font-size: 32px; font-weight: 700; line-height: 1.35; }
+.cols b { display: block; font-size: 26px; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
+.cols .yes { background: #eafaf1; color: #145a3a; }
+.cols .no { background: #fdecef; color: #8a1f3d; }
+/* The close. */
+#close { z-index: 20; left: 40px; right: 40px; top: 720px; text-align: center; font-size: 100px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.02; }
+#site { z-index: 20; left: 50%; top: 1150px; padding: 28px 64px; border-radius: 999px; font-size: 54px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.4); }
+#free { z-index: 20; left: 0; right: 0; top: 1330px; text-align: center; font-size: 44px; font-weight: 800; color: #6b3f8f; }
+</style></head>
+<body>
+  <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
+  <div id="dusk"></div>
+  <div id="motes"></div>
+  <div class="el" id="hookIcon">🍽️</div>
+  <div class="el" id="hook"></div>
+  <div class="el" id="again">…again.</div>
+  <div id="fights"></div>
+  <div class="el" id="same1">Different topic.</div>
+  <div class="el" id="same2">Same fight.</div>
+  <div class="el cap" id="ask1">So I asked <span class="grad">PsycheAI</span><span class="dots" id="dots1"><i>.</i><i>.</i><i>.</i></span></div>
+  <div class="el cap" id="ask2">…and it answered from my own data</div>
+  <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="chat"><h6>ASK PSYCHEAI</h6>
+    <div class="bq">Why do we keep fighting over small things?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
+  <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
+  <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
+  <div class="el" id="more">Your <span class="grad">Psyche Report</span><br>shows</div>
+  <div id="cards"></div>
+  <div class="el" id="close">A coach that<br><span class="grad">already knows you</span></div>
+  <div class="el" id="site">psycheai.io ↗</div>
+  <div class="el" id="free">Your first Psyche Card is free</div>
+<script>
+const TL = __TIMELINE__;
+const S = TL.scenes, BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  if (tf !== undefined) el.style.transform = tf; };
+const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
+const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const [HOOK, FIGHT, ASK, ANS, REP, CLOSE] = S;
+
+// The hook, letter by letter.
+const hookChars = [...'We fought about the dishes.'].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
+// The fights that keep coming back, one after another, before the voice names them.
+const FIGHTS = ['You always put your parents before me.', 'You’re on your phone every time I talk to you.', 'You never plan anything for us anymore.',
+  'Your work always comes first.', 'You said you’d be home by seven.', 'You don’t listen to me.'];
+const fights = FIGHTS.map((tx, i) => { const d = mk('fight el ' + (i % 2 ? 'r' : 'l'), tx, $('fights')); d.style.top = (330 + i * 190) + 'px'; return d; });
+// The answer: a sample reader's, from her own messages only; the first sentences are what the voice says.
+const ANSWER = '<b>It’s not the dishes. It’s feeling like you come second.</b> You show love by doing things: you plan, you ' +
+  'remember, you check in. When no one notices, a small thing becomes the fight. Your messages get short right before an argument – ' +
+  '‘fine’, ‘whatever’ – then long, two days later. <b>Say what you need before it builds: “I need to feel like a priority.”</b>';
+const answerWords = ANSWER.split(/(?<=\s)/);
+const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
+// What the report covers, part by part, as the voice names each: how you love, how you deal with conflict, what you
+// need in a partner (all read from her data alone).
+const CARDS = [
+  ['💞', 'How you show love', '<div class="cols"><div class="yes"><b>You give</b>Acts of service: planning, remembering, checking in</div>' +
+    '<div class="no"><b>You need</b>To be noticed and told</div></div>'],
+  ['⚡', 'How you deal with conflict', '<p>Quiet first, then it all comes out over something small</p>'],
+  ['🧭', 'What you need in a partner', '<p>Someone who notices the effort, and says so</p>'],
+];
+const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
+  d.style.top = [500, 950, 1220][i] + 'px'; return d; });
+const motes = Array.from({ length: 26 }, (_, i) => { const d = document.createElement('div'); d.className = 'mote'; $('motes').appendChild(d);
+  return { el: d, x: hash(i) * 1080, speed: 30 + hash(i + 4) * 50, phase: hash(i + 8), size: 3 + hash(i + 2) * 6 }; });
+
+function render(t) {
+  const ph = (t % BEAT) / BEAT, pulse = t >= ANS.start ? Math.exp(-ph * 6) : 0;
+  // An evening dusk for the fights; it warms as PsycheAI is asked.
+  const warm = easeIO(prog(t, ASK.start - 0.3, ASK.start + 0.6));
+  $('dusk').style.opacity = 1 - warm;
+  document.body.style.background = 'radial-gradient(130% 90% at 50% 0%, #ffd6e7 0%, #fdf7fc 60%, #f3e6ff 100%)';
+  $('b1').style.transform = 'translate(' + Math.sin(t * .6) * 140 + 'px,' + Math.cos(t * .45) * 180 + 'px) scale(' + (1 + pulse * 0.08) + ')';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .5) * 160 + 'px,' + Math.sin(t * .4) * 200 + 'px) scale(' + (1 + pulse * 0.08) + ')';
+  motes.forEach(m => { m.el.style.left = (m.x + Math.sin(t + m.phase * 6) * 30) + 'px'; m.el.style.top = (1980 - ((t * m.speed + m.phase * 2000) % 2080)) + 'px';
+    m.el.style.width = m.el.style.height = m.size + 'px'; m.el.style.opacity = 0.35 * (1 - warm); });
+
+  // The hook.
+  const hookOut = prog(t, HOOK.end - 0.25, HOOK.end);
+  show('hook', 1 - hookOut);
+  hookChars.forEach((c, i) => { c.style.opacity = prog(t, HOOK.vo + i * 0.03, HOOK.vo + i * 0.03 + 0.1); });
+  const ic = back(prog(t, HOOK.vo, HOOK.vo + 0.4));
+  show('hookIcon', clamp(ic * 2) * (1 - hookOut), 'scale(' + Math.min(1.05, ic) + ') rotate(' + (-8 + Math.sin(t * 2) * 4) + 'deg)');
+
+  // "…again." on the second phrase.
+  const ag = back(prog(t, HOOK.marks[1] - 0.1, HOOK.marks[1] + 0.25));
+  show('again', clamp(ag * 2) * (1 - hookOut), 'scale(' + (0.6 + 0.4 * Math.min(1, ag)) + ') rotate(-3deg)');
+
+  // The fights: one message after another, fast, each a little shake; then they dim as the voice names them.
+  const fOn = t >= FIGHT.start - 0.05 && t < FIGHT.end, fOut = prog(t, FIGHT.end - 0.25, FIGHT.end), named = easeIO(prog(t, FIGHT.vo - 0.2, FIGHT.vo + 0.2));
+  const span = Math.max(1, FIGHT.vo - FIGHT.start - 0.4);
+  fights.forEach((d, i) => { const a = FIGHT.start + 0.15 + i * span / FIGHTS.length, p = back(prog(t, a, a + 0.25)), jolt = Math.exp(-Math.max(0, t - a) * 12);
+    show(d, fOn ? clamp(p * 2) * (1 - fOut) * (1 - 0.75 * named) : 0, 'scale(' + Math.min(1.05, p) + ') translateX(' + Math.sin(t * 60) * 10 * jolt + 'px)');
+    d.style.filter = 'blur(' + named * 5 + 'px)'; });
+  const s1 = back(prog(t, FIGHT.vo - 0.1, FIGHT.vo + 0.25)), s2 = back(prog(t, FIGHT.marks[1] - 0.1, FIGHT.marks[1] + 0.25));
+  show('same1', fOn ? clamp(s1 * 2) * (1 - fOut) : 0, 'scale(' + (0.7 + 0.3 * Math.min(1, s1)) + ')');
+  show('same2', fOn ? clamp(s2 * 2) * (1 - fOut) : 0, 'scale(' + (0.6 + 0.4 * Math.min(1, s2)) + ')');
+
+  // Asking PsycheAI: the line, then the phone with the question; the answer typed in.
+  const askOn = t >= ASK.start - 0.05 && t < REP.start;
+  const a1 = back(prog(t, ASK.vo - 0.2, ASK.vo + 0.2)), a2 = back(prog(t, ASK.marks[1] - 0.2, ASK.marks[1] + 0.2));
+  const capsOut = prog(t, ANS.start - 0.2, ANS.start + 0.1);
+  show('ask1', askOn ? clamp(a1 * 2) * (1 - capsOut) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a1)) + ')');
+  show('ask2', askOn ? clamp(a2 * 2) * (1 - capsOut) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a2)) + ')');
+  const phIn = back(prog(t, ASK.start + 0.2, ASK.start + 0.6)), phUp = easeIO(prog(t, ANS.start - 0.2, ANS.start + 0.3)), phOut = prog(t, REP.start - 0.3, REP.start + 0.1);
+  show('phone', askOn ? clamp(phIn * 2) * (1 - phOut) : 0, 'translateY(' + ((1 - Math.min(1, phIn)) * 300 + 120 - 240 * phUp) + 'px) scale(' + (1 - 0.08 * phOut) + ')');
+  // The dots: one, two, three, flickering, while the data loads.
+  const flick = Math.floor(t * 6) % 4;
+  ['dots1', 'dots2'].forEach(id => [...$(id).children].forEach((d, i) => { d.style.opacity = i < flick ? (0.55 + 0.45 * Math.abs(Math.sin(t * 17 + i))) : 0; }));
+  // Instagram and WhatsApp fly into the phone, one from each side.
+  [['ig', -1, 0.15], ['wa', 1, 0.45]].forEach(([id, side, delay]) => {
+    const a = ASK.start + delay, fly = easeIO(prog(t, a + 0.35, a + 1.1)), pop = back(prog(t, a, a + 0.35));
+    const x0 = 540 + side * 330 - 95, y0 = 380, x1 = 445, y1 = 880;
+    Object.assign($(id).style, { left: (x0 + (x1 - x0) * fly) + 'px', top: (y0 + (y1 - y0) * fly) + 'px' });
+    show(id, askOn && t < ANS.start ? clamp(pop * 2) * (1 - prog(fly, 0.75, 1)) : 0, 'scale(' + Math.min(1.05, pop) * (1 - 0.7 * fly) + ') rotate(' + side * 8 * (1 - fly) + 'deg)'); });
+  $('loading').style.display = t < ANS.vo - 0.05 ? 'block' : 'none';
+  $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, ASK.start + 0.8, ANS.start - 0.1))) + '%';
+  [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, ASK.start + 1.2 + i * 0.3, ASK.start + 1.4 + i * 0.3); });
+  $('answer').style.display = t >= ANS.vo - 0.05 ? 'block' : 'none';
+  const typedW = Math.round(answerWords.length * prog(t, ANS.vo, ANS.end - 1.4));
+  $('answer').innerHTML = fixTags(answerWords.slice(0, typedW).join('')) || '<span style="opacity:.5">● ● ●</span>';
+  $('source').textContent = typedW >= answerWords.length ? 'From your messages and posts' : '';
+
+  // What the report adds.
+  const repOn = t >= REP.start - 0.05 && t < CLOSE.start, repOut = prog(t, REP.end - 0.25, REP.end);
+  const mr = back(prog(t, REP.vo - 0.2, REP.vo + 0.2));
+  show('more', repOn ? clamp(mr * 2) * (1 - repOut) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, mr) + pulse * 0.01) + ')');
+  const CT = [REP.marks[1] - 0.9, REP.marks[1], REP.marks[2]];
+  cards.forEach((c, i) => { const a = CT[i] - 0.15, p = back(prog(t, a, a + 0.35));
+    show(c, repOn ? clamp(p * 2) * (1 - repOut) : 0, 'perspective(1600px) rotateX(' + (1 - Math.min(1, p)) * -70 + 'deg) scale(' + (0.9 + 0.1 * Math.min(1, p)) + ')'); });
+
+  // The close.
+  const cl = back(prog(t, CLOSE.vo - 0.2, CLOSE.vo + 0.25));
+  show('close', t >= CLOSE.start - 0.05 ? clamp(cl * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, cl) + pulse * 0.015) + ')');
+  const st = back(prog(t, CLOSE.marks[1] - 0.1, CLOSE.marks[1] + 0.3));
+  show('site', t >= CLOSE.start ? clamp(st * 2) : 0, 'translateX(-50%) scale(' + (Math.min(1.05, st) + pulse * 0.04 * Math.min(1, st)) + ')');
+  const fr = ease(prog(t, CLOSE.voEnd + 0.1, CLOSE.voEnd + 0.5));
+  show('free', fr, 'translateY(' + (1 - fr) * 20 + 'px)');
+}
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>

@@ -116,6 +116,29 @@ REELS['career'] = {
     'melody': [[74, 78, 81, 78], [76, 73, 69, 73], [74, 71, 78, 74], [79, 78, 74, 71]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
+# The relationship reel: a wife asking why she and her husband fight over small things; the fights as messages,
+# PsycheAI asked and answering from her own data, then what the report covers. Only her data is read, so nothing
+# here speaks for him or for the couple. A warm female voice.
+REELS['relationship'] = {
+    'voice': 'en_US-hfc_female-medium',
+    'lines': [
+        (['We fought about the dishes.', 'Again.'], 0.85, True, 0.35),
+        (['Different topic.', 'Same fight.'], 0.85, True, 0.3),
+        (['So I asked {B} why we keep fighting over small things,', 'and it answered from my own data.'], 0.85, True, 0.15),
+        (["It's not the dishes.", "It's feeling like you come second."], 0.85, True, 0.3),
+        (['Your Psyche Report shows how you love,', 'how you handle conflict,', 'and what you need from the person you love.'], 0.85, True, [0.1, 0.1]),
+        (['A coach that already knows you.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
+    ],
+    'lead': {1: 2.8},                  # 1: the fights stack up before the voice names them
+    'hold': {0: 0.3, 3: 4.2, 4: 0.8},  # 3: time to read the whole answer
+    # Its own piece, warm and reflective: F sharp minor to A (F#m D A E) at 84, an electric piano with a slow tremolo.
+    # The fights get a low pulse that tightens; the asking falls back to the piano alone; the answer lifts into a soft
+    # groove of brushed snare, rim and bass with a vibraphone tune; a softly rolled A chord to close.
+    'mood': 'relationship', 'bpm': 84,
+    'chords': [[54, 57, 61], [50, 54, 57], [57, 61, 64], [52, 56, 59]], 'roots': [42, 38, 45, 40],
+    'melody': [[73, 69, 66, 69], [74, 69, 66, 69], [76, 73, 69, 73], [71, 68, 64, 68]],
+    'reveal': 3, 'swing': 0.0, 'early_claps': False,
+}
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +
@@ -158,7 +181,7 @@ EXTRA_LEAD = {REVEAL: 0.45 if R.get('mood') != 'uplifting' else 0.6}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i in range(len(lines)):
-    lead = 0.3 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
+    lead = 0.3 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0) + R.get('lead', {}).get(i, 0)
     if i in R.get('punch', ()):
         # Silence before the punchline so it starts on the next beat: a beat's pause at most, the comic one.
         cut = marks[i][1]; at = t + lead + cut
@@ -314,6 +337,70 @@ if R.get('mood') == 'uplifting':
     # The lift: a rising swell into the answer, and a bright last chord.
     at(DROP - 2.2, swell(2.2) * 1.8, 1.0)
     at(TOTAL - 2.4, strings([67, 71, 74, 79], 2.4, 0.07), 1.0)
+elif R.get('mood') == 'relationship':
+    sc = scenes
+    FIGHTS, ASK, DROP, REPORT, CLOSE = sc[1]['start'], sc[2]['start'], sc[3]['start'], sc[4]['start'], sc[5]['start']
+    END = sc[5]['voEnd'] + 0.6
+    EIGHTH = BEAT / 2
+    def lp(x, fc):
+        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+        return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
+    def rhodes(m, length=2.0, gain=0.07):
+        # An electric piano: a tine with a bell on the attack and a slow tremolo.
+        L = int(length * SR); x = np.arange(L) / SR; f = hz(m)
+        y = np.sin(2 * np.pi * f * x + 1.4 * np.exp(-x * 7) * np.sin(2 * np.pi * f * x)) + 0.25 * np.sin(2 * np.pi * f * 2 * x) * np.exp(-x * 3)
+        y *= np.exp(-x * 1.3) * (1 + 0.18 * np.sin(2 * np.pi * 4.2 * x)) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.1, 0, 1)
+        return y.astype(np.float32) * gain
+    def vibes(m, gain=0.06):
+        L = int(1.6 * SR); x = np.arange(L) / SR; f = hz(m)
+        y = np.sin(2 * np.pi * f * x) + 0.3 * np.sin(2 * np.pi * f * 4 * x) * np.exp(-x * 8)
+        return (y * np.exp(-x * 2.2) * (1 + 0.25 * np.sin(2 * np.pi * 5.5 * x))).astype(np.float32) * gain
+    def brush():
+        L = int(0.35 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+        return lp(noise - lp(noise, 1500), 6000) * np.minimum(1, x / 0.03) * np.exp(-x * 9) * 0.3
+    def rim():
+        L = int(0.06 * SR); x = np.arange(L) / SR
+        return (np.sin(2 * np.pi * 1800 * x) * np.exp(-x * 120) + np.sin(2 * np.pi * 520 * x) * np.exp(-x * 60) * 0.5) * 0.25
+    def soft_bass(m, length):
+        L = int(length * SR); x = np.arange(L) / SR
+        return (np.sin(2 * np.pi * hz(m) * x) + 0.2 * np.sin(4 * np.pi * hz(m) * x)) * np.minimum(1, x / 0.01) * np.clip((length - x) / 0.08, 0, 1) * 0.3
+    def pad(chord, length, gain=0.03):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord + [chord[0] + 12]:
+            for det in (-0.12, 0.12): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x) + 0.2 * (2 * (x * hz(m) * (1 + det / 100) % 1) - 1)
+        return lp(y * np.minimum(1, x / 0.6) * np.clip((length - x) / 0.5, 0, 1), 1500) * gain
+    K = kick()
+    pump = np.ones(n, np.float32)
+    b = 0.0
+    while b < END:
+        k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8; beat_i = e // 2
+        chord, root = CHORDS[bar_i], ROOTS[bar_i]
+        ending = b >= END - BAR
+        if ending: b += EIGHTH; continue
+        # The electric piano: the chord on the one and the and of two, the top note answering.
+        if e in (0, 3):
+            for m in chord: at(b, rhodes(m + 12, 2.2, 0.05), 1.0, -0.15)
+        if e == 6: at(b, rhodes(chord[2] + 24, 1.2, 0.04), 1.0, 0.2)
+        if e == 0: at(b, pad(chord, BAR * 1.02), 1.0)
+        if FIGHTS <= b < ASK:
+            # The fights: a low pulse on every beat that tightens into eighths, the bass under it.
+            tight = (b - FIGHTS) / max(0.1, ASK - FIGHTS)
+            if e % 2 == 0 or tight > 0.6: at(b, K, 0.25 + 0.2 * tight)
+            if e == 0: at(b, soft_bass(root - 12, BAR * 0.95), 0.8)
+        elif DROP <= b:
+            # The answer and after: a soft groove, brushed snare on two and four, a rim on the offbeats, the bass, the tune.
+            full = b >= REPORT
+            if e in (0, 5): at(b, K, 0.55)
+            if e in (2, 6): at(b, brush(), 1.0)
+            if e % 2 == 1: at(b, rim(), 0.6 if full else 0.4, 0.3)
+            if e in (0, 3, 4): at(b, soft_bass(root - 12, EIGHTH * 1.7), 1.0)
+            if e % 2 == 0: at(b, vibes(MELODY[bar_i][beat_i], 0.06 if full else 0.045), 1.0, 0.15)
+        b += EIGHTH
+    # A swell into the answer; the last chord, A, rolled softly up the electric piano over a swelling pad.
+    at(DROP - 1.6, swell(1.6), 0.8)
+    last = snap(END - BAR, BAR)
+    for k, m in enumerate([45, 57, 61, 64, 69, 73]): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
+    at(last - 0.6, pad([57, 61, 64], 3.8, 0.04), 1.0)
 elif R.get('mood') == 'career':
     sc = scenes
     QUESTIONS, DROP, REPORT, CLOSE = sc[1]['start'], sc[3]['start'], sc[4]['start'], sc[5]['start']
@@ -536,7 +623,7 @@ envv = lowpass(np.abs(voice), 8.0); envv /= max(1e-6, envv.max())
 # As the main video's ending: the music swells at once on the hit and is ducked less after it.
 swell_in = np.ones(n, np.float32)
 f0 = int(DROP * SR); f1 = min(n, int((DROP + 0.35) * SR))
-top = 1.35 if R.get('mood') in ('uplifting', 'career') else 1.6
+top = 1.35 if R.get('mood') in ('uplifting', 'career', 'relationship') else 1.6
 swell_in[f0:f1] = np.linspace(1.0, top, f1 - f0); swell_in[f1:] = top
 depth = np.where(np.arange(n) >= f0, 0.3, 0.5).astype(np.float32)
 duck = 1 - depth * np.clip(envv * 2.4, 0, 1)

@@ -221,6 +221,31 @@ the answer, with a light beat of kick, snaps and shaker, a warm bass and a pluck
 a D chord to close, rolled softly up the piano a note at a time over a swelling pad (struck all at once, it
 landed as a bang).
 
+### The relationship reel
+
+```
+npm run promo:shorts -- relationship   # out/PsycheAI-relationship.mp4, about 34 s
+```
+
+Its own stage, `relationship-stage.html` (the career reel's, reworked), and its own voice: Piper's HFC female
+(`en_US-hfc_female-medium`), at 0.85, chosen from five.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | We fought about the dishes. Again. | on an evening dusk, a plate, the line typed out, *…again.* in pink |
+| 1 | Different topic. Same fight. | first, with music only (`lead` in its entry), the fights that keep coming back as messages, one after another: *You always put your parents before me.* … *You don't listen to me.*; then they blur as the voice names them |
+| 2 | So I asked PsycheAI why we keep fighting over small things, and it answered from my own data. | the career reel's loading: Instagram and WhatsApp fly into the phone, *Reading your data…*, the dots flickering |
+| 3 | It's not the dishes. It's feeling like you come second. | the answer typed in: she shows love by doing things, and when no one notices a small thing becomes the fight; her messages get short before an argument; *Say what you need before it builds: "I need to feel like a priority."* (a sample reader's) |
+| 4 | Your Psyche Report shows how you love, how you handle conflict, and what you need from the person you love. | three cards: *How you show love* (you give / you need), *How you deal with conflict*, *What you need in a partner* |
+| 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
+
+Only her data is read, so nothing speaks for him or for the couple: the report line was "how to better relate to
+each other" until that was seen to promise a reading of both (Psyche Sync is friends-only). The fights are ones
+that recur; a towel on the floor and the thermostat were cut as too trivial. The music: F sharp minor to A (F#m D A
+E) at 84 on an electric piano with a slow tremolo and a pad; a low pulse under the fights that tightens into
+eighths; the piano alone for the asking; a soft groove for the answer (brushed snare, rim, bass, a vibraphone
+tune); a last A chord rolled softly up the electric piano.
+
 ## The privacy post
 
 `node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the
