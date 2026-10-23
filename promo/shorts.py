@@ -164,16 +164,12 @@ REELS['compare'] = {
     'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
-# The comparison reel's music, chosen from three tried under the same video (same lines and tempo, so the same
-# timeline): the relationship reel's electric piano groove, in A minor to C, its ending kept in that key (F then G,
-# home to C; the relationship reel's own ending is in A). The two not chosen are kept to hear again:
-# `compare-plain` (the career reel's instruments, the first cut) and `compare-strings` (the coach reel's rolling
-# piano and strings; `reveal_lead` keeps its timing the same).
-REELS['compare-plain'] = REELS['compare']
-REELS['compare-strings'] = dict(REELS['compare'], mood='uplifting', calm_close=False, reveal_lead=0.45,
-                                chords=[[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], roots=[45, 41, 48, 43],
-                                melody=[[76, 72, 69, 72], [77, 72, 69, 72], [79, 76, 72, 76], [74, 71, 67, 71]])
-REELS['compare'] = dict(REELS['compare-strings'], mood='relationship',
+# The comparison reel's music, chosen from three tried under the same video (the career reel's instruments, the
+# coach reel's piano and strings, and this): the relationship reel's electric piano groove, in A minor to C, its
+# ending kept in that key (F then G, home to C; the relationship reel's own ending is in A).
+REELS['compare'] = dict(REELS['compare'], mood='relationship',
+                        chords=[[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], roots=[45, 41, 48, 43],
+                        melody=[[76, 72, 69, 72], [77, 72, 69, 72], [79, 76, 72, 76], [74, 71, 67, 71]],
                         cadence=[([53, 57, 60], 41), ([55, 59, 62], 43)], end_chord=[36, 48, 52, 55, 60, 64])
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
@@ -213,7 +209,7 @@ BPM = R['bpm']; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 REVEAL = R['reveal']
 # The reveal lets the card land before the voice names it; every cut snaps to the half beat.
-EXTRA_LEAD = {REVEAL: R.get('reveal_lead', 0.45 if R.get('mood') != 'uplifting' else 0.6)}
+EXTRA_LEAD = {REVEAL: 0.45 if R.get('mood') != 'uplifting' else 0.6}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i in range(len(lines)):

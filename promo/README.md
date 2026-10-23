@@ -270,9 +270,8 @@ ending, in A, sounded like a change of key here).
 
 The camera moves in on each panel while its answer comes in (ChatGPT's, then PsycheAI's as its data loads), and
 back out as the verdict lands on the beat. The groove carries the close until a bar of F and G leads it home
-to the last chord. The two pieces not chosen can still be heard under the same video, same lines and tempo so the
-same timeline: `npm run promo:shorts -- compare-plain` (the career reel's instruments, the first cut) and
-`compare-strings` (the coach reel's rolling piano and strings; `reveal_lead` keeps its timing the same). The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful, and the reel says
+to the last chord. The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful,
+and the reel says
 only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
 reworded, and labelled in plain text rather than with ChatGPT's logo. Run it past someone for comparative
 advertising before paying to promote it. The voice says "Chat G P T"; written as one word it came out
