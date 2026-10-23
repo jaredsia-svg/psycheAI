@@ -1,8 +1,9 @@
 # PsycheAI on Instagram: profile, captions and outreach
 
-*October 2026. Copy for the launch reels in `promo/` (built by `npm run promo:shorts`; the videos land in
-`promo/out/`, which git ignores). It lives outside `docs/`, so it is not served on the site. See `PLAN.md` for
-the strategy behind it.*
+*October 2026. Copy for the launch reels. The finished videos, ready to post, and a cover for each are in
+`marketing/reels/` (copied from `promo/out/`, which git ignores; rebuild with `npm run promo:shorts -- <reel>` and
+copy again after a change). It lives outside `docs/`, so it is not served on the site. See `PLAN.md` for the
+strategy behind it.*
 
 Two rules run through all of it:
 
