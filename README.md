@@ -2270,7 +2270,7 @@ a title or heading. The front page's title is now "PsycheAI – Psyche personali
 character pages) and `/ai-personality-coach` (Ask PsycheAI: what it knows, questions to ask, an
 example from the sample's *Bursts, then recovery* pattern, and its price). "AI coach" alone belongs to
 funded apps; the page goes for the longer "AI personality coach" and "AI coach that knows you". Both
-are linked from the guides' footer on the front page and every generated page. 63 pages in the sitemap.
+are linked from the guides' footer on the front page and every generated page. 63 pages in the sitemap. The description became *The Psyche personality test reads who you are from your Instagram, with no quiz: MBTI, Big Five, love languages, and an AI coach that already knows you.* (23 October), dropping "a free Psyche Card", which read as a sales line in the search result.
 
 ## Kept across deploys (Upstash)
 
