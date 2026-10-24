@@ -14,7 +14,7 @@ for R in ${REELS:-notes mbti coach}; do
   node render.mjs "$R" --video "$FF"
   cp "build/$R/video.mp4" "out/PsycheAI-$R.mp4"
   # The cover: the card just after it has landed; in the roast, "You're only 27."; in coach, the answer typed out; in career and relationship, the report's cards; in compare, the two answers side by side.
-  SCENE=3; case $R in coach*) SCENE=5;; career|relationship|compare) SCENE=4;; esac
+  SCENE=3; case $R in coach*) SCENE=5;; career|relationship|compare*) SCENE=4;; esac
   COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][$SCENE]; print(s['vo'] + 1.6)")
   # In the roast, the last burn just after its punchline lands.
   if [ "$R" = roast ]; then COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][3]; print(s['marks'][1] + 0.7)"); fi

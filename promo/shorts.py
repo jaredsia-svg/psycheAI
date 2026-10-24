@@ -171,6 +171,14 @@ REELS['compare'] = dict(REELS['compare'], mood='relationship',
                         chords=[[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]], roots=[45, 41, 48, 43],
                         melody=[[76, 72, 69, 72], [77, 72, 69, 72], [79, 76, 72, 76], [74, 71, 67, 71]],
                         cadence=[([53, 57, 60], 41), ([55, 59, 62], 43)], end_chord=[36, 48, 52, 55, 60, 64])
+# The comparison reel again, on "What am I most insecure about?" (24 October 2026): the same stage, music and close.
+# ChatGPT's answer says itself that it is guessing, so that is what the voice says about it.
+REELS['compare-insecure'] = dict(REELS['compare'], lines=[
+    (['I asked Chat G P T and {B} the same question.', ('What am I most insecure about?', 1.05)], 0.85, True, 0.5),
+    (['Chat G P T admitted it was guessing.'], 0.85, None),
+    REELS['compare']['lines'][2],
+    (['And it found the fear I never say out loud.'], 0.85, None),
+] + REELS['compare']['lines'][4:], hold={0: 0.6, 1: 2.4, 2: 0.9, 3: 6.0, 4: 0.8})
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +

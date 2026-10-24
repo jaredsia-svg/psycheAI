@@ -1,8 +1,9 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <style>
-/* The comparison reel (shorts.py compare): the same question asked of ChatGPT (top) and PsycheAI (below). Both
-   answers are real and only trimmed: ChatGPT's could fit anyone, PsycheAI's is drawn from the asker's own data. */
+/* The comparison reels (shorts.py compare, compare-insecure): the same question asked of ChatGPT (top) and
+   PsycheAI (below). Both answers are real and only trimmed: ChatGPT's could fit anyone, PsycheAI's is drawn from
+   the asker's own data. Each reel's question and answers are in CONTENT below. */
 @font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; }
 html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f1f8; }
@@ -31,6 +32,12 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .ans li { margin: 0 0 6px 34px; font-weight: 750; }
 #ansB p { font-size: 37px; line-height: 1.3; color: #2a1238; font-weight: 600; margin-bottom: 14px; }
 #ansB b { color: #c2407a; font-weight: 850; }
+/* Shorter answers set larger (CONTENT.big). */
+body.big .ans { font-size: 41px; line-height: 1.3; }
+body.big .ans p { margin-bottom: 18px; }
+body.big #ansB p { font-size: 44px; line-height: 1.26; margin-bottom: 20px; }
+/* ChatGPT saying, in its own words, that it is guessing. */
+.ans mark { background: linear-gradient(transparent 12%, #fff1a6 12%, #fff1a6 92%, transparent 92%); color: #2f2f35; font-weight: 750; }
 .stamp { z-index: 25; padding: 12px 30px; border-radius: 20px; font-size: 42px; font-weight: 900; letter-spacing: .02em; white-space: nowrap; }
 #stA { right: 80px; top: 168px; color: #6b6b73; border: 6px solid #9a9aa3; background: rgba(255,255,255,.92); }
 #stB { right: 80px; top: 995px; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.4); }
@@ -93,18 +100,36 @@ const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el
   if (tf !== undefined) el.style.transform = tf; };
 const [HOOK, GPT, LOAD, ANS, VERDICT, CLOSE] = S;
 
-// The question, exactly as it was asked of both.
-const QUESTION = 'What would I regret most about my life when I’m old?';
-// ChatGPT's real answer, trimmed only: its opening line and the headings of its list.
-const GPT_LINES = ['<p><b>You might regret the things you knew mattered to you but kept postponing because you thought you had more time.</b></p>',
-  '<li>Not being fully honest about what you wanted.</li>', '<li>Not loving people more openly.</li>',
-  '<li>Being too afraid to try.</li>', '<li>Trading too much of your life for approval or achievement.</li>', '<li>Not being present for your own life.</li>'];
-const gptEls = GPT_LINES.map(h => { const d = document.createElement('div'); d.innerHTML = h; $('ansA').appendChild(d); return d; });
-// PsycheAI's real answers, trimmed only, as excerpts typed in one after another.
-const PSY = ['“Your deepest regret will not be a missed business deal…”',
-  '“You let your <b>analytical shield</b> turn any form of intimacy into an audit.”',
-  '“You quoted <b>The Little Prince</b> in 2023, so you are already familiar with this trap, yet you still fall in.”',
-  '“You won’t regret getting hurt; you will regret <b>never having dared to let someone in completely.</b>”'];
+// Each reel's question, exactly as it was asked of both; ChatGPT's real answer, trimmed only; its stamp; and
+// PsycheAI's real answer, trimmed only, as excerpts typed in one after another.
+const CONTENT = {
+  compare: {
+    question: 'What would I regret most about my life when I’m old?',
+    gpt: ['<p><b>You might regret the things you knew mattered to you but kept postponing because you thought you had more time.</b></p>',
+      '<li>Not being fully honest about what you wanted.</li>', '<li>Not loving people more openly.</li>',
+      '<li>Being too afraid to try.</li>', '<li>Trading too much of your life for approval or achievement.</li>', '<li>Not being present for your own life.</li>'],
+    stamp: 'Could be anyone',
+    psy: ['“Your deepest regret will not be a missed business deal…”',
+      '“You let your <b>analytical shield</b> turn any form of intimacy into an audit.”',
+      '“You quoted <b>The Little Prince</b> in 2023, so you are already familiar with this trap, yet you still fall in.”',
+      '“You won’t regret getting hurt; you will regret <b>never having dared to let someone in completely.</b>”'],
+  },
+  'compare-insecure': {
+    question: 'What am I most insecure about?',
+    gpt: ['<p>“Perhaps there’s a quiet belief that you’ll finally be happy once you reach a certain point in life.”</p>',
+      '<p><b>“You’re afraid that you’re not enough as you are right now…”</b></p>',
+      '<p>“<mark>I don’t know whether this truly describes you. I’m drawing a hypothesis…</mark>”</p>'],
+    stamp: 'Just a guess', big: true,
+    psy: ['“Beneath your contrarian banter lies a deep sensitivity to being <b>unappreciated, misunderstood, or quietly left behind.</b>”',
+      '“That is why you invest so heavily in acts of service – <b>vetting lease terms, offering rides</b>…”',
+      '“…you protect yourself from the vulnerable possibility that <b>someone might simply stop choosing you.</b>”'],
+  },
+}[TL.reel] || null;
+const QUESTION = CONTENT.question;
+const gptEls = CONTENT.gpt.map(h => { const d = document.createElement('div'); d.innerHTML = h; $('ansA').appendChild(d); return d; });
+$('stA').textContent = CONTENT.stamp;
+document.body.classList.toggle('big', Boolean(CONTENT.big));
+const PSY = CONTENT.psy;
 const psyWords = PSY.map(h => h.split(/(?<=\s)/));
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 
