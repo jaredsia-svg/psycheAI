@@ -170,11 +170,11 @@ REELS['compare'] = {
 REELS['character'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
-        (['I let {B} read six years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3),
+        (['I let {B} read eleven years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3),
         (['Twenty eight characters.', 'One match.'], 0.85, True, 0.5),
         (['The Tin Man.'], 0.85, None),
-        (['Big hearted builder, who shows love by showing up.', 'Checks in on the quiet ones.', 'Most in sync with Mulan.'], 0.85, True, [0.6, 0.6]),
-        (["Who's your Mulan?", 'Tag them.'], 0.85, True, 0.3),
+        (['Big hearted builder, who shows love by showing up.', 'Checks in on the quiet ones.', 'Most in sync with {Mulan}.'], 0.85, True, [0.6, 0.6]),
+        (["Who's your {Mulan}?", 'Tag them.'], 0.85, True, 0.3),
         (['Which character are you?', 'Find out at {PsycheAIdotIO}.'], 0.85, True, 0.3),
     ],
     'hold': {1: 2.6, 2: 0.4, 3: 0.8, 4: 1.4},  # 1: the long spin; 3: the card's three stops; 4: the tag

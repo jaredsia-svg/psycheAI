@@ -133,7 +133,7 @@ Comment MIRROR for the link.
 ### 3d. Which character are you?
 
 ```
-I let PsycheAI read 6 years of my Instagram. It told me which character I am 🎰
+I let PsycheAI read 11 years of my Instagram. It told me which character I am 🎰
 
 The Tin Man ❤️ Big-hearted builder who shows love by showing up.
 Most in sync with: Mulan.

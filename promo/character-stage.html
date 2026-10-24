@@ -46,7 +46,6 @@ body { font-family: Inter, sans-serif; color: #fff; }
 #t2 { z-index: 30; left: 0; right: 0; top: 1470px; text-align: center; font-size: 64px; font-weight: 850; }
 /* The close. */
 #c1 { z-index: 30; left: 50px; right: 50px; top: 600px; text-align: center; font-size: 104px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; }
-#c2 { z-index: 30; left: 0; right: 0; top: 900px; text-align: center; font-size: 58px; font-weight: 850; }
 #site { z-index: 30; left: 50%; top: 1080px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.45); }
 </style>
@@ -56,7 +55,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
 <body>
   <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
   <div id="world">
-    <div class="el" id="h1">I let <span class="grad">PsycheAI</span> read<br>6 years of my Instagram.</div>
+    <div class="el" id="h1">I let <span class="grad">PsycheAI</span> read<br>11 years of my Instagram.</div>
     <div class="el" id="h2">Then it told me which<br>character I am.</div>
 
     <div class="el" id="title">WHICH CHARACTER ARE YOU?</div>
@@ -73,7 +72,6 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div class="el" id="t2">Tag them 👇</div>
 
     <div class="el" id="c1">Which character<br><span class="grad">are you?</span></div>
-    <div class="el" id="c2">Comment yours 👇</div>
     <div class="el" id="site">psycheai.io ↗</div>
   </div>
   <div id="sparks"></div>
@@ -201,11 +199,9 @@ function tour(t, pulse) {
 
 function close(t, pulse) {
   const s = CLOSE, on = t >= s.start - 0.05;
-  if (!on) { ['c1', 'c2', 'site'].forEach(id => show(id, 0)); return; }
+  if (!on) { ['c1', 'site'].forEach(id => show(id, 0)); return; }
   const a = back(prog(t, s.vo - 0.15, s.vo + 0.25));
   show('c1', clamp(a * 2), 'scale(' + (0.75 + 0.25 * Math.min(1, a) + pulse * 0.015) + ')');
-  const b = back(prog(t, s.vo + 0.6, s.vo + 0.95));
-  show('c2', clamp(b * 2), 'translateY(' + (1 - Math.min(1, b)) * 30 + 'px)');
   const d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
   show('site', clamp(d * 2), 'translateX(-50%) scale(' + (Math.min(1.05, d) + pulse * 0.04 * Math.min(1, d)) + ')');
 }

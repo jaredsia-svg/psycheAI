@@ -60,9 +60,10 @@ LINES = [
 # The closing line: this, then each version's own words from config.json.
 END = 'Your first Psyche Card is free!'
 
-# Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen") and
-# {Odysseus} ("Utysis"). The recogniser hears them as the plain word.
-NAMES = {'{Mulan}': list('muːlˈæn'), '{Odysseus}': list('oʊdˈɪsiːəs'),
+# Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen"; "Moo-larn", as the
+# owner says it, since 24 October 2026, where it was "moo-lan") and {Odysseus} ("Utysis"). The recogniser hears
+# them as the plain word.
+NAMES = {'{Mulan}': list('muːlˈɑːn'), '{Odysseus}': list('oʊdˈɪsiːəs'),
          # The address said as seven even syllables, Psy-che-A-I-dot-I-O, for the male voices: given the brand's
          # sounds (BRAND), Ryan runs the A and I together, and "Psyche" said as "sigh key" keeps them apart.
          '{PsycheAIdotIO}': list('sˈaɪ kˈiːʲ ˌeɪˈaɪ dˈɑːt aɪ ˈoʊ')}
