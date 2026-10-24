@@ -153,7 +153,7 @@ const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
 const BURNS = [
   { badge: 'ROAST #1 🔥', setup: 'You’ve saved <b>300</b> cooking videos.', punch: 'Your most-cooked dish is instant noodles.', size: 92 },
   { badge: 'ROAST #2 🔥', setup: 'You’ve viewed <b>58</b> apartments.', punch: 'You still live with your parents.', size: 100 },
-  { badge: 'ROAST #3 🔥', setup: 'You’ve searched <b>“is it too late to…”</b> <b>23</b> times.', punch: 'You’re only 27.', size: 140 },
+  { badge: 'ROAST #3 🔥', setup: 'You’ve searched <b>“is it too late to…”</b> <b>23</b> times.', punch: 'You’re only 27', size: 140 },
 ];
 const setups = BURNS.map(b => { const d = mk('setup el', '', $('setups'));
   d.innerHTML = b.setup.split(' ').map(w => '<i>' + w + '</i>').join(' '); return d; });
@@ -305,7 +305,7 @@ function advice(t) {
   const s = ADV, inn = back(prog(t, s.start + 0.05, s.start + 0.45)), out = prog(t, s.end - 0.2, s.end);
   show('advice', clamp(inn * 2) * (1 - out), 'translateY(' + (1 - Math.min(1, inn)) * 200 + 'px) scale(' + (0.9 + 0.1 * Math.min(1, inn)) + ')');
   // Typed in a paragraph at a time, at reading pace, the last line once the rest has been read.
-  const total = readWords.reduce((a, w) => a + w.length, 0), typed = Math.round(total * prog(t, s.vo + 0.5, s.end - 1.6));
+  const total = readWords.reduce((a, w) => a + w.length, 0), typed = Math.round(total * prog(t, s.vo + 0.5, s.end - 2.1));
   let left = typed;
   $('read').innerHTML = readWords.map(w => { const k = Math.min(w.length, Math.max(0, left)); left -= w.length;
     return k ? '<p>' + fixTags(w.slice(0, k).join('')) + '</p>' : ''; }).join('');
