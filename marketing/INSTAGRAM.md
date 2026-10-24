@@ -116,13 +116,11 @@ Comment COACH and I'll send you the link 👇
 ### 3c. Mirror: who I think I am vs. what my data says
 
 ```
-I told an AI who I am. Then I let it read my data. 🪞
-
 I always thought I was a great listener. 5 messages sent for every 1 received.
 I always thought I was easygoing. "Just to confirm", 96 times.
 I thought I was over my ex. Searched her profile 63 times this year.
 
-It's time I spent more time understanding myself.
+You're not who you think you are. Time for some self-discovery 🪞
 
 Which one is you? 👇
 Comment MIRROR for the link.

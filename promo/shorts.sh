@@ -13,12 +13,14 @@ for R in ${REELS:-notes mbti coach}; do
   $PY shorts.py "$R" $FLAGS
   node render.mjs "$R" --video "$FF"
   cp "build/$R/video.mp4" "out/PsycheAI-$R.mp4"
-  # The cover: the card just after it has landed; in the roast, "You're only 27."; in coach, the answer typed out; in career and relationship, the report's cards; in compare, the two answers side by side; in mirror, the card and its three lines.
-  SCENE=3; case $R in coach*) SCENE=5;; career|relationship|compare*|mirror) SCENE=4;; esac
+  # The cover: the card just after it has landed; in the roast, "You're only 27."; in coach, the answer typed out; in career and relationship, the report's cards; in compare, the two answers side by side; in mirror, the first number.
+  SCENE=3; case $R in coach*) SCENE=5;; career|relationship|compare*) SCENE=4;; esac
   COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][$SCENE]; print(s['vo'] + 1.6)")
   # In the roast, the last burn just after its punchline lands.
   # In the character reel, the Tin Man's whole card, before the camera moves in.
   if [ "${R%%-*}" = character ]; then COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][3]; print(s['start'] + 0.75)"); fi
+  # In the mirror reel, the first number just after it lands.
+  if [ "$R" = mirror ]; then COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][0]; print(s['marks'][1] + 0.9)"); fi
   if [ "$R" = roast ]; then COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][3]; print(s['marks'][1] + 0.7)"); fi
   "$FF" -y -v error -ss "$COVER" -i "build/$R/video.mp4" -frames:v 1 -q:v 2 "out/PsycheAI-$R-cover.jpg"
 done

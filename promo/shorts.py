@@ -218,16 +218,15 @@ REELS['character-sherlock'] = character_reel('en_US-ryan-high', 'eight', 'Sherlo
 # and a punchline as the roast's burns are. Ryan's voice.
 REELS['mirror'] = {
     'voice': 'en_US-ryan-high',
+    # Opens on the first claim; from the third straight to the close (24 October 2026).
     'lines': [
-        (['I told an AI who I am.', 'Then I let it read my data.'], 0.85, True, 0.3),
         (['I always thought I was a great listener.', 'Until {B} put me in my place.'], 0.85, True, 0.2),
         (['I always thought I was easygoing, and chill.', 'Until my data showed me otherwise.'], 0.85, True, 0.2),
-        (['I thought I was over my ex.', 'Mmm. Apparently not.'], 0.85, True, 0.3),  # "Hmm" is said "ugh"
-        (["It's time I spent more time understanding myself."], 0.85, None),
-        (["You're not who you think you are.", 'Your data knows.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, [0.35, 0.3]),
+        (['I thought I was over my ex.', 'Apparently not.'], 0.85, True, 0.3),
+        (["You're not who you think you are.", "It's time for some self discovery.", 'Try it at {PsycheAIdotIO}.'], 0.85, True, [0.35, 0.3]),
     ],
-    'hold': {0: 0.3, 1: 0.9, 2: 0.9, 3: 0.9, 4: 3.4},  # 1-3: the number read; 4: the card and its three lines
-    'punch': (1, 2, 3),
+    'hold': {0: 0.9, 1: 0.9, 2: 1.1},  # the number read after each
+    'punch': (0, 1, 2),
     # Its own piece (24 October 2026, the second): lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung: a
     # warm electric piano, a soft boom-bap beat, a round bass, vinyl crackle. On each "until" the record slows to a
     # stop (a tape stop) and the beat comes back on the punchline; for the card it opens into F major (Fmaj7 C
@@ -236,7 +235,7 @@ REELS['mirror'] = {
     'chords': [[62, 65, 69, 72], [58, 62, 65, 69], [55, 58, 62, 65], [57, 61, 64, 67]], 'roots': [38, 34, 43, 45],
     'lift': [[65, 69, 72, 76], [60, 64, 67, 72], [62, 65, 69, 72], [58, 62, 65, 69]], 'lift_roots': [41, 36, 38, 34],
     'melody': [[74, 72, 69, 72], [74, 77, 76, 72], [70, 69, 67, 65], [69, 73, 76, 73]],
-    'reveal': 4, 'swing': 0.06, 'early_claps': False,
+    'reveal': 3, 'swing': 0.06, 'early_claps': False,
 }
 # The comparison reel's music, chosen from three tried under the same video (the career reel's instruments, the
 # coach reel's piano and strings, and this): the relationship reel's electric piano groove, in A minor to C, its
@@ -693,10 +692,10 @@ elif R.get('mood') == 'roast':
     at(last, house_bass(41, 2.5) * 0.6, 0.6)
 elif R.get('mood') == 'mirror':
     sc = scenes
-    CLAIMS = sc[1]['start']                    # the beat comes in with the first claim
-    DROP = sc[R['reveal']]['start']            # the card: opening into F major
+    CLAIMS = sc[0]['start'] + BAR               # the beat comes in a bar into the first claim
+    DROP = sc[R['reveal']]['start']            # the close: opening into F major
     PUNCH = [sc[i]['marks'][1] for i in R['punch']]
-    END = sc[5]['voEnd'] + 0.6
+    END = sc[-1]['voEnd'] + 0.6
     EIGHTH = BEAT / 2
     SW = R['swing']
 

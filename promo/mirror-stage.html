@@ -77,7 +77,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
   background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
 /* The close. */
 #c1 { z-index: 30; left: 50px; right: 50px; top: 560px; text-align: center; font-size: 92px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; }
-#c2 { z-index: 30; left: 50px; right: 50px; top: 860px; text-align: center; font-size: 120px; font-weight: 900; letter-spacing: -0.04em; }
+#c2 { z-index: 30; left: 50px; right: 50px; top: 860px; text-align: center; font-size: 96px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; }
 #tag { z-index: 30; left: 0; right: 0; top: 1130px; text-align: center; font-size: 52px; font-weight: 800; color: rgba(255,255,255,.85); }
 #site { z-index: 30; left: 50%; top: 1240px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.45); }
@@ -108,14 +108,17 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div id="chips"></div>
 
     <div class="el" id="c1">You’re not who<br>you think you are.</div>
-    <div class="el" id="c2"><span class="data">Your data knows.</span></div>
+    <div class="el" id="c2">It’s time for some<br><span class="data">self-discovery.</span></div>
     <div class="el" id="tag">Your personal AI coach</div>
     <div class="el" id="site">psycheai.io ↗</div>
   </div>
   <div id="flash"></div>
 <script>
 const TL = __TIMELINE__;
-const S = TL.scenes, BEAT = 60 / TL.bpm;
+// Since 24 October the reel opens on the first claim and goes from the third to the close: four scenes. The hook and
+// the card (with its three lines) are kept below for an earlier cut, as scenes that never come.
+const NEVER = at => ({ start: at, end: at + 1, vo: at, voEnd: at + 1, marks: [at, at + 0.5, at + 0.8], words: [] });
+const S = TL.scenes.length === 4 ? [NEVER(-100), ...TL.scenes.slice(0, 3), NEVER(1e6), TL.scenes[3]] : TL.scenes, BEAT = 60 / TL.bpm;
 const $ = id => document.getElementById(id);
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, b) => clamp((t - a) / (b - a));
@@ -174,6 +177,7 @@ function render(t) {
 }
 
 function hook(t) {
+  if (t >= HOOK.end) { ['h1', 'h2', 'ig', 'wa', 'gg'].forEach(id => show(id, 0)); return; }
   const s = HOOK, m1 = s.marks[1], out = prog(t, s.end - 0.25, s.end);
   const a = back(prog(t, s.vo - 0.15, s.vo + 0.25));
   show('h1', clamp(a * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');

@@ -358,31 +358,31 @@ and her name, never Disney's artwork.
 ### The mirror reel
 
 ```
-npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 34 s
+npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 25 s
 ```
 
 *Who I think I am against what my data says* (24 October 2026). Its own stage, `mirror-stage.html`, and its own
-music; Ryan's voice. Told as a confession: *I always thought I was…, until…*.
+music; Ryan's voice. Told as a confession: *I always thought I was…, until…*. It opens straight on the first claim
+and goes from the last straight to the close (the hook, and the card with its three lines, were cut; the stage
+keeps them as scenes that never come, `NEVER`).
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | I told an AI who I am. / Then I let it read my data. | the two lines; Instagram, WhatsApp and Google fly into *my data* |
-| 1 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
-| 2 | I always thought I was easygoing, and chill. / Until my data showed me otherwise. | *just to confirm* typed into a search of his messages, one from every chat, counting to 96×; *"Just to confirm" 96 times* |
-| 3 | I thought I was over my ex. / Mmm. Apparently not. | Instagram's recent searches, the same blurred profile row after row, counting to 63×; *Searched her profile 63 times this year* |
-| 4 | It's time I spent more time understanding myself. | Odysseus's sample card (`assets/card-odysseus.png`), then three lines: *Needs to be heard*, *Needs things just right*, *Feels more than he shows* |
-| 5 | You're not who you think you are. / Your data knows. / Try it at psycheai.io. | the two lines, *Your personal AI coach*, the address |
+| 0 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
+| 1 | I always thought I was easygoing, and chill. / Until my data showed me otherwise. | *just to confirm* typed into a search of his messages, one from every chat, counting to 96×; *"Just to confirm" 96 times* |
+| 2 | I thought I was over my ex. / Apparently not. | Instagram's recent searches, the same blurred profile row after row, counting to 63×; *Searched her profile 63 times this year* |
+| 3 | You're not who you think you are. / It's time for some self discovery. / Try it at psycheai.io. | the two lines, *Your personal AI coach*, the address |
 
 The numbers are shown, never said: the voice only admits it. Each claim is a trait a little less flattering than
 the speaker would admit, answered with something the app reads (his messages, and Instagram's search history).
 Earlier cuts: a lighter set read as quirks (a morning person most active at 1:12 am; spontaneous, searching
 Tokyo); then the data said the numbers aloud (*Three messages sent, for each one received*), which made it a list
-rather than a confession. "Hmm" is said "ugh" by this voice, so it is "Mmm".
+rather than a confession. ("Hmm" is said "ugh" by this voice; the line is now just *Apparently not*.)
 
 The music (the second piece): lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung, on a warm electric
 piano, a soft boom-bap beat, a round bass and vinyl crackle. On each *until* the record slows to a stop (a tape
-stop) and the beat drops back in on the punchline; for the card it opens into F major with a bell tune, ending
-on a held Fmaj9. The first piece, pizzicato over a half-time 808 with a record scratch on each punchline, was
+stop) and the beat drops back in on the punchline; for the close it opens into F major with a bell tune,
+ending on a held Fmaj9. The cover is the first number, just after it lands. The first piece, pizzicato over a half-time 808 with a record scratch on each punchline, was
 dropped (24 October).
 
 ### The character reel
