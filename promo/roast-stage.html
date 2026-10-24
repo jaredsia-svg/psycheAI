@@ -89,7 +89,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #advice h3 { font-size: 31px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 26px;
   background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #advLine b { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #b56cf0); -webkit-background-clip: text; background-clip: text; color: transparent; }
-#read { font-size: 48px; line-height: 1.36; font-weight: 600; color: #2a1238; min-height: 660px; }
+#read { font-size: 48px; line-height: 1.36; font-weight: 600; color: #2a1238; min-height: 840px; }
 #read p { margin-bottom: 26px; }
 #read b { font-weight: 900; }
 #read .last { color: #c2407a; }
@@ -185,6 +185,7 @@ const suggs = SUGG.map((x, i) => { const d = mk('sug', '<span class="ico">🔍</
   d.style.top = i * 132 + 'px'; return d; });
 // The honest friend: not the burns turned round, but what is under all three, typed in as it is read.
 const READ = [['<b>You’re not lazy. You’re scared of choosing wrong.</b>'],
+  ['Chasing the perfect choice is what keeps you stuck in analysis paralysis.'],
   ['Thinking it through feels like progress. It isn’t.'],
   ['It’s not too late. It just gets later every time you search.'],
   ['<b class="last">Pick one. Start badly. Start today.</b>']];

@@ -151,7 +151,7 @@ Both end like the main video: riser, hit, the full beat. `coach-misunderstood` i
 ### The roast reel
 
 ```
-npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 30 s
+npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 31 s
 ```
 
 Built by `shorts.py` like the others, but with a stage of its own, `roast-stage.html`, and music of its own.
@@ -163,7 +163,7 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 | 1 | You've saved three hundred cooking videos. / Your most cooked dish is instant noodles. | a saved grid of recipes counting to 300, greyed out under a *#1 most cooked 🍜* stamp |
 | 2 | You've viewed fifty eight apartments. / You still live with your parents. | apartment listings scrolling past, each *Viewed*, the count climbing to 58; at the punchline the rest dim and *Mum and Dad's: your room since 1999 · rent $0 · Still here* lands, hidden until then |
 | 3 | You've searched, is it too late to, twenty three times. / You're twenty seven. | a search bar typing *is it too late to* as it is said, then *…move abroad*, *…change careers*, *…start over* dropping in under it as the count runs to 23; at the punchline they go dark and *You're 27.* lands large |
-| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy. You're scared of choosing wrong.* *Thinking it through feels like progress. It isn't.* *It's not too late. It just gets later every time you search.* *Pick one. Start badly. Start today.* |
+| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy. You're scared of choosing wrong.* *Chasing the perfect choice is what keeps you stuck in analysis paralysis.* *Thinking it through feels like progress. It isn't.* *It's not too late. It just gets later every time you search.* *Pick one. Start badly. Start today.* |
 | 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
 
 Burns 1 to 3 are ash and ember rather than the brand's colours: a charcoal ground lit red from below, charcoal
