@@ -194,7 +194,7 @@ def character_hook(years):
 REELS['character-rapunzel'] = dict(REELS['character'], voice='en_US-hfc_female-medium', lines=[
     character_hook('seven'), REELS['character']['lines'][1],
     (['Rapunzel.'], 0.85, None),
-    (['Hopeful maker, who turns a small room into a studio.', 'Makes something of every corner.', 'Most in sync with Sherlock.'], 0.85, True, [0.6, 0.6]),
+    (['Hopeful maker, who turns a small room into a studio.', 'Hope that outlasts the setback.', 'Most in sync with Sherlock.'], 0.85, True, [0.6, 0.6]),
     (["Who's your Sherlock?", 'Tag them.'], 0.85, True, 0.3),
     REELS['character']['lines'][5],
 ])
@@ -209,7 +209,7 @@ def character_reel(voice, years, name_line, stops):
 REELS['character-mulan'] = character_reel('en_US-hfc_female-medium', 'nine', '{Mulan}.',
     ['Organiser with a warm centre, and a quiet battery.', 'Driven by care for my people.', 'Shows care through acts of service.'])
 REELS['character-odysseus'] = character_reel('en_US-ryan-high', 'twelve', '{Odysseus}.',
-    ['Resourceful planner, with a way out of every corner.', 'Driven by stimulation, achievement, and self direction.', 'E N T P.'])
+    ['Resourceful planner, with a way out of every corner.', 'Driven by stimulation, achievement, and self direction.', '{MBTIofENTP}.'])
 REELS['character-sherlock'] = character_reel('en_US-ryan-high', 'eight', 'Sherlock Holmes.',
     ['Quiet investigator, who notices what others miss.', 'Big Five. Openness, eighty five.', 'Values truth, and independence.'])
 
