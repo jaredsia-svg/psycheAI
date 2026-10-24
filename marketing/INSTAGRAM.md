@@ -113,6 +113,23 @@ Comment COACH and I'll send you the link 👇
 #chatgpt #insecurity #selfawareness #aicoach #psycheai
 ```
 
+### 3c. Mirror: who I think I am vs. what my data says
+
+```
+I told an AI who I am. Then I let it read my data. 🪞
+
+"I'm a morning person." Most active at 1:12 am.
+"I'm totally over my ex." Searched her profile 63 times this year.
+"I'm spontaneous." "Things to do in Tokyo", 31 times since 2021.
+
+Then it told me who I actually am.
+
+Which one is you? 👇
+Comment MIRROR for the link.
+
+#selfawareness #personalitytest #relatable #aicoach #psycheai
+```
+
 ### 4. Career
 
 ```

@@ -30,7 +30,7 @@ const parts = JSON.stringify({ ...JSON.parse(readFileSync(dir + '/assets/card-pa
 const configs = JSON.parse(readFileSync(dir + '/config.json', 'utf8'));
 const config = JSON.stringify(configs[version] || configs.reel);
 // The short reels (shorts.py) share one stage.
-const stage = { privacy: 'privacy-stage.html', notes: 'shorts-stage.html', mbti: 'shorts-stage.html', coach: 'shorts-stage.html', 'coach-misunderstood': 'shorts-stage.html', roast: 'roast-stage.html', career: 'career-stage.html', relationship: 'relationship-stage.html', compare: 'compare-stage.html', 'compare-insecure': 'compare-stage.html' }[version] || 'stage.html';
+const stage = { privacy: 'privacy-stage.html', notes: 'shorts-stage.html', mbti: 'shorts-stage.html', coach: 'shorts-stage.html', 'coach-misunderstood': 'shorts-stage.html', roast: 'roast-stage.html', career: 'career-stage.html', relationship: 'relationship-stage.html', compare: 'compare-stage.html', 'compare-insecure': 'compare-stage.html', mirror: 'mirror-stage.html' }[version] || 'stage.html';
 const sandbox = { window: {} };
 sandbox.self = sandbox.window;
 sandbox.globalThis = sandbox;

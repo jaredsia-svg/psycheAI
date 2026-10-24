@@ -164,6 +164,30 @@ REELS['compare'] = {
     'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
+# The mirror reel (24 October 2026): who I say I am against what my data says, three times, then who it says I am.
+# Each claim is a set-up and a punchline, as the roast's burns are. Ryan's voice.
+REELS['mirror'] = {
+    'voice': 'en_US-ryan-high',
+    'lines': [
+        (['I told an AI who I am.', 'Then I let it read my data.'], 0.85, True, 0.3),
+        (["I'm a morning person.", 'Most active at one twelve in the morning.'], 0.85, True, 0.15),
+        (["I'm totally over my ex.", 'Searched her profile sixty three times this year.'], 0.85, True, 0.15),
+        (["I'm spontaneous.", 'Searched, things to do in Tokyo, thirty one times. Since twenty twenty one.'], 0.85, True, 0.15),
+        (['Then it told me who I actually am.'], 0.85, None),
+        (["You're not who you think you are.", 'Your data knows.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, [0.35, 0.3]),
+    ],
+    'hold': {0: 0.3, 1: 0.5, 2: 0.5, 3: 0.6, 4: 3.4},  # 4: the card and its three lines
+    'punch': (1, 2, 3),
+    # Its own piece: sneaky pizzicato over an 808 in E minor (Em C G D... kept minor: Em C Am B) at 90, half time; a
+    # record scratch and a sub drop on each punchline; then for the card a swell into G major (G D Em C) on a warm
+    # electric piano and a soft beat, ending on a held G.
+    'mood': 'mirror', 'bpm': 90,
+    'chords': [[64, 67, 71], [60, 64, 67], [57, 60, 64], [59, 63, 66]], 'roots': [40, 36, 33, 35],
+    'lift': [[67, 71, 74], [62, 66, 69], [64, 67, 71], [60, 64, 67]], 'lift_roots': [43, 38, 40, 36],
+    'pizz': [[76, 79, 83, 79, 76, 71, 74, 76], [72, 76, 79, 76, 72, 67, 71, 72], [69, 72, 76, 72, 69, 64, 67, 69], [71, 75, 78, 75, 71, 66, 69, 71]],
+    'melody': [[79, 78, 74, 71], [74, 76, 78, 81], [79, 76, 71, 76], [72, 74, 76, 79]],
+    'reveal': 4, 'swing': 0.0, 'early_claps': False,
+}
 # The comparison reel's music, chosen from three tried under the same video (the career reel's instruments, the
 # coach reel's piano and strings, and this): the relationship reel's electric piano groove, in A minor to C, its
 # ending kept in that key (F then G, home to C; the relationship reel's own ending is in A).
@@ -617,6 +641,105 @@ elif R.get('mood') == 'roast':
     at(last - 1.2, reverse_crash(1.2), 0.45); at(last - 1.2, swell(1.2), 0.6)
     at(last, stab([53, 60, 65, 69, 72, 77], 3.0, 0.06), 1.0); at(last, pad([65, 69, 72], 3.0, 0.05), 1.0)
     at(last, house_bass(41, 2.5) * 0.6, 0.6)
+elif R.get('mood') == 'mirror':
+    sc = scenes
+    CLAIMS = sc[1]['start']                    # the groove comes in with the first claim
+    DROP = sc[R['reveal']]['start']            # the card: the swell into G major
+    PUNCH = [sc[i]['marks'][1] for i in R['punch']]
+    END = sc[5]['voEnd'] + 0.6
+    EIGHTH = BEAT / 2
+
+    def lp(x, fc):
+        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+        return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
+    def pizz(m, gain=0.11):
+        # A plucked string: a bright attack, quickly damped.
+        L = int(0.35 * SR); x = np.arange(L) / SR
+        y = sum(np.sin(2 * np.pi * hz(m) * k * x) * a_ * np.exp(-x * (14 + 6 * k)) for k, a_ in ((1, 1), (2, 0.45), (3, 0.2), (4, 0.08)))
+        return (y * np.minimum(1, x / 0.002) * gain).astype(np.float32)
+    def sub808(m, length, glide=0.0):
+        # The 808: a sine with a little drive, a long tail, a pitch glide in from above when asked.
+        L = int(length * SR); x = np.arange(L) / SR
+        f = hz(m) * (1 + glide * np.exp(-x * 9))
+        y = np.tanh(2.2 * np.sin(2 * np.pi * np.cumsum(f) / SR))
+        return (y * np.minimum(1, x / 0.004) * np.exp(-x * 1.6) * np.clip((length - x) / 0.08, 0, 1) * 0.32).astype(np.float32)
+    def snare():
+        L = int(0.25 * SR); x = np.arange(L) / SR
+        noise = rng.standard_normal(L).astype(np.float32)
+        body = np.sin(2 * np.pi * 190 * x) * np.exp(-x * 30)
+        return ((noise - lp(noise, 1500)) * np.exp(-x * 18) * 0.45 + body * 0.35).astype(np.float32)
+    def rhodes(chord, length, gain=0.05):
+        # A warm electric piano: a bell-ish attack over a round body, a slow tremolo.
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord:
+            y += np.sin(2 * np.pi * hz(m) * x) + 0.25 * np.sin(2 * np.pi * hz(m) * 2 * x) * np.exp(-x * 3) \
+                 + 0.12 * np.sin(2 * np.pi * hz(m) * 7 * x) * np.exp(-x * 14)
+        trem = 1 + 0.12 * np.sin(2 * np.pi * 4.5 * x)
+        return (y * trem * np.minimum(1, x / 0.01) * np.exp(-x * 0.7) * np.clip((length - x) / 0.3, 0, 1) * gain).astype(np.float32)
+    def pad(chord, length, gain=0.03):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord:
+            for det in (-0.15, 0.15): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x) + 0.25 * (2 * (x * hz(m) % 1) - 1)
+        return lp(y * np.minimum(1, x / 0.6) * np.clip((length - x) / 0.6, 0, 1), 1400) * gain
+    def scratch():
+        # A record scratch: a band of noise and a tone swept down then up, twice, quickly.
+        L = int(0.32 * SR); x = np.arange(L) / SR
+        sweep = 0.5 + 0.5 * np.cos(2 * np.pi * x / 0.16)
+        f = 300 + 1500 * sweep
+        tone = np.sin(2 * np.pi * np.cumsum(f) / SR)
+        noise = rng.standard_normal(L).astype(np.float32)
+        y = tone * 0.5 + (lp(noise, 3500) - lp(noise, 600)) * 0.8
+        return (y * np.minimum(1, x / 0.005) * np.clip((0.32 - x) / 0.04, 0, 1) * 0.35).astype(np.float32)
+    def crackle(length):
+        L = int(length * SR); y = np.zeros(L, np.float32)
+        hits = rng.integers(0, L, int(length * 28))
+        y[hits] = rng.standard_normal(len(hits)).astype(np.float32) * 0.6
+        return lp(y, 5000) * 0.25 + lp(rng.standard_normal(L).astype(np.float32), 900) * 0.01
+
+    K, H = kick(), hat()
+    S_ = snare()
+    pump = np.ones(n, np.float32)
+    at(0, crackle(min(TOTAL, DROP)), 0.5)
+    b = 0.0
+    while b < END:
+        k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8
+        hook, claims, warm = b < CLAIMS, CLAIMS <= b < DROP, b >= DROP
+        held = any(p - BEAT - 0.01 <= b < p - 0.01 for p in PUNCH)
+        if hook:
+            # The hook: the pizzicato alone, quietly, then the 808 creeping in.
+            at(b, pizz(R['pizz'][bar_i][e], 0.08), 1.0, 0.3 if e % 2 else -0.3)
+            if e == 0 and b > CLAIMS - BAR: at(b, sub808(R['roots'][bar_i] + 12, BAR * 0.9, 0.3), 0.6)
+        elif claims and not held:
+            # The claims: half-time trap. Kick on one and the and of two, snare on three, hats in eighths.
+            at(b, pizz(R['pizz'][bar_i][e], 0.11), 1.0, 0.3 if e % 2 else -0.3)
+            at(b, H, 0.35 if e % 2 else 0.22, 0.25)
+            if e in (0, 3):
+                at(b, K, 0.9)
+                a_ = int(b * SR); L = int(0.22 * SR)
+                if a_ < n: pump[a_:a_ + L] = np.minimum(pump[a_:a_ + L], 0.5 + 0.5 * np.linspace(0, 1, min(L, n - a_)) ** 0.6)
+            if e == 4: at(b, S_, 0.9)
+            if e == 0: at(b, sub808(R['roots'][bar_i] + 12, BAR * 0.85), 1.0)
+        elif warm and b < END - BAR:
+            # Who I actually am: G major on the electric piano and a pad, a soft beat, the melody on a bell.
+            li = bar_i
+            if e == 0:
+                at(b, rhodes(R['lift'][li], BAR * 1.05), 1.0); at(b, pad(R['lift'][li], BAR * 1.05), 1.0)
+                at(b, sub808(R['lift_roots'][li] + 12, BAR * 0.9), 0.7)
+            if e in (0, 5): at(b, K, 0.55)
+            if e == 4: at(b, S_, 0.45)
+            if e % 2: at(b, H, 0.18, 0.25)
+            if e % 2 == 0: at(b, bell(R['melody'][li][e // 2]), 0.7, 0.15)
+        b += EIGHTH
+
+    # Each punchline: the record scratch over the gap, then a sub drop and a snare on it.
+    for p in PUNCH:
+        at(p - 0.34, scratch(), 1.0)
+        at(p, sub808(R['roots'][0], 1.2, 1.2), 1.0); at(p, S_, 0.8); at(p, impact(), 0.35)
+    # Into the card: a swell and a soft hit; at the end, the last G held with nothing struck under it.
+    at(DROP - 1.4, swell(1.4), 0.9); at(DROP - 1.4, riser(1.4), 0.35); at(DROP, impact(), 0.5)
+    last = snap(END - BAR, BAR)
+    at(last, rhodes([55, 62, 67, 71, 74], 3.2, 0.06), 1.0); at(last, pad([67, 71, 74], 3.2, 0.04), 1.0)
+    at(last, sub808(43, 2.6), 0.5)
 else:
     sc = scenes
     MID = sc[1]['start']       # a light pulse comes in after the hook
