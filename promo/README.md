@@ -417,3 +417,19 @@ starts; at 4 it stopped a second and a half early): the music ticks once per til
 does; then a riser and a
 hit as it lands, a sparkle of bells, and bright pop in C major (C G Am F at 108) to the end.
 
+**Four more characters** (24 October 2026), on the same stage and music: `character-rapunzel`,
+`character-mulan`, `character-odysseus`, `character-sherlock` (`npm run promo:shorts -- character-rapunzel`, and so
+on). The stage takes its character, card, stops and tag from `WHO`, by the reel's name; a reel of five scenes has no
+tag and goes from the card to the close.
+
+| Reel | Voice | The card | Its stops |
+| --- | --- | --- | --- |
+| Rapunzel | HFC (female) | Sofia Reyes (`card-rapunzel.png`) | headline, patterns, most in sync with, then *Who's your Sherlock? Tag them* |
+| Mulan | HFC (female) | Emily Carter (`card-char-mulan.png`) | headline, *What motivates you* (care for my people), *Shows care as* (acts of service) |
+| Odysseus | Ryan | Lucas Moreau (`card-char-odysseus.png`) | headline, MBTI (E N T P), patterns (a plan B for every plan) |
+| Sherlock | Ryan | Daniel Okafor (`card-char-sherlock.png`) | headline, Big Five (openness 86), values and beliefs (look closely before you decide) |
+
+Mulan, Odysseus and Sherlock never show *Most in sync with*, and each highlights parts the others do not. Their
+cards are captured afresh as `card-char-*.png` with their `-parts.json`, so the older reels keep the pictures they
+were made with. A name longer than eleven letters (Sherlock Holmes) is set smaller under the machine.
+

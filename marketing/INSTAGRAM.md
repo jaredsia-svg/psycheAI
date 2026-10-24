@@ -144,6 +144,17 @@ Who's your Mulan? Tag them 👇
 #whichcharacterareyou #personalitytest #wizardofoz #psycheai
 ```
 
+### 3e. Which character are you? Rapunzel, Mulan, Odysseus, Sherlock
+
+Same caption as 3d, with the reveal line swapped:
+
+- **Rapunzel:** `Rapunzel ✨ Hopeful maker who turns a small room into a studio. Most in sync with: Sherlock. Who's your Sherlock? Tag them 👇`
+- **Mulan:** `Mulan 🗡️ Organiser with a warm centre and a quiet battery. Driven by care for her people.`
+- **Odysseus:** `Odysseus ⛵ Resourceful planner with a way out of every corner. ENTP. A plan B for every plan.`
+- **Sherlock:** `Sherlock Holmes 🔍 Quiet investigator who notices what others miss. Openness: 86.`
+
+Hashtags: swap #wizardofoz for #rapunzel, #mulan, #odyssey or #sherlockholmes.
+
 ### 4. Career
 
 ```
