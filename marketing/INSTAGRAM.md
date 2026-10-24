@@ -118,9 +118,9 @@ Comment COACH and I'll send you the link 👇
 ```
 I told an AI who I am. Then I let it read my data. 🪞
 
-"I'm a morning person." Most active at 1:12 am.
+"I'm a great listener." 3 messages sent for every 1 received.
 "I'm totally over my ex." Searched her profile 63 times this year.
-"I'm spontaneous." "Things to do in Tokyo", 31 times since 2021.
+"I'm easygoing." Typed "just to confirm" 96 times.
 
 Then it told me who I actually am.
 

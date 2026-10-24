@@ -165,14 +165,15 @@ REELS['compare'] = {
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
 # The mirror reel (24 October 2026): who I say I am against what my data says, three times, then who it says I am.
-# Each claim is a set-up and a punchline, as the roast's burns are. Ryan's voice.
+# Each claim is a trait a little less flattering than he would admit (a talker, not over her, particular), a set-up
+# and a punchline as the roast's burns are. Ryan's voice.
 REELS['mirror'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
         (['I told an AI who I am.', 'Then I let it read my data.'], 0.85, True, 0.3),
-        (["I'm a morning person.", 'Most active at one twelve in the morning.'], 0.85, True, 0.15),
+        (["I'm a great listener.", 'Three messages sent, for each one received.'], 0.85, True, 0.15),
         (["I'm totally over my ex.", 'Searched her profile sixty three times this year.'], 0.85, True, 0.15),
-        (["I'm spontaneous.", 'Searched, things to do in Tokyo, thirty one times. Since twenty twenty one.'], 0.85, True, 0.15),
+        (["I'm easygoing.", 'Typed, just to confirm, ninety six times.'], 0.85, True, 0.15),
         (['Then it told me who I actually am.'], 0.85, None),
         (["You're not who you think you are.", 'Your data knows.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, [0.35, 0.3]),
     ],

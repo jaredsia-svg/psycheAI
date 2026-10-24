@@ -47,11 +47,11 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .count { padding: 8px 24px; border-radius: 999px; font-size: 34px; font-weight: 900; color: #0c0a1c; background: #5ef2ff; }
 .punch { z-index: 40; left: 50px; right: 50px; top: 1400px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.06;
   filter: drop-shadow(0 0 30px rgba(94,242,255,.35)); }
-/* 1: the day's activity, hour by hour. */
-#chart { position: absolute; left: 40px; right: 40px; top: 150px; height: 380px; }
-.hbar { position: absolute; bottom: 0; width: 26px; border-radius: 8px 8px 3px 3px; background: rgba(143,155,255,.55); transform-origin: 50% 100%; }
-.hbar.peak { background: linear-gradient(180deg, #5ef2ff, #8f9bff); box-shadow: 0 0 30px rgba(94,242,255,.6); }
-#hours { position: absolute; left: 40px; right: 40px; top: 545px; display: flex; justify-content: space-between; font-size: 28px; font-weight: 700; color: rgba(255,255,255,.5); }
+/* 1: a chat, mostly his side of it. */
+#chat { position: absolute; left: 30px; right: 30px; top: 120px; bottom: 20px; overflow: hidden; }
+.cb { position: absolute; max-width: 74%; padding: 16px 26px; border-radius: 30px; font-size: 32px; font-weight: 650; line-height: 1.25; white-space: nowrap; }
+.cb.me { right: 0; background: linear-gradient(135deg, #7b3fe4, #c2407a); border-bottom-right-radius: 8px; }
+.cb.them { left: 0; background: rgba(255,255,255,.1); color: #d9d4ef; border-bottom-left-radius: 8px; }
 #peakTag { z-index: 23; padding: 12px 26px; border-radius: 22px; font-size: 40px; font-weight: 900; color: #0c0a1c; background: #5ef2ff; white-space: nowrap;
   box-shadow: 0 0 40px rgba(94,242,255,.6); }
 /* 2: recent searches on Instagram. */
@@ -63,12 +63,13 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .row .x { font-size: 34px; color: rgba(255,255,255,.4); }
 /* 3: a search on Google, and when it was searched. */
 #gq { position: absolute; left: 34px; right: 34px; top: 140px; height: 104px; border-radius: 52px; display: flex; align-items: center; gap: 20px; padding: 0 36px;
-  background: #fff; color: #202124; font-size: 42px; font-weight: 650; white-space: nowrap; }
-#gq .caret { display: inline-block; width: 4px; height: 50px; margin-left: 3px; vertical-align: middle; background: #4285f4; }
+  background: rgba(255,255,255,.1); border: 2px solid rgba(94,242,255,.4); color: #fff; font-size: 42px; font-weight: 700; white-space: nowrap; }
+#gq .caret { display: inline-block; width: 4px; height: 50px; margin-left: 3px; vertical-align: middle; background: #5ef2ff; }
 #dates { position: absolute; left: 34px; right: 34px; top: 280px; }
 .when { position: absolute; left: 0; right: 0; height: 66px; display: flex; align-items: center; gap: 22px; padding: 0 26px; font-size: 32px; font-weight: 650;
   color: rgba(255,255,255,.8); border-radius: 20px; background: rgba(255,255,255,.05); }
 .when b { color: #8f9bff; font-weight: 850; min-width: 150px; }
+.when span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The turn: the card, and who it says I am. */
 #turn { z-index: 30; left: 60px; right: 60px; top: 200px; text-align: center; font-size: 66px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
 #card { z-index: 25; left: 300px; top: 400px; width: 480px; border-radius: 26px; box-shadow: 0 0 80px rgba(143,155,255,.55), 0 40px 90px rgba(0,0,0,.5); }
@@ -95,11 +96,11 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div class="el" id="round"></div>
     <div id="bubbles"></div>
     <div id="punches"></div>
-    <div class="el panel" id="p1"><div class="bar"><span>📷 Activity by hour</span><span class="count" id="n1">0 actions</span></div>
-      <div id="chart"></div><div id="hours"><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span><span>6am</span></div></div>
-    <div class="el" id="peakTag">1:12 am</div>
+    <div class="el panel" id="p1"><div class="bar"><span>💬 Messages</span><span class="count" id="n1">0 sent · 0 received</span></div>
+      <div id="chat"></div></div>
+    <div class="el" id="peakTag">3 : 1</div>
     <div class="el panel" id="p2"><div class="bar"><span>🔍 Recent searches</span><span class="count" id="n2">0×</span></div><div id="igList"></div></div>
-    <div class="el panel" id="p3"><div class="bar"><span>🔎 Google · My Activity</span><span class="count" id="n3">0×</span></div>
+    <div class="el panel" id="p3"><div class="bar"><span>💬 Search in messages</span><span class="count" id="n3">0×</span></div>
       <div id="gq"><span>🔍</span><span><span id="gtyped"></span><span class="caret" id="gcaret"></span></span></div><div id="dates"></div></div>
 
     <div class="el" id="turn">Then it told me who<br>I <span class="grad">actually</span> am.</div>
@@ -131,26 +132,28 @@ const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
 
 // What I say, and what the data says back.
 const CLAIMS = [
-  { say: 'I’m a morning person.', punch: 'Most active at<br>1:12 am.' },
+  { say: 'I’m a great listener.', punch: '3 messages sent<br>for every 1 received.' },
   { say: 'I’m totally over my ex.', punch: 'Searched her profile<br>63 times this year.' },
-  { say: 'I’m spontaneous.', punch: '“Things to do in Tokyo”<br>31 times. Since 2021.' },
+  { say: 'I’m easygoing.', punch: '“Just to confirm”<br>96 times.' },
 ];
 const bubbles = CLAIMS.map(c => { const d = mk('el bubble', c.say + '<div class="strike"></div>', $('bubbles')); return d; });
 const punches = CLAIMS.map(c => mk('el punch data', c.punch, $('punches')));
 
-// 1: 24 hours from 6am; quiet mornings, the most at 1am.
-const LEVELS = [0.05, 0.04, 0.06, 0.1, 0.12, 0.16, 0.2, 0.18, 0.22, 0.25, 0.28, 0.3, 0.34, 0.4, 0.45, 0.55, 0.62, 0.7, 0.85, 1.0, 0.78, 0.4, 0.12, 0.06];
-const PEAK = 19;
-const hbars = LEVELS.map((v, i) => { const d = mk('hbar' + (i === PEAK ? ' peak' : ''), '', $('chart')); d.style.left = (i * 37.5) + 'px'; d.style.height = (v * 290) + 'px'; return d; });
+// 1: a friend's bad day, and his answers to it: three of his for every one of theirs.
+const CHAT = [['them', 'rough day tbh'], ['me', 'omg same'], ['me', 'so my boss today…'], ['me', 'and THEN he said'],
+  ['them', 'oh no'], ['me', 'right?? anyway'], ['me', 'also my landlord'], ['me', 'long story 😂'],
+  ['them', 'haha ok'], ['me', 'wait what was yours'], ['me', 'sorry I got carried away'], ['me', 'tell me!!']];
+const cbs = CHAT.map(([who, tx]) => mk('cb ' + who, tx, $('chat')));
 // 2: the same profile, over and over.
 const igRows = Array.from({ length: 9 }, (_, i) => mk('row', '<div class="pic"></div><div class="nm">h•••••_•••<small>Searched · ' +
   ['2d', '4d', '6d', '1w', '1w', '2w', '3w', '1mo', '2mo'][i] + '</small></div><div class="x">✕</div>', $('igList')));
 // 3: one search, again and again since 2021.
-const GQ = 'things to do in tokyo';
-const DATES = ['Mar 2021', 'Nov 2021', 'Jun 2022', 'Jan 2023', 'Sep 2023', 'Apr 2024', 'Dec 2024', 'Jul 2025', 'Oct 2026'];
-const dates = DATES.map((w, i) => { const d = mk('when', '<b>' + w + '</b><span>Searched for things to do in tokyo</span>', $('dates')); d.style.top = (i * 76) + 'px'; return d; });
+const GQ = 'just to confirm';
+const DATES = [['Sam', '7:15, not 7:30?'], ['Mum', 'you got my last message?'], ['Team', 'slide 4 before 5?'], ['Alex', 'you’re bringing the plates?'],
+  ['Jess', 'we’re splitting it 4 ways?'], ['Landlord', 'the 3rd, by noon?'], ['Dan', 'gate B, not C?'], ['Priya', 'the blue one, right?'], ['Group', 'everyone’s ok with 8?']];
+const dates = DATES.map(([w, x], i) => { const d = mk('when', '<b>' + w + '</b><span>“Just to confirm, ' + x + '”</span>', $('dates')); d.style.top = (i * 76) + 'px'; return d; });
 // Who it says I am.
-const CHIPS = ['🌙 Night thinker', '💭 Feels more than he shows', '🗺️ Dreams in detail'];
+const CHIPS = ['🗣️ Needs to be heard', '💭 Feels more than he shows', '📐 Needs things just right'];
 const chips = CHIPS.map((c, i) => { const d = mk('el chip', c, $('chips')); d.style.top = (1290 + i * 128) + 'px'; return d; });
 
 function render(t) {
@@ -208,13 +211,19 @@ function claims(t, pulse) {
     const pp = prog(t, p - 0.04, p + 0.22), slam = 1 + (1 - ease(pp)) * 1.0;
     show(punches[k], live && t >= p - 0.04 ? clamp(pp * 3) * (1 - out) : 0, 'scale(' + (slam + pulse * 0.02) + ')');
   });
-  // 1: the bars grow hour by hour, the count climbing; the peak lit and tagged on the punchline.
+  // 1: the chat runs, one message after another pushing it up, the counts climbing; on the punchline his side
+  // dims and the ratio lands over it.
   { const s = S[1], p = PUNCH[0], grow = prog(t, s.vo, p - 0.1);
-    hbars.forEach((d, i) => { const g = ease(clamp(grow * 1.6 - i * 0.025)); d.style.transform = 'scaleY(' + g + ')';
-      d.style.opacity = i === PEAK || t < p ? 1 : 0.45; });
-    $('n1').textContent = Math.round(18420 * easeIO(grow)).toLocaleString('en-US') + ' actions';
+    const shown = prog(t, s.start + 0.2, p - 0.1) * cbs.length, visible = Math.min(cbs.length, Math.floor(shown) + 1);
+    const heights = cbs.map(c => c.offsetHeight + 14), lift = heights.slice(0, visible).reduce((a, h) => a + h, 0);
+    let y = 0;
+    cbs.forEach((c, i) => { const pp = back(clamp(shown - i)); c.style.top = (480 - lift + y) + 'px'; y += heights[i];
+      c.style.opacity = (i < visible ? clamp(pp * 2) : 0) * (t >= p && c.classList.contains('me') ? 0.5 : 1);
+      c.style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1, pp)) + ')'; c.style.transformOrigin = c.classList.contains('me') ? '100% 100%' : '0 100%'; });
+    const run = easeIO(grow);
+    $('n1').textContent = Math.round(4812 * run).toLocaleString('en-US') + ' sent · ' + Math.round(1604 * run).toLocaleString('en-US') + ' received';
     const tg = back(prog(t, p, p + 0.3));
-    Object.assign($('peakTag').style, { left: (70 + 40 + PEAK * 37.5 + 13 - 105) + 'px', top: (690 + 150 + 380 - 290 - 92) + 'px' });
+    Object.assign($('peakTag').style, { left: '420px', top: '980px', fontSize: '84px', padding: '18px 44px', borderRadius: '34px' });
     show('peakTag', t >= p && t < s.end ? clamp(tg * 2) * (1 - prog(t, s.end - 0.2, s.end)) : 0, 'scale(' + Math.min(1.08, tg) + ')'); }
   // 2: the same profile, row after row, the count running to 63.
   { const s = S[2], p = PUNCH[1], run = prog(t, s.vo, p - 0.1);
@@ -223,12 +232,12 @@ function claims(t, pulse) {
     igRows.forEach((r, i) => { const a = s.start + 0.2 + i * 0.12, pp = back(prog(t, a, a + 0.25));
       r.style.top = (top + i * 118) + 'px'; r.style.opacity = clamp(pp * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, pp)) * 60 + 'px)';
       r.style.background = t >= p ? 'rgba(94,242,255,' + (0.08 + 0.06 * Math.sin(t * 8 + i)) + ')' : 'transparent'; }); }
-  // 3: the search typed, the dates filling in from 2021, the count running to 31.
+  // 3: "just to confirm" typed into the search, a message from every chat filling in, the count running to 96.
   { const s = S[3], p = PUNCH[2], typed = Math.round(GQ.length * prog(t, s.vo + 0.1, s.marks[1] - 0.4));
     $('gtyped').textContent = GQ.slice(0, typed);
     $('gcaret').style.opacity = Math.floor(t * 2.6) % 2 === 0 ? 1 : 0.1;
     const run = prog(t, s.vo + 0.3, p - 0.1);
-    $('n3').textContent = Math.round(31 * easeIO(run)) + '×';
+    $('n3').textContent = Math.round(96 * easeIO(run)) + '×';
     dates.forEach((d, i) => { const a = s.vo + 0.3 + (p - s.vo - 0.5) * i / dates.length, pp = back(prog(t, a, a + 0.25));
       d.style.opacity = clamp(pp * 2); d.style.transform = 'translateY(' + (1 - Math.min(1, pp)) * -20 + 'px)';
       d.querySelector('b').style.color = t >= p && i === 0 ? '#5ef2ff' : ''; }); }

@@ -367,15 +367,17 @@ music; Ryan's voice.
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | I told an AI who I am. / Then I let it read my data. | the two lines; Instagram, WhatsApp and Google pop up and fly into *my data* |
-| 1 | I'm a morning person. / Most active at one twelve in the morning. | *What I say* as a chat bubble over *What my data says*: activity by hour, mornings flat, the peak tagged *1:12 am*; on the punchline the bubble is struck through |
+| 1 | I'm a great listener. / Three messages sent, for each one received. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, three of his to each of theirs, the counts climbing to 4,812 sent and 1,604 received; on the punchline the bubble is struck through and *3 : 1* lands |
 | 2 | I'm totally over my ex. / Searched her profile sixty three times this year. | Instagram's recent searches, the same blurred profile row after row, counting to 63× |
-| 3 | I'm spontaneous. / Searched, things to do in Tokyo, thirty one times. Since twenty twenty one. | a Google search typed in, with the months it was searched from Mar 2021, counting to 31× |
-| 4 | Then it told me who I actually am. | Sherlock's card, then three lines that answer the claims: *Night thinker*, *Feels more than he shows*, *Dreams in detail* |
+| 3 | I'm easygoing. / Typed, just to confirm, ninety six times. | *just to confirm* typed into a search of his messages, one from every chat (7:15 not 7:30, the plates, gate B), counting to 96× |
+| 4 | Then it told me who I actually am. | Sherlock's card, then three lines that answer the claims: *Needs to be heard*, *Feels more than he shows*, *Needs things just right* |
 | 5 | You're not who you think you are. / Your data knows. / Try it at psycheai.io. | the two lines, *Your personal AI coach*, the address |
 
-Every claim is answered with something the app reads: when you are active (timestamps), Instagram's search
-history, Google searches. Archived posts and saved places were the first ideas and were dropped, because the app
-reads neither. The answers are a made-up sample, kind rather than cruel: the card's three lines say what each
+Every claim is a trait a little less flattering than the speaker would admit, answered with something the app
+reads: his messages (how many he sends against receives, and what he types), and Instagram's search history. The
+first cut (24 October) was lighter (a morning person most active at 1:12 am; spontaneous, searching Tokyo since
+2021) and read as quirks rather than blind spots. Archived posts and saved places were dropped earlier, because
+the app reads neither. The answers are a made-up sample, kind rather than cruel: the card's three lines say what each
 contradiction means, not that the reader was wrong.
 
 The music: pizzicato over a half-time 808 groove in E minor at 90 under the claims, the beat dropping out for the
