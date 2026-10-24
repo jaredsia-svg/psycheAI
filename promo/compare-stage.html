@@ -32,9 +32,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .ans li { margin: 0 0 6px 34px; font-weight: 750; }
 #ansB p { font-size: 37px; line-height: 1.3; color: #2a1238; font-weight: 600; margin-bottom: 14px; }
 #ansB b { color: #c2407a; font-weight: 850; }
-/* Shorter answers set larger (CONTENT.big). */
-body.big .ans { font-size: 41px; line-height: 1.3; }
-body.big .ans p { margin-bottom: 18px; }
+/* Shorter answers set larger (CONTENT.big both, CONTENT.bigA ChatGPT's only). */
+body.big .ans, body.big-a #ansA { font-size: 41px; line-height: 1.3; }
+body.big .ans p, body.big-a #ansA p { margin-bottom: 18px; }
 body.big #ansB p { font-size: 44px; line-height: 1.26; margin-bottom: 20px; }
 /* ChatGPT saying, in its own words, that it is guessing. */
 .ans mark { background: linear-gradient(transparent 12%, #fff1a6 12%, #fff1a6 92%, transparent 92%); color: #2f2f35; font-weight: 750; }
@@ -105,9 +105,10 @@ const [HOOK, GPT, LOAD, ANS, VERDICT, CLOSE] = S;
 const CONTENT = {
   compare: {
     question: 'What would I regret most about my life when I’m old?',
-    gpt: ['<p><b>You might regret the things you knew mattered to you but kept postponing because you thought you had more time.</b></p>',
-      '<li>Not being fully honest about what you wanted.</li>', '<li>Not loving people more openly.</li>',
-      '<li>Being too afraid to try.</li>', '<li>Trading too much of your life for approval or achievement.</li>', '<li>Not being present for your own life.</li>'],
+    // Cut to its opening's two ends and three of its five headings (24 October 2026): the full list read as a wall.
+    gpt: ['<p><b>You might regret the things you kept postponing because you thought you had more time.</b></p>',
+      '<li>Not loving people more openly.</li>', '<li>Being too afraid to try.</li>', '<li>Not being present for your own life.</li>'],
+    bigA: true,
     stamp: 'Could be anyone',
     psy: ['“Your deepest regret will not be a missed business deal…”',
       '“You let your <b>analytical shield</b> turn any form of intimacy into an audit.”',
@@ -129,6 +130,7 @@ const QUESTION = CONTENT.question;
 const gptEls = CONTENT.gpt.map(h => { const d = document.createElement('div'); d.innerHTML = h; $('ansA').appendChild(d); return d; });
 $('stA').textContent = CONTENT.stamp;
 document.body.classList.toggle('big', Boolean(CONTENT.big));
+document.body.classList.toggle('big-a', Boolean(CONTENT.bigA));
 const PSY = CONTENT.psy;
 const psyWords = PSY.map(h => h.split(/(?<=\s)/));
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;

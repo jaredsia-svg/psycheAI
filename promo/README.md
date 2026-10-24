@@ -269,7 +269,7 @@ ending, in A, sounded like a change of key here).
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | I asked ChatGPT and PsycheAI the same question. What would I regret most about my life when I'm old? | the line, then both panels, the question typed into both at once as the voice reads it out, a little slower than the rest |
-| 1 | ChatGPT gave me a list that could fit anyone. | ChatGPT's real answer, trimmed only: its opening line and the five headings of its list; a grey *Could be anyone* stamp; held about two seconds after the voice, to read it |
+| 1 | ChatGPT gave me a list that could fit anyone. | ChatGPT's real answer, trimmed only: its opening line cut to its two ends (*You might regret the things you kept postponing because you thought you had more time.*) and three of the five headings of its list (*Not loving people more openly*, *Being too afraid to try*, *Not being present for your own life*), set larger (24 October 2026: the full list read as a wall); a grey *Could be anyone* stamp; held about two seconds after the voice, to read it |
 | 2 | PsycheAI read my data first. (written "red", for the past tense) | Instagram, Google and WhatsApp fly into PsycheAI's panel; *Reading your data…* |
 | 3 | And it told me exactly why. | four excerpts of PsycheAI's real answers, typed in at reading pace; an *Only me* stamp in the gradient |
 | 4 | Same question. Only one of them actually knew me. | both panels lit, with their stamps |
