@@ -134,8 +134,20 @@ try {
   }));
   await page.mouse.move(1, 1);
   await page.waitForTimeout(500);
-  if (/Noah Bennett/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-tinman.png' });
-  else console.error('no Tin Man card found');
+  if (/Noah Bennett/.test(await card.innerText())) {
+    await card.screenshot({ path: dir + '/assets/card-tinman.png' });
+    // Where its parts sit, for the character reel's zooms (as assets/card-parts.json for the sample).
+    const tinParts = await card.evaluate((root, targets) => {
+      const box = root.getBoundingClientRect(); const out = {};
+      for (const [key, selector] of Object.entries(targets)) {
+        const node = root.querySelector(selector); if (!node) continue;
+        const r = (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).getBoundingClientRect();
+        out[key] = { x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height };
+      }
+      return out;
+    }, TARGETS);
+    writeFileSync(dir + '/assets/card-tinman-parts.json', JSON.stringify(tinParts, null, 1) + '\n');
+  } else console.error('no Tin Man card found');
 
   // The sample report's opening, for the privacy reel (assets/report.png): from its part nav (00 to 05)
   // down, as tall as 1.4 times its width, without the dialog's title bar.

@@ -387,7 +387,7 @@ warm electric piano, a pad and a soft beat, a bell tune, ending on a held G with
 ### The character reel
 
 ```
-npm run promo:shorts -- character   # out/PsycheAI-character.mp4, about 27 s
+npm run promo:shorts -- character   # out/PsycheAI-character.mp4, about 29 s
 ```
 
 *Which character are you?* (24 October 2026). Its own stage, `character-stage.html`, and its own music; Ryan's
@@ -398,9 +398,14 @@ voice. Made for viewers to answer with their own card.
 | 0 | I let PsycheAI read six years of my Instagram. / Then it told me which character I am. | the two lines |
 | 1 | Twenty eight characters. / One match. | a slot machine with lights, all 28 scenes spinning past twice with no names, slowing until the last few crawl by, *28 characters. 1 match.* above it |
 | 2 | The Tin Man. | it lands on the Tin Man with a flash and sparkles; his name and *The Wonderful Wizard of Oz* |
-| 3 | It said I don't think I'm a feelings person. / My data disagrees. | the machine rises; the two lines, then three pieces of evidence that he cares by doing: *"I can fix that" sent 64 times*, *46 birthday messages, none late*, *140 saved posts on being a good friend* |
-| 4 | The heart was there all along. | Noah Bennett's Tin Man card (`assets/card-tinman.png`) |
+| 3 | Big hearted builder, who shows love by showing up. / Checks in on the quiet ones. / Most in sync with Mulan. | Noah Bennett's Tin Man card (`assets/card-tinman.png`) rises in whole, then the camera moves to each part as it is said, ringed and named (*You are most like*, *Your patterns*, *Most in sync with*), and stays on the syncs |
+| 4 | Who's your Mulan? / Tag them. | Mulan's face ringed and pulsing; *Who's your Mulan? Tag them* |
 | 5 | Which character are you? / Find out at psycheai.io. | *Comment yours*, the address |
+
+After the reveal it tours the card and ends on a tag (24 October 2026): a first cut gave three pieces of evidence
+(*"I can fix that" sent 64 times*, birthday messages, saved posts) as chips, which read as a list; the tour shows
+what a reader gets, and *Most in sync with* gives the viewer a friend to tag. The camera's stops come from
+`assets/card-tinman-parts.json`, measured by `capture.mjs` as `card-parts.json` is.
 
 The slot shows all 28 of the catalogue, without names (the owner's choice, 24 October 2026, over the rule that
 the marketing shows only public-domain characters; a first cut spun the six public-domain ones). Their scenes are

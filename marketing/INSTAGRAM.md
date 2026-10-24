@@ -135,13 +135,11 @@ Comment MIRROR for the link.
 ```
 I let PsycheAI read 6 years of my Instagram. It told me which character I am 🎰
 
-The Tin Man. It said I don't think I'm a feelings person. My data disagreed:
-🔧 "I can fix that" sent 64 times
-🎂 46 birthday messages, none late
-The heart was there all along ❤️
+The Tin Man ❤️ Big-hearted builder who shows love by showing up.
+Most in sync with: Mulan.
 
-28 characters. Which one are you?
-Get your free card and comment your character 👇
+Who's your Mulan? Tag them 👇
+28 characters. Get your free card and comment yours.
 
 #whichcharacterareyou #personalitytest #wizardofoz #psycheai
 ```

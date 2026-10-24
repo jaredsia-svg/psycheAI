@@ -35,15 +35,15 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .bulb { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff6d8; box-shadow: 0 0 18px 4px rgba(255,220,140,.8); }
 #name { z-index: 30; left: 40px; right: 40px; top: 1260px; text-align: center; font-size: 124px; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
 #source { z-index: 30; left: 0; right: 0; top: 1400px; text-align: center; font-size: 38px; font-weight: 750; letter-spacing: .08em; color: rgba(255,255,255,.75); }
-/* Why. */
-#w1 { z-index: 30; left: 70px; right: 70px; top: 1180px; text-align: center; font-size: 62px; font-weight: 850; letter-spacing: -0.025em; line-height: 1.12; color: rgba(255,255,255,.85); }
-#w2 { z-index: 30; left: 70px; right: 70px; top: 1370px; text-align: center; font-size: 66px; font-weight: 900; letter-spacing: -0.025em; line-height: 1.12; }
-.proof { z-index: 31; left: 50%; padding: 22px 40px; border-radius: 999px; font-size: 44px; font-weight: 850; white-space: nowrap; color: #2a1238;
-  background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
-.proof b { color: #c2407a; }
-/* The card. */
-#heartLine { z-index: 30; left: 50px; right: 50px; top: 200px; text-align: center; font-size: 72px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
-#card { z-index: 25; left: 250px; top: 420px; width: 580px; border-radius: 28px; box-shadow: 0 0 90px rgba(255,120,170,.55), 0 40px 90px rgba(0,0,0,.5); }
+/* The card, and the camera moving over it (the parts measured by capture.mjs, card-tinman-parts.json). */
+#cam { position: absolute; left: 0; top: 0; z-index: 25; transform-origin: 0 0; display: none; }
+#card { display: block; width: 1000px; border-radius: 48px; box-shadow: 0 0 120px rgba(255,120,170,.5), 0 60px 120px rgba(0,0,0,.5); }
+#ring { z-index: 26; border-radius: 30px; border: 6px solid #ffd27a; box-shadow: 0 0 40px rgba(255,210,122,.8), inset 0 0 30px rgba(255,210,122,.3); }
+#face { z-index: 27; border-radius: 50%; border: 7px solid #ffd27a; box-shadow: 0 0 40px rgba(255,210,122,.9); }
+#part { z-index: 30; left: 50%; top: 250px; padding: 14px 34px; border-radius: 999px; font-size: 38px; font-weight: 900; letter-spacing: .12em; white-space: nowrap;
+  color: #2a1238; background: #ffd27a; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+#t1 { z-index: 30; left: 50px; right: 50px; top: 1330px; text-align: center; font-size: 104px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; }
+#t2 { z-index: 30; left: 0; right: 0; top: 1470px; text-align: center; font-size: 64px; font-weight: 850; }
 /* The close. */
 #c1 { z-index: 30; left: 50px; right: 50px; top: 600px; text-align: center; font-size: 104px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; }
 #c2 { z-index: 30; left: 0; right: 0; top: 900px; text-align: center; font-size: 58px; font-weight: 850; }
@@ -65,12 +65,12 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div class="el" id="name"><span class="grad">The Tin Man</span></div>
     <div class="el" id="source">THE WONDERFUL WIZARD OF OZ</div>
 
-    <div class="el" id="w1">It said I don’t think I’m<br>a feelings person.</div>
-    <div class="el" id="w2"><span class="grad">My data disagrees.</span></div>
-    <div id="proofs"></div>
-
-    <div class="el" id="heartLine">The heart was there<br><span class="grad">all along.</span> ❤️</div>
-    <img class="el" id="card" src="assets/card-tinman.png">
+    <div id="cam"><img id="card" src="assets/card-tinman.png"></div>
+    <div class="el" id="ring"></div>
+    <div class="el" id="face"></div>
+    <div class="el" id="part"></div>
+    <div class="el" id="t1">Who’s your <span class="grad">Mulan?</span></div>
+    <div class="el" id="t2">Tag them 👇</div>
 
     <div class="el" id="c1">Which character<br><span class="grad">are you?</span></div>
     <div class="el" id="c2">Comment yours 👇</div>
@@ -92,7 +92,7 @@ const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el
 const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
 const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
-const [HOOK, SPIN, REVEAL, WHY, CARD, CLOSE] = S;
+const [HOOK, SPIN, REVEAL, TOUR, TAG, CLOSE] = S;
 // All 28 of the catalogue, no names (the owner's choice, over the marketing's public-domain-only rule).
 const CAST = ["Mulan", "Elsa", "Moana", "Simba", "Rapunzel", "Judy Hopps", "Nick Wilde", "Baymax", "Dr Watson", "Buzz Lightyear", "The Tin Man", "Remy", "Joy", "Odysseus", "Captain America", "Spider-Man", "Hulk", "Wonder Woman", "Sherlock Holmes", "Pikachu", "Princess Peach", "Shrek", "Po", "Hiccup", "Hermione Granger", "Sailor Moon", "Hello Kitty", "Kuromi"];  // docs/media/cast-sprite.json names, the catalogue's 28
 const SPIN_TILES = 58, SPIN_EASE = 2;   // shorts.py character 'spin', 'spin_ease': the music ticks once per tile on the same curve
@@ -106,9 +106,11 @@ const bulbs = Array.from({ length: 20 }, (_, i) => {
   const d = mk('bulb', '', $('bulbs')); const side = Math.floor(i / 5), k = i % 5, at = 70 + k * 150;
   const [x, y] = [[at, -6], [734, at], [740 - at, 734], [-6, 740 - at]][side];
   d.style.left = (x - 11) + 'px'; d.style.top = (y - 11) + 'px'; return d; });
-// What it saw: care shown by doing.
-const PROOFS = ['🔧 “I can fix that” sent <b>64 times</b>', '🎂 <b>46 birthday messages</b>, none late', '🔖 <b>140 saved posts</b> on being a good friend'];
-const proofs = PROOFS.map((h, i) => { const d = mk('el proof', h, $('proofs')); d.style.top = (1480 + i * 125) + 'px'; return d; });
+// The card's parts, as fractions of it: [x, y, w, h] (assets/card-tinman-parts.json).
+const PARTS = {"character": [0.0556, 0.0851, 0.8889, 0.3027], "patterns": [0.0556, 0.3966, 0.4357, 0.1255], "syncs": [0.5087, 0.8374, 0.4357, 0.1079]};
+// The headline stop frames the name and headline only, not the whole top panel.
+PARTS.headline = [0.055, 0.1, 0.56, 0.16];
+const CW = 1000, CH = 1000 * 2007 / 1128;
 const sparks = Array.from({ length: 26 }, (_, i) => { const d = mk('spark', '', $('sparks')); return { el: d, a: hash(i) * Math.PI * 2, v: 300 + hash(i + 7) * 500, s: 0.8 + hash(i + 3) * 1.6 }; });
 
 function render(t) {
@@ -116,7 +118,7 @@ function render(t) {
   $('b1').style.transform = 'translate(' + Math.sin(t * .5) * 120 + 'px,' + Math.cos(t * .4) * 140 + 'px) scale(' + (1 + pulse * 0.06) + ')';
   $('b2').style.transform = 'translate(' + Math.cos(t * .45) * 140 + 'px,' + Math.sin(t * .35) * 160 + 'px) scale(' + (1 + pulse * 0.06) + ')';
   $('flash').style.opacity = 0.75 * (1 - prog(t, REVEAL.start, REVEAL.start + 0.35)) * (t >= REVEAL.start ? 1 : 0);
-  hook(t); slot(t, pulse); why(t); card(t, pulse); close(t, pulse);
+  hook(t); slot(t, pulse); tour(t, pulse); close(t, pulse);
 }
 
 function hook(t) {
@@ -127,10 +129,10 @@ function hook(t) {
 }
 
 function slot(t, pulse) {
-  // From the spin until the reasons have been given; it rises and shrinks to make room for them.
-  const on = t >= SPIN.start - 0.05 && t < WHY.end;
-  const inn = back(prog(t, SPIN.start - 0.05, SPIN.start + 0.35)), out = prog(t, WHY.end - 0.25, WHY.end);
-  const up = easeIO(prog(t, WHY.start - 0.1, WHY.start + 0.5));
+  // From the spin until the card takes over; it falls away as the card rises.
+  const on = t >= SPIN.start - 0.05 && t < TOUR.start + 0.3;
+  const inn = back(prog(t, SPIN.start - 0.05, SPIN.start + 0.35)), out = prog(t, TOUR.start - 0.15, TOUR.start + 0.3);
+  const up = 0;
   show('machine', on ? clamp(inn * 2) * (1 - out) : 0, 'translateY(' + (-up * 210) + 'px) scale(' + (Math.min(1, 0.7 + 0.3 * inn) * (1 - 0.32 * up) + pulse * 0.01) + ')');
   $('machine').style.transformOrigin = '50% 0';
   // The spin: the curve the music's ticks follow, landing as the reveal starts.
@@ -143,38 +145,58 @@ function slot(t, pulse) {
   bulbs.forEach((b, i) => { const lit = u < 1 ? (Math.floor(t * 12) + i) % 4 === 0 : Math.floor(t * 4) % 2 === 0;
     b.style.opacity = lit ? 1 : 0.25; });
   const tt = back(prog(t, SPIN.start, SPIN.start + 0.35));
-  show('title', on && t < WHY.start ? clamp(tt * 2) * (1 - prog(t, WHY.start - 0.2, WHY.start)) : 0);
+  show('title', on && t < TOUR.start ? clamp(tt * 2) * (1 - prog(t, TOUR.start - 0.2, TOUR.start)) : 0);
   const o1 = back(prog(t, SPIN.vo - 0.15, SPIN.vo + 0.2)), o2 = back(prog(t, SPIN.marks[1] - 0.15, SPIN.marks[1] + 0.2));
-  show('odds', on && t < WHY.start ? 1 - prog(t, WHY.start - 0.2, WHY.start) : 0);
+  show('odds', on && t < TOUR.start ? 1 - prog(t, TOUR.start - 0.2, TOUR.start) : 0);
   $('o1').style.opacity = clamp(o1 * 2); $('o1').style.transform = 'scale(' + Math.min(1.05, 0.8 + 0.2 * o1) + ')';
   $('o2').style.opacity = clamp(o2 * 2); $('o2').style.transform = 'scale(' + Math.min(1.1, 0.6 + 0.4 * o2) + ')';
   // The name lands as it is said, with sparkles bursting from the machine.
   const nm = back(prog(t, REVEAL.vo - 0.15, REVEAL.vo + 0.25));
-  const nameOn = t >= REVEAL.vo - 0.15 && t < WHY.start;
-  show('name', nameOn ? clamp(nm * 2) * (1 - prog(t, WHY.start - 0.2, WHY.start)) : 0, 'scale(' + (0.6 + 0.4 * Math.min(1.08, nm) + pulse * 0.02) + ')');
-  show('source', nameOn ? clamp(nm * 2) * (1 - prog(t, WHY.start - 0.2, WHY.start)) : 0);
+  const nameOn = t >= REVEAL.vo - 0.15 && t < TOUR.start;
+  show('name', nameOn ? clamp(nm * 2) * (1 - prog(t, TOUR.start - 0.2, TOUR.start)) : 0, 'scale(' + (0.6 + 0.4 * Math.min(1.08, nm) + pulse * 0.02) + ')');
+  show('source', nameOn ? clamp(nm * 2) * (1 - prog(t, TOUR.start - 0.2, TOUR.start)) : 0);
   const burst = prog(t, REVEAL.start, REVEAL.start + 1.4);
   sparks.forEach(sp => { const r = ease(burst) * sp.v;
     sp.el.style.left = (540 + Math.cos(sp.a) * r) + 'px'; sp.el.style.top = (830 + Math.sin(sp.a) * r) + 'px';
     sp.el.style.opacity = burst > 0 && burst < 1 ? 1 - burst : 0; sp.el.style.transform = 'scale(' + sp.s + ') rotate(' + burst * 180 + 'deg)'; });
 }
 
-function why(t) {
-  const s = WHY, on = t >= s.start - 0.05 && t < s.end, out = prog(t, s.end - 0.25, s.end);
-  const a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), b = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.25));
-  show('w1', on ? clamp(a * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, a)) * 30 + 'px)');
-  show('w2', on && t >= s.marks[1] - 0.15 ? clamp(b * 2) * (1 - out) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, b)) + ')');
-  proofs.forEach((d, i) => { const a = s.voEnd + 0.05 + i * 0.5, p = back(prog(t, a, a + 0.3));
-    show(d, on && t >= a ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.06, p) + ') rotate(' + (i % 2 ? 1.5 : -1.5) + 'deg)'); });
+// A camera state that frames one part (or the whole card): scale, then where the card's corner goes.
+function frame(part) {
+  if (!part) { const sc = 1460 / CH; return { s: sc, x: 540 - CW * sc / 2, y: 330 }; }
+  const [x, y, w, h] = PARTS[part], sc = Math.min(940 / (w * CW), 760 / (h * CH));
+  return { s: sc, x: 540 - (x + w / 2) * CW * sc, y: 860 - (y + h / 2) * CH * sc };
 }
-
-function card(t, pulse) {
-  const s = CARD, on = t >= s.start - 0.05 && t < s.end, out = prog(t, s.end - 0.25, s.end);
-  const l = back(prog(t, s.vo - 0.15, s.vo + 0.25));
-  show('heartLine', on ? clamp(l * 2) * (1 - out) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, l)) + ')');
-  const c = back(prog(t, s.start + 0.05, s.start + 0.6));
-  show('card', on ? clamp(c * 2) * (1 - out) : 0, 'translateY(' + ((1 - Math.min(1, c)) * 320 + Math.sin(t * 2.2) * 6) + 'px) scale(' +
-    (0.7 + 0.3 * Math.min(1, c)) * (1 + pulse * 0.008) + ') rotate(' + (1 - Math.min(1, c)) * 8 + 'deg)');
+const mix = (a, b, k) => ({ s: a.s + (b.s - a.s) * k, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+function tour(t, pulse) {
+  const on = t >= TOUR.start - 0.05 && t < TAG.end;
+  const out = prog(t, TAG.end - 0.25, TAG.end);
+  // The card rises in whole, then the camera moves to each part as it is said, and stays on the syncs.
+  const stops = [[TOUR.start, null], [TOUR.marks[0] - 0.35, 'headline'], [TOUR.marks[1] - 0.35, 'patterns'], [TOUR.marks[2] - 0.35, 'syncs']];
+  let cam = frame(null), now = null;
+  stops.forEach(([at, part], i) => { if (i && t >= at) { cam = mix(cam, frame(part), easeIO(prog(t, at, at + 0.6))); now = part; } });
+  const rise = back(prog(t, TOUR.start - 0.05, TOUR.start + 0.5));
+  $('cam').style.display = on ? 'block' : 'none';
+  $('cam').style.opacity = clamp(rise * 2) * (1 - out);
+  $('cam').style.transform = 'translate(' + cam.x + 'px,' + (cam.y + (1 - Math.min(1, rise)) * 500 + Math.sin(t * 2) * 4) + 'px) scale(' + cam.s + ')';
+  // The part being said, ringed once the camera has arrived, and named in a pill above.
+  const settled = now ? prog(t, stops.find(([, p]) => p === now)[0] + 0.5, stops.find(([, p]) => p === now)[0] + 0.75) : 0;
+  if (now) { const [x, y, w, h] = PARTS[now];
+    Object.assign($('ring').style, { left: (cam.x + x * CW * cam.s - 10) + 'px', top: (cam.y + y * CH * cam.s - 10) + 'px',
+      width: (w * CW * cam.s + 20) + 'px', height: (h * CH * cam.s + 20) + 'px' }); }
+  show('ring', on && now ? settled * (1 - out) : 0);
+  $('part').textContent = { headline: 'YOU ARE MOST LIKE', patterns: 'YOUR PATTERNS', syncs: 'MOST IN SYNC WITH' }[now] || '';
+  if (now) $('part').style.top = (cam.y + PARTS[now][1] * CH * cam.s - 100) + 'px';
+  show('part', on && now ? settled * (1 - out) : 0, 'translateX(-50%)');
+  // On the tag: Mulan's face, the first of the three, ringed and pulsing.
+  if (now === 'syncs') { const [x, y, w, h] = PARTS.syncs, r = 0.2 * w * CW * cam.s;
+    Object.assign($('face').style, { left: (cam.x + (x + w * 0.205) * CW * cam.s - r / 2) + 'px', top: (cam.y + (y + h * 0.53) * CH * cam.s - r / 2) + 'px',
+      width: r + 'px', height: r + 'px' }); }
+  const f = back(prog(t, TAG.vo - 0.2, TAG.vo + 0.2));
+  show('face', on && t >= TAG.vo - 0.2 ? clamp(f * 2) * (1 - out) : 0, 'scale(' + (Math.min(1.06, f) + 0.04 * Math.sin(t * 7)) + ')');
+  const a = back(prog(t, TAG.vo - 0.15, TAG.vo + 0.25)), b = back(prog(t, TAG.marks[1] - 0.15, TAG.marks[1] + 0.25));
+  show('t1', on && t >= TAG.vo - 0.15 ? clamp(a * 2) * (1 - out) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a) + pulse * 0.01) + ')');
+  show('t2', on && t >= TAG.marks[1] - 0.15 ? clamp(b * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, b)) * 30 + 'px)');
 }
 
 function close(t, pulse) {

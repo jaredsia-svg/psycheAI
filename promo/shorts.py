@@ -165,18 +165,20 @@ REELS['compare'] = {
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
 # The character reel (24 October 2026): which character are you? A slot machine of all 28 characters' scenes, no
-# names, spins, crawls past the last few and lands on the Tin Man; why, from the data; his card. Ryan's voice.
+# names, spins, crawls past the last few and lands on the Tin Man; then a tour of his card (headline, a pattern,
+# most in sync with) ending on "Who's your Mulan? Tag them." Ryan's voice.
 REELS['character'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
         (['I let {B} read six years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3),
         (['Twenty eight characters.', 'One match.'], 0.85, True, 0.5),
         (['The Tin Man.'], 0.85, None),
-        (["It said I don't think I'm a feelings person.", 'My data disagrees.'], 0.85, True, 0.35),
-        (['The heart was there all along.'], 0.85, None),
+        (['Big hearted builder, who shows love by showing up.', 'Checks in on the quiet ones.', 'Most in sync with Mulan.'], 0.85, True, [0.6, 0.6]),
+        (["Who's your Mulan?", 'Tag them.'], 0.85, True, 0.3),
         (['Which character are you?', 'Find out at {PsycheAIdotIO}.'], 0.85, True, 0.3),
     ],
-    'hold': {1: 2.6, 2: 0.4, 3: 2.6, 4: 2.6},  # 1: the long spin; 3: the three pieces of evidence; 4: the card
+    'hold': {1: 2.6, 2: 0.4, 3: 0.8, 4: 1.4},  # 1: the long spin; 3: the card's three stops; 4: the tag
+    'lead': {3: 0.9},  # 3: the whole card seen before the camera moves in
     # Its own piece, bright pop: C major (C G Am F) at 108, a muted pluck under the hook, the slot's ticks slowing
     # with it, a riser into a hit as it lands, then the full beat and a bell tune to the end.
     'mood': 'character', 'bpm': 108,
