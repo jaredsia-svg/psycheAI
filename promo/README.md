@@ -201,7 +201,9 @@ on it. From the honest friend to the end, a soft crash and then the breakdown: t
 piano on the one, the bass held, no drums; at the very end a reversed cymbal and a swell rise gently into a last
 held F, with nothing struck under it. (Endings tried and dropped: a horn hit and a struck piano chord, which
 landed as a bang; an anthem over a house beat, which kept the roast's energy; and a new calm piano piece, which
-broke from the rest of the reel.) Two earlier pieces were dropped: B flat at
+broke from the rest of the reel.) The punchlines land gently (24 October 2026): a soft reverse swell into a piano chord with the bass under it, where a
+horn hit, a crash and a boom were too harsh; and from the honest friend to the end the music is a third louder
+(`music_lift`). Two earlier pieces were dropped: B flat at
 132 with a music box (too childish) and C minor trap at 140 (too sombre).
 
 ### The career reel

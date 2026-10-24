@@ -93,6 +93,7 @@ REELS['roast'] = {
     'riff': [[77, None, 77, 79, None, 81, None, 77], [74, None, 74, 77, None, 79, 77, None],
              [74, None, 74, 77, None, 81, None, 82], [84, None, 81, None, 79, None, 77, None]],
     'reveal': 1, 'swing': 0.0, 'early_claps': False,
+    'music_lift': (4, 1.35),  # from the honest friend to the end, the music a little louder (24 October 2026)
 }
 # The career reel: the job questions everyone has, asked of PsycheAI, answered from the reader's own data, then
 # what the report's career assessment adds. The same voice as the roast.
@@ -681,9 +682,10 @@ elif R.get('mood') == 'roast':
     # The roast button: a reversed crash and riser into the drop.
     at(DROP - 1.4, reverse_crash(1.4), 0.9); at(DROP - 1.4, riser(1.4), 0.5)
     at(DROP, brass(HIT, 1.0, 6000, 0.09), 1.0); at(DROP, crash(), 1.0); at(DROP, impact(), 0.7)
-    # Each punchline: a horn hit and a crash.
+    # Each punchline: a gentle landing, a soft swell into a piano chord with the bass under it (a horn hit, a crash
+    # and a boom were too harsh, 24 October 2026).
     for p in PUNCH:
-        at(p, brass(HIT, 0.8, 6000, 0.09), 1.0); at(p, crash(), 0.9); at(p, impact(), 0.6)
+        at(p - 0.45, reverse_crash(0.45), 0.25); at(p, stab([53, 60, 65, 69, 72], 1.2, 0.07), 1.0); at(p, house_bass(41, 0.9) * 0.7, 0.8)
     # Into the honest friend, a soft crash as the beat falls away. At the end, a reversed cymbal and a swell rise
     # gently into the last chord, F, held on the piano and pad, with nothing struck under it.
     at(ADVICE, crash(), 0.5)
@@ -847,6 +849,11 @@ top = 1.35 if R.get('mood') in ('uplifting', 'career', 'relationship') else 1.6
 swell_in[f0:f1] = np.linspace(1.0, top, f1 - f0); swell_in[f1:] = top
 depth = np.where(np.arange(n) >= f0, 0.3, 0.5).astype(np.float32)
 duck = 1 - depth * np.clip(envv * 2.4, 0, 1)
+# A reel can lift its music from one scene to the end ('music_lift': (scene, gain)), eased in over half a second.
+if R.get('music_lift'):
+    li, lg = R['music_lift']; l0 = int(scenes[li]['start'] * SR); lift = np.ones(n, np.float32)
+    lift[l0:] = lg; ramp = min(n - l0, int(0.5 * SR)); lift[l0:l0 + ramp] = np.linspace(1, lg, ramp)
+    music = music * lift[:, None]
 mix = music * (0.42 * duck * swell_in)[:, None] + voice[:, None] * 0.95
 mix = np.tanh(mix * 1.15) / np.tanh(1.15)
 mix /= max(1e-6, np.abs(mix).max()) / 0.89
