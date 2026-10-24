@@ -38,9 +38,9 @@ body { font-family: Inter, sans-serif; color: #fff; }
 /* Why. */
 #w1 { z-index: 30; left: 70px; right: 70px; top: 1180px; text-align: center; font-size: 62px; font-weight: 850; letter-spacing: -0.025em; line-height: 1.12; color: rgba(255,255,255,.85); }
 #w2 { z-index: 30; left: 70px; right: 70px; top: 1370px; text-align: center; font-size: 66px; font-weight: 900; letter-spacing: -0.025em; line-height: 1.12; }
-#proof { z-index: 31; left: 50%; top: 1600px; padding: 22px 40px; border-radius: 999px; font-size: 44px; font-weight: 850; white-space: nowrap; color: #2a1238;
+.proof { z-index: 31; left: 50%; padding: 22px 40px; border-radius: 999px; font-size: 44px; font-weight: 850; white-space: nowrap; color: #2a1238;
   background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
-#proof b { color: #c2407a; }
+.proof b { color: #c2407a; }
 /* The card. */
 #heartLine { z-index: 30; left: 50px; right: 50px; top: 200px; text-align: center; font-size: 72px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
 #card { z-index: 25; left: 250px; top: 420px; width: 580px; border-radius: 28px; box-shadow: 0 0 90px rgba(255,120,170,.55), 0 40px 90px rgba(0,0,0,.5); }
@@ -65,9 +65,9 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div class="el" id="name"><span class="grad">The Tin Man</span></div>
     <div class="el" id="source">THE WONDERFUL WIZARD OF OZ</div>
 
-    <div class="el" id="w1">It said I worry I’m<br>not warm enough.</div>
-    <div class="el" id="w2">But I’m the first to ask<br>if you got <span class="grad">home safe.</span></div>
-    <div class="el" id="proof">💬 “Home safe?” sent <b>212 times</b></div>
+    <div class="el" id="w1">It said I don’t think I’m<br>a feelings person.</div>
+    <div class="el" id="w2"><span class="grad">My data disagrees.</span></div>
+    <div id="proofs"></div>
 
     <div class="el" id="heartLine">The heart was there<br><span class="grad">all along.</span> ❤️</div>
     <img class="el" id="card" src="assets/card-tinman.png">
@@ -93,9 +93,9 @@ const mk = (cls, html, parent) => { const d = document.createElement('div'); d.c
 const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 const [HOOK, SPIN, REVEAL, WHY, CARD, CLOSE] = S;
-// The public-domain characters only, as everything the marketing shows (README, "Five public-domain faces").
-const CAST = ['Mulan', 'Odysseus', 'Rapunzel', 'Sherlock Holmes', 'Dr Watson', 'The Tin Man'];
-const SPIN_TILES = 30;   // shorts.py character 'spin': the music ticks once per tile on the same curve
+// All 28 of the catalogue, no names (the owner's choice, over the marketing's public-domain-only rule).
+const CAST = ["Mulan", "Elsa", "Moana", "Simba", "Rapunzel", "Judy Hopps", "Nick Wilde", "Baymax", "Dr Watson", "Buzz Lightyear", "The Tin Man", "Remy", "Joy", "Odysseus", "Captain America", "Spider-Man", "Hulk", "Wonder Woman", "Sherlock Holmes", "Pikachu", "Princess Peach", "Shrek", "Po", "Hiccup", "Hermione Granger", "Sailor Moon", "Hello Kitty", "Kuromi"];  // docs/media/cast-sprite.json names, the catalogue's 28
+const SPIN_TILES = 58, SPIN_EASE = 2;   // shorts.py character 'spin', 'spin_ease': the music ticks once per tile on the same curve
 const TILE = 700;
 // The strip: SPIN_TILES tiles pass, and the last is the Tin Man.
 const LAST = CAST.indexOf('The Tin Man');
@@ -106,6 +106,9 @@ const bulbs = Array.from({ length: 20 }, (_, i) => {
   const d = mk('bulb', '', $('bulbs')); const side = Math.floor(i / 5), k = i % 5, at = 70 + k * 150;
   const [x, y] = [[at, -6], [734, at], [740 - at, 734], [-6, 740 - at]][side];
   d.style.left = (x - 11) + 'px'; d.style.top = (y - 11) + 'px'; return d; });
+// What it saw: care shown by doing.
+const PROOFS = ['🔧 “I can fix that” sent <b>64 times</b>', '🎂 <b>46 birthday messages</b>, none late', '🔖 <b>140 saved posts</b> on being a good friend'];
+const proofs = PROOFS.map((h, i) => { const d = mk('el proof', h, $('proofs')); d.style.top = (1480 + i * 125) + 'px'; return d; });
 const sparks = Array.from({ length: 26 }, (_, i) => { const d = mk('spark', '', $('sparks')); return { el: d, a: hash(i) * Math.PI * 2, v: 300 + hash(i + 7) * 500, s: 0.8 + hash(i + 3) * 1.6 }; });
 
 function render(t) {
@@ -131,9 +134,9 @@ function slot(t, pulse) {
   show('machine', on ? clamp(inn * 2) * (1 - out) : 0, 'translateY(' + (-up * 210) + 'px) scale(' + (Math.min(1, 0.7 + 0.3 * inn) * (1 - 0.32 * up) + pulse * 0.01) + ')');
   $('machine').style.transformOrigin = '50% 0';
   // The spin: the curve the music's ticks follow, landing as the reveal starts.
-  const u = prog(t, SPIN.start, REVEAL.start), pos = SPIN_TILES * (1 - Math.pow(1 - u, 3));
+  const u = prog(t, SPIN.start, REVEAL.start), pos = SPIN_TILES * (1 - Math.pow(1 - u, SPIN_EASE));
   $('strip').style.transform = 'translateY(' + (-pos * TILE) + 'px)';
-  const speed = u < 1 ? 3 * SPIN_TILES * Math.pow(1 - u, 2) / (REVEAL.start - SPIN.start) : 0;
+  const speed = u < 1 ? SPIN_EASE * SPIN_TILES * Math.pow(1 - u, SPIN_EASE - 1) / (REVEAL.start - SPIN.start) : 0;
   $('strip').style.filter = 'blur(' + Math.min(14, speed * 0.9) + 'px)';
   // The landed tile breathes; the lights chase while it spins and flash together when it lands.
   if (u >= 1) tiles[SPIN_TILES].style.transform = 'scale(' + (1 + 0.02 * Math.sin(t * 2.5)) + ')';
@@ -161,8 +164,8 @@ function why(t) {
   const a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), b = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.25));
   show('w1', on ? clamp(a * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, a)) * 30 + 'px)');
   show('w2', on && t >= s.marks[1] - 0.15 ? clamp(b * 2) * (1 - out) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, b)) + ')');
-  const p = back(prog(t, s.voEnd + 0.05, s.voEnd + 0.4));
-  show('proof', on && t >= s.voEnd + 0.05 ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.06, p) + ') rotate(-1.5deg)');
+  proofs.forEach((d, i) => { const a = s.voEnd + 0.05 + i * 0.5, p = back(prog(t, a, a + 0.3));
+    show(d, on && t >= a ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.06, p) + ') rotate(' + (i % 2 ? 1.5 : -1.5) + 'deg)'); });
 }
 
 function card(t, pulse) {

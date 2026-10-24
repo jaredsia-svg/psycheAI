@@ -135,7 +135,9 @@ Comment MIRROR for the link.
 ```
 I let PsycheAI read 6 years of my Instagram. It told me which character I am 🎰
 
-The Tin Man. It said I worry I'm not warm enough, but I'm the first to ask if you got home safe.
+The Tin Man. It said I don't think I'm a feelings person. My data disagreed:
+🔧 "I can fix that" sent 64 times
+🎂 46 birthday messages, none late
 The heart was there all along ❤️
 
 28 characters. Which one are you?

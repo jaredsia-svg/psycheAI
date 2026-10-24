@@ -387,7 +387,7 @@ warm electric piano, a pad and a soft beat, a bell tune, ending on a held G with
 ### The character reel
 
 ```
-npm run promo:shorts -- character   # out/PsycheAI-character.mp4, about 25 s
+npm run promo:shorts -- character   # out/PsycheAI-character.mp4, about 27 s
 ```
 
 *Which character are you?* (24 October 2026). Its own stage, `character-stage.html`, and its own music; Ryan's
@@ -396,17 +396,19 @@ voice. Made for viewers to answer with their own card.
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | I let PsycheAI read six years of my Instagram. / Then it told me which character I am. | the two lines |
-| 1 | Twenty eight characters. / One match. | a slot machine with lights, its scenes spinning past with no names and slowing, *28 characters. 1 match.* above it |
+| 1 | Twenty eight characters. / One match. | a slot machine with lights, all 28 scenes spinning past twice with no names, slowing until the last few crawl by, *28 characters. 1 match.* above it |
 | 2 | The Tin Man. | it lands on the Tin Man with a flash and sparkles; his name and *The Wonderful Wizard of Oz* |
-| 3 | It said I worry I'm not warm enough. / But I'm the first to ask if you got home safe. | the machine rises; the two lines and the evidence, *"Home safe?" sent 212 times* |
+| 3 | It said I don't think I'm a feelings person. / My data disagrees. | the machine rises; the two lines, then three pieces of evidence that he cares by doing: *"I can fix that" sent 64 times*, *46 birthday messages, none late*, *140 saved posts on being a good friend* |
 | 4 | The heart was there all along. | Noah Bennett's Tin Man card (`assets/card-tinman.png`) |
 | 5 | Which character are you? / Find out at psycheai.io. | *Comment yours*, the address |
 
-The slot shows only the six public-domain characters in the catalogue (Mulan, Odysseus, Rapunzel, Sherlock Holmes,
-Dr Watson, the Tin Man), as everything the marketing shows does, though the voice says 28; their scenes are the
-app's own (`docs/character-art.js`, cropped to the subject by `characterArt`), loaded by the stage from `docs/`.
+The slot shows all 28 of the catalogue, without names (the owner's choice, 24 October 2026, over the rule that
+the marketing shows only public-domain characters; a first cut spun the six public-domain ones). Their scenes are
+the app's own (`docs/character-art.js`, cropped to the subject by `characterArt`), loaded by the stage from `docs/`.
 The site has no Tin Man sample, so `capture.mjs` adds one (Noah Bennett, written to the card's rules) to the
 gallery in its own browser for the picture only. The spin follows one curve in both the stage and the music
-(`spin` tiles, eased out): the music ticks once per tile passing, so the ticks slow as it does; then a riser and a
+(`spin` tiles, 58, eased out by `spin_ease`, 2, so the last three or four crawl past and it lands as the reveal
+starts; at 4 it stopped a second and a half early): the music ticks once per tile passing, so the ticks slow as it
+does; then a riser and a
 hit as it lands, a sparkle of bells, and bright pop in C major (C G Am F at 108) to the end.
 
