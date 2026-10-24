@@ -1,0 +1,290 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The privacy reel: the privacy page's four steps, on the main video's light theme. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fdf7fc; }
+body { font-family: Inter, sans-serif; color: #2a1238; }
+#stage { position: absolute; inset: 0; overflow: hidden; }
+#bg { position: absolute; inset: -10%; }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); mix-blend-mode: multiply; }
+#b1 { width: 820px; height: 820px; left: -200px; top: 60px; }
+#b2 { width: 760px; height: 760px; right: -220px; top: 900px; }
+#b3 { width: 560px; height: 560px; left: 300px; top: 1400px; }
+.spark { position: absolute; border-radius: 50%; background: #ff9ec4; box-shadow: 0 0 12px 3px rgba(224,69,123,.35); }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.soft { color: #6b3f8f; }
+.head { position: absolute; z-index: 20; left: 70px; right: 70px; top: 250px; text-align: center; font-weight: 850; letter-spacing: -0.025em; line-height: 1.08; font-size: 84px; }
+.head div { opacity: 0; }
+.step { display: inline-block; margin-bottom: 22px; padding: 10px 26px; border-radius: 999px; background: #fff; color: #8a3fd0; font-size: 30px; font-weight: 850;
+  letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
+/* the phone, carried through the four steps */
+#phone { position: absolute; left: 335px; top: 900px; width: 410px; height: 720px; border-radius: 64px; background: #2a1238; padding: 16px; transform-origin: 50% 0;
+  box-shadow: 0 40px 90px rgba(90,40,120,.3); z-index: 5; }
+#screen { position: absolute; inset: 16px; border-radius: 50px; overflow: hidden; background: linear-gradient(170deg, #fff, #f6ecfd); }
+#notch { position: absolute; left: 50%; top: 30px; width: 110px; height: 28px; margin-left: -55px; border-radius: 14px; background: #2a1238; z-index: 3; }
+#review { position: absolute; left: 26px; right: 26px; top: 100px; padding: 22px 20px; border-radius: 24px; background: #fff; z-index: 2;
+  box-shadow: 0 12px 30px rgba(90,40,120,.18); }
+#review h5 { font-size: 25px; font-weight: 850; margin-bottom: 14px; }
+.sw { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 0; border-top: 2px solid #f1e6f8;
+  font-size: 20px; font-weight: 750; white-space: nowrap; }
+.sw i { position: relative; flex: none; width: 58px; height: 32px; border-radius: 999px; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+.sw i::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff;
+  transform: translateX(calc(var(--k, 1) * 26px)); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+#sendBtn { margin-top: 18px; padding: 16px; border-radius: 999px; text-align: center; color: #fff; font-size: 24px; font-weight: 850;
+  background: linear-gradient(90deg, #8a3fd0, #e0457b); box-shadow: 0 10px 24px rgba(224,69,123,.35); }
+#sent { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font-size: 30px; font-weight: 850; line-height: 1.25; color: #4a2366; }
+#sent svg { display: block; margin: 0 auto 14px; }
+#onphone { position: absolute; left: 0; right: 0; bottom: 26px; text-align: center; font-size: 26px; font-weight: 800; color: #8a3fd0; }
+/* Steps 1 to 3 run with no connection, said on the phone itself. */
+#noNet { display: block; width: max-content; margin: 0 auto; padding: 6px 16px; border-radius: 999px; background: #e8f6ee; color: #2f8a57; border: 2px solid #b5dfc6; font-size: 22px; }
+.row { position: absolute; left: 34px; right: 34px; height: 92px; border-radius: 22px; background: #fff; box-shadow: 0 8px 22px rgba(90,40,120,.14);
+  display: flex; align-items: center; gap: 18px; padding: 0 20px; font-size: 30px; font-weight: 800; }
+.row i { flex: none; width: 52px; height: 52px; border-radius: 14px; }
+/* the four data files, floating in the hook */
+.file { position: absolute; width: 300px; padding: 24px; border-radius: 26px; background: #fff; box-shadow: 0 24px 60px rgba(90,40,120,.2); z-index: 6; }
+.file .ext { display: inline-block; font-size: 22px; font-weight: 900; color: #fff; padding: 6px 14px; border-radius: 10px; }
+.file .name { margin-top: 14px; font-size: 34px; font-weight: 850; }
+/* the summary, made on the phone */
+#summary { position: absolute; left: 34px; right: 34px; top: 120px; padding: 24px 22px; border-radius: 24px; background: #fff;
+  box-shadow: 0 12px 30px rgba(90,40,120,.18); font-family: 'DejaVu Sans Mono', monospace; font-size: 20px; line-height: 1.75; white-space: nowrap; z-index: 2; }
+#summary .k { color: #c2407a; }
+#summary h5 { font-family: Inter, sans-serif; font-size: 26px; font-weight: 850; margin-bottom: 8px; color: #2a1238; }
+.swap { display: inline-grid; vertical-align: top; }
+.swap span { grid-area: 1 / 1; white-space: nowrap; }
+#kb { position: absolute; left: 50%; top: 560px; padding: 14px 30px; border-radius: 999px; font-size: 36px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); box-shadow: 0 14px 40px rgba(224,69,123,.4); z-index: 7; }
+/* the packet that flies up, and the results that come back */
+#packet { position: absolute; width: 150px; height: 150px; border-radius: 40px; z-index: 8; display: grid; place-items: center;
+  background: linear-gradient(140deg, #8a3fd0, #e0457b); box-shadow: 0 20px 50px rgba(138,63,208,.45); }
+#packet svg { width: 80px; height: 80px; }
+#trail { position: absolute; left: 538px; width: 0; border-left: 6px dashed #c9a6e6; z-index: 4; }
+#vertex { position: absolute; left: 140px; right: 140px; top: 530px; height: 200px; border-radius: 34px; background: #fff; z-index: 6;
+  box-shadow: 0 24px 60px rgba(90,40,120,.18); display: flex; align-items: center; gap: 30px; padding: 0 40px; }
+#vertex .cloud { flex: none; width: 130px; height: 130px; border-radius: 50%; display: grid; place-items: center; background: #f3e6fb; }
+#vertex b { display: block; font-size: 46px; font-weight: 850; letter-spacing: -0.02em; }
+#vertex span { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; color: #7a6a88; }
+.pill { position: absolute; left: 50%; padding: 16px 34px; border-radius: 999px; background: #fff; border: 3px solid #e4d2f3; font-size: 36px; font-weight: 850;
+  white-space: nowrap; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.14); z-index: 9; }
+.pill em { font-style: normal; color: #e0457b; }
+#result { position: absolute; z-index: 8; transform-origin: 0 0; width: 170px; border-radius: 16px; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
+/* the sample report's opening (assets/report.png, from capture.mjs) */
+#report { position: absolute; z-index: 8; transform-origin: 0 0; width: 170px; border-radius: 16px; border: 2px solid #eadff2; box-shadow: 0 20px 50px rgba(90,40,120,.3); }
+/* the end card */
+#end { position: absolute; inset: 0; z-index: 30; opacity: 0; }
+#mark { position: absolute; left: 430px; top: 420px; width: 220px; height: 220px; }
+#endName { position: absolute; left: 0; right: 0; top: 670px; text-align: center; font-size: 56px; font-weight: 850; letter-spacing: .02em; }
+#endLine { position: absolute; left: 60px; right: 60px; top: 810px; text-align: center; font-size: 110px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
+#cta { position: absolute; left: 50%; top: 1120px; padding: 30px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; white-space: nowrap; color: #fff;
+  background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
+#facts { position: absolute; left: 0; right: 0; top: 1320px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+#facts div { padding: 14px 30px; border-radius: 999px; background: #fff; border: 2px solid #e4d2f3; font-size: 34px; font-weight: 800; color: #4a2366;
+  box-shadow: 0 10px 30px rgba(90,40,120,.1); }
+</style></head>
+<body><div id="stage">
+  <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
+  <div id="sparks"></div>
+
+  <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
+  <div class="head" id="h1" style="top:230px;font-size:70px"><div><span class="step">Step 1</span></div><div>Your files are loaded<br><span class="grad">on your phone</span>,<br>not uploaded</div></div>
+  <div class="head" id="h2" style="top:230px;font-size:60px;left:40px;right:40px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made<span class="later">,</span><br><span class="later">with names and handles removed</span></div></div>
+  <div class="head" id="h3" style="top:230px;font-size:66px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">and <span class="grad">untick</span> anything you&rsquo;d rather keep</span></div></div>
+  <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>The summary is sent<br><span class="grad">encrypted</span></div></div>
+  <div class="head" id="h5" style="top:230px;font-size:72px"><div><span class="step">Step 5</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
+
+  <div id="trail"></div>
+  <div id="vertex"><div class="cloud"><svg viewBox="0 0 48 48" width="84" height="84" fill="none" stroke="#8a3fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 36h21a8 8 0 0 0 1-15.9A11 11 0 0 0 15 18a9 9 0 0 0-1 18z"/></svg></div>
+    <div><b>Google Vertex AI</b><span>enterprise</span></div></div>
+  <div class="pill" id="train" style="top:752px">✓ <em>Never</em> used to train AI</div>
+
+  <div id="phone"><div id="screen">
+    <div id="notch"></div>
+    <div class="row" id="r0" style="top:110px"><i style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)"></i>Instagram</div>
+    <div class="row" id="r1" style="top:218px"><i style="background:#25d366"></i>WhatsApp</div>
+    <div class="row" id="r2" style="top:326px"><i style="background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335)"></i>Google</div>
+    <div class="row" id="r3" style="top:434px"><i style="background:#1877f2"></i>Facebook</div>
+    <div id="summary"><h5>Summary</h5>
+      <div><span class="k">name:</span> <span class="swap" id="sw1"><span>"Alex Tan"</span><span>"[name]"</span></span></div>
+      <div><span class="k">email:</span> <span class="swap" id="sw2"><span>"alex@mail.com"</span><span>"[email]"</span></span></div>
+      <div><span class="k">phone:</span> <span class="swap" id="sw3"><span>"+65 9123 4567"</span><span>"[number]"</span></span></div>
+      <div><span class="k">chat:</span> "w/ <span class="swap" id="sw4"><span>@jamie.k</span><span>[P1]</span></span>"</div>
+    </div>
+    <!-- the app's review sheet, "Review what gets sent": a switch a kind of data -->
+    <div id="review"><h5>Review what gets sent</h5>
+      <div class="sw on">Captions &amp; comments<i></i></div>
+      <div class="sw on">Activity &amp; timing<i></i></div>
+      <div class="sw on" id="swOff">Google searches<i></i></div>
+      <div class="sw on">WhatsApp chats<i></i></div>
+      <div id="sendBtn">Send this</div>
+    </div>
+    <div id="sent"><svg viewBox="0 0 48 48" width="96" height="96" fill="none" stroke="#e0457b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="19" stroke="#f0d6e6"/><path d="M15 24.5l6.5 6.5L33 18"/></svg><div>Summary sent,<br>encrypted</div></div>
+    <div id="onphone"><span id="noNet">✈️ No internet needed</span></div>
+  </div></div>
+  <div class="pill" id="kb" style="top:1660px">100–200 KB of text</div>
+  <div class="pill" id="nocopy" style="top:1660px">PsycheAI keeps <em>no copy</em></div>
+
+  <div class="file" id="f0"><span class="ext" style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)">ZIP</span><div class="name">Instagram</div></div>
+  <div class="file" id="f1"><span class="ext" style="background:#25d366">TXT</span><div class="name">WhatsApp</div></div>
+  <div class="file" id="f2"><span class="ext" style="background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335)">ZIP</span><div class="name">Google</div></div>
+  <div class="file" id="f3"><span class="ext" style="background:#1877f2">ZIP</span><div class="name">Facebook</div></div>
+
+  <div id="packet"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg></div>
+  <img id="result" src="assets/card.png">
+  <img id="report" src="assets/report.png">
+
+  <div id="end">
+    <svg id="mark" viewBox="0 0 140 140"></svg>
+    <div id="endName">PsycheAI</div>
+    <div id="endLine">See for<br><span class="grad">yourself</span></div>
+    <div id="cta"></div>
+    <div id="facts"><div>&lt;/&gt; The code is public</div><div>No sign-up · No cookies · No trackers</div></div>
+  </div>
+</div>
+<script>
+const TL = __TIMELINE__;
+const MARK = __MARK__;
+const CONFIG = __CONFIG__;
+const S = TL.scenes; const BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const FINAL = S[6].start;
+const PAL = [['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#e2dcff', '#ffd6e8'], ['#dfe3ff', '#f0d6ff'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8']];
+const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
+  return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
+$('mark').innerHTML = MARK.paths.map(d => '<path d="' + d + '" fill="none" stroke="#7b3fa0" stroke-width="3.4"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
+$('cta').textContent = CONFIG.button;
+const sparks = Array.from({ length: 22 }, (_, i) => { const s = document.createElement('div'); s.className = 'spark'; $('sparks').appendChild(s);
+  return { el: s, x: (i * 397) % 1080, speed: 60 + (i * 53) % 90, phase: (i * 0.37) % 1, size: 4 + (i * 7) % 9 }; });
+const set = (id, o, tf) => { const el = $(id); el.style.opacity = o; el.style.display = o > 0.001 ? '' : 'none'; if (tf !== undefined) el.style.transform = tf; };
+// A headline: its step tag pops a beat ahead, then the line as the voice starts; out on the cut.
+function head(i, t) {
+  const s = S[i], out = 1 - prog(t, s.end - 0.12, s.end + 0.08);
+  const parts = [...$('h' + i).children], last = parts.length - 1;
+  $('h' + i).style.display = t > s.start - 0.2 && t < s.end + 0.1 ? 'block' : 'none';
+  parts.forEach((el, k) => { const p = prog(t, (k === last ? s.vo - 0.2 : s.start - 0.05), (k === last ? s.vo + 0.15 : s.start + 0.25));
+    el.style.opacity = clamp(p * 2) * out; el.style.transform = 'translateY(' + (1 - ease(p)) * 40 + 'px) scale(' + (0.7 + 0.3 * back(p)) + ')'; });
+  // A line's second half (.later) comes in when the voice reaches it.
+  $('h' + i).querySelectorAll('.later').forEach(el => { const p = prog(t, s.marks[1] - 0.2, s.marks[1] + 0.1);
+    el.style.opacity = clamp(p * 2); el.style.filter = 'blur(' + (1 - p) * 8 + 'px)'; });
+}
+// Where things sit: the phone's screen, and the Vertex panel above it.
+const PHONE = { x: 335, y: 900, w: 410, h: 720 }, SCREEN_MID = { x: 540, y: 1180 }, CLOUD = { x: 540, y: 620 };
+// The Instagram file large in the middle, the other three smaller around it.
+const FILE_AT = [[390, 900], [720, 700], [60, 1200], [720, 1320]], FILE_SIZE = [1.35, 0.8, 0.8, 0.8];
+
+function render(t) {
+  const si = S.findIndex(s => t < s.end); const cur = si < 0 ? S.length - 1 : si;
+  const nxt = Math.min(S.length - 1, cur + 1), k = prog(t, S[cur].end - 0.5, S[cur].end + 0.3);
+  const c1 = mixHex(PAL[cur][0], PAL[nxt][0], k), c2 = mixHex(PAL[cur][1], PAL[nxt][1], k);
+  const ph = (t % BEAT) / BEAT, pulse = t >= S[1].start ? Math.exp(-ph * 6) * (t >= FINAL ? 1 : 0.4) : 0;
+  document.body.style.background = 'radial-gradient(130% 90% at 50% 0%, ' + c1 + ' 0%, #fdf7fc 60%, #f7effd 100%)';
+  $('b1').style.background = c2; $('b2').style.background = c1; $('b3').style.background = '#ffd2b0';
+  $('b1').style.opacity = 0.5 + pulse * 0.3; $('b2').style.opacity = 0.45 + pulse * 0.3; $('b3').style.opacity = 0.18 + pulse * 0.2;
+  $('b1').style.transform = 'translate(' + Math.sin(t * .6) * 140 + 'px,' + Math.cos(t * .45) * 180 + 'px) scale(' + (1 + pulse * 0.12) + ')';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .5) * 160 + 'px,' + Math.sin(t * .4) * 200 + 'px) scale(' + (1 + pulse * 0.12) + ')';
+  $('b3').style.transform = 'translate(' + Math.sin(t * .7) * 220 + 'px,' + Math.cos(t * .6) * 120 + 'px)';
+  sparks.forEach(p => { p.el.style.left = (p.x + Math.sin(t + p.phase * 6) * 30) + 'px'; p.el.style.top = (1980 - ((t * p.speed + p.phase * 2000) % 2080)) + 'px';
+    p.el.style.width = p.el.style.height = p.size + 'px'; p.el.style.opacity = 0.5 * (0.6 + pulse * 0.4); });
+  for (let i = 0; i < 6; i++) head(i, t);
+
+  // sR is Step 3, the review; s3 and s4 are the sending and the results.
+  const [s0, s1, s2, sR, s3, s4] = S;
+  const said0 = w => (s0.words.find(([x]) => x === w) || [0, s0.vo + 1])[1];
+  // The hook: the four files float in around the question, then fly into the phone's screen on Step 1.
+  ['f0', 'f1', 'f2', 'f3'].forEach((id, i) => {
+    const due = i ? said0('onto') + (i - 1) * 0.12 : said0('instagram') - 0.2;
+    const pin = back(prog(t, due, due + 0.4)), fly = easeIO(prog(t, s1.start - 0.1 + i * 0.07, s1.start + 0.45 + i * 0.07));
+    const [x0, y0] = FILE_AT[i], bob = Math.sin(t * 2.4 + i * 1.7) * 14;
+    const x = x0 + (SCREEN_MID.x - 150 - x0) * fly, y = y0 + bob + (SCREEN_MID.y - 70 - y0) * fly;
+    const el = $(id); el.style.left = x + 'px'; el.style.top = y + 'px';
+    set(id, clamp(pin * 1.5) * (1 - prog(fly, 0.75, 1)), 'scale(' + (pin * FILE_SIZE[i] * (1 - (1 - 0.4 / FILE_SIZE[i]) * fly)) + ') rotate(' + ((i % 2 ? 6 : -6) * (1 - fly)) + 'deg)');
+  });
+  // The phone rises in as the files arrive and stays until the last card.
+  const phoneIn = back(prog(t, s1.start - 0.25, s1.start + 0.25)), phoneOut = prog(t, FINAL - 0.15, FINAL + 0.15);
+  // Steps 1 to 3 happen on the phone, so it grows to fill the frame once the files are in (1.4 times, its top
+  // up at 600), and settles back to its own size as Step 4 starts, for the Vertex AI panel above it.
+  // And again in Step 5, once the Vertex AI panel has gone and the results are in the phone.
+  const zoomBack = easeIO(prog(t, s4.marks[1] - 0.25, s4.marks[1] + 0.35));
+  const zoom = Math.max(easeIO(prog(t, s1.start + 0.4, s1.start + 1.0)) * (1 - easeIO(prog(t, s3.start - 0.1, s3.start + 0.35))), zoomBack);
+  set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + ((1 - Math.min(1, phoneIn)) * 300 - 300 * zoom) + 'px) scale(' +
+    (1 + 0.4 * zoom + pulse * 0.015) + ')');
+  // The rows land one by one (Step 1), then fold into the summary (Step 2).
+  const fold = easeIO(prog(t, s2.vo, s2.vo + 0.5));
+  ['r0', 'r1', 'r2', 'r3'].forEach((id, i) => {
+    const land = back(prog(t, s1.start + 0.25 + i * 0.07, s1.start + 0.6 + i * 0.07));
+    set(id, clamp(land * 2) * (1 - fold), 'translateY(' + (-(i * 108) * fold) + 'px) scale(' + (Math.min(1, land) * (1 - 0.4 * fold)) + ')');
+  });
+  const sumIn = back(prog(t, s2.vo + 0.3, s2.vo + 0.7));
+  set('summary', clamp(sumIn * 2), 'scale(' + Math.min(1.05, sumIn) + ')');
+  ['sw1', 'sw2', 'sw3', 'sw4'].forEach((id, i) => {
+    // Blurred into placeholders as the voice says "with names removed".
+    const at = s2.marks[1] - 0.1 + i * 0.22, k = prog(t, at, at + 0.3), [a, b] = $(id).children;
+    a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)';
+    b.style.color = '#e0457b'; a.style.display = k >= 1 ? 'none' : '';
+  });
+  $('onphone').style.opacity = prog(t, s1.vo + 0.6, s1.vo + 0.9);
+  // Gone as the summary leaves, Step 4 being the only part online.
+  const noNet = back(prog(t, s1.vo + 1.0, s1.vo + 1.35)), noNetOut = prog(t, s3.start - 0.1, s3.start + 0.15);
+  $('noNet').style.opacity = clamp(noNet * 2) * (1 - noNetOut); $('noNet').style.transform = 'scale(' + Math.min(1.05, noNet) + ')';
+  // The size of what leaves, under the phone, on "short summary".
+  const kb = back(prog(t, s2.vo + 0.6, s2.vo + 1.0)), kbOut = prog(t, sR.start + 0.1, sR.start + 0.3);
+  set('kb', clamp(kb * 2) * (1 - kbOut), 'translateX(-50%) scale(' + Math.min(1.05, kb) + ')');
+  // Step 3: the summary leaves the screen as a locked packet and flies up the dashed line to Vertex AI.
+  const panelIn = back(prog(t, s3.start + 0.05, s3.start + 0.4)), panelOut = prog(t, s4.marks[1] - 0.3, s4.marks[1]);
+  set('vertex', clamp(panelIn * 2) * (1 - panelOut), 'scale(' + Math.min(1.05, panelIn) * (1 - 0.15 * panelOut) + ')');
+  const trailK = prog(t, s3.start + 0.2, s3.start + 0.5) * (1 - panelOut);
+  $('trail').style.top = (CLOUD.y + 100) + 'px'; $('trail').style.height = (PHONE.y - CLOUD.y - 100) * trailK + 'px';
+  $('trail').style.opacity = trailK; $('trail').style.display = trailK > 0 ? 'block' : 'none';
+  $('summary').style.opacity = clamp(sumIn * 2) * (1 - prog(t, sR.start - 0.05, sR.start + 0.2));
+  // Step 3: the review sheet; one switch goes off on "untick", then "Send this" is pressed and the sheet goes.
+  const revIn = back(prog(t, sR.start, sR.start + 0.35)), revOut = prog(t, s3.start + 0.3, s3.start + 0.5);
+  set('review', clamp(revIn * 2) * (1 - revOut), 'scale(' + Math.min(1.04, revIn) * (1 - 0.1 * revOut) + ')');
+  const untick = (sR.words.find(([w]) => w === 'untick') || [0, sR.marks[1] + 0.3])[1], off = easeIO(prog(t, untick, untick + 0.3));
+  $('swOff').style.setProperty('--k', String(1 - off)); $('swOff').style.color = mixHex('#2a1238', '#b9a8c6', off);
+  $('swOff').querySelector('i').style.background = off > 0.5 ? '#e4d8ee' : '';
+  const press = prog(t, s3.start - 0.3, s3.start - 0.15) * (1 - prog(t, s3.start - 0.15, s3.start));
+  $('sendBtn').style.transform = 'scale(' + (1 - 0.08 * press) + ')';
+  const up = easeIO(prog(t, s3.start + 0.4, s3.vo + 1.2)), packetOn = prog(t, s3.start + 0.3, s3.start + 0.5) * (1 - prog(up, 0.9, 1));
+  const py = SCREEN_MID.y + (CLOUD.y - SCREEN_MID.y) * up;
+  $('packet').style.left = (540 - 75) + 'px'; $('packet').style.top = (py - 75) + 'px';
+  set('packet', packetOn, 'scale(' + (0.6 + 0.4 * Math.min(1, prog(t, s3.start + 0.3, s3.start + 0.6) * 1.2) - 0.3 * prog(up, 0.85, 1)) + ') rotate(' + Math.sin(up * Math.PI) * 8 + 'deg)');
+  const sent = back(prog(t, s3.vo + 1.1, s3.vo + 1.45)), sentOut = prog(t, s4.start, s4.start + 0.2);
+  set('sent', clamp(sent * 2) * (1 - sentOut), 'scale(' + Math.min(1.05, sent) + ')');
+  // "Never used to train AI" as the voice says it.
+  const train = back(prog(t, s3.marks[1] - 0.25, s3.marks[1] + 0.1)), trainOut = prog(t, s4.start - 0.1, s4.start + 0.1);
+  set('train', clamp(train * 2) * (1 - trainOut), 'translateX(-50%) scale(' + Math.min(1.05, train) + ')');
+  // Step 4: the card and the report come down the line into the phone; then "keeps no copy" as the panel goes.
+  const down = easeIO(prog(t, s4.start + 0.15, s4.vo + 1.1)), resOn = prog(t, s4.start + 0.1, s4.start + 0.3);
+  const ry = CLOUD.y + (SCREEN_MID.y + 20 - CLOUD.y) * down;
+  // Grown with the phone: the phone scales from its top centre (540, 900), so the card and report take the
+  // same mapping, scaled from their own top-left corners.
+  const grow = 1 + 0.4 * zoomBack, lift = -300 * zoomBack;
+  const place = (id, x) => { $(id).style.left = (540 + (x - 540) * grow) + 'px'; $(id).style.top = (900 + lift + (ry - 120 - 900) * grow) + 'px'; };
+  place('result', 540 - 182); place('report', 540 + 12);
+  set('result', resOn, 'rotate(' + (-6 + 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
+  set('report', resOn, 'rotate(' + (6 - 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
+  const nc = back(prog(t, s4.marks[1] - 0.1, s4.marks[1] + 0.3)), ncOut = prog(t, FINAL - 0.15, FINAL + 0.05);
+  set('nocopy', clamp(nc * 2) * (1 - ncOut), 'translateX(-50%) scale(' + Math.min(1.08, nc) + ')');
+  ['result', 'report'].forEach(id => { $(id).style.opacity = resOn * (1 - ncOut); });
+  // The last card: the mark spins in on the hit, the line, the address, the facts.
+  const e = t - FINAL;
+  $('end').style.opacity = prog(e, -0.05, 0.15); $('end').style.display = e > -0.05 ? 'block' : 'none';
+  $('mark').style.transform = 'scale(' + back(prog(e, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + e * 50 + 'deg)';
+  [['endName', 0.1], ['endLine', 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
+    $(id).style.opacity = clamp(p * 2); $(id).style.transform = 'translateY(' + (1 - Math.min(1, p)) * 40 + 'px) scale(' + (0.7 + 0.3 * p) + ')'; });
+  const cta = back(prog(t, S[6].words[4][1] - 0.35, S[6].words[4][1]));
+  $('cta').style.opacity = clamp(cta * 2); $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * cta + pulse * 0.06 * Math.min(1, cta)) + ')';
+  [...$('facts').children].forEach((el, i) => { const p = back(prog(e, 1.6 + i * 0.2, 1.95 + i * 0.2));
+    el.style.opacity = clamp(p * 2); el.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px)'; });
+}
+for (let size = 56; $('cta').offsetWidth > 940 && size > 26; size -= 2) $('cta').style.fontSize = size + 'px';
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>

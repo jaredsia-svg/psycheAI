@@ -1,0 +1,256 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The character reel (shorts.py character): which character are you? A slot machine of the public-domain
+   characters' scenes, no names, spins and lands on one (WHO, by the reel: the Tin Man, Rapunzel); a tour of their
+   card; who to tag. The scenes are the
+   app's own (docs/character-art.js, drawn by docs/copy.js characterArt), cropped to their subject. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #1a0b2e; }
+body { font-family: Inter, sans-serif; color: #fff; }
+.el { position: absolute; display: none; }
+.blob { position: absolute; border-radius: 50%; filter: blur(110px); }
+#b1 { width: 820px; height: 820px; left: -260px; top: -160px; background: rgba(160,70,220,.6); }
+#b2 { width: 760px; height: 760px; right: -260px; top: 1180px; background: rgba(240,90,140,.45); }
+#world { position: absolute; inset: 0; }
+.grad { background: linear-gradient(90deg, #ffb36b, #ff7a9c 45%, #c79bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#flash { position: absolute; inset: 0; z-index: 90; background: #fff; opacity: 0; pointer-events: none; }
+.spark { position: absolute; z-index: 60; width: 18px; height: 18px; background: #fff;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+/* The hook. */
+#h1 { z-index: 20; left: 60px; right: 60px; top: 600px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
+#h2 { z-index: 20; left: 60px; right: 60px; top: 1120px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
+/* The data the app reads, shown with Instagram as it is said. */
+.app { z-index: 21; width: 130px; height: 130px; }
+.app .ic { position: relative; width: 130px; height: 130px; border-radius: 34px; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+#ig .ic { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+#ig .ic::before { content: ''; position: absolute; inset: 29px; border: 9px solid #fff; border-radius: 26px; }
+#ig .ic::after { content: ''; position: absolute; left: 47px; top: 47px; width: 36px; height: 36px; border: 9px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic { background: #25d366; }
+#wa .ic::before { content: ''; position: absolute; left: 28px; top: 24px; width: 76px; height: 76px; border: 9px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic::after { content: ''; position: absolute; left: 24px; top: 88px; width: 0; height: 0; border-left: 16px solid transparent; border-top: 21px solid #fff; transform: rotate(18deg); }
+#gg .ic { background: #fff; }
+#gg .ic::before { content: 'G'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 88px/1 Inter, sans-serif;
+  background: conic-gradient(from -45deg, #ea4335 0 25%, #4285f4 0 50%, #34a853 0 75%, #fbbc05 0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#fb .ic { background: #1877f2; }
+#fb .ic::before { content: 'f'; position: absolute; left: 0; right: 0; bottom: -8px; text-align: center; font: 900 120px/1 Inter, sans-serif; color: #fff; }
+/* The slot machine. */
+#title { z-index: 30; left: 0; right: 0; top: 250px; text-align: center; font-size: 44px; font-weight: 900; letter-spacing: .12em; }
+#odds { z-index: 30; left: 0; right: 0; top: 330px; text-align: center; font-size: 56px; font-weight: 850; letter-spacing: -0.02em; }
+#odds span { display: inline-block; }
+#machine { z-index: 20; left: 170px; top: 460px; width: 740px; height: 740px; border-radius: 64px; padding: 20px;
+  background: linear-gradient(135deg, #ffd27a, #ff7a9c 45%, #a46cff); box-shadow: 0 0 90px rgba(255,120,170,.5), 0 50px 100px rgba(0,0,0,.5); }
+#window { position: relative; width: 700px; height: 700px; border-radius: 46px; overflow: hidden; background: #120822; }
+#strip { position: absolute; left: 0; top: 0; width: 700px; }
+.tile { position: absolute; left: 0; width: 700px; height: 700px; }
+.tile svg { width: 100%; height: 100%; display: block; }
+#window::after { content: ''; position: absolute; inset: 0; border-radius: 46px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(18,8,34,.85), transparent 22%, transparent 78%, rgba(18,8,34,.85)); }
+.bulb { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff6d8; box-shadow: 0 0 18px 4px rgba(255,220,140,.8); }
+#name { z-index: 30; left: 40px; right: 40px; top: 1260px; text-align: center; font-size: 124px; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+#source { z-index: 30; left: 0; right: 0; top: 1400px; text-align: center; font-size: 38px; font-weight: 750; letter-spacing: .08em; color: rgba(255,255,255,.75); }
+/* The card, and the camera moving over it (the parts measured by capture.mjs, card-<who>-parts.json). */
+#cam { position: absolute; left: 0; top: 0; z-index: 25; transform-origin: 0 0; display: none; }
+#card { display: block; width: 1000px; border-radius: 48px; box-shadow: 0 0 120px rgba(255,120,170,.5), 0 60px 120px rgba(0,0,0,.5); }
+#ring { z-index: 26; border-radius: 30px; border: 6px solid #ffd27a; box-shadow: 0 0 40px rgba(255,210,122,.8), inset 0 0 30px rgba(255,210,122,.3); }
+#face { z-index: 27; border-radius: 50%; border: 7px solid #ffd27a; box-shadow: 0 0 40px rgba(255,210,122,.9); }
+#part { z-index: 30; left: 50%; top: 250px; padding: 14px 34px; border-radius: 999px; font-size: 38px; font-weight: 900; letter-spacing: .12em; white-space: nowrap;
+  color: #2a1238; background: #ffd27a; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+#t1 { z-index: 30; left: 0; right: 0; top: 1330px; text-align: center; white-space: nowrap; font-size: 90px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; }
+#t2 { z-index: 30; left: 0; right: 0; top: 1470px; text-align: center; font-size: 64px; font-weight: 850; }
+/* The close. */
+#c1 { z-index: 30; left: 50px; right: 50px; top: 600px; text-align: center; font-size: 104px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; }
+#site { z-index: 30; left: 50%; top: 1080px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.45); }
+</style>
+<script src="../docs/character-art.js"></script>
+<script src="../docs/copy.js"></script>
+</head>
+<body>
+  <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
+  <div id="world">
+    <div class="el" id="h1">I let <span class="grad">PsycheAI</span> read<br><span id="years"></span> years of my Instagram.</div>
+    <div class="el app" id="ig"><div class="ic"></div></div><div class="el app" id="wa"><div class="ic"></div></div>
+    <div class="el app" id="gg"><div class="ic"></div></div><div class="el app" id="fb"><div class="ic"></div></div>
+    <div class="el" id="h2">Then it told me which<br>character I am.</div>
+
+    <div class="el" id="title">WHICH CHARACTER ARE YOU?</div>
+    <div class="el" id="odds"><span id="o1">28 characters.</span> <span id="o2" class="grad">1 match.</span></div>
+    <div class="el" id="machine"><div id="window"><div id="strip"></div></div><div id="bulbs"></div></div>
+    <div class="el" id="name"><span class="grad" id="nameText"></span></div>
+    <div class="el" id="source"></div>
+
+    <div id="cam"><img id="card"></div>
+    <div class="el" id="ring"></div>
+    <div class="el" id="face"></div>
+    <div class="el" id="part"></div>
+    <div class="el" id="t1">Who’s your <span class="grad" id="tagName"></span></div>
+    <div class="el" id="t2">Tag them 👇</div>
+
+    <div class="el" id="c1">Which character<br><span class="grad">are you?</span></div>
+    <div class="el" id="site">psycheai.io ↗</div>
+  </div>
+  <div id="sparks"></div>
+  <div id="flash"></div>
+<script>
+const TL = __TIMELINE__;
+const S = TL.scenes, BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  if (tf !== undefined) el.style.transform = tf; };
+const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
+const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+// Six scenes when the reel ends on a tag (the face of someone to tag), five when it goes from the card to the close.
+const [HOOK, SPIN, REVEAL, TOUR] = S, TAG = S.length > 5 ? S[4] : null, CLOSE = S[S.length - 1], LAST_SCENE = TAG || TOUR;
+// All 28 of the catalogue, no names (the owner's choice, over the marketing's public-domain-only rule).
+const CAST = ["Mulan", "Elsa", "Moana", "Simba", "Rapunzel", "Judy Hopps", "Nick Wilde", "Baymax", "Dr Watson", "Buzz Lightyear", "The Tin Man", "Remy", "Joy", "Odysseus", "Captain America", "Spider-Man", "Hulk", "Wonder Woman", "Sherlock Holmes", "Pikachu", "Princess Peach", "Shrek", "Po", "Hiccup", "Hermione Granger", "Sailor Moon", "Hello Kitty", "Kuromi"];  // docs/media/cast-sprite.json names, the catalogue's 28
+const SPIN_TILES = 58, SPIN_EASE = 2;   // shorts.py character 'spin', 'spin_ease': the music ticks once per tile on the same curve
+const TILE = 700;
+// Who this reel lands on, their card, and which of their three most-in-sync to tag (0, 1 or 2, left to right).
+const WHO = {
+  character: { years: 11, name: 'The Tin Man', source: 'THE WONDERFUL WIZARD OF OZ', card: 'tinman', tag: 'Mulan', face: 0,
+    parts: {"confidence": [0.8608, 0.0292, 0.0837, 0.0471], "character": [0.0556, 0.0851, 0.8889, 0.3027], "patterns": [0.0556, 0.3966, 0.4357, 0.1255], "motives": [0.5087, 0.3966, 0.4357, 0.1255], "type": [0.0556, 0.531, 0.4357, 0.1529], "bigFive": [0.5087, 0.531, 0.4357, 0.1529], "standFor": [0.0556, 0.6927, 0.4357, 0.1359], "love": [0.0556, 0.8374, 0.4357, 0.1079], "syncs": [0.5087, 0.8374, 0.4357, 0.1079], "faces": [[0.5569, 0.8751, 0.0767, 0.0431], [0.6882, 0.8751, 0.0767, 0.0431], [0.8195, 0.8751, 0.0767, 0.0431]]} },
+  'character-rapunzel': { years: 7, name: 'Rapunzel', source: 'GRIMM’S FAIRY TALES', card: 'rapunzel', tag: 'Sherlock', face: 1,
+    parts: {"confidence": [0.8637, 0.0292, 0.0807, 0.0454], "character": [0.0556, 0.0831, 0.8889, 0.2921], "patterns": [0.0556, 0.3837, 0.436, 0.1433], "motives": [0.5084, 0.3837, 0.436, 0.1433], "type": [0.0556, 0.5355, 0.436, 0.1475], "bigFive": [0.5084, 0.5355, 0.436, 0.1475], "standFor": [0.0556, 0.6915, 0.436, 0.1311], "love": [0.0556, 0.8311, 0.436, 0.1156], "syncs": [0.5084, 0.8311, 0.436, 0.1156], "faces": [[0.5575, 0.8675, 0.074, 0.0416], [0.6894, 0.8675, 0.074, 0.0416], [0.8213, 0.8675, 0.074, 0.0416]]} },
+  // No tag on these three: each tour stops on parts of its own card the others do not.
+  'character-mulan': { years: 9, name: 'Mulan', source: 'THE BALLAD OF MULAN', card: 'char-mulan', stops: ['headline', 'motives', 'love'],
+    parts: {"confidence": [0.859, 0.0292, 0.0854, 0.048], "character": [0.0556, 0.0862, 0.8888, 0.2894], "patterns": [0.0556, 0.3846, 0.4355, 0.1281], "motives": [0.5089, 0.3846, 0.4355, 0.1281], "type": [0.0556, 0.5218, 0.4355, 0.156], "bigFive": [0.5089, 0.5218, 0.4355, 0.156], "standFor": [0.0556, 0.6868, 0.4355, 0.1387], "love": [0.0556, 0.8345, 0.4355, 0.1102], "syncs": [0.5089, 0.8345, 0.4355, 0.1102], "faces": [[0.5565, 0.8731, 0.0783, 0.044], [0.6875, 0.8731, 0.0783, 0.044], [0.8184, 0.8731, 0.0783, 0.044]]} },
+  'character-odysseus': { years: 12, name: 'Odysseus', source: 'HOMER’S ODYSSEY', card: 'char-odysseus', stops: ['headline', 'motives', 'type'],
+    parts: {"confidence": [0.8618, 0.0292, 0.0826, 0.0465], "character": [0.0556, 0.0844, 0.8889, 0.299], "patterns": [0.0556, 0.3921, 0.4358, 0.124], "motives": [0.5086, 0.3921, 0.4358, 0.124], "type": [0.0556, 0.5247, 0.4358, 0.151], "bigFive": [0.5086, 0.5247, 0.4358, 0.151], "standFor": [0.0556, 0.6844, 0.4358, 0.1342], "love": [0.0556, 0.8273, 0.4358, 0.1183], "syncs": [0.5086, 0.8273, 0.4358, 0.1183], "faces": [[0.5571, 0.8646, 0.0758, 0.0426], [0.6886, 0.8646, 0.0758, 0.0426], [0.8202, 0.8646, 0.0758, 0.0426]]} },
+  'character-sherlock': { years: 8, name: 'Sherlock Holmes', source: 'ARTHUR CONAN DOYLE', card: 'char-sherlock', stops: ['headline', 'bigFive', 'standFor'],
+    parts: {"confidence": [0.861, 0.0292, 0.0835, 0.047], "character": [0.0556, 0.0849, 0.8889, 0.3021], "patterns": [0.0556, 0.3959, 0.4358, 0.1253], "motives": [0.5087, 0.3959, 0.4358, 0.1253], "type": [0.0556, 0.53, 0.4358, 0.1525], "bigFive": [0.5087, 0.53, 0.4358, 0.1525], "standFor": [0.0556, 0.6913, 0.4358, 0.1356], "love": [0.0556, 0.8357, 0.4358, 0.1077], "syncs": [0.5087, 0.8357, 0.4358, 0.1077], "faces": [[0.557, 0.8734, 0.0766, 0.0431], [0.6883, 0.8734, 0.0766, 0.0431], [0.8197, 0.8734, 0.0766, 0.0431]]} },
+}[TL.reel];
+WHO.stops = WHO.stops || ['headline', 'patterns', 'syncs'];
+$('nameText').textContent = WHO.name; $('years').textContent = WHO.years;
+if (WHO.name.length > 11) $('name').style.fontSize = '104px';
+$('card').src = 'assets/card-' + WHO.card + '.png'; $('source').textContent = WHO.source; $('tagName').textContent = WHO.tag + '?';
+// The strip: SPIN_TILES tiles pass, and the last is the one this reel lands on.
+const LAST = CAST.indexOf(WHO.name);
+const order = Array.from({ length: SPIN_TILES + 2 }, (_, k) => CAST[((LAST - SPIN_TILES + k) % CAST.length + CAST.length * 10) % CAST.length]);
+const tiles = order.map((name, k) => { const d = mk('tile', window.PsycheCopy.characterArt(name, 'tile-art', true), $('strip')); d.style.top = (k * TILE) + 'px'; return d; });
+// Lights round the machine.
+const bulbs = Array.from({ length: 20 }, (_, i) => {
+  const d = mk('bulb', '', $('bulbs')); const side = Math.floor(i / 5), k = i % 5, at = 70 + k * 150;
+  const [x, y] = [[at, -6], [734, at], [740 - at, 734], [-6, 740 - at]][side];
+  d.style.left = (x - 11) + 'px'; d.style.top = (y - 11) + 'px'; return d; });
+// The card's parts, as fractions of it: [x, y, w, h] (assets/card-<who>-parts.json).
+const PARTS = WHO.parts;
+// The headline stop frames the name and headline only, not the whole top panel.
+PARTS.headline = [0.055, 0.1, 0.56, 0.16];
+const CW = 1000, CH = 1000 * 2007 / 1128;
+const sparks = Array.from({ length: 26 }, (_, i) => { const d = mk('spark', '', $('sparks')); return { el: d, a: hash(i) * Math.PI * 2, v: 300 + hash(i + 7) * 500, s: 0.8 + hash(i + 3) * 1.6 }; });
+
+function render(t) {
+  const ph = (t % BEAT) / BEAT, pulse = t >= REVEAL.start ? Math.exp(-ph * 6) : 0;
+  $('b1').style.transform = 'translate(' + Math.sin(t * .5) * 120 + 'px,' + Math.cos(t * .4) * 140 + 'px) scale(' + (1 + pulse * 0.06) + ')';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .45) * 140 + 'px,' + Math.sin(t * .35) * 160 + 'px) scale(' + (1 + pulse * 0.06) + ')';
+  $('flash').style.opacity = 0.75 * (1 - prog(t, REVEAL.start, REVEAL.start + 0.35)) * (t >= REVEAL.start ? 1 : 0);
+  hook(t); slot(t, pulse); tour(t, pulse); close(t, pulse);
+}
+
+function hook(t) {
+  const s = HOOK, out = prog(t, s.end - 0.25, s.end);
+  // As "Instagram" is said, its icon, then the other three the app can read, in a row under the line; gone as the
+  // second line comes.
+  const said = (((s.words || []).find(([w]) => w === 'instagram') || [])[1]) || s.vo + 1.6;
+  ['ig', 'wa', 'gg', 'fb'].forEach((id, i) => {
+    const a = said - 0.1 + i * 0.12, p = back(prog(t, a, a + 0.3)), gone = prog(t, s.end - 0.5, s.end - 0.2);
+    Object.assign($(id).style, { left: (540 - 2 * 160 + 15 + i * 160) + 'px', top: '920px' });
+    show(id, t >= a ? clamp(p * 2) * (1 - gone) : 0, 'scale(' + Math.min(1.08, p) * (1 - 0.3 * gone) + ')');
+  });
+  const a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), b = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.25));
+  show('h1', clamp(a * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
+  show('h2', clamp(b * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, b)) + ')');
+}
+
+function slot(t, pulse) {
+  // From the spin until the card takes over; it falls away as the card rises.
+  const on = t >= SPIN.start - 0.05 && t < TOUR.start + 0.3;
+  const inn = back(prog(t, SPIN.start - 0.05, SPIN.start + 0.35)), out = prog(t, TOUR.start - 0.15, TOUR.start + 0.3);
+  const up = 0;
+  show('machine', on ? clamp(inn * 2) * (1 - out) : 0, 'translateY(' + (-up * 210) + 'px) scale(' + (Math.min(1, 0.7 + 0.3 * inn) * (1 - 0.32 * up) + pulse * 0.01) + ')');
+  $('machine').style.transformOrigin = '50% 0';
+  // The spin: the curve the music's ticks follow, landing as the reveal starts.
+  const u = prog(t, SPIN.start, REVEAL.start), pos = SPIN_TILES * (1 - Math.pow(1 - u, SPIN_EASE));
+  $('strip').style.transform = 'translateY(' + (-pos * TILE) + 'px)';
+  const speed = u < 1 ? SPIN_EASE * SPIN_TILES * Math.pow(1 - u, SPIN_EASE - 1) / (REVEAL.start - SPIN.start) : 0;
+  $('strip').style.filter = 'blur(' + Math.min(14, speed * 0.9) + 'px)';
+  // The landed tile breathes; the lights chase while it spins and flash together when it lands.
+  if (u >= 1) tiles[SPIN_TILES].style.transform = 'scale(' + (1 + 0.02 * Math.sin(t * 2.5)) + ')';
+  bulbs.forEach((b, i) => { const lit = u < 1 ? (Math.floor(t * 12) + i) % 4 === 0 : Math.floor(t * 4) % 2 === 0;
+    b.style.opacity = lit ? 1 : 0.25; });
+  const tt = back(prog(t, SPIN.start, SPIN.start + 0.35));
+  show('title', on && t < TOUR.start ? clamp(tt * 2) * (1 - prog(t, TOUR.start - 0.2, TOUR.start)) : 0);
+  const o1 = back(prog(t, SPIN.vo - 0.15, SPIN.vo + 0.2)), o2 = back(prog(t, SPIN.marks[1] - 0.15, SPIN.marks[1] + 0.2));
+  show('odds', on && t < TOUR.start ? 1 - prog(t, TOUR.start - 0.2, TOUR.start) : 0);
+  $('o1').style.opacity = clamp(o1 * 2); $('o1').style.transform = 'scale(' + Math.min(1.05, 0.8 + 0.2 * o1) + ')';
+  $('o2').style.opacity = clamp(o2 * 2); $('o2').style.transform = 'scale(' + Math.min(1.1, 0.6 + 0.4 * o2) + ')';
+  // The name lands as it is said, with sparkles bursting from the machine.
+  const nm = back(prog(t, REVEAL.vo - 0.15, REVEAL.vo + 0.25));
+  const nameOn = t >= REVEAL.vo - 0.15 && t < TOUR.start;
+  show('name', nameOn ? clamp(nm * 2) * (1 - prog(t, TOUR.start - 0.2, TOUR.start)) : 0, 'scale(' + (0.6 + 0.4 * Math.min(1.08, nm) + pulse * 0.02) + ')');
+  show('source', nameOn ? clamp(nm * 2) * (1 - prog(t, TOUR.start - 0.2, TOUR.start)) : 0);
+  const burst = prog(t, REVEAL.start, REVEAL.start + 1.4);
+  sparks.forEach(sp => { const r = ease(burst) * sp.v;
+    sp.el.style.left = (540 + Math.cos(sp.a) * r) + 'px'; sp.el.style.top = (830 + Math.sin(sp.a) * r) + 'px';
+    sp.el.style.opacity = burst > 0 && burst < 1 ? 1 - burst : 0; sp.el.style.transform = 'scale(' + sp.s + ') rotate(' + burst * 180 + 'deg)'; });
+}
+
+// A camera state that frames one part (or the whole card): scale, then where the card's corner goes.
+function frame(part) {
+  if (!part) { const sc = 1460 / CH; return { s: sc, x: 540 - CW * sc / 2, y: 330 }; }
+  const [x, y, w, h] = PARTS[part], sc = Math.min(940 / (w * CW), 760 / (h * CH));
+  return { s: sc, x: 540 - (x + w / 2) * CW * sc, y: 860 - (y + h / 2) * CH * sc };
+}
+const mix = (a, b, k) => ({ s: a.s + (b.s - a.s) * k, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+function tour(t, pulse) {
+  const on = t >= TOUR.start - 0.05 && t < LAST_SCENE.end;
+  const out = prog(t, LAST_SCENE.end - 0.25, LAST_SCENE.end);
+  // The card rises in whole, then the camera moves to each part as it is said, and stays on the syncs.
+  const stops = [[TOUR.start, null]].concat(WHO.stops.map((part, i) => [TOUR.marks[i] - 0.35, part]));
+  let cam = frame(null), now = null;
+  stops.forEach(([at, part], i) => { if (i && t >= at) { cam = mix(cam, frame(part), easeIO(prog(t, at, at + 0.6))); now = part; } });
+  const rise = back(prog(t, TOUR.start - 0.05, TOUR.start + 0.5));
+  $('cam').style.display = on ? 'block' : 'none';
+  $('cam').style.opacity = clamp(rise * 2) * (1 - out);
+  $('cam').style.transform = 'translate(' + cam.x + 'px,' + (cam.y + (1 - Math.min(1, rise)) * 500 + Math.sin(t * 2) * 4) + 'px) scale(' + cam.s + ')';
+  // The part being said, ringed once the camera has arrived, and named in a pill above.
+  const settled = now ? prog(t, stops.find(([, p]) => p === now)[0] + 0.5, stops.find(([, p]) => p === now)[0] + 0.75) : 0;
+  if (now) { const [x, y, w, h] = PARTS[now];
+    Object.assign($('ring').style, { left: (cam.x + x * CW * cam.s - 10) + 'px', top: (cam.y + y * CH * cam.s - 10) + 'px',
+      width: (w * CW * cam.s + 20) + 'px', height: (h * CH * cam.s + 20) + 'px' }); }
+  show('ring', on && now ? settled * (1 - out) : 0);
+  $('part').textContent = { headline: 'YOU ARE MOST LIKE', patterns: 'YOUR PATTERNS', syncs: 'MOST IN SYNC WITH', motives: 'WHAT MOTIVATES YOU',
+    love: 'SHOWS CARE AS', type: 'MBTI', bigFive: 'BIG FIVE', standFor: 'VALUES & BELIEFS' }[now] || '';
+  if (now) $('part').style.top = (cam.y + PARTS[now][1] * CH * cam.s - 100) + 'px';
+  show('part', on && now ? settled * (1 - out) : 0, 'translateX(-50%)');
+  // On the tag: the face of the one to tag, ringed and pulsing.
+  if (!TAG) { ['face', 't1', 't2'].forEach(id => show(id, 0)); return; }
+  if (now === 'syncs') { const [x, y, w, h] = PARTS.faces[WHO.face], r = w * CW * cam.s * 1.18;
+    Object.assign($('face').style, { left: (cam.x + (x + w / 2) * CW * cam.s - r / 2) + 'px', top: (cam.y + (y + h / 2) * CH * cam.s - r / 2) + 'px',
+      width: r + 'px', height: r + 'px' }); }
+  const f = back(prog(t, TAG.vo - 0.2, TAG.vo + 0.2));
+  show('face', on && t >= TAG.vo - 0.2 ? clamp(f * 2) * (1 - out) : 0, 'scale(' + (Math.min(1.06, f) + 0.04 * Math.sin(t * 7)) + ')');
+  const a = back(prog(t, TAG.vo - 0.15, TAG.vo + 0.25)), b = back(prog(t, TAG.marks[1] - 0.15, TAG.marks[1] + 0.25));
+  show('t1', on && t >= TAG.vo - 0.15 ? clamp(a * 2) * (1 - out) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a) + pulse * 0.01) + ')');
+  show('t2', on && t >= TAG.marks[1] - 0.15 ? clamp(b * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, b)) * 30 + 'px)');
+}
+
+function close(t, pulse) {
+  const s = CLOSE, on = t >= s.start - 0.05;
+  if (!on) { ['c1', 'site'].forEach(id => show(id, 0)); return; }
+  const a = back(prog(t, s.vo - 0.15, s.vo + 0.25));
+  show('c1', clamp(a * 2), 'scale(' + (0.75 + 0.25 * Math.min(1, a) + pulse * 0.015) + ')');
+  const d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
+  show('site', clamp(d * 2), 'translateX(-50%) scale(' + (Math.min(1.05, d) + pulse * 0.04 * Math.min(1, d)) + ')');
+}
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>

@@ -1,220 +1,2218 @@
-const path = require('path');
-const crypto = require('crypto');
-const express = require('express');
-const session = require('express-session');
-const bcrypt = require('bcryptjs');
-const QRCode = require('qrcode');
+// PsycheAI server: serves the static app and proxies the two model calls.
+//
+// The proxy exists because an API key cannot ship in a static page. Everything
+// else still happens in the browser — the Instagram archive is unzipped and
+// reduced to an evidence digest client-side, and only that digest is posted
+// here. The raw export never leaves the user's device.
+'use strict';
 
-const db = require('./src/db');
-const Q = require('./src/questionnaire');
-const { analyzeSocialText, blendTraits } = require('./src/textAnalysis');
-const { buildReport } = require('./src/compatibility');
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const provider = require('./lib/provider');
+const prompts = require('./lib/prompts');
+const payments = require('./lib/stripe');
+const paymentLedger = require('./lib/premiumLedger');
+const budget = require('./lib/budget');
+const results = require('./lib/results');
+const usage = require('./lib/usage');
+const privacy = require('./lib/privacy');
+const mbtiScore = require('./lib/mbtiScore');
+const rateLimit = require('./lib/ratelimit');
+const nonces = require('./lib/nonce');
+const version = require('./lib/version');
+const stats = require('./lib/stats');
+const promo = require('./lib/promo');
+const store = require('./lib/store');
+const referral = require('./lib/referral');
+const askCredits = require('./lib/askcredits');
+const links = require('./lib/links');
+const syncbox = require('./lib/syncbox');
+const indexNow = require('./lib/indexnow');
+const syncSeal = require('./lib/syncseal');
+const staticFiles = require('./lib/staticfiles');
+// Short personal links need a store that survives a deploy (Upstash); in
+// memory they would break on the next one, so the page keeps the long link.
+// PSYCHEAI_SHORT_LINKS=1 turns them on regardless (the test suite).
+const SHORT_LINKS = () => store.enabled() || String(process.env.PSYCHEAI_SHORT_LINKS || '') === '1';
+// Read once: the build does not change while the process runs.
+const BUILD = version.describe();
+// Required directly rather than reached through provider.active: the paid
+// analysis is a fixed choice of its own, independent of whichever provider
+// the free report used, so a deployment with only XAI_API_KEY set still has
+// no premium engine — see premiumEngine() below — rather than silently
+// falling back to whichever provider happened to win auto-detection.
+//
+// Both engines are required unconditionally (not just the chosen one) so
+// PSYCHEAI_PREMIUM_PROVIDER below can flip between them with no code change —
+// see the constant just below for how to revert.
+const claude = require('./lib/claude');
+const gemini = require('./lib/gemini');
 
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/vendor/jsqr.js', express.static(path.join(__dirname, 'node_modules/jsqr/dist/jsQR.js')));
+// Which engine the paid pass runs on. Gemini 3.8 Flash is the current choice,
+// on price — the same four sections cost a fraction as much to generate.
+// Set PSYCHEAI_PREMIUM_PROVIDER=anthropic to put it back on Claude Sonnet 5,
+// which is what this ran on before: that model is more expensive but follows
+// the wellness section's hard limits more reliably, which is worth revisiting
+// if Gemini's output quality on the paid sections turns out not to hold up.
+const PREMIUM_PROVIDER = process.env.PSYCHEAI_PREMIUM_PROVIDER || 'gemini';
+const PREMIUM_ENGINES = { anthropic: claude, gemini };
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000 },
-}));
+const ROOT = path.join(__dirname, 'docs');
+
+// The browser's digest module, loaded here so the cost ceilings are held where
+// the money is spent. What the model reads is derived on this side from
+// whatever the client sent — a client that posts a padded digest gets exactly
+// what an honest client gets, for exactly what an honest client costs. Run as a script rather than required because it is a
+// browser file: it hangs itself off `globalThis` and exports nothing.
+// A browser file run once at boot: it hangs itself off `globalThis`.
+function loadBrowserScript(name, global) {
+  const file = path.join(__dirname, 'docs', name);
+  require('node:vm').runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
+  return globalThis[global];
+}
+const Digest = loadBrowserScript('digest.js', 'PsycheDigest');
+// The card's shape (docs/card.js), loaded the same way: a sync is sent two
+// cards, and only the fields a card has, each held to its length, go on.
+const Card = loadBrowserScript('card.js', 'PsycheCard');
+const PORT = Number(process.env.PORT) || 3000;
+
+// How many free-report generations a reader gets before the app asks them to
+// pay for the next one. Enforced in the browser, not here — see handleAnalyse
+// for why the server cannot tell whose first run it is, and the README for
+// what that split does and does not buy.
+const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
+// The least of the reader's own writing a card is read from (October 2026):
+// under it the card is mostly guesswork, and the page says so before the run.
+const MIN_OWN_WRITING = Number.isFinite(Number(process.env.PSYCHEAI_MIN_WRITING)) && process.env.PSYCHEAI_MIN_WRITING !== ''
+  ? Number(process.env.PSYCHEAI_MIN_WRITING) : 20000;
+// One free card per Instagram account (lib/referral.js). On unless set to 0 —
+// for a test server, or an operator checking their own account repeatedly.
+const ONE_FREE_PER_ACCOUNT = String(process.env.PSYCHEAI_FREE_PER_ACCOUNT || '1').trim() !== '0';
+// A new reader's first, free run (October 2026). `merged`, the default: the
+// card and the Psyche Report together, one free read per Instagram account,
+// written the way a paid bundle is (mergedOrTwoCalls). `card`: the card alone,
+// with the report unlocked after — the path before. Set PSYCHEAI_FIRST_RUN=card
+// to go back; nothing else changes.
+const FIRST_RUN = () => String(process.env.PSYCHEAI_FIRST_RUN || 'merged').trim().toLowerCase() === 'card'
+  ? 'card' : 'merged';
+
+// A single backdoor around the whole payment flow, for the people who should
+// not need to pay — friends, reviewers, whoever this server's operator wants
+// to wave through. It bypasses verifyPaid and the usage ledger entirely
+// rather than fabricating a fake PaymentIntent for them to flow through: a
+// promo redemption never touches lib/stripe.js or lib/premiumLedger.js at
+// all, so it works even on a deployment with no Stripe key configured, as
+// long as the premium (Claude) engine itself is set up.
+//
+// There is no default, and that is the whole point.
+//
+// This used to fall back to a literal string when PSYCHEAI_PROMO_CODE was
+// unset. That string was in this file, in the README, and in the test suite,
+// and this repository is public — so the backdoor stood open to anyone who
+// read it, and every paid gate in the app was decorative on any deployment
+// that had not set the variable. A secret with a default committed beside it
+// is not a secret; it is a password prompt that ships with the password.
+//
+// Unset now means promo redemption is switched off entirely rather than
+// falling back to something guessable. An operator who wants the backdoor
+// sets a random value in the environment; an operator who forgets gets no
+// backdoor, which is the safe direction to fail in.
+//
+// Beside it, PSYCHEAI_PROMO_CODES holds creator codes, each with a cap and an
+// optional last day — see lib/promo.js. Neither kind has a default.
+//
+// A code is checked against what it would unlock (the digest), so a creator
+// code at its cap still answers a retry for a report it already paid for.
+//
+// Only a code worth 100% opens anything by itself. A discount code is refused
+// on every free path, with what to do instead: it is spent through the payment
+// sheet, on a PaymentIntent re-priced by handleCreatePaymentIntent.
+function isValidPromoCode(code, key) {
+  return !promoRefusal(code, key);
+}
+function promoRefusal(code, key) {
+  const checked = promo.check(code, key);
+  if (!checked.ok) return checked.reason;
+  if (checked.percent < 100) {
+    return 'That code takes ' + checked.percent + '% off. Enter it on the payment sheet and pay the rest.';
+  }
+  return null;
+}
+
+// A discount code is spent once the report its payment bought is written: the
+// code is read off the PaymentIntent, where this server wrote it, rather than
+// from anything the request says.
+function discountRedeemed(intent, key) {
+  const code = intent && intent.metadata && intent.metadata.promo;
+  if (code && promo.redeem(code, key)) stats.count('promo:' + String(code).toUpperCase());
+}
+
+// Once a report has actually been written on a code: a creator code spends a
+// use (once per distinct report), and the redemption is counted.
+function promoRedeemed(code, key) {
+  const checked = promo.check(code, key);
+  if (!checked.ok) return;
+  if (checked.creator && promo.redeem(code, key)) stats.count('promo:' + checked.code);
+  if (!checked.creator) stats.count('promo:master');
+}
+
+// How much a request body may hold, by route (October 2026). Every POST used
+// to be buffered up to 24 MB, a figure left from when photographs travelled
+// with the digest; nothing sends them now. Small routes (a step, a referral
+// code, a link, a payment) carry a few hundred bytes and are held to 64 KB.
+// The three that carry a digest and a report are held to 2 MB: the digest
+// as forModel passes it is at most DEEP_DIGEST_CHARS (179,000) characters of
+// evidence plus its structure, the card or report beside it up to
+// ASK_REPORT_MAX (150,000), and even written entirely in three-byte UTF-8
+// that is about 1 MB; real ones are a few hundred KB. A Psyche Sync carries
+// two shaped cards, under 4 KB each (Card.shape), so it is a small route. A
+// body over its limit is refused from its Content-Length before any of it is
+// read, and stopped as soon as it passes the limit when no length is given.
+const SMALL_BODY_BYTES = 64 * 1024;
+const LARGE_BODY_BYTES = 2 * 1024 * 1024;
+const LARGE_BODY_ROUTES = new Set(['/api/analyse', '/api/premium-analysis', '/api/ask']);
+const bodyLimitFor = route => (LARGE_BODY_ROUTES.has(route) ? LARGE_BODY_BYTES : SMALL_BODY_BYTES);
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+// The address the pages give as their own (their <link rel="canonical">).
+const SITE_ORIGIN = 'https://psycheai.io';
+
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
+};
 
 // ---------- helpers ----------
 
-const stmts = {
-  userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
-  userById: db.prepare('SELECT * FROM users WHERE id = ?'),
-  userByQr: db.prepare('SELECT * FROM users WHERE qr_code = ?'),
-  insertUser: db.prepare('INSERT INTO users (email, password_hash, display_name, qr_code) VALUES (?, ?, ?, ?)'),
-  profileByUser: db.prepare('SELECT * FROM profiles WHERE user_id = ?'),
-  upsertProfile: db.prepare(`
-    INSERT INTO profiles (user_id, age, location, bio, socials_json, social_text, answers_json, traits_json, interests_json, completed, updated_at)
-    VALUES (@user_id, @age, @location, @bio, @socials_json, @social_text, @answers_json, @traits_json, @interests_json, @completed, datetime('now'))
-    ON CONFLICT(user_id) DO UPDATE SET
-      age=@age, location=@location, bio=@bio, socials_json=@socials_json, social_text=@social_text,
-      answers_json=@answers_json, traits_json=@traits_json, interests_json=@interests_json,
-      completed=@completed, updated_at=datetime('now')`),
-  insertMatch: db.prepare('INSERT INTO matches (scanner_id, scanned_id, score, report_json) VALUES (?, ?, ?, ?)'),
-  matchById: db.prepare('SELECT * FROM matches WHERE id = ?'),
-  matchesForUser: db.prepare(`
-    SELECT m.*, u1.display_name AS scanner_name, u2.display_name AS scanned_name
-    FROM matches m JOIN users u1 ON u1.id = m.scanner_id JOIN users u2 ON u2.id = m.scanned_id
-    WHERE m.scanner_id = ? OR m.scanned_id = ? ORDER BY m.created_at DESC LIMIT 50`),
+function sendJson(response, status, payload) {
+  const body = JSON.stringify(payload);
+  response.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'no-store',
+  });
+  response.end(body);
+}
+
+// How often a generating request writes a byte. Well inside the idle windows
+// that actually bite — reverse proxies commonly cut a silent connection at 60
+// seconds, mobile carriers sooner — and cheap enough to be invisible.
+const KEEPALIVE_EVERY_MS = Number(process.env.PSYCHEAI_KEEPALIVE_PING_MS) || 15000;
+
+/**
+ * Run a long generation with bytes trickling out while it works.
+ *
+ * An analysis takes minutes and, until this existed, sent nothing at all until
+ * it was finished. Everything between the browser and this process treats a
+ * silent connection as a dead one: proxies cut it, mobile carriers drop the
+ * NAT entry, a backgrounded phone discards the page. The reader then saw
+ * "Could not reach the PsycheAI server", which was never true — the server was
+ * mid-sentence.
+ *
+ * The trickle is whitespace, which is the trick that makes this safe. Leading
+ * whitespace is legal JSON, so a client that has always called
+ * `response.json()` keeps working with no change: it parses "   \n{...}"
+ * exactly as it parsed "{...}". No new content type, no framing to agree on,
+ * nothing for an old client to fail on.
+ *
+ * The cost is that the status code is committed before the work starts, so a
+ * failure during generation cannot be a 502 any more — it is a 200 whose body
+ * carries `{ error }`. `docs/llm.js` therefore treats an `error` field as a
+ * failure whatever the status, and the pre-flight checks that *do* need real
+ * status codes — payment, quota, bad body — all still run before this is
+ * called and still send theirs.
+ *
+ * `X-Accel-Buffering: no` is not decoration: nginx and several hosted proxies
+ * buffer a response body by default, which would hold the whitespace and
+ * reproduce exactly the silence this removes.
+ */
+/**
+ * What a failure may say to the reader (October 2026). The server's own
+ * refusals — a payment that does not match, a body too large, a code used up
+ * — are written for the reader and go out as they are. Anything from a model
+ * provider, or anything unexpected, is written for whoever runs the server:
+ * it can name the model, the API key, the service account or the setting to
+ * change, and reached the reader word for word. Those go to the log, and the
+ * reader is told plainly what happened in words that name none of it: busy
+ * (a rate limit, a quota, an overload), declined by the AI's own filter, cut
+ * off, or just that something went wrong.
+ */
+const PUBLIC_ERRORS = {
+  busy: 'PsycheAI is busy right now. Wait a minute and try again.',
+  declined: 'The AI declined to write this one. That sometimes happens to ordinary content – try again.',
+  incomplete: 'Your read came back incomplete. Please try again.',
+  failed: 'Something went wrong while writing your read. Please try again in a moment.',
+};
+function publicError(error) {
+  const status = Number(error && error.status) || 0;
+  const fromProvider = Boolean(error && error.provider);
+  // The server's own words, said to the reader on purpose: a 4xx it raised itself.
+  if (!fromProvider && status >= 400 && status < 500 && status !== 429 && error.message) {
+    return { status, message: error.message };
+  }
+  // A provider's raw error, mapped by its own module to a status first.
+  let mapped = { status: status || 500 };
+  if (!status && provider.active) {
+    try { mapped = provider.active.describeError(error) || mapped; } catch (ignored) { /* keep 500 */ }
+  }
+  const code = Number(mapped.status) || 500;
+  const text = String((error && error.message) || '');
+  const message = code === 429 || code === 503 ? PUBLIC_ERRORS.busy
+    : code === 422 ? PUBLIC_ERRORS.declined
+      : /length limit|incomplete/i.test(text) ? PUBLIC_ERRORS.incomplete
+        : PUBLIC_ERRORS.failed;
+  return { status: code >= 400 && code < 600 ? code : 500, message };
+}
+
+async function sendJsonWhileWorking(response, produce) {
+  response.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Accel-Buffering': 'no',
+  });
+  const timer = setInterval(() => {
+    // A space, not a newline: both are legal JSON whitespace, and a space
+    // cannot be mistaken for a line-delimited protocol by anything reading
+    // this by eye.
+    if (!response.writableEnded) response.write(' ');
+  }, KEEPALIVE_EVERY_MS);
+  // Unref'd so a pending ping never holds the process open on shutdown.
+  if (typeof timer.unref === 'function') timer.unref();
+  try {
+    const payload = await produce();
+    clearInterval(timer);
+    response.end(JSON.stringify(payload));
+  } catch (error) {
+    clearInterval(timer);
+    const described = publicError(error);
+    // The message only — never the body, which is somebody's evidence digest.
+    console.error('[generation]', error && error.message ? error.message : error);
+    if (!response.writableEnded) response.end(JSON.stringify({ error: described.message }));
+  }
+}
+
+/**
+ * Answer from what this process already has, if it has it: a report for this
+ * exact question that finished minutes ago, or one being generated right now.
+ *
+ * Returns a promise to await when it took the request, or null when there is
+ * nothing to serve and the caller should do the work itself.
+ *
+ * The decision is made synchronously and the awaiting is left to the caller,
+ * which is not a style preference. Every call site registers its own work with
+ * `results.share` immediately after a null from here, and an `await` in
+ * between would let a second request look, see nothing running, and start a
+ * duplicate generation a moment before the first one registered — the race
+ * this whole path exists to close. Keep the two adjacent.
+ *
+ * The in-flight case goes through `sendJsonWhileWorking` rather than
+ * `sendJson`, because attaching to work that started four minutes ago can
+ * still mean waiting minutes for it, and a silent connection is what the
+ * reader was retrying to escape in the first place.
+ */
+function servedFromMemory(response, kind, key, background) {
+  const cached = results.get(kind, key);
+  if (cached) {
+    // With what the browser needs to release the sealed copy once it has this.
+    sendJson(response, 200, Object.assign({}, cached, { release: { job: results.keyFor(kind, key), unlock: results.unlockFor(kind, key) } }));
+    return Promise.resolve();
+  }
+  const running = results.pending(kind, key);
+  if (!running) return null;
+  // A background caller is told where to look rather than made to wait: it
+  // already knows how to poll, and the job it would have started is the one
+  // already in flight.
+  if (background) {
+    sendJson(response, 202, { job: results.keyFor(kind, key), unlock: results.unlockFor(kind, key), status: 'running' });
+    return Promise.resolve();
+  }
+  return sendJsonWhileWorking(response, () => running);
+}
+
+/**
+ * Run one generation, either holding the connection open for it or handing
+ * back a job to poll for.
+ *
+ * The blocking form is the original and is kept working for a page that was
+ * loaded before this deployed — during a rollout the browser holding an old
+ * docs/llm.js and the server running new code are the same reader, and a
+ * response shape it cannot parse would break them mid-analysis.
+ *
+ * The background form is what the app asks for now. The connection carries the
+ * job key and closes; the work goes on in this process regardless of who is
+ * still listening, because it always did — Node never aborted a handler when
+ * the client disconnected, which is precisely why the result cache had to
+ * exist. What changes is that the reader is no longer required to be there
+ * when it lands.
+ *
+ * `settle` runs when the work finishes either way, which is where a ledger
+ * hold has to be released: in the background form the handler returns long
+ * before the model does, so a `finally` around this would let go of the hold
+ * while the generation it guards is still running.
+ */
+function generate(response, opts) {
+  const { background, kind, key, produce, settle } = opts;
+  const work = results.share(kind, key, produce);
+  if (settle) work.then(settle, settle);
+  if (!background) return sendJsonWhileWorking(response, () => work);
+  sendJson(response, 202, { job: results.keyFor(kind, key), unlock: results.unlockFor(kind, key), status: 'running' });
+  return Promise.resolve();
+}
+
+/**
+ * Whether this caller wants a job back rather than a held connection.
+ *
+ * A field in the body rather than a route of its own, so that the payment,
+ * budget and ledger checks above each call site are not duplicated into a
+ * second handler that could drift from the first. It sits beside `digest`
+ * rather than inside it, so the cache key — which is the digest alone — is
+ * untouched by it.
+ */
+function wantsBackground(body) {
+  return Boolean(body && body.background === true);
+}
+
+// What has become of a job somebody started. Deliberately unguarded by a
+// nonce: it is a read, it costs nothing to serve, and a client polling a
+// three-minute analysis every few seconds would otherwise need a ticket per
+// poll and exhaust its own allowance. What stands in for the ticket is the key
+// itself — a SHA-256 of the digest, which cannot be produced without the
+// digest, so possession of it already means possession of the evidence.
+// The key that unlocks a finished report (lib/results.js), from the header the
+// browser sends it in: never the URL, so it is in no access log.
+const resultUnlock = request => String(request.headers['x-result-key'] || '');
+
+function handleResult(request, response, url) {
+  const job = String(url.searchParams.get('job') || '');
+  if (!/^[a-z-]+:[0-9a-f]{64}$/.test(job)) {
+    sendJson(response, 400, { error: 'That is not a job key.' });
+    return;
+  }
+  const found = results.lookup(job, resultUnlock(request));
+  if (found.status === 'done') {
+    sendJson(response, 200, Object.assign({ status: 'done' }, found.value));
+    return;
+  }
+  if (found.status === 'failed') {
+    sendJson(response, 200, { status: 'failed', error: found.error });
+    return;
+  }
+  if (found.status === 'running') {
+    sendJson(response, 200, { status: 'running' });
+    return;
+  }
+  // Finished, but sealed and asked for without its key (a page from before
+  // reports were sealed): as good as gone to this caller, who starts again.
+  // Not a failure and not a refusal: this process has no memory of the job,
+  // because it restarted or because the result aged out. Its own state, so
+  // the client can start the work again rather than reporting an error it
+  // cannot act on.
+  sendJson(response, 200, { status: 'unknown' });
+}
+
+// The browser has its report: forget the sealed copy now rather than in four
+// hours. Only with the key it was sealed under (lib/results.js, release).
+function handleRelease(request, response, url) {
+  const job = String(url.searchParams.get('job') || '');
+  if (!/^[a-z-]+:[0-9a-f]{64}$/.test(job)) {
+    sendJson(response, 400, { error: 'That is not a job key.' });
+    return;
+  }
+  sendJson(response, 200, { released: results.release(job, resultUnlock(request)) });
+}
+
+function readJsonBody(request) {
+  const limit = request.psycheBodyLimit || SMALL_BODY_BYTES;
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    request.on('data', chunk => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(Object.assign(new Error('Request body too large.'), { status: 413 }));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch (error) {
+        reject(Object.assign(new Error('Request body was not valid JSON.'), { status: 400 }));
+      }
+    });
+    request.on('error', reject);
+  });
+}
+
+// ---------- routes ----------
+
+async function handleStatus(response) {
+  const status = provider.describe();
+  // Only what the page uses, and nothing about what is running behind it. This
+  // route is public and the repository is too, so the model, the premium
+  // engine, the exact commit, the branch, the deploy time, the platform, the
+  // payment settings and which keys are missing would tell anyone exactly
+  // which code and configuration to aim at. The operator reads those from the
+  // startup log and the host's dashboard instead (see the listen callback).
+  sendJson(response, 200, {
+    ready: status.ready,
+    mock: status.mock,
+    // How many analyses a reader gets before being asked to pay. Served rather
+    // than hard-coded in docs/app.js so the page and the server cannot drift.
+    freeAnalyses: FREE_ANALYSES,
+    minWriting: MIN_OWN_WRITING,
+    shortLinks: SHORT_LINKS(),
+    // A new reader's first free run: 'merged' (the card and its report
+    // together) or 'card' (the card alone). PSYCHEAI_FIRST_RUN; see FIRST_RUN.
+    firstRun: FIRST_RUN(),
+    // The release number for the footer, and nothing finer.
+    build: { version: BUILD.version },
+  });
+}
+
+// Every analysis route needs a configured provider; refuse early and clearly
+// rather than throwing an SDK error halfway through.
+// The set-up detail goes to the log, not to the reader (publicError).
+const UNAVAILABLE = 'Analyses are unavailable on this server right now. Please try again later.';
+function requireEngine(response) {
+  if (!provider.active) {
+    console.error('[engine] no model provider configured. ' + provider.describe().hint);
+    sendJson(response, 503, { error: UNAVAILABLE });
+    return null;
+  }
+  return provider.active;
+}
+
+// The paid analysis runs on PREMIUM_PROVIDER's engine — a fixed choice, not
+// whichever provider the free report happened to use — so it is resolved
+// independently of provider.active rather than through requireEngine above.
+// Mock mode is the one exception: PSYCHEAI_MOCK=1 (or PSYCHEAI_PROVIDER=mock)
+// already makes provider.active the mock module, and premium follows it
+// there too, the same way a developer testing the free report never needs a
+// real API key. Outside mock mode, PREMIUM_PROVIDER's engine needs its own
+// key regardless of what the main provider is running on — a server with
+// only ANTHROPIC_API_KEY set has no premium engine while PREMIUM_PROVIDER is
+// still 'gemini', for instance — see requirePremiumEngine below, which is
+// what actually enforces this at the route.
+function premiumEngine() {
+  if (provider.active && provider.active.name === 'mock') return provider.active;
+  const engine = PREMIUM_ENGINES[PREMIUM_PROVIDER];
+  return engine && engine.hasKey() ? engine : null;
+}
+
+function requirePremiumEngine(response) {
+  const engine = premiumEngine();
+  if (!engine) {
+    const named = PREMIUM_PROVIDER === 'anthropic'
+      ? 'Claude, and needs ANTHROPIC_API_KEY'
+      : 'Gemini, and needs GEMINI_API_KEY';
+    console.error('[engine] the paid analysis always uses ' + named + ' configured — set PSYCHEAI_PREMIUM_PROVIDER to switch which engine it uses.');
+    sendJson(response, 503, { error: UNAVAILABLE });
+    return null;
+  }
+  return engine;
+}
+
+// The free summary card, the full report, and the one route with three ways in.
+//
+// Without payment it is the card: conclusions only, from the same digest the
+// full report reads, held to FREE_COST_CAP. Bounded otherwise only by the
+// server-wide daily ceiling in lib/budget.js.
+//
+// With an 'analysis' payment or a promo code it is the same card, bought — a
+// re-run past the free allowance, verified against Stripe and not counted
+// against the free ceiling, because the reader has paid for that call.
+//
+// With an 'unlock' payment or a promo code it is the full premium report, in
+// one call: every explanation behind the card, written to explain the card the
+// reader already has (`anchor`) rather than to reach its own conclusions
+// afresh, plus the roast and the four premium sections. That is the US$5
+// purchase. /api/premium-analysis still answers for a page loaded before this
+// deployed, and for nothing else.
+//
+// What this deliberately does NOT do is decide whose first run it is. That
+// would need the server to recognise a returning device, which is exactly
+// what docs/index.html promises it never does ("no visitor count"). So the
+// per-device allowance is the browser's own claim, made in docs/app.js, and
+// what the server enforces is narrower and honest: a payment presented here
+// must be real, must be for the right product, and must not already have been
+// spent — and the full report is never produced without one.
+// A report with the private names its digest supplied taken out. Logs how
+// often it happens, never what was removed.
+// The model decides its letters (lib/mbtiScore.js only checks them). Where
+// its own ledger would tally the other letter, or its extraversion score sits
+// on the other side of 50 from its E/I letter, that is logged and counted
+// (`mbti_flip`, and per axis), so the rate shows and the prompt can be
+// tightened if it climbs. Nothing is changed.
+function countFlips(flips, kind) {
+  if (!flips.length) return;
+  console.warn('[mbti] ' + kind + ': the answer disagrees with its own ledger or score: ' + flips.join(', '));
+  stats.count('mbti_flip');
+  for (const flip of flips) stats.count('mbti_flip:' + flip.slice(0, 3).replace('/', ''));
+}
+
+function scrubbed(result, digest, kind) {
+  // The MBTI letters scored from their ledgers (lib/mbtiScore.js): the model
+  // judged each piece of evidence, the code adds them up, so the same ledger
+  // always gives the same letters. A card sent back beside its report too.
+  if (result && result.data && typeof result.data === 'object') {
+    const flips = [];
+    mbtiScore.scoreMbti(result.data, digest, flips);
+    if (result.data.freeCard) mbtiScore.scoreMbti(result.data.freeCard, digest, flips);
+    countFlips(flips, kind);
+  }
+  const cleaned = privacy.scrubResult(result, digest);
+  if (cleaned !== result) console.log('privacy: removed private names from a ' + kind + ' report');
+  return readerText(cleaned);
+}
+
+// The site's own style in whatever the model writes, in the card, the report
+// and the Sync read alike: every em dash (—) shown as an en dash (–), and the
+// reader's data never called "the export" — "the export reveals you are …"
+// read as a file talking about them. The prompts ask for both (DATA_WORDS in
+// lib/prompts.js); this is the backstop.
+const EXPORT_WORDS = /\b(the|this|that|your|an?) ((?:Instagram|Google Takeout|Google|Facebook|WhatsApp) )?(?:data )?(?:exports?|archives?)\b(?! your information)/gi;
+function dataWords(text) {
+  return text.replace(EXPORT_WORDS, (match, lead, source) =>
+    (lead.charAt(0) === lead.charAt(0).toUpperCase() ? 'Your' : 'your') + ' ' + (source || '') + 'data');
+}
+function readerText(value) {
+  if (typeof value === 'string') {
+    const dashed = value.indexOf('\u2014') < 0 ? value : value.replace(/\u2014/g, '\u2013');
+    return /export|archive/i.test(dashed) ? dataWords(dashed) : dashed;
+  }
+  if (Array.isArray(value)) return value.map(readerText);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const key of Object.keys(value)) out[key] = readerText(value[key]);
+    return out;
+  }
+  return value;
+}
+
+const CARD_ALONE_REFUSAL = 'Past your free Psyche Card, a new card comes with your Psyche Report: US$5 for both.';
+// A free read that names no account (handleAnalyse). The page says it in its
+// own words (docs/copy.js, freeNoAccount); this is for anything else.
+const NO_ACCOUNT_REFUSAL = 'This data could not be matched to its Instagram account, so a free read cannot be made from it. ' +
+  'Download your Instagram data again, in JSON, and load the whole file.';
+
+async function handleAnalyse(request, response) {
+  const body = await readJsonBody(request);
+  if (!body || typeof body.digest !== 'object' || body.digest === null || Array.isArray(body.digest)) {
+    sendJson(response, 400, { error: 'Expected a "digest" object.' });
+    return;
+  }
+
+  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  // A free full report earned through the reader's link (lib/referral.js).
+  const referralGrant = typeof body.referralGrant === 'string' ? body.referralGrant.trim() : '';
+  const paying = Boolean(promoCode || paymentIntentId || referralGrant);
+
+  // Which purchase is being spent here. 'analysis' is the ordinary US$2
+  // re-run of the free card. 'unlock' is the US$5 premium purchase, and it is
+  // the only thing that buys the full report.
+  //
+  // Naming the product cannot be used to pay less for more: verifyPaid checks
+  // the retrieved PaymentIntent's amount against *this* product's price, so
+  // an 'analysis' intent claiming to be an 'unlock' simply fails to verify.
+  // The two are ledgered under different kinds so neither eats the other's
+  // retries.
+  const product = body.product === 'unlock' ? 'unlock' : 'analysis';
+  const ledgerKind = product === 'unlock' ? 'bundled' : 'analysis';
+  // A new reader's free first read (FIRST_RUN): the page asks for 'first' on
+  // every free run, and the server decides whether that is the card alone or
+  // the card and its report together. Only with an Instagram account to hold
+  // it to, since the account is what makes it once each.
+  const firstFull = !paying && body.product === 'first' && FIRST_RUN() === 'merged' &&
+    Boolean(referral.cleanAccount(body.account));
+  const full = product === 'unlock' || firstFull;
+
+  // The paywall itself. Before this, 'unlock' with no payment fell through to
+  // the free path, which was harmless while both produced the same report. Now
+  // it would hand the paid half of the product to anyone who typed the word.
+  if (full && !paying && !firstFull) {
+    sendJson(response, 402, { error: 'The Psyche Report is part of the premium unlock.' });
+    return;
+  }
+
+  // A code buys the card and its report together, never the card alone.
+  if (promoCode && !full) {
+    sendJson(response, 402, { error: CARD_ALONE_REFUSAL });
+    return;
+  }
+
+  // What the model is sent, and under which cache key. Both calls read the
+  // same digest — Digest.forModel of whatever was posted, which for an honest
+  // client is exactly the digest it reviewed — so the card and the full
+  // premium report are written from identical evidence. The full report is
+  // keyed on the digest *and* the card it explains, so a report written to
+  // explain one card is never served to a reader holding another.
+  //
+  // The premium read is held to the premium pools — see "the premium read"
+  // in docs/digest.js and the two caps that price it; everything else to
+  // the standard pools (POOL_CAPS), priced by FREE_COST_CAP and COST_CAP.
+  // A free read is never the premium read, whatever the request says
+  // (October 2026): `deep` is honoured only on a paid or granted report.
+  const deep = full && paying && body.deep === true;
+  const sent = Digest.forModel(body.digest, { deep });
+  // The backstop for the one thing forModel cannot bound by construction —
+  // the number of keys in the few objects it copies whole. An honest digest
+  // never gets here; Digest.build lands every real export under the line.
+  // Counted as the model reads it, the same measure the trim loop uses.
+  // 179,000 for every read (Digest.budgetFor).
+  if (Digest.evidenceChars(sent) > Digest.budgetFor(sent, deep)) {
+    sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
+    return;
+  }
+  // A free first read is the card and its report from the digest alone: a
+  // card sent to anchor it is ignored, so a free read cannot be a report
+  // written to explain a card chosen by the request.
+  const anchor = full && !firstFull ? prompts.anchorFrom(body.anchor) : null;
+  // Too little of the reader's own writing to read a card from (October 2026).
+  // A report written to explain a card they already have is not held to it.
+  if (!anchor && Digest.ownWritingChars(sent) < MIN_OWN_WRITING) {
+    stats.count('refused_too_thin');
+    sendJson(response, 422, { error: 'There is not enough of your own writing in this data to read. Add WhatsApp, Google or Facebook data and try again.', tooThin: true });
+    return;
+  }
+  let kind;
+  let key;
+  let call;
+  if (full) {
+    // One call for everything the unlock buys: the written report and the
+    // four premium sections in a single response (FULL_SCHEMA).
+    kind = 'full';
+    key = anchor ? Object.assign({}, sent, { anchor }) : sent;
+    call = anchor
+      ? engine => engine.analyseFull(sent, anchor)
+      : engine => mergedOrTwoCalls(engine, sent);
+  } else {
+    kind = 'card';
+    key = sent;
+    call = engine => engine.analyseCard(sent);
+  }
+
+  // A code and a free report from a link are held to `key`, the whole of
+  // what the report is written from — the same key the result cache and a
+  // payment's binding use (October 2026). They were held to the digest
+  // alone, so a different `anchor` or `deep` wrote a second report, on the
+  // paid engine, for one use.
+  const promoProblem = promoCode ? promoRefusal(promoCode, key) : null;
+  if (promoProblem) {
+    sendJson(response, 402, { error: promoProblem });
+    return;
+  }
+  if (referralGrant) {
+    const grantProblem = !full ? 'A free report from your link unlocks the Psyche Report only.'
+      : await referral.grantRefusal(referralGrant, key, { account: body.account, legacy: body.legacyAccount, myRef: body.myRef });
+    if (grantProblem) {
+      sendJson(response, 402, Object.assign({ error: grantProblem }, grantProblem === referral.FIRST_USED ? { firstUsed: true } : {}));
+      return;
+    }
+  }
+  // Where the reader came from, as two plain facts for the day's totals (see
+  // lib/stats.js): the campaign code in the address they arrived on, if any,
+  // and whether a friend's compatibility link was waiting for this card.
+  const via = stats.cleanVia(body.via);
+  const fromInvite = body.invite === true;
+  let paidIntent = null;
+  if (paymentIntentId && !promoCode) {
+    if (!payments.hasKey()) {
+      sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+      return;
+    }
+    paidIntent = await payments.verifyPaid(paymentIntentId, product);
+    if (!paymentLedger.canUse(paymentIntentId, ledgerKind)) {
+      sendJson(response, 429, {
+        error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
+      });
+      return;
+    }
+  }
+
+  // Checked before the model call, so a day that is already over budget costs
+  // nothing rather than one more analysis. Paid calls skip the gate. A free
+  // report from a link (a grant) does not (October 2026): nobody paid for
+  // it, so it is metered by the day's free ceiling like any free read.
+  const freeFunded = !paying || Boolean(referralGrant);
+  if (freeFunded && !budget.canSpend()) {
+    sendJson(response, 503, {
+      error: referralGrant
+        ? 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC, and your free Psyche Report will still be here.'
+        : 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC – ' +
+          'or you can run one now for a small fee.',
+      budgetExhausted: true,
+    });
+    return;
+  }
+
+  // The full report is paid for, so it runs on the paid engine — the fixed
+  // choice PSYCHEAI_PREMIUM_PROVIDER names — the same as the premium sections
+  // always have. The card runs on whichever provider is active.
+  const engine = full ? requirePremiumEngine(response) : requireEngine(response);
+  if (!engine) return;
+
+  // A result for this exact question that finished minutes ago and never
+  // reached the reader, or one still being generated for it — see
+  // lib/results.js. Consulted before anything is spent: this is the same
+  // question already being answered, so it costs neither the day's budget nor
+  // the reader's payment a second time.
+  const background = wantsBackground(body);
+  // The same free card asked for again within the hours a result is held
+  // (lib/results.js). A guess is judged only against a card being written:
+  // this one was written already, and whoever asked for it has seen which
+  // character it names, so a guess sent now is a guess at a known answer
+  // (and was, with a fresh account each time, a free report on demand). It
+  // is told the guess was not counted, and any judgement the card first came
+  // with is left off; a reader whose connection dropped gets that one from
+  // the background job they resume, not from asking again.
+  const remembered = kind === 'card' && !paying && body.guess ? results.get(kind, key) : null;
+  if (remembered) {
+    const late = prompts.CHARACTER_NAMES.includes(body.guess)
+      ? { guess: body.guess, counted: false, reason: 'guessed' } : undefined;
+    sendJson(response, 200, Object.assign({}, remembered, { guess: late }));
+    return;
+  }
+  const answered = servedFromMemory(response, kind, key, background);
+  if (answered) {
+    await answered;
+    return;
+  }
+
+  // One free card per Instagram account (lib/referral.js). After the result
+  // cache, so a retry of the same card is still answered; before anything is
+  // spent, so a second free card costs nothing to refuse.
+  //
+  // A free read has to say whose it is (October 2026). It was enough to
+  // leave the account out: the check below was skipped, and every free read
+  // was the first. docs/app.js always sends one for a real export.
+  const account = referral.cleanAccount(body.account);
+  const legacyAccount = referral.cleanLegacy(body.legacyAccount);
+  if (!paying && ONE_FREE_PER_ACCOUNT && !account) {
+    stats.count('free_refused_no_account');
+    sendJson(response, 402, { error: NO_ACCOUNT_REFUSAL, noAccount: true });
+    return;
+  }
+  if (!paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account, legacyAccount)) {
+    stats.count('free_refused_account');
+    sendJson(response, 402, {
+      error: 'This Instagram account has already had its free Psyche Card. A new Psyche Card comes with your Psyche Report: US$5 for both.',
+      freeUsed: true,
+    });
+    return;
+  }
+
+  // Same hold the two premium routes take, for the same check-then-act gap:
+  // canUse read a count that recordUse will not write until the model comes
+  // back. Only for a paid run — a free one is metered by the daily budget,
+  // which is a server-wide count rather than a per-payment cap, and a promo
+  // code carries no cap at all.
+  const paidRun = Boolean(paymentIntentId && !promoCode && !referralGrant);
+  // A payment buys one report: its retries are for that report, not others.
+  const bindProblem = paidRun ? await paymentLedger.digestRefusal(paymentIntentId, ledgerKind, key) : null;
+  if (bindProblem) {
+    sendJson(response, 402, { error: bindProblem });
+    return;
+  }
+  const holdPayment = paidRun ? paymentLedger.hold(paymentIntentId, ledgerKind) : () => {};
+  if (!holdPayment) {
+    sendJson(response, 429, {
+      error: 'This payment is already generating an analysis. Wait for it to finish before trying again.',
+    });
+    return;
+  }
+  // A creator code's place under its cap, and a free report's grant, are
+  // taken now rather than counted once the report is written, so requests at
+  // once cannot spend one more than once. Given back if the report fails.
+  const holdPromo = promoCode ? promo.reserve(promoCode, key) : () => {};
+  if (!holdPromo) {
+    holdPayment();
+    sendJson(response, 402, { error: 'That code has been used up.' });
+    return;
+  }
+  const holdGrant = referralGrant ? await referral.reserveGrant(referralGrant, key) : () => {};
+  if (!holdGrant) {
+    holdPayment();
+    holdPromo();
+    sendJson(response, 402, { error: 'That free Psyche Report has already been used.' });
+    return;
+  }
+  let written = false;
+  const release = () => {
+    holdPayment();
+    holdPromo();
+    holdGrant(written);
+  };
+  // `results.share`, inside generate(), registers this generation before it
+  // awaits anything, so a retry arriving while it runs attaches to it instead
+  // of starting a second one, and stores the result on success. Storing it
+  // matters even when the socket has already died — that is what makes the
+  // reader's next attempt free — and the recording below happens once however
+  // many connections end up waiting on this call.
+  //
+  // The hold is released by `settle` rather than by a `finally`: a background
+  // request returns as soon as the job exists, minutes before the model does.
+  await generate(response, {
+    background,
+    kind,
+    key,
+    settle: release,
+    produce: async () => {
+      let result;
+      try {
+        result = await call(engine);
+      } catch (error) {
+        // A call that comes back unusable — cut off at its length limit,
+        // stopped by a filter — is billed exactly like one that succeeded, and
+        // used to leave no trace in the ledger. Recorded with why it failed, so
+        // `npm run usage` shows what failures cost and how often they happen.
+        if (error && error.usage) {
+          usage.record(kind, { usage: error.usage, model: error.model }, paying,
+            { failed: error.finishReason || 'error' });
+        }
+        throw error;
+      }
+
+      // What it cost, from what the provider reported. Recorded for every run
+      // rather than only the free ones: the budget below meters free calls,
+      // and a spend ledger that could not see the paid half would answer "what
+      // does a run cost" with half the runs.
+      usage.record(kind, result, paying);
+
+      // Both recorded only after the call actually came back, so a provider
+      // outage neither spends the day's budget nor burns the reader's payment.
+      written = true;
+      if (paying) {
+        if (paidRun) paymentLedger.recordUse(paymentIntentId, ledgerKind);
+        if (paidRun) paymentLedger.bindDigest(paymentIntentId, ledgerKind, key);
+        if (paidRun) discountRedeemed(paidIntent, key);
+      }
+      if (freeFunded) {
+        budget.record(kind);
+        // A free first read is a card and a report: about twice a card's
+        // cost (FREE_COST_CAP against MERGED_COST_CAP), so it is counted
+        // twice against the day's free ceiling, which was sized in cards.
+        // A report from a grant is counted the same way.
+        if (firstFull || referralGrant) budget.record(kind);
+      }
+      // The day's totals, counted once per report actually written.
+      const made = full ? 'full_report' : paying ? 'card_paid' : 'card';
+      stats.count(made);
+      if (firstFull) stats.count('first_full');
+      if (via) stats.count('via:' + via + (made === 'card' ? '' : ':' + made));
+      if (fromInvite && made === 'card') stats.count('card_from_invite');
+      if (promoCode) promoRedeemed(promoCode, key);
+      if (referralGrant) {
+        referral.spendGrant(referralGrant, key);
+        stats.count('referral_report');
+      }
+      // Any full report, paid or not: this account has had its first, so
+      // the free one from a friend's card is no longer theirs to use
+      // (lib/referral.js, grantRefusal).
+      if (full) referral.afterFullReport(account);
+      // One free Ask PsycheAI question per link, with its card, however the
+      // report comes (lib/askcredits.js). Awaited, so it is counted before the
+      // reply goes: the page reads the balance as soon as the result arrives.
+      await askCredits.gift(body.myRef, 'card').catch(() => {});
+      // The free card's account, and the friend who invited them. A card and
+      // its report bought together (no card to anchor to: a new device, or
+      // after Delete everything) is that link's card too, so its owner is
+      // recorded the same way: without it, friends' cards from the new link
+      // were never credited ("the referrer has to have made a card").
+      // A free first read is always marked (October 2026): sent with an
+      // `anchor` it was not, and the same account could ask again. Its
+      // anchor is ignored above, so it is always a card of its own.
+      // The guess: sent with the request by a page from before October 2026,
+      // or locked onto this job from the waiting screen (handleGuess). Taken
+      // here, once the card is written and before anyone can see it, which
+      // also closes the job to a guess arriving later.
+      const guessed = takeLockedGuess(results.keyFor(kind, key)) || body.guess;
+      if (made === 'card' || firstFull || (full && !anchor)) {
+        referral.afterFreeCard({ account, legacy: legacyAccount, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
+          guessed: made === 'card' || firstFull ? Boolean(guessed) : false })
+          .then(outcome => {
+            if (outcome && outcome.credited) {
+              stats.count('referral_friend');
+              if (via) stats.count('via:' + via + ':referral_friend');
+            }
+          })
+          .catch(() => {});
+      }
+
+      // A guess at the character, made before this first free card: judged
+      // against the card just written (lib/referral.js, judgeGuess). It came
+      // beside the digest, never inside it, so the model never saw it.
+      // A free first read with its report judges it too, against the card it
+      // wrote. A right guess is one credit on the reader's link, on either path.
+      // Any other run that writes a card (a paid one, a re-run) has the game
+      // too, for fun: told how it went, with nothing to win.
+      const guess = !guessed ? null
+        : made === 'card' || firstFull ? await judgeFor(body, guessed, result, request) : forFun(guessed, result);
+
+      // Private names out before the report is stored or served — see
+      // lib/privacy.js. The prompts forbid them; this catches the run that
+      // writes one anyway.
+      const out = scrubbed(result, sent, kind);
+      return guess ? Object.assign({}, out, { guess }) : out;
+    },
+  });
+}
+
+/**
+ * Guesses locked onto a running first read from the waiting screen (October
+ * 2026): the guessing game moved there from the front page, so a guess is
+ * made after the request has gone. Keyed by the job; CLOSED once the card is
+ * written (takeLockedGuess), so a guess can only ever be made before the
+ * answer exists anywhere a reader could see it. Held in this process, as the
+ * job itself is.
+ */
+const lockedGuesses = new Map();
+const CLOSED = Symbol('closed');
+const MAX_LOCKED_GUESSES = 5000;
+
+/** The guess locked onto this job, if any; the job takes no guess after this. */
+function takeLockedGuess(job) {
+  const locked = lockedGuesses.get(job);
+  lockedGuesses.set(job, CLOSED);
+  return typeof locked === 'string' ? locked : '';
+}
+
+// A guess for a job still being written, once: { job, guess }. Refused once
+// the card is written, or when the job is not running in this process (it
+// finished, failed, or the server restarted); the page then says the guess
+// came too late, and the card opens as it would have.
+async function handleGuess(request, response) {
+  const body = await readJsonBody(request);
+  const job = String(body && body.job || '');
+  const guess = String(body && body.guess || '');
+  if (!/^(card|full):[0-9a-f]{64}$/.test(job) || !prompts.CHARACTER_NAMES.includes(guess)) {
+    sendJson(response, 400, { error: 'That is not a guess for a running card.' });
+    return;
+  }
+  for (const key of lockedGuesses.keys()) {
+    if (results.lookup(key).status !== 'running') lockedGuesses.delete(key);
+  }
+  const held = lockedGuesses.get(job);
+  if (results.lookup(job).status !== 'running' || held === CLOSED) {
+    sendJson(response, 409, { error: 'Your card is already written, so this guess came too late.', tooLate: true });
+    return;
+  }
+  if (typeof held === 'string') {
+    sendJson(response, 409, { error: 'A guess is already locked in for this card.', guess: held, locked: true });
+    return;
+  }
+  if (lockedGuesses.size >= MAX_LOCKED_GUESSES) {
+    sendJson(response, 503, { error: 'Too many guesses waiting. Try again in a minute.' });
+    return;
+  }
+  lockedGuesses.set(job, guess);
+  stats.count('guess_locked');
+  sendJson(response, 200, { locked: true, guess });
+}
+
+/** A guess on a run that cannot win (a paid card, a re-run): how it went, and nothing more. */
+function forFun(guessed, result) {
+  const data = result && result.data;
+  const card = (data && data.freeCard) || data;
+  const character = String(card && card.essence && card.essence.character || '');
+  if (!prompts.CHARACTER_NAMES.includes(guessed) || !character) return null;
+  stats.count('guess_for_fun');
+  return { guess: guessed, character, won: guessed === character, counted: false, reason: 'forFun' };
+}
+
+/** A guess judged against the card it came with (lib/referral.js, judgeGuess), and counted. */
+async function judgeFor(body, guessed, result, request) {
+  const data = result && result.data;
+  const card = (data && data.freeCard) || data;
+  const guess = await referral.judgeGuess({
+    guess: guessed, character: card && card.essence && card.essence.character,
+    account: referral.cleanAccount(body.account), legacy: body.legacyAccount,
+    client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
+    // The prize is a credit (October 2026), on the card path too: one way to
+    // win, said the same way, whichever path PSYCHEAI_FIRST_RUN takes.
+    creditTo: String(body.myRef || ''),
+  }).catch(() => null);
+  if (guess) stats.count(guess.counted === false ? 'guess_not_counted' : guess.won ? (guess.token ? 'guess_won' : guess.credit ? 'guess_won_credit' : 'guess_won_limited') : 'guess_missed');
+  return guess;
+}
+
+/**
+ * The structured full report with no card to anchor it — a reader who added
+ * a source on the way to paying, so the report is written from evidence the
+ * card was not. The unpinned structured schema is past what Gemini will serve
+ * (see pinnedFullSchema in lib/prompts.js), so the card is decided first and
+ * the report anchored to it, exactly as on the ordinary path. The new card
+ * rides back as `freeCard`, for the browser to pin and redraw the card from.
+ * Two calls, billed as one result: this path is rare, and the alternative
+ * is a report that cannot be written at all.
+ */
+// The unlock that adds data in one call instead of two (lib/prompts.js,
+// MERGED_SYSTEM), when PSYCHEAI_MERGED_UNLOCK is on and the engine has one.
+// Read on every request, so it is switched with no deploy.
+const MERGED_UNLOCK = () => /^(1|true|yes|on)$/i.test(String(process.env.PSYCHEAI_MERGED_UNLOCK || '').trim());
+
+/**
+ * The card and the report from one call, split back into what cardThenFull
+ * returns. Falls back to cardThenFull — the two calls, which every check
+ * already trusts — when the schema is refused, the answer is cut off or
+ * unreadable, or it fails checkMerged; the fallback's usage includes the
+ * merged call's, so the ledger sees both.
+ */
+async function mergedOrTwoCalls(engine, sent) {
+  if (!MERGED_UNLOCK() || typeof engine.analyseMerged !== 'function') return cardThenFull(engine, sent);
+  const fallBack = async (why, usage) => {
+    console.warn('[unlock] one call fell back to two: ' + why);
+    stats.count('merged_fallback');
+    const two = await cardThenFull(engine, sent);
+    return usage ? Object.assign({}, two, { usage: sumUsage(usage, two.usage) }) : two;
+  };
+  let merged;
+  try {
+    merged = await engine.analyseMerged(sent);
+  } catch (error) {
+    const recoverable = error && (error.schemaRefused || /MAX_TOKENS/.test(String(error.finishReason || '')) ||
+      /JSON|parse/i.test(String(error.message || '')));
+    if (!recoverable) throw error;
+    return fallBack(error.schemaRefused ? 'schema refused' : (error.finishReason || 'unreadable answer'), error.usage);
+  }
+  const checked = prompts.checkMerged(merged.data);
+  if (!checked.ok) return fallBack(checked.problems.slice(0, 6).join('; '), merged.usage);
+  if (checked.dropped.length) console.warn('[unlock] one call: dropped ' + checked.dropped.slice(0, 6).join('; '));
+  // Thinner than the prompt asks: kept (a fallback would cost two more
+  // calls), but logged and counted, so a merge that keeps coming back thin
+  // shows in the logs and can be switched off.
+  const develop = checked.data.development && Array.isArray(checked.data.development.develop) ? checked.data.development.develop.length : 0;
+  if (develop < 2) {
+    console.warn('[unlock] one call: thin answer (' + develop + ' develop area' + (develop === 1 ? '' : 's') + ')');
+    stats.count('merged_thin');
+  }
+  stats.count('merged_unlock');
+  const split = prompts.splitMerged(checked.data);
+  return Object.assign({}, merged, { data: Object.assign({}, split.full, { freeCard: split.card }) });
+}
+
+async function cardThenFull(engine, sent) {
+  const card = await engine.analyseCard(sent);
+  // Scored before the report is anchored to it, so the report explains the
+  // letters the card will print (lib/mbtiScore.js; scoring it again later is a no-op).
+  if (card && card.data && typeof card.data === 'object') {
+    const flips = [];
+    mbtiScore.scoreMbti(card.data, sent, flips);
+    countFlips(flips, 'card');
+  }
+  const anchor = prompts.anchorFrom(card.data);
+  let full;
+  try {
+    full = await engine.analyseFull(sent, anchor);
+  } catch (error) {
+    // The card was paid for either way; the ledger should see it.
+    if (error && error.usage) error.usage = sumUsage(card.usage, error.usage);
+    throw error;
+  }
+  return Object.assign({}, full, {
+    data: Object.assign({}, full.data, { freeCard: card.data }),
+    usage: sumUsage(card.usage, full.usage),
+  });
+}
+
+function sumUsage(a, b) {
+  const out = Object.assign({}, a);
+  for (const [key, value] of Object.entries(b || {})) {
+    out[key] = typeof value === 'number' ? (Number(out[key]) || 0) + value : value;
+  }
+  return out;
+}
+
+// A single-use ticket for the routes below. Cheap to serve, rate-limited like
+// everything else, and deliberately tied to nothing: it identifies no one and
+// grants no privilege, it only proves the caller made a round trip and can
+// read our replies. See lib/nonce.js for what that is and is not worth.
+function handleNonce(response) {
+  sendJson(response, 200, { nonce: nonces.issue() });
+}
+
+// The amount is fixed in lib/stripe.js and never taken from the request — a
+// client is not trusted with what it pays. There is nothing else for the body
+// to carry: this route creates a PaymentIntent for exactly one product, the
+// "Let us roast you" unlock, and nothing report-shaped is anywhere near its
+// signature.
+async function handleCreatePaymentIntent(request, response) {
+  // Which of the two products, and nothing else — never an amount. The price
+  // of each lives in lib/stripe.js's PRODUCTS and is read from there, so the
+  // only thing a client can influence here is *what* it is buying, not what
+  // that costs. An unknown name is a 400 from productOf rather than a silent
+  // fallback to the cheaper one.
+  const body = await readJsonBody(request).catch(() => null);
+  const product = body && typeof body.product === 'string' ? body.product : 'unlock';
+  // The card alone is no longer sold (late October 2026): past the free one,
+  // a new card comes only with its report, the US$5 unlock. A PaymentIntent
+  // already made for it is still honoured on /api/analyse.
+  if (product === 'analysis') {
+    sendJson(response, 400, { error: CARD_ALONE_REFUSAL });
+    return;
+  }
+  const label = product === 'analysis' ? 'PsycheAI – additional analysis'
+    : product === 'ask' ? 'PsycheAI – Ask PsycheAI, 5 questions' : 'PsycheAI – Psyche Report';
+  // The currency the page showed its price in, from the shared table; an
+  // unknown one is charged in USD.
+  const currency = body && typeof body.currency === 'string' ? body.currency : '';
+
+  // A promo code typed into the payment sheet comes here first, to learn what
+  // it is worth. A 100% code needs no payment at all, so the answer is just
+  // that (and works on a server with no Stripe keys); a discount comes back as
+  // a PaymentIntent for what is left of the price, with the code written onto
+  // it; anything else is refused with the reason, before any report is asked for.
+  const promoCode = body && typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  if (promoCode) {
+    const checked = promo.check(promoCode, null);
+    if (!checked.ok) {
+      sendJson(response, 402, { error: checked.reason });
+      return;
+    }
+    // The full report (with a new card past the free one) and Ask
+    // PsycheAI's five questions: the things sold. A discount re-prices each
+    // the same way.
+    if (product !== 'unlock' && product !== 'ask') {
+      sendJson(response, 402, { error: 'Promo codes are for the Psyche Report and Ask PsycheAI questions.' });
+      return;
+    }
+    if (checked.percent >= 100) {
+      sendJson(response, 200, { free: true, code: checked.code });
+      return;
+    }
+    if (!payments.hasKey()) {
+      sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+      return;
+    }
+    const discount = { code: checked.code, percent: checked.percent };
+    const intent = await payments.createPaymentIntent(label, product, currency, discount);
+    sendJson(response, 200, Object.assign({}, intent, { discount }));
+    return;
+  }
+
+  if (!payments.hasKey()) {
+    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+    return;
+  }
+  sendJson(response, 200, await payments.createPaymentIntent(label, product, currency));
+}
+
+// The paid analysis — the roast. Gated on a fresh check with Stripe rather
+// than on anything the client claims — verifyPaid() re-retrieves the
+// PaymentIntent and confirms both that it succeeded and that it was for the
+// real unlock price, and paymentLedger caps how many times one payment can
+// be spent, so this is the one route in the app where "did the reader pay"
+// is actually enforced server-side rather than trusted from a boolean in
+// localStorage.
+//
+// A valid promoCode skips all of that — verifyPaid, hasKey, the ledger —
+// rather than routing through them with a fabricated identity, because there
+// is no payment to verify and no use to meter: see isValidPromoCode above.
+//
+// The digest travels in the request body exactly the way it does to
+// /api/analyse — nothing is stored between the two calls, so this is not a
+// second upload, it is the reader's browser resending evidence it already
+// held rather than the server having kept a copy of it.
+async function handlePremiumAnalysis(request, response) {
+  const body = await readJsonBody(request);
+  if (!body || typeof body.digest !== 'object' || body.digest === null) {
+    sendJson(response, 400, { error: 'Expected a "digest" object.' });
+    return;
+  }
+  const background = wantsBackground(body);
+  // What the model is sent: the whitelisted digest, held to the line, as on
+  // /api/analyse. This route used to pass the posted object on whole.
+  const sent = Digest.forModel(body.digest);
+  if (Digest.evidenceChars(sent) > Digest.budgetFor(sent)) {
+    sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
+    return;
+  }
+  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  if (promoCode) {
+    const promoProblem = promoRefusal(promoCode, body.digest);
+    if (promoProblem) {
+      sendJson(response, 402, { error: promoProblem });
+      return;
+    }
+    const engine = requirePremiumEngine(response);
+    if (!engine) return;
+    const answeredPromo = servedFromMemory(response, 'premium', sent, background);
+    if (answeredPromo) {
+      await answeredPromo;
+      return;
+    }
+    const holdPromo = promo.reserve(promoCode, body.digest);
+    if (!holdPromo) {
+      sendJson(response, 402, { error: 'That code has been used up.' });
+      return;
+    }
+    await generate(response, {
+      background,
+      kind: 'premium',
+      key: sent,
+      settle: holdPromo,
+      produce: async () => {
+        const result = await engine.analysePremium(sent);
+        usage.record('premium', result, true);
+        stats.count('premium_sections');
+        promoRedeemed(promoCode, body.digest);
+        return scrubbed(result, sent, 'premium');
+      },
+    });
+    return;
+  }
+
+  const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  if (!paymentIntentId) {
+    sendJson(response, 400, { error: 'Expected a "paymentIntentId" or "promoCode" string.' });
+    return;
+  }
+  // A payment is no longer spent here (October 2026). The page has bought the
+  // Psyche Report through /api/analyse (product 'unlock') for a long time, and
+  // a payment spent here was ledgered and bound apart from that report, so one
+  // US$5 bought the report and then the premium sections of another digest.
+  // A page old enough to ask here is told to reload; its payment carries over.
+  sendJson(response, 410, {
+    error: 'This page is out of date. Reload it and unlock your Psyche Report again – your payment carries over.',
+  });
+}
+
+// The day's totals (lib/stats.js), for whoever runs this server, behind
+// PSYCHEAI_STATS_TOKEN. Without the token set the route does not exist, the
+// same as the address list below. Creator codes are listed with how much of
+// each cap has gone.
+const STATS_TOKEN = String(process.env.PSYCHEAI_STATS_TOKEN || '').trim();
+function handleStats(request, response, url) {
+  if (!STATS_TOKEN) {
+    sendJson(response, 404, { error: 'No such endpoint.' });
+    return;
+  }
+  // The Authorization header only (October 2026): a token in the address
+  // (?token=) ends up in proxy logs and browser history.
+  const header = request.headers['authorization'] || '';
+  const given = Buffer.from(/^Bearer\s+/i.test(header) ? header.replace(/^Bearer\s+/i, '') : '', 'utf8');
+  const want = Buffer.from(STATS_TOKEN, 'utf8');
+  if (given.length !== want.length || !require('node:crypto').timingSafeEqual(given, want)) {
+    sendJson(response, 401, { error: 'Not authorised.' });
+    return;
+  }
+  // ?days=N reads that far back from the store (up to 400).
+  const back = Number(url.searchParams.get('days')) || stats.KEEP_DAYS;
+  stats.history(back).then(days => sendJson(response, 200, {
+    days, promoCodes: promo.describe(), store: store.describe(),
+  })).catch(() => sendJson(response, 200, { days: stats.snapshot(), promoCodes: promo.describe() }));
+}
+
+// The journey, step by step, for the day's totals — overall and per campaign
+// link (?via=). Steps the server cannot see for itself: arriving on a
+// campaign link, an Instagram export read on the device, the unlock opened.
+// The rest (card made, report paid for) the routes below count where they
+// happen. Counts only: no identifier is sent or kept.
+const JOURNEY_STEPS = new Set(['open', 'export_loaded', 'unlock_open', 'referral_open', 'sync_done']);
+async function handleEvent(request, response) {
+  const body = await readJsonBody(request);
+  const step = body && typeof body.event === 'string' ? body.event : '';
+  if (!JOURNEY_STEPS.has(step)) {
+    sendJson(response, 400, { error: 'Unknown step.' });
+    return;
+  }
+  const via = stats.cleanVia(body.via);
+  stats.count('step:' + step);
+  if (via) stats.count('via:' + via + ':' + step);
+  // An open of someone's link, counted for its owner as a plain number.
+  if (step === 'referral_open') referral.countOpen(body.ref);
+  // A friend's sync with the card from someone's link, counted for that link's owner.
+  if (step === 'sync_done') referral.countSync(body.ref);
+  sendJson(response, 200, { ok: true });
+}
+
+// Where a reader's invite-friends code stands, and claiming a free report from
+// it — see lib/referral.js. The secret never leaves this request.
+async function handleReferral(request, response) {
+  const body = await readJsonBody(request);
+  const status = await referral.status(body && body.secret);
+  if (!status) {
+    sendJson(response, 400, { error: 'That referral code is not valid.' });
+    return;
+  }
+  // Whether this reader's account has had a full report already, so the page
+  // never offers a free first report the run would refuse. The account's own
+  // code only, never the old username-only one (lib/referral.js): that one
+  // anybody can work out from a username, and this would say whether its
+  // owner had used PsycheAI.
+  if (body && body.account) status.first.used = await referral.firstUsedBy(body.account);
+  sendJson(response, 200, status);
+}
+// `first: true` asks for the free first report a friend's card unlocked;
+// otherwise one credit is spent on a gift.
+async function handleReferralClaim(request, response) {
+  const body = await readJsonBody(request);
+  const first = Boolean(body && body.first === true);
+  // Refused before a grant is made: this account has had its first report.
+  if (first && await referral.firstUsedBy(body && body.account, body && body.legacyAccount)) {
+    sendJson(response, 402, { error: referral.FIRST_USED, firstUsed: true });
+    return;
+  }
+  const grant = first ? await referral.claimFirst(body && body.secret) : await referral.claim(body && body.secret);
+  if (!grant) {
+    sendJson(response, 402, { error: first ? 'Your free Psyche Report unlocks once 1 connection makes their Psyche Card from your link.'
+      : 'You have no credits to spend yet.' });
+    return;
+  }
+  stats.count(first ? 'referral_first' : 'referral_gifted');
+  sendJson(response, 200, { grant, status: await referral.status(body.secret) });
+}
+
+// ---------- Ask PsycheAI ----------
+//
+// A reader with a full Psyche Report asks it questions, one credit each
+// (lib/askcredits.js). The report, the digest it was written from and the
+// question come in, the answer goes back, and nothing is kept: no question,
+// report, digest or answer is stored or logged here, and the browser keeps
+// the conversation (docs/app.js).
+async function handleAskCredits(request, response) {
+  const body = await readJsonBody(request);
+  const now = await askCredits.balance(body && body.secret);
+  if (!now) {
+    sendJson(response, 400, { error: 'That referral code is not valid.' });
+    return;
+  }
+  sendJson(response, 200, now);
+}
+
+// Five questions for a payment of the `ask` product, credited once per
+// PaymentIntent: a retry of the same payment answers with the balance.
+// Five questions, for a payment or for a promo code worth 100%. A code's use
+// is counted against the reader's link (`ask:<code>`), so one reader gets one
+// pack from a code and a capped code is spent once per reader. A discount code
+// arrives as a payment, re-priced when it was made; its use is spent here.
+async function handleAskBuy(request, response) {
+  const body = await readJsonBody(request);
+  const paymentIntentId = body && typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  const promoCode = body && typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  const now = (paymentIntentId || promoCode) ? await askCredits.balance(body.secret) : null;
+  if (!now) {
+    sendJson(response, 400, { error: 'Expected a payment or a promo code, and a referral code.' });
+    return;
+  }
+  const key = 'ask:' + now.code;
+  if (promoCode) {
+    const problem = promoRefusal(promoCode, key);
+    if (problem) {
+      sendJson(response, 402, { error: problem });
+      return;
+    }
+    const hold = promo.reserve(promoCode, key);
+    if (!hold) {
+      sendJson(response, 402, { error: 'That code has been used up.' });
+      return;
+    }
+    try {
+      const added = await askCredits.addPack(body.secret, 'promo:' + promo.check(promoCode, key).code + ':' + now.code);
+      if (added) { stats.count('ask_bought'); promoRedeemed(promoCode, key); }
+      if (added === false) {
+        sendJson(response, 402, { error: 'That code has already given you five questions.' });
+        return;
+      }
+    } finally { hold(); }
+    sendJson(response, 200, Object.assign({ added: true }, await askCredits.balance(body.secret)));
+    return;
+  }
+  const intent = await payments.verifyPaid(paymentIntentId, 'ask');
+  const added = await askCredits.addPack(body.secret, paymentIntentId);
+  if (added) { stats.count('ask_bought'); discountRedeemed(intent, key); }
+  sendJson(response, 200, Object.assign({ added: Boolean(added) }, await askCredits.balance(body.secret)));
+}
+
+/** The report the reader sends, held to what a report is, or null. */
+function askReport(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const text = JSON.stringify(value);
+  return text.length > 2 && text.length <= prompts.ASK_REPORT_MAX ? value : null;
+}
+
+async function handleAsk(request, response) {
+  const body = await readJsonBody(request);
+  const question = body && typeof body.question === 'string' ? body.question.replace(/\s+/g, ' ').trim() : '';
+  const report = askReport(body && body.report);
+  if (question.length < 3 || question.length > prompts.ASK_QUESTION_MAX || !report) {
+    sendJson(response, 400, { error: 'Ask a question of up to ' + prompts.ASK_QUESTION_MAX + ' characters about your Psyche Report.' });
+    return;
+  }
+  const history = (Array.isArray(body.history) ? body.history : []).slice(-prompts.ASK_HISTORY_MAX)
+    .filter(h => h && typeof h.q === 'string' && typeof h.a === 'string');
+  // The digest the report was written from, held to what a digest may carry
+  // (forModel) and to the premium read's size; one over it is left out, and
+  // the question is answered from the report alone.
+  let digest = null;
+  if (body.digest && typeof body.digest === 'object' && !Array.isArray(body.digest)) {
+    const sent = Digest.forModel(body.digest, { deep: true });
+    if (Digest.evidenceChars(sent) <= Digest.budgetFor(sent, true)) digest = sent;
+  }
+  const engine = requirePremiumEngine(response);
+  if (!engine) return;
+  // The credit first, so two questions at once cannot both spend the last;
+  // given back when no answer comes.
+  const refund = await askCredits.spend(body.secret);
+  if (!refund) {
+    sendJson(response, 402, { error: 'You have no questions left.', noCredits: true });
+    return;
+  }
+  let result;
+  try {
+    result = await engine.ask(report, question, history, digest);
+  } catch (error) {
+    refund();
+    if (error && error.usage) usage.record('ask', { usage: error.usage, model: error.model }, true, { failed: error.finishReason || 'error' });
+    throw error;
+  }
+  usage.record('ask', result, true);
+  stats.count('ask');
+  const data = readerText(result.data || {});
+  const answer = {
+    answer: String(data.answer || '').trim(),
+    nextSteps: (Array.isArray(data.nextSteps) ? data.nextSteps : []).map(String).filter(Boolean).slice(0, 3),
+    followUps: (Array.isArray(data.followUps) ? data.followUps : []).map(String).filter(Boolean).slice(0, 2),
+  };
+  if (!answer.answer) {
+    refund();
+    sendJson(response, 502, { error: 'PsycheAI could not answer that just now. Your question was not used – try again.' });
+    return;
+  }
+  // Whether the answer had the reader's data beside the report, for the line
+  // under it on the page.
+  sendJson(response, 200, Object.assign(answer, { fromData: Boolean(digest), credits: await askCredits.balance(body.secret) }));
+}
+
+// The short personal link (lib/links.js): saving the reader's locked card under
+// their id, and opening one.
+async function handleLinkSave(request, response) {
+  if (!SHORT_LINKS()) {
+    sendJson(response, 503, { error: 'Short links are not available on this server.' });
+    return;
+  }
+  const body = await readJsonBody(request);
+  const id = await links.publish(body && body.secret, body && body.blob);
+  if (!id) {
+    sendJson(response, 400, { error: 'That link could not be saved.' });
+    return;
+  }
+  sendJson(response, 200, { id });
+}
+// A finished Psyche Sync, sent back to the person whose link it was, locked
+// with that link's key (lib/syncbox.js): left by whoever synced, collected by
+// the link's owner, deleted once their device has it.
+async function handleSyncSend(request, response) {
+  if (!SHORT_LINKS()) {
+    sendJson(response, 503, { error: 'Short links are not available on this server.' });
+    return;
+  }
+  const body = await readJsonBody(request);
+  const kept = await syncbox.leave(body && body.id, body && body.ref, body && body.blob);
+  if (kept !== true) {
+    sendJson(response, 400, { error: kept });
+    return;
+  }
+  stats.count('sync_sent');
+  sendJson(response, 200, { ok: true });
+}
+async function handleSyncInbox(request, response) {
+  const body = await readJsonBody(request);
+  const items = await syncbox.collect(body && body.secret);
+  if (!items) {
+    sendJson(response, 400, { error: 'That referral code is not valid.' });
+    return;
+  }
+  sendJson(response, 200, { items });
+}
+async function handleSyncDone(request, response) {
+  const body = await readJsonBody(request);
+  const gone = await syncbox.acknowledge(body && body.secret, body && body.ids);
+  if (gone) stats.count('sync_received', gone);
+  sendJson(response, 200, { gone });
+}
+async function handleLinkOpen(response, url) {
+  const found = await links.open(url.searchParams.get('id'));
+  if (!found) {
+    sendJson(response, 404, { error: 'That link has expired or does not exist. Ask for it to be sent again.' });
+    return;
+  }
+  stats.count('link_opened');
+  sendJson(response, 200, found);
+}
+
+// Whether a sync sent back to this reader carries a seal this server made
+// (lib/syncseal.js). Answers yes or no and keeps nothing.
+async function handleSyncCheck(request, response) {
+  const body = await readJsonBody(request);
+  sendJson(response, 200, { ok: syncSeal.check(body && body.data) });
+}
+
+async function handleCompatibility(request, response) {
+  const body = await readJsonBody(request);
+  if (!body || !body.a || !body.b || typeof body.a !== 'object' || typeof body.b !== 'object') {
+    sendJson(response, 400, { error: 'Expected two profile cards, "a" and "b".' });
+    return;
+  }
+  // A card's fields and nothing else, each held to its length: a free call
+  // cannot be filled to the model's whole context, or carry anything a card
+  // does not.
+  const a = Card.shape(body.a);
+  const b = Card.shape(body.b);
+  // A compatibility read is free. It draws on the same daily free ceiling as
+  // the free card, so the most expensive free call in the app is still
+  // bounded across all readers per day, and it is answered from the result
+  // cache when this exact question was asked minutes ago. A payment or a
+  // promo code sent by an older page is ignored: nothing here is sold.
+  const engine = requireEngine(response);
+  if (!engine) return;
+  // Every Psyche Sync is between friends now: whatever basis an older page
+  // sends resolves to that one, and is part of the cache key as before.
+  const mode = prompts.resolveMode(body.mode);
+  const stance = null;
+  const cacheKey = { a, b, mode, stance };
+
+  const background = wantsBackground(body);
+  const answered = servedFromMemory(response, 'compatibility', cacheKey, background);
+  if (answered) {
+    await answered;
+    return;
+  }
+  if (!budget.canSpend()) {
+    sendJson(response, 503, {
+      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC.',
+      budgetExhausted: true,
+    });
+    return;
+  }
+  await generate(response, {
+    background,
+    kind: 'compatibility',
+    key: cacheKey,
+    produce: async () => {
+      const result = await engine.analyseCompatibility(a, b, mode, stance);
+      usage.record('compatibility', result, false);
+      // Recorded only once the model came back, as the free card's is.
+      budget.record('compatibility');
+      stats.count('compatibility');
+      // Sealed, so the friend it is sent back to can check its words are
+      // the model's (lib/syncseal.js).
+      const out = readerText(result);
+      if (out && out.data && typeof out.data === 'object') out.data = syncSeal.seal(out.data);
+      return out;
+    },
+  });
+}
+
+function serveStatic(requestedPath, request, response) {
+  // The guides are linked and indexed without their extension
+  // (/instagram-personality-test), so a path with no extension that names an
+  // .html page beside it is that page.
+  let route = requestedPath;
+  // A guide with a Markdown copy beside it (tools/seo-pages.mjs) is sent as
+  // that copy to a reader that asks for Markdown and not HTML.
+  const page = /^\/[a-z0-9-]+$/.test(route) ? route.slice(1) : '';
+  const twin = page && fs.existsSync(path.join(ROOT, page + '.md'));
+  if (twin && wantsMarkdown(request.headers.accept)) route += '.md';
+  else if (page && fs.existsSync(path.join(ROOT, page + '.html'))) route += '.html';
+  const target = path.join(ROOT, route === '/' ? 'index.html' : route);
+
+  // Never serve anything outside docs/, whatever the traversal attempt.
+  const resolved = path.resolve(target);
+  if (resolved !== ROOT && !resolved.startsWith(ROOT + path.sep)) {
+    response.writeHead(403).end('Forbidden');
+    return;
+  }
+
+  const type = TYPES[path.extname(resolved).toLowerCase()] || 'application/octet-stream';
+  if (type.startsWith('video/')) {
+    serveMedia(resolved, type, request, response);
+    return;
+  }
+  // Compressed where the browser accepts it, and answered with a 304 when its
+  // copy is current. See lib/staticfiles.js.
+  // An address that names no page gets the site's own "Page not found",
+  // with a way home; a missing file of any other kind, a plain 404.
+  const pageLike = !path.extname(resolved) || path.extname(resolved).toLowerCase() === '.html';
+  // The Markdown copy names its page as the one to index; either form of a
+  // page that has both varies with what was asked for.
+  const markdownOf = /^\/([a-z0-9-]+)\.md$/.exec(route);
+  const extra = markdownOf ? { Link: '<' + SITE_ORIGIN + '/' + markdownOf[1] + '>; rel="canonical"', Vary: 'Accept, Accept-Encoding' }
+    : twin ? { Vary: 'Accept, Accept-Encoding' } : null;
+  staticFiles.send(resolved, type, request, response, extra, pageLike ? path.join(ROOT, '404.html') : null);
+}
+
+// Asked for Markdown, and ranked above HTML (or HTML not asked for at all).
+function wantsMarkdown(accept) {
+  const rank = type => {
+    const part = String(accept || '').split(',').map(p => p.trim().split(';')).find(([t]) => t.trim().toLowerCase() === type);
+    if (!part) return -1;
+    const q = part.slice(1).map(p => p.trim().split('=')).find(([k]) => k === 'q');
+    return q ? Number(q[1]) || 0 : 1;
+  };
+  const markdown = rank('text/markdown');
+  return markdown > 0 && markdown > rank('text/html');
+}
+
+// A video is streamed, never read whole, and answers byte ranges: Safari and
+// every iPhone browser ask for "bytes=0-1" first and will not play a video
+// whose server does not reply 206. The ETag lets a returning visitor's browser
+// keep its copy until the file is rebuilt, rather than downloading megabytes
+// again on every visit under no-cache.
+function serveMedia(file, type, request, response) {
+  fs.stat(file, (error, stat) => {
+    if (error || !stat.isFile()) {
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
+      return;
+    }
+    const etag = '"' + stat.size.toString(36) + '-' + Math.floor(stat.mtimeMs).toString(36) + '"';
+    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache', ETag: etag };
+    if (request.headers['if-none-match'] === etag) {
+      response.writeHead(304, headers).end();
+      return;
+    }
+    const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.range || '');
+    if (!range || (!range[1] && !range[2])) {
+      response.writeHead(200, { ...headers, 'Content-Length': stat.size });
+      if (request.method === 'HEAD') { response.end(); return; }
+      fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
+      return;
+    }
+    // "bytes=500-" is from 500 to the end; "bytes=-500" is the last 500.
+    let start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
+    let end = range[1] && range[2] ? Math.min(Number(range[2]), stat.size - 1) : stat.size - 1;
+    if (start >= stat.size || start > end) {
+      response.writeHead(416, { ...headers, 'Content-Range': 'bytes */' + stat.size }).end();
+      return;
+    }
+    response.writeHead(206, { ...headers, 'Content-Range': 'bytes ' + start + '-' + end + '/' + stat.size,
+      'Content-Length': end - start + 1 });
+    if (request.method === 'HEAD') { response.end(); return; }
+    // A stream error with no listener would take the whole server down.
+    fs.createReadStream(file, { start, end }).on('error', () => response.destroy()).pipe(response);
+  });
+}
+
+// What each costly route is protected by, in one table rather than as four
+// copies of the same two checks at the top of four handlers — a guard that
+// lives inside the thing it guards is a guard somebody adds a fifth route
+// without.
+//
+// `limit` names a bucket in lib/ratelimit.js; `nonce` says the request must
+// carry a live single-use ticket. The routes listed here are exactly the ones
+// that cost real money to answer: three of them spend model budget, and the
+// fourth creates an object in the Stripe account. /api/status is absent
+// deliberately: it is a cacheable fact about the deployment.
+const API_GUARDS = {
+  '/api/nonce': { limit: 'nonce', nonce: false },
+  // Rate-limited but not ticketed. A poll is a read that costs nothing to
+  // serve, and a client watching a three-minute analysis makes dozens of them
+  // — a ticket apiece would exhaust its own nonce allowance and turn the fix
+  // into a new failure. The job key does the work a ticket would: it is a
+  // SHA-256 of the digest, so it cannot be produced without already having the
+  // evidence it names.
+  '/api/result': { limit: 'result', nonce: false },
+  '/api/analyse': { limit: 'analyse', nonce: true },
+  '/api/compatibility': { limit: 'compatibility', nonce: true },
+  '/api/create-payment-intent': { limit: 'payment-intent', nonce: true },
+  '/api/premium-analysis': { limit: 'premium-analysis', nonce: true },
+  // A step of the journey: counts only, so no ticket.
+  '/api/event': { limit: 'event', nonce: false },
+  // A guess locked onto a running job: no ticket, for the same reason as
+  // /api/result — the job key is a SHA-256 of the digest, so holding it is
+  // holding the evidence. It spends nothing; the job's own request did.
+  '/api/guess': { limit: 'referral', nonce: false },
+  // Read-only (counts for a secret only its holder has), so no ticket; the
+  // claim, which spends something, takes one.
+  '/api/referral': { limit: 'referral', nonce: false },
+  '/api/referral/claim': { limit: 'referral', nonce: true },
+  // Ask PsycheAI: questions left is a read like /api/referral; buying and
+  // asking spend, so they take a ticket, and asking calls the model.
+  '/api/ask/credits': { limit: 'referral', nonce: false },
+  '/api/ask/buy': { limit: 'referral', nonce: true },
+  '/api/ask': { limit: 'ask', nonce: true },
+  // The short personal link: saving one writes, so it takes a ticket; opening
+  // one is a read of something the link's own id names.
+  '/api/link': { limit: 'link', nonce: false },
+  '/api/link/save': { limit: 'referral', nonce: true },
+  // Sending a sync back costs a store write, so it takes a ticket; collecting
+  // and clearing are the owner's own reads, keyed by their secret, like
+  // /api/referral.
+  '/api/sync/send': { limit: 'sync-send', nonce: true },
+  '/api/sync/inbox': { limit: 'referral', nonce: false },
+  '/api/sync/done': { limit: 'referral', nonce: false },
+  '/api/sync/check': { limit: 'referral', nonce: false },
+  // The operator's totals: behind a token, and a bucket of its own so the
+  // token cannot be guessed at speed.
+  '/api/stats': { limit: 'stats', nonce: false },
 };
 
-function currentUser(req) {
-  return req.session.userId ? stmts.userById.get(req.session.userId) : null;
-}
+// The ticket travels in a header rather than in the body, for three reasons:
+// the body of two of these routes is somebody's evidence digest and does not
+// need one more field in it; the digest is the result cache's key, so a
+// per-request value in there would make every request a cache miss; and a
+// custom header cannot be set by the cross-site form POST that is the main
+// thing a nonce is closing off.
+const NONCE_HEADER = 'x-psycheai-nonce';
 
-function requireAuth(req, res, next) {
-  if (!req.session.userId) return res.redirect('/login');
-  next();
-}
+// ---------- security headers ----------
+//
+// Set on every response, static and API alike, because the researcher who
+// asked for them was right that "live responses" is the unit that matters —
+// headers on the HTML only would leave the JSON routes bare.
+//
+// Worth being accurate about what the CSP is doing here, because it would be
+// easy to claim more. Model output is rendered into the page with innerHTML,
+// which sounds alarming, but it goes through `esc()` in docs/app.js first —
+// 191 call sites, escaping the five characters that matter. There is no known
+// XSS to close. What the CSP buys is the *next* one: 191 escape sites is a
+// lot of places for one to be missed later, and a missed escape with a CSP in
+// front of it is a broken paragraph rather than a stolen report.
+//
+// The policy can afford to be strict because this app is unusually
+// self-contained — every script is a file in docs/, there is not one inline
+// <script> or on* handler in index.html, no web fonts, no analytics, no CDN.
+// Stripe is the single exception and gets exactly the three origins its own
+// documentation names, and nothing else does.
+const CSP = [
+  "default-src 'self'",
+  // Scripts are all local files, plus Stripe.js, which app.js injects when a
+  // reader actually reaches the payment sheet.
+  "script-src 'self' https://js.stripe.com",
+  // No 'unsafe-inline', which took removing every inline style in the app.
+  // The seven static ones in index.html became .guide-mark-N classes; the
+  // three that carry a computed number — a trait bar's width, the confidence
+  // meter's width, the compatibility ring's --pct — travel as data attributes
+  // and are applied by applyDataStyles() in app.js, because CSSOM writes are
+  // not governed by this directive and style attributes are.
+  //
+  // The two <style> blocks app.js builds are both outside this policy and stay
+  // as they are: one goes into a file the reader downloads and opens from
+  // their own disk, the other sits inside an SVG loaded as an image, which is
+  // its own document governed by img-src.
+  "style-src 'self'",
+  // data: for the SVG the psyche-card image is built from, blob: for every
+  // object URL the app hands to a download link — the PDF and the share
+  // images.
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  // The app's own routes, and Stripe's API for the payment sheet.
+  "connect-src 'self' https://api.stripe.com",
+  // Stripe's payment sheets are iframes it opens itself.
+  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "media-src 'self' blob:",
+  "worker-src 'self' blob:",
+  // Nothing here is ever legitimately framed, and the app takes payments —
+  // the exact case clickjacking is for. X-Frame-Options below says the same
+  // thing for anything too old to read this.
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
 
-function getProfile(userId) {
-  const row = stmts.profileByUser.get(userId);
-  if (!row) return null;
-  return {
-    ...row,
-    socials: JSON.parse(row.socials_json || '{}'),
-    answers: JSON.parse(row.answers_json || '{}'),
-    traits: JSON.parse(row.traits_json || '{}'),
-    interests: JSON.parse(row.interests_json || '[]'),
-  };
-}
+function applySecurityHeaders(request, response) {
+  response.setHeader('Content-Security-Policy', CSP);
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('X-Frame-Options', 'DENY');
+  // Not 'no-referrer', which would suit this app's privacy claims but has a
+  // history of upsetting payment providers' fraud checks. Origin-only on
+  // cross-origin requests leaks no path, and the shared-profile payload lives
+  // in the URL fragment, which is never sent in a Referer header at all.
+  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // A page that opens this site in a window of its own cannot reach into it
+  // through window.opener, nor this site into it. Windows this site (or
+  // Stripe's frame) opens keep theirs.
+  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
-function baseUrl(req) {
-  return process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-}
+  // Hardware and capability access, denied by default and granted only where
+  // this app actually uses something. A CSP governs what code may load; this
+  // governs what that code may reach for once loaded, which is a different
+  // question — an injected script under a strict CSP still inherits whatever
+  // the page is permitted to touch.
+  //
+  // Two grants. Autoplay for the site's own page (the front page's silent
+  // video, below). And the Payment Request API behind Apple Pay and
+  // Google Pay. The camera was granted too while compatibility codes were
+  // scanned in the page; they travel as links now, so it is refused like
+  // everything else. `payment` names
+  // js.stripe.com as well as self, because the wallet sheet is opened from
+  // inside Stripe's own iframe rather than from our page — granting only
+  // `self` there would leave the sheet unable to open, which is exactly the
+  // kind of breakage a header like this causes quietly.
+  //
+  // Everything else is refused outright rather than left at the browser
+  // default, including things this app has no notion of: a feature that
+  // arrives in a future browser version is denied by omission.
+  response.setHeader('Permissions-Policy', [
+    'accelerometer=()',
+    // The front page's silent video loop starts itself once it is on
+    // screen. autoplay=() refused that in Chrome (play() rejects without a
+    // tap), so it is allowed for this site's own page and nothing else.
+    'autoplay=(self)',
+    'camera=()',
+    'display-capture=()',
+    'encrypted-media=()',
+    'geolocation=()',
+    'gyroscope=()',
+    'idle-detection=()',
+    'local-fonts=()',
+    'magnetometer=()',
+    'microphone=()',
+    'midi=()',
+    'payment=(self "https://js.stripe.com")',
+    'screen-wake-lock=()',
+    'serial=()',
+    'usb=()',
+    'xr-spatial-tracking=()',
+  ].join(', '));
 
-// ---------- pages ----------
-
-app.get('/', (req, res) => {
-  const user = currentUser(req);
-  if (user) return res.redirect('/dashboard');
-  res.render('index', { user: null });
-});
-
-app.get('/register', (req, res) => res.render('register', { user: null, error: null }));
-
-app.post('/register', (req, res) => {
-  const { email, password, display_name } = req.body;
-  const err = !email || !/^\S+@\S+\.\S+$/.test(email) ? 'Please enter a valid email.'
-    : !password || password.length < 8 ? 'Password must be at least 8 characters.'
-      : !display_name || !display_name.trim() ? 'Please enter your name.'
-        : stmts.userByEmail.get(email.toLowerCase()) ? 'An account with that email already exists.'
-          : null;
-  if (err) return res.status(400).render('register', { user: null, error: err });
-
-  const qr = 'KIN-' + crypto.randomBytes(12).toString('base64url');
-  const info = stmts.insertUser.run(
-    email.toLowerCase(), bcrypt.hashSync(password, 10), display_name.trim().slice(0, 60), qr
-  );
-  req.session.userId = info.lastInsertRowid;
-  res.redirect('/profile/edit');
-});
-
-app.get('/login', (req, res) => res.render('login', { user: null, error: null }));
-
-app.post('/login', (req, res) => {
-  const user = stmts.userByEmail.get(String(req.body.email || '').toLowerCase());
-  if (!user || !bcrypt.compareSync(String(req.body.password || ''), user.password_hash)) {
-    return res.status(401).render('login', { user: null, error: 'Invalid email or password.' });
+  // HSTS only where it can mean anything, and — more importantly — never on
+  // plain HTTP. A browser that accepts this header for localhost will refuse
+  // to load *any* http://localhost afterwards, for a year, across every
+  // project on that machine. That is a genuinely nasty thing to do to a
+  // developer, so the header goes out only when the request demonstrably
+  // arrived over TLS.
+  const proto = String(request.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' || Boolean(request.socket && request.socket.encrypted);
+  if (secure) {
+    response.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
-  req.session.userId = user.id;
-  res.redirect('/dashboard');
-});
+}
 
-app.post('/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
+// One address for the site. Render also serves it at <service>.onrender.com,
+// which search engines can find and index as a second copy. With
+// PSYCHEAI_CANONICAL_HOST set (psycheai.io), a page asked for at an
+// *.onrender.com address is sent to the same path there with a permanent
+// redirect. Pages only: /api/ is left alone, so a tab already open on the old
+// address can still collect a report it is waiting for. Unset, nothing is
+// redirected. Matched on the onrender.com suffix rather than on "anything
+// but the canonical host", so localhost and the test suite are never moved.
+// Pages of retired characters and where they now point (see above the short links).
+const RETIRED_PAGES = {
+  'totoro-personality': 'characters',
+  // Their public-domain replacements in the same slots (21 October 2026);
+  // Woody's went to Dr Watson, who has since left the five with a page.
+  'woody-personality': 'characters', 'iron-man-personality': 'odysseus-personality',
+  'batman-personality': 'sherlock-holmes-personality',
+  // Only the five the marketing shows keep a page (21 October 2026); the rest
+  // of the catalogue's pages go to the list.
+  'dr-watson-personality': 'characters',
+  'elsa-personality': 'characters',
+  'moana-personality': 'characters',
+  'simba-personality': 'characters',
+  'judy-hopps-personality': 'characters',
+  'nick-wilde-personality': 'characters',
+  'baymax-personality': 'characters',
+  'buzz-lightyear-personality': 'characters',
+  'wall-e-personality': 'the-tin-man-personality',
+  'remy-personality': 'characters',
+  'joy-personality': 'characters',
+  'captain-america-personality': 'characters',
+  'spider-man-personality': 'characters',
+  'hulk-personality': 'characters',
+  'wonder-woman-personality': 'characters',
+  'pikachu-personality': 'characters',
+  'princess-peach-personality': 'characters',
+  'shrek-personality': 'characters',
+  'po-personality': 'characters',
+  'hiccup-personality': 'characters',
+  'hermione-granger-personality': 'characters',
+  'sailor-moon-personality': 'characters',
+  'hello-kitty-personality': 'characters',
+  'kuromi-personality': 'characters',
+};
 
-app.get('/dashboard', requireAuth, async (req, res) => {
-  const user = currentUser(req);
-  const profile = getProfile(user.id);
-  const qrUrl = `${baseUrl(req)}/scan?code=${encodeURIComponent(user.qr_code)}`;
-  const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 320, margin: 2, color: { dark: '#3b2050', light: '#ffffff' } });
-  const matches = stmts.matchesForUser.all(user.id, user.id);
-  res.render('dashboard', { user, profile, qrDataUrl, qrUrl, matches });
-});
+const CANONICAL_HOST = String(process.env.PSYCHEAI_CANONICAL_HOST || '').trim().toLowerCase();
+function canonicalRedirect(request) {
+  if (!CANONICAL_HOST || (request.method !== 'GET' && request.method !== 'HEAD')) return null;
+  const host = String(request.headers.host || '').toLowerCase().split(':')[0];
+  if (!host.endsWith('.onrender.com') || host === CANONICAL_HOST) return null;
+  const target = String(request.url || '/');
+  if (!target.startsWith('/') || target.startsWith('//') || target.startsWith('/api/')) return null;
+  return 'https://' + CANONICAL_HOST + target;
+}
 
-app.get('/profile/edit', requireAuth, (req, res) => {
-  const user = currentUser(req);
-  res.render('edit-profile', { user, profile: getProfile(user.id), Q, error: null });
-});
+const server = http.createServer((request, response) => {
+  // Before anything branches, so no route can be added that forgets them.
+  // setHeader rather than passing them to each writeHead: they survive into
+  // whatever the handler eventually writes, including the 404 and 403 paths
+  // in serveStatic and every sendJson refusal above.
+  applySecurityHeaders(request, response);
 
-app.post('/profile/edit', requireAuth, (req, res) => {
-  const user = currentUser(req);
-  const b = req.body;
-
-  const socials = {};
-  for (const k of ['linkedin', 'instagram', 'twitter', 'tiktok', 'facebook', 'website']) {
-    const v = String(b['social_' + k] || '').trim().slice(0, 200);
-    if (v) socials[k] = v;
+  const moved = canonicalRedirect(request);
+  if (moved) {
+    response.writeHead(301, { Location: moved, 'Cache-Control': 'public, max-age=86400' });
+    response.end();
+    return;
   }
 
-  // Collect questionnaire answers.
-  const answers = {};
-  for (const item of [...Q.BIG_FIVE_ITEMS, ...Q.ATTACHMENT_ITEMS]) answers[item.id] = b[item.id];
-  for (const v of Q.VALUES) answers['val_' + v.id] = b['val_' + v.id];
-  for (const q of Q.LIFESTYLE) answers[q.id] = b[q.id];
-  answers.love_languages = (Array.isArray(b.love_languages) ? b.love_languages : [b.love_languages]).filter(Boolean).slice(0, 2);
+  // Parsing the request line is the first thing that can throw, and until this
+  // guard existed a throw here ended the process.
+  //
+  // `GET /%` was enough. decodeURIComponent raises URIError on a malformed
+  // percent-escape, this ran outside any try/catch, and an uncaught exception
+  // in a request handler takes Node down with it — so one request, needing no
+  // nonce and passing no rate limit because both are checked further down,
+  // was a complete outage for everybody. A supervisor restarting the process
+  // does not help when the request can simply be sent again.
+  //
+  // A malformed path is a client error, so it is answered as one rather than
+  // swallowed. new URL is inside the same guard: it throws on request lines
+  // no browser sends but anything speaking HTTP can.
+  let route;
+  let url;
+  try {
+    url = new URL(request.url, 'http://localhost');
+    route = decodeURIComponent(url.pathname);
+    // A NUL names no file or page, and the file system refuses it with a
+    // throw that surfaced as a 500.
+    if (route.includes('\0')) throw new URIError('NUL in path');
+  } catch (error) {
+    sendJson(response, 400, { error: 'That is not a valid request path.' });
+    return;
+  }
 
-  const socialText = String(b.social_text || '').slice(0, 20000);
-  const analysis = analyzeSocialText(socialText);
-  const traits = blendTraits(Q.scoreAnswers(answers), analysis);
+  // Everything from here is wrapped, because the crash above was not really
+  // about decodeURIComponent — it was about a synchronous throw anywhere in
+  // this function being fatal to the whole server. The specific bug is fixed
+  // above; this is so the next one costs a request instead of the site.
+  //
+  // Deliberately not a process-level uncaughtException handler. That would
+  // also catch throws from timers and callbacks with no request in hand and
+  // no way to answer, leaving the process running in a state nobody has
+  // reasoned about. This catches only what one request can throw, where there
+  // is a response to send and the damage is bounded to the caller who caused
+  // it.
+  try {
+    routeRequest(route, url, request, response);
+  } catch (error) {
+    console.error('[' + route + '] unhandled: ' + (error && error.message ? error.message : error));
+    if (!response.headersSent) sendJson(response, 500, { error: 'Something went wrong on the server.' });
+    else response.end();
+  }
+});
 
-  const chosen = (Array.isArray(b.interests) ? b.interests : [b.interests])
-    .filter(t => Q.INTEREST_TAGS.includes(t));
-  const interests = [...new Set([...chosen, ...analysis.interests])];
+function routeRequest(route, url, request, response) {
+  if (route.startsWith('/api/')) {
+    const handler =
+      route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
+        : route === '/api/nonce' && request.method === 'GET' ? () => handleNonce(response)
+          : route === '/api/result' && request.method === 'GET' ? () => handleResult(request, response, url)
+          : route === '/api/result' && request.method === 'DELETE' ? () => handleRelease(request, response, url)
+            : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
+              : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
+                  : route === '/api/stats' && request.method === 'GET' ? () => handleStats(request, response, url)
+                  : route === '/api/event' && request.method === 'POST' ? () => handleEvent(request, response)
+                  : route === '/api/guess' && request.method === 'POST' ? () => handleGuess(request, response)
+                  : route === '/api/referral' && request.method === 'POST' ? () => handleReferral(request, response)
+                  : route === '/api/referral/claim' && request.method === 'POST' ? () => handleReferralClaim(request, response)
+                  : route === '/api/ask/credits' && request.method === 'POST' ? () => handleAskCredits(request, response)
+                  : route === '/api/ask/buy' && request.method === 'POST' ? () => handleAskBuy(request, response)
+                  : route === '/api/ask' && request.method === 'POST' ? () => handleAsk(request, response)
+                  : route === '/api/link' && request.method === 'GET' ? () => handleLinkOpen(response, url)
+                  : route === '/api/link/save' && request.method === 'POST' ? () => handleLinkSave(request, response)
+                  : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
+                  : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)
+                  : route === '/api/sync/done' && request.method === 'POST' ? () => handleSyncDone(request, response)
+                  : route === '/api/sync/check' && request.method === 'POST' ? () => handleSyncCheck(request, response)
+                  : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
+                    : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
+                      : null;
 
-  stmts.upsertProfile.run({
-    user_id: user.id,
-    age: Number(b.age) >= 18 && Number(b.age) < 120 ? Number(b.age) : null,
-    location: String(b.location || '').trim().slice(0, 100) || null,
-    bio: String(b.bio || '').trim().slice(0, 1000) || null,
-    socials_json: JSON.stringify(socials),
-    social_text: socialText || null,
-    answers_json: JSON.stringify(answers),
-    traits_json: JSON.stringify(traits),
-    interests_json: JSON.stringify(interests),
-    completed: 1,
+    if (!handler) {
+      sendJson(response, 404, { error: 'No such endpoint.' });
+      return;
+    }
+
+    // A body larger than this route ever needs is refused on its stated
+    // length, before a byte of it is read (readJsonBody holds the same limit
+    // for a body sent without one).
+    request.psycheBodyLimit = bodyLimitFor(route);
+    const declared = Number(request.headers['content-length']);
+    if (Number.isFinite(declared) && declared > request.psycheBodyLimit) {
+      // Answered at once; whatever follows is discarded as it arrives, never
+      // held, so the caller can read the answer.
+      request.resume();
+      sendJson(response, 413, { error: 'Request body too large.' });
+      return;
+    }
+
+    // Before the handler, and before the body is read: a refused request
+    // should cost us as little as the caller intended it to cost them.
+    const guard = API_GUARDS[route];
+    if (guard) {
+      // The limit is spent first, so that a wrong or missing ticket still
+      // costs a token. Checking the nonce first would make guessing tickets
+      // free, which is the one way to probe this that must not be.
+      const allowed = rateLimit.take(guard.limit, rateLimit.clientKey(request));
+      if (!allowed.ok) {
+        response.setHeader('Retry-After', String(allowed.retryAfter));
+        sendJson(response, 429, {
+          error: 'Too many requests from this connection. Try again in ' +
+            allowed.retryAfter + ' seconds.',
+          retryAfter: allowed.retryAfter,
+        });
+        return;
+      }
+      if (guard.nonce && !nonces.spend(request.headers[NONCE_HEADER])) {
+        sendJson(response, 400, {
+          error: 'This request is missing a valid one-time token. Reload the page and try again.',
+          nonceRequired: true,
+        });
+        return;
+      }
+    }
+    // The shared limit, across every server process and deploy (lib/store.js).
+    Promise.resolve(guard ? rateLimit.takeShared(guard.limit, rateLimit.clientKey(request)) : { ok: true })
+      .then(shared => {
+        if (shared.ok) return handler();
+        response.setHeader('Retry-After', String(shared.retryAfter));
+        sendJson(response, 429, {
+          error: 'Too many requests from this connection. Try again in ' + shared.retryAfter + ' seconds.',
+          retryAfter: shared.retryAfter,
+        });
+        return null;
+      })
+      .catch(error => {
+        const described = publicError(error);
+        // The message only. This route's request body is somebody's personality
+        // report, and an error handler that logs bodies would put it in the
+        // server log — which is exactly the thing the design is built to avoid.
+        console.error('[' + route + ']', error && error.message ? error.message : error);
+        sendJson(response, described.status, { error: described.message });
+      });
+    return;
+  }
+
+  // A retired character's page, to the closest one still in the catalogue
+  // (October 2026: Totoro, to Baymax), so a search result or an old link
+  // lands somewhere useful rather than on the 404.
+  const retired = /^\/([a-z-]+-personality)(?:\.html)?\/?$/.exec(route);
+  if (retired && RETIRED_PAGES[retired[1]] && (request.method === 'GET' || request.method === 'HEAD')) {
+    response.writeHead(301, { Location: '/' + RETIRED_PAGES[retired[1]], 'Cache-Control': 'public, max-age=86400' });
+    response.end();
+    return;
+  }
+
+  // A short personal link, /c/<id>: to the page, with the id where the page
+  // reads it. The #key after it is kept by the browser across the redirect
+  // and never reaches here.
+  const short = /^\/c\/([A-Za-z0-9_-]{10})\/?$/.exec(route);
+  if (short && (request.method === 'GET' || request.method === 'HEAD')) {
+    // Anything else in the address goes with it (a ?promo= code, a ?via=
+    // tag), so /c/<id>?promo=AVA#<key> arrives with the code still on it.
+    const rest = new URLSearchParams(url.search);
+    rest.delete('c');
+    const extra = rest.toString();
+    response.writeHead(302, { Location: '/?c=' + short[1] + (extra ? '&' + extra : ''), 'Cache-Control': 'no-store' });
+    response.end();
+    return;
+  }
+
+  serveStatic(route, request, response);
+}
+
+// Node closes an idle keep-alive socket after 5 seconds by default, which is
+// shorter than the reverse proxy in front of this server assumes when it holds
+// connections open to reuse them. Render's own troubleshooting docs name that
+// mismatch as the cause of intermittent timeouts and "Connection reset by
+// peer" on Node services specifically, and recommend raising both of these.
+//
+// headersTimeout must stay *above* keepAliveTimeout: they run as one sequence
+// per socket, and inverting them leaves the header timer expiring while the
+// keep-alive timer still considers the socket healthy — an ambiguous state
+// that closes sockets mid-handshake rather than idle. The gap is deliberate,
+// not decorative.
+//
+// This does not govern how long a response may take to produce. That timer
+// (`requestTimeout`, 5 minutes by default) measures receiving the *request*
+// and stops once the body is in, so the paid call's minutes of generation
+// afterwards are not on any of these clocks. What this fixes is the socket
+// being reused between requests, which is where the resets actually came from.
+const KEEP_ALIVE_MS = Number(process.env.PSYCHEAI_KEEPALIVE_MS) || 120000;
+server.keepAliveTimeout = KEEP_ALIVE_MS;
+server.headersTimeout = KEEP_ALIVE_MS + 5000;
+
+// Guarded so tools/selftest.mjs can require() this file to reach
+// premiumEngine() directly — the fastest, most deterministic way to prove
+// which provider premium actually resolves to under a given env, with no
+// HTTP round trip and no server left listening behind the test.
+// Before the port opens: what the store remembers from before this deploy —
+// the day's totals, creator-code uses, today's free budget, payment retries.
+// Bounded, so a store that cannot be reached delays the boot by seconds at
+// most rather than keeping the site down.
+function hydrateFromStore() {
+  const steps = [stats.hydrate(), promo.hydrate(), budget.hydrate(), paymentLedger.hydrate()];
+  const settled = Promise.allSettled(steps).then(results => {
+    const ok = results.filter(r => r.status === 'fulfilled' && r.value).length;
+    console.log('store: ' + store.describe().backend + ' — ' + ok + ' of ' + steps.length + ' records restored');
   });
-  res.redirect('/dashboard');
-});
+  return Promise.race([settled, new Promise(resolve => setTimeout(resolve, 6000))]);
+}
 
-app.get('/scan', requireAuth, (req, res) => {
-  const user = currentUser(req);
-  const profile = getProfile(user.id);
-  res.render('scan', { user, prefill: String(req.query.code || ''), profileComplete: !!(profile && profile.completed), error: null });
-});
-
-app.post('/scan', requireAuth, (req, res) => {
-  const user = currentUser(req);
-  const myProfile = getProfile(user.id);
-
-  // Accept a raw code or a full QR URL containing ?code=...
-  let code = String(req.body.code || '').trim();
-  const m = code.match(/[?&]code=([^&\s]+)/);
-  if (m) code = decodeURIComponent(m[1]);
-
-  const renderErr = (error) => res.status(400).render('scan', {
-    user, prefill: '', profileComplete: !!(myProfile && myProfile.completed), error,
-  });
-
-  if (!myProfile || !myProfile.completed) return renderErr('Complete your own profile before matching.');
-  const other = stmts.userByQr.get(code);
-  if (!other) return renderErr('That QR code doesn\'t belong to any Kindred user.');
-  if (other.id === user.id) return renderErr('That\'s your own code — self-love is important, but scan someone else 😄');
-  const otherProfile = getProfile(other.id);
-  if (!otherProfile || !otherProfile.completed) return renderErr(`${other.display_name} hasn't completed their profile yet.`);
-
-  const report = buildReport(
-    user.display_name, other.display_name,
-    myProfile.traits, otherProfile.traits,
-    myProfile.interests, otherProfile.interests
-  );
-  const info = stmts.insertMatch.run(user.id, other.id, report.total, JSON.stringify(report));
-  res.redirect('/match/' + info.lastInsertRowid);
-});
-
-app.get('/match/:id', requireAuth, (req, res) => {
-  const user = currentUser(req);
-  const match = stmts.matchById.get(Number(req.params.id));
-  if (!match || (match.scanner_id !== user.id && match.scanned_id !== user.id)) {
-    return res.status(404).render('error', { user, message: 'Match not found.' });
+if (require.main === module) {
+  hydrateFromStore().then(() => server.listen(PORT, () => {
+    const status = provider.describe();
+    console.log('PsycheAI running at http://localhost:' + PORT);
+    // Brotli and gzip copies of the site's own files, made now rather than
+    // on the first visitor's request (lib/staticfiles.js).
+    staticFiles.warm(fs.readdirSync(ROOT).map(name => path.join(ROOT, name)),
+      file => TYPES[path.extname(file).toLowerCase()] || '');
+    if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
+    else if (status.ready) {
+      // Gemini says which way it is reached, so a switch to Vertex AI can be
+      // confirmed in the log (lib/gemini.js, backend selection).
+      const via = provider.active && typeof provider.active.backendName === 'function' ? provider.active.backendName() : '';
+      console.log('  Provider: ' + status.provider + ' · model: ' + status.model +
+        (via === 'vertex' ? ' · via Vertex AI' + (process.env.GEMINI_API_KEY ? ', GEMINI_API_KEY as fallback' : '')
+          : via === 'gemini-api' ? ' · via the Gemini API key' : ''));
+    }
+    else console.log('  Not configured. ' + status.hint);
+    // The build, for the operator only: /api/status no longer serves it.
+    console.log('  Build: ' + [BUILD.version && 'v' + BUILD.version, BUILD.shortCommit, BUILD.branch, BUILD.platform]
+      .filter(Boolean).join(' · '));
+    // Search engines told which pages this deploy changed (lib/indexnow.js).
+    indexNow.afterDeploy({ root: ROOT, store, mock: status.mock });
+  }));
+  // A deploy stops this process with SIGTERM. Today's totals go to the log
+  // first, so they are not lost with the memory they were kept in.
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+      stats.flush();
+      process.exit(0);
+    });
   }
-  const scanner = stmts.userById.get(match.scanner_id);
-  const scanned = stmts.userById.get(match.scanned_id);
-  res.render('match', { user, match, report: JSON.parse(match.report_json), scanner, scanned });
-});
+}
 
-app.use((req, res) => res.status(404).render('error', { user: currentUser(req), message: 'Page not found.' }));
-
-app.listen(PORT, () => console.log(`Kindred running on http://localhost:${PORT}`));
+// `server` is exported unlistened — requiring this file never binds a port
+// (see the require.main guard above), so a test can read the timeouts off it
+// without a round trip or a socket left open behind the check.
+// `sendJsonWhileWorking` is exported for the same reason `premiumEngine` is:
+// it is the piece with real behaviour worth proving — that a slow generation
+// writes bytes while it runs, and that what lands is still parseable JSON —
+// and driving it through a real socket would make the test about timing
+// rather than about the function.
+module.exports = {
+  premiumEngine, isValidPromoCode, server, sendJsonWhileWorking, canonicalRedirect,
+  API_GUARDS, NONCE_HEADER, CSP, publicError, bodyLimitFor, SMALL_BODY_BYTES, LARGE_BODY_BYTES,
+};
