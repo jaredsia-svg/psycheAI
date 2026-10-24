@@ -77,7 +77,7 @@ REELS['roast'] = {
         (['My Psyche Card was so nice.', 'Then I clicked, reveal my roast.'], 0.85, True, 0.2),
         (["You've saved three hundred cooking videos.", 'Your most cooked dish is instant noodles.'], 0.85, True, 0.15),
         (["You've viewed fifty eight apartments.", 'You still live with your parents.'], 0.85, True, 0.15),
-        (["You've searched, is it too late to, twenty three times.", "You're twenty seven."], 0.85, True, 0.15),
+        (["You've searched, is it too late to, twenty three times.", "You're only twenty seven."], 0.85, True, 0.15),
         (['Then it tells you what an honest friend would.'], 0.85, None),
         (['Your roast is free with every card.', "Comment roast, if you're brave."], 0.85, True, 0.15),
     ],

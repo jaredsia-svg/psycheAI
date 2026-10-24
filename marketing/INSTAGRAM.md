@@ -49,7 +49,7 @@ My Psyche Card was so nice. Then I clicked "Reveal my roast" 💀
 It read my own data and found:
 🍜 300 cooking videos saved. Most-cooked dish: instant noodles.
 🏠 58 apartments viewed. Still living with my parents.
-🔍 "Is it too late to…" searched 23 times. I'm 27.
+🔍 "Is it too late to…" searched 23 times. I'm only 27.
 
 Then it told me what an honest friend would: I'm not lazy, I'm scared of choosing wrong.
 
