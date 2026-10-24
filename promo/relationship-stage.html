@@ -138,11 +138,16 @@ const CARDS = [
   ['🧭', 'What you need in a partner', '<p>Someone who notices the effort, and says so</p>'],
 ];
 const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
-  d.style.top = [450, 865, 1095, 1325][i] + 'px'; return d; });
+  return d; });
+// Stacked by their own heights with an even gap, measured every frame (as the career reel's): fixed places let a
+// taller card crowd the next.
+function stackCards() { let y = 450; cards.forEach(d => { const was = d.style.display; d.style.display = 'block';
+  d.style.top = y + 'px'; y += d.offsetHeight + 40; d.style.display = was; }); }
 const motes = Array.from({ length: 26 }, (_, i) => { const d = document.createElement('div'); d.className = 'mote'; $('motes').appendChild(d);
   return { el: d, x: hash(i) * 1080, speed: 30 + hash(i + 4) * 50, phase: hash(i + 8), size: 3 + hash(i + 2) * 6 }; });
 
 function render(t) {
+  stackCards();
   const ph = (t % BEAT) / BEAT, pulse = t >= ANS.start ? Math.exp(-ph * 6) : 0;
   // An evening dusk for the fights; it warms as PsycheAI is asked.
   const warm = easeIO(prog(t, ASK.start - 0.3, ASK.start + 0.6));
