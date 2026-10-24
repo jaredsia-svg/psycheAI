@@ -170,7 +170,7 @@ REELS['compare'] = {
 REELS['character'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
-        (['I let {B} read eleven years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3),
+        (['I let {B} read eleven years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3),  # each reel its own years
         (['Twenty eight characters.', 'One match.'], 0.85, True, 0.5),
         (['The Tin Man.'], 0.85, None),
         (['Big hearted builder, who shows love by showing up.', 'Checks in on the quiet ones.', 'Most in sync with {Mulan}.'], 0.85, True, [0.6, 0.6]),
@@ -189,8 +189,10 @@ REELS['character'] = {
 }
 # The same for Rapunzel (24 October 2026): Sofia Reyes's sample card, tagging Sherlock (the Tin Man's tags Mulan).
 # A woman's voice (the relationship reel's), the same music.
+def character_hook(years):
+    return (['I let {B} read ' + years + ' years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3)
 REELS['character-rapunzel'] = dict(REELS['character'], voice='en_US-hfc_female-medium', lines=[
-    REELS['character']['lines'][0], REELS['character']['lines'][1],
+    character_hook('seven'), REELS['character']['lines'][1],
     (['Rapunzel.'], 0.85, None),
     (['Hopeful maker, who turns a small room into a studio.', 'Makes something of every corner.', 'Most in sync with Sherlock.'], 0.85, True, [0.6, 0.6]),
     (["Who's your Sherlock?", 'Tag them.'], 0.85, True, 0.3),
@@ -199,17 +201,17 @@ REELS['character-rapunzel'] = dict(REELS['character'], voice='en_US-hfc_female-m
 
 # And for Mulan, Odysseus and Sherlock (24 October 2026): no tag; each tour stops on parts of its card the others do
 # not (character-stage.html, WHO), then the close.
-def character_reel(voice, name_line, stops):
+def character_reel(voice, years, name_line, stops):
     return dict(REELS['character'], voice=voice, lines=[
-        REELS['character']['lines'][0], REELS['character']['lines'][1], ([name_line], 0.85, None),
+        character_hook(years), REELS['character']['lines'][1], ([name_line], 1.05, None),
         (stops, 0.85, True, [0.6, 0.6]), REELS['character']['lines'][5]],
         hold={1: 2.6, 2: 0.4, 3: 1.6}, lead={3: 0.9})
-REELS['character-mulan'] = character_reel('en_US-hfc_female-medium', '{Mulan}.',
+REELS['character-mulan'] = character_reel('en_US-hfc_female-medium', 'nine', '{Mulan}.',
     ['Organiser with a warm centre, and a quiet battery.', 'Driven by care for my people.', 'Shows care through acts of service.'])
-REELS['character-odysseus'] = character_reel('en_US-ryan-high', '{Odysseus}.',
-    ['Resourceful planner, with a way out of every corner.', 'E N T P.', 'A plan B, for every plan.'])
-REELS['character-sherlock'] = character_reel('en_US-ryan-high', 'Sherlock Holmes.',
-    ['Quiet investigator, who notices what others miss.', 'Openness, eighty six.', 'Look closely, before you decide.'])
+REELS['character-odysseus'] = character_reel('en_US-ryan-high', 'twelve', '{Odysseus}.',
+    ['Resourceful planner, with a way out of every corner.', 'Driven by stimulation, achievement, and self direction.', 'E N T P.'])
+REELS['character-sherlock'] = character_reel('en_US-ryan-high', 'eight', 'Sherlock Holmes.',
+    ['Quiet investigator, who notices what others miss.', 'Big Five. Openness, eighty five.', 'Values truth, and independence.'])
 
 # The mirror reel (24 October 2026): who I say I am against what my data says, three times, then who it says I am.
 # Each claim is a trait a little less flattering than he would admit (a talker, not over her, particular), a set-up

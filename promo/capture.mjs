@@ -56,7 +56,10 @@ try {
   const page = await browser.newPage({ viewport: { width: 400, height: 1400 }, deviceScaleFactor: 3 });
   await page.route('**/sample-cards.json', async route => {
     const real = await (await route.fetch()).json();
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(Object.assign({}, real, { cards: real.cards.concat([TINMAN]) })) });
+    // For the Sherlock character reel, his openness reads 85 (the owner's number for the reel); the site's sample says 86.
+    const cards = real.cards.map(c => c.card && c.card.name === 'Daniel Okafor'
+      ? Object.assign({}, c, { bigFive: Object.assign({}, c.bigFive, { openness: { score: 85 } }) }) : c);
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(Object.assign({}, real, { cards: cards.concat([TINMAN]) })) });
   });
   await page.goto('http://localhost:' + PORT + '/');
   await page.click('#insight-card-open');
@@ -132,6 +135,9 @@ try {
       const r = (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).getBoundingClientRect();
       out[key] = { x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height };
     }
+    // And each face in Most in sync with, left to right, for the ring on the one to tag.
+    out.faces = [...root.querySelectorAll('.pc-ssync-art')].map(node => { const r = node.getBoundingClientRect();
+      return { x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height }; });
     return out;
   };
   // Mulan's, Odysseus's and Sherlock's again as char-*.png, measured the same way, so the older reels keep the
