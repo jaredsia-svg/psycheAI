@@ -67,7 +67,10 @@ END = 'Your first Psyche Card is free!'
 NAMES = {'{Mulan}': list('muːlˈɑːn'), '{Odysseus}': list('oʊ dˈɪsi əs'),
          # The address said as seven even syllables, Psy-che-A-I-dot-I-O, for the male voices: given the brand's
          # sounds (BRAND), Ryan runs the A and I together, and "Psyche" said as "sigh key" keeps them apart.
-         '{PsycheAIdotIO}': list('sˈaɪ kˈiːʲ ˌeɪˈaɪ dˈɑːt aɪ ˈoʊ')}
+         '{PsycheAIdotIO}': list('sˈaɪ kˈiːʲ ˌeɪˈaɪ dˈɑːt aɪ ˈoʊ'),
+         # Quicker, and with "Psyche" as one word, so the A and I stay apart mid-sentence (the form above was heard
+         # as "psychei" in the mirror reel's last line, 24 October 2026).
+         '{PsycheAIdotIOquick}': list('sˈaɪki ˌeɪˈaɪ dˌɑːt ˌaɪˈoʊ')}
 
 def named(text):
     """Phonemes for a line with a {Name} in it: the words around it phonemized, the name as given."""
@@ -110,7 +113,7 @@ def heard(a):
     s = rec.create_stream(); s.accept_waveform(SR, np.concatenate([pad, a, pad])); rec.decode_stream(s); return s.result.text
 
 def words(text):
-    text = text.replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
+    text = text.replace('{PsycheAIdotIOquick}', 'psyche ai dot i o').replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
     # The recogniser writes a spoken address as one: "psyche ai dot app" comes back "psycheai.app".
     text = re.sub(r'(?<=[a-z])\.(?=[a-z])', ' dot ', text).replace('psycheai', 'psyche ai')
     # A spelled-out ending, "dot I O", is heard as ".io", and a spelled-out type, "E N T P", as "ENTP".

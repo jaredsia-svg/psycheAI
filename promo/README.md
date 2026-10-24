@@ -371,7 +371,7 @@ keeps them as scenes that never come, `NEVER`).
 | 0 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I thought* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
 | 1 | I always thought I was easygoing, and chill. / Until my data showed me otherwise. | *just to confirm* typed into a search of his messages, one from every chat, counting to 96×; *"Just to confirm" 96 times* |
 | 2 | I thought I was over my ex. / Apparently not. | Instagram's recent searches, the same blurred profile row after row, counting to 63×; *Searched her profile 63 times this year* |
-| 3 | You're not who you think you are. / Get to understand yourself better at psycheai.io. | the two lines, *Your personal AI coach*, the address |
+| 3 | You're not who you think you are. / Understand yourself better at psycheai.io (said quickly, as `{PsycheAIdotIOquick}`: the usual form ran the A and I together here). | the two lines, *Your personal AI coach*, the address |
 
 The numbers are shown, never said: the voice only admits it. Each claim is a trait a little less flattering than
 the speaker would admit, answered with something the app reads (his messages, and Instagram's search history).

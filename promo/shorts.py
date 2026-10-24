@@ -223,7 +223,7 @@ REELS['mirror'] = {
         (['I always thought I was a great listener.', 'Until {B} put me in my place.'], 0.85, True, 0.2),
         (['I always thought I was easygoing, and chill.', 'Until my data showed me otherwise.'], 0.85, True, 0.2),
         (['I thought I was over my ex.', 'Apparently not.'], 0.85, True, 0.3),
-        (["You're not who you think you are.", 'Get to understand yourself better at {PsycheAIdotIO}.'], 0.85, True, 0.35),
+        (["You're not who you think you are.", 'Understand yourself better at {PsycheAIdotIOquick}.'], 0.85, True, 0.35),
     ],
     'hold': {0: 0.9, 1: 0.9, 2: 1.1},  # the number read after each
     'punch': (0, 1, 2),
