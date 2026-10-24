@@ -3,7 +3,9 @@
 // card), which the stage uses to draw its highlight boxes. Also the sample
 // report's opening, assets/report.png, for the privacy reel, and the Odysseus
 // sample card, assets/card-odysseus.png, for the MBTI reel, and Sherlock's, assets/card-sherlock.png, for
-// the roast reel.
+// the roast reel, and a Tin Man card, assets/card-tinman.png, for the character reel: the site has no Tin Man
+// sample, so one (TINMAN below, a made-up person written to the card's rules) is added to the gallery for this
+// picture only, in the browser, and the site is left as it is.
 //
 //   node promo/capture.mjs
 //
@@ -30,9 +32,31 @@ const TARGETS = {
   confidence: '.pc-sconf', character: '.pc-shero', patterns: '.pc-spatterns', motives: '.pc-smotives',
   type: '.pc-sletters', bigFive: '.pc-straits', standFor: '.pc-schips', love: '.pc-slove-panel', syncs: '.pc-ssync-panel',
 };
+// The Tin Man sample, for the character reel only.
+const TINMAN = {
+  card: { name: 'Noah Bennett', confidence: 82, headline: 'Big-hearted builder who shows love by showing up' },
+  confidence: { score: 82, level: 'high' },
+  essence: { character: 'The Tin Man', source: 'The Wonderful Wizard of Oz', icon: '' },
+  cardHighlights: 'Like him, you worry you are not warm enough while being the first to check on everyone: three years of messages asking how the interview went, how someone’s mum is doing, whether they got home safe. You lead with steady hands, and the heart was there all along.',
+  patterns: [{ id: 'p1', name: 'Checks in on the quiet ones' }, { id: 'p2', name: 'Fixes first, feels later' }, { id: 'p3', name: 'Steady when others shake' }],
+  topMotivators: ['benevolence', 'security', 'achievement'],
+  mbti: { type: 'ISFJ', letters: [{ axis: 'E/I', choice: 'I', strength: 'moderate' }, { axis: 'N/S', choice: 'S', strength: 'clear' },
+    { axis: 'T/F', choice: 'F', strength: 'moderate' }, { axis: 'J/P', choice: 'J', strength: 'clear' }] },
+  bigFive: { openness: { score: 58 }, conscientiousness: { score: 82 }, extraversion: { score: 38 }, agreeableness: { score: 80 }, neuroticism: { score: 46 } },
+  values: [{ value: 'Loyalty' }, { value: 'Kindness' }, { value: 'Reliability' }],
+  beliefs: [{ belief: 'Care is something you do' }],
+  interests: [{ name: 'Woodworking' }, { name: 'Cycling' }, { name: 'Cooking' }],
+  relationship: { loveLanguages: { receiving: [{ language: 'Quality time' }, { language: 'Words of affirmation' }],
+    giving: [{ language: 'Acts of service' }, { language: 'Quality time' }] } },
+  sampleSyncs: ['Mulan', 'Dr Watson', 'Odysseus'],
+};
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 400, height: 1400 }, deviceScaleFactor: 3 });
+  await page.route('**/sample-cards.json', async route => {
+    const real = await (await route.fetch()).json();
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(Object.assign({}, real, { cards: real.cards.concat([TINMAN]) })) });
+  });
   await page.goto('http://localhost:' + PORT + '/');
   await page.click('#insight-card-open');
   await page.waitForSelector('#sample-card-dialog[open] #sample-psyche-card-full .pc-shero');
@@ -96,6 +120,22 @@ try {
   await page.waitForTimeout(500);
   if (/Daniel Okafor/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-sherlock.png' });
   else console.error('no Sherlock sample card found');
+
+  // And the Tin Man's (Noah Bennett), for the character reel: last on the same arrows.
+  for (let step = 0; step < 8; step++) {
+    if (/Noah Bennett/.test(await card.innerText())) break;
+    await page.evaluate(() => { const next = document.querySelector('#sample-card-dialog .sample-card-next');
+      next.style.visibility = ''; next.click(); });
+    await page.mouse.move(1, 1);
+    await page.waitForTimeout(700);
+  }
+  await page.evaluate(() => document.querySelectorAll('#sample-card-dialog button').forEach(b => {
+    if (!b.closest('#sample-psyche-card-full')) b.style.visibility = 'hidden';
+  }));
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(500);
+  if (/Noah Bennett/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-tinman.png' });
+  else console.error('no Tin Man card found');
 
   // The sample report's opening, for the privacy reel (assets/report.png): from its part nav (00 to 05)
   // down, as tall as 1.4 times its width, without the dialog's title bar.

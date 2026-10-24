@@ -164,6 +164,27 @@ REELS['compare'] = {
     'melody': [[72, 76, 79, 76], [74, 71, 67, 71], [72, 69, 76, 72], [77, 76, 72, 69]],
     'reveal': 3, 'swing': 0.0, 'early_claps': False,
 }
+# The character reel (24 October 2026): which character are you? A slot machine of the public-domain characters'
+# scenes, no names, spins and lands on the Tin Man; why, from the data; his card. Ryan's voice.
+REELS['character'] = {
+    'voice': 'en_US-ryan-high',
+    'lines': [
+        (['I let {B} read six years of my Instagram.', 'Then it told me which character I am.'], 0.85, True, 0.3),
+        (['Twenty eight characters.', 'One match.'], 0.85, True, 0.5),
+        (['The Tin Man.'], 0.85, None),
+        (["It said I worry I'm not warm enough.", "But I'm the first to ask if you got home safe."], 0.85, True, 0.35),
+        (['The heart was there all along.'], 0.85, None),
+        (['Which character are you?', 'Find out at {PsycheAIdotIO}.'], 0.85, True, 0.3),
+    ],
+    'hold': {1: 0.5, 2: 0.4, 3: 1.4, 4: 2.6},  # 3: the evidence read; 4: the card
+    # Its own piece, bright pop: C major (C G Am F) at 108, a muted pluck under the hook, the slot's ticks slowing
+    # with it, a riser into a hit as it lands, then the full beat and a bell tune to the end.
+    'mood': 'character', 'bpm': 108,
+    'chords': [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]], 'roots': [36, 43, 45, 41],
+    'melody': [[76, 79, 84, 79], [74, 79, 83, 79], [76, 72, 69, 72], [77, 76, 72, 74]],
+    'reveal': 2, 'swing': 0.0, 'early_claps': False,
+    'spin': 30,  # tiles the slot passes before it stops (character-stage.html uses the same)
+}
 # The mirror reel (24 October 2026): who I say I am against what my data says, three times, then who it says I am.
 # Each claim is a trait a little less flattering than he would admit (a talker, not over her, particular), a set-up
 # and a punchline as the roast's burns are. Ryan's voice.
@@ -786,6 +807,21 @@ else:
 
     for k in range(1, REVEAL): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
     at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
+
+if R.get('mood') == 'character':
+    # The slot's ticks: one each time a tile passes, slowing as it does (the stage moves by the same curve).
+    a0, a1 = sc[1]['start'], sc[R['reveal']]['start']
+    def tick():
+        L = int(0.05 * SR); x = np.arange(L) / SR
+        click = np.sin(2 * np.pi * 2400 * x) * np.exp(-x * 160) + rng.standard_normal(L) * np.exp(-x * 300) * 0.3
+        return (click * 0.22).astype(np.float32)
+    TK = tick(); passed = 0
+    for u in np.linspace(0, 1, 6000):
+        pos = int(R['spin'] * (1 - (1 - u) ** 3))
+        if pos > passed:
+            passed = pos; at(a0 + u * (a1 - a0), TK, 0.9, 0.2 if pos % 2 else -0.2)
+    # A sparkle on the landing.
+    for k, m in enumerate([84, 88, 91, 96]): at(a1 + k * 0.06, bell(m), 0.9, 0.3 if k % 2 else -0.3)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)

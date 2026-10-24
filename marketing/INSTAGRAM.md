@@ -130,6 +130,20 @@ Comment MIRROR for the link.
 #selfawareness #personalitytest #relatable #aicoach #psycheai
 ```
 
+### 3d. Which character are you?
+
+```
+I let PsycheAI read 6 years of my Instagram. It told me which character I am 🎰
+
+The Tin Man. It said I worry I'm not warm enough, but I'm the first to ask if you got home safe.
+The heart was there all along ❤️
+
+28 characters. Which one are you?
+Get your free card and comment your character 👇
+
+#whichcharacterareyou #personalitytest #wizardofoz #psycheai
+```
+
 ### 4. Career
 
 ```

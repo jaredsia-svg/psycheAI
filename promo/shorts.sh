@@ -17,6 +17,8 @@ for R in ${REELS:-notes mbti coach}; do
   SCENE=3; case $R in coach*) SCENE=5;; career|relationship|compare*|mirror) SCENE=4;; esac
   COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][$SCENE]; print(s['vo'] + 1.6)")
   # In the roast, the last burn just after its punchline lands.
+  # In the character reel, the Tin Man's card.
+  if [ "$R" = character ]; then COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][4]; print(s['vo'] + 1.2)"); fi
   if [ "$R" = roast ]; then COVER=$($PY -c "import json; s = json.load(open('build/$R/timeline.json'))['scenes'][3]; print(s['marks'][1] + 0.7)"); fi
   "$FF" -y -v error -ss "$COVER" -i "build/$R/video.mp4" -frames:v 1 -q:v 2 "out/PsycheAI-$R-cover.jpg"
 done

@@ -384,3 +384,29 @@ The music: pizzicato over a half-time 808 groove in E minor at 90 under the clai
 beat before each punchline, a record scratch into it and a sub drop on it; a swell into G major for the card, a
 warm electric piano, a pad and a soft beat, a bell tune, ending on a held G with nothing struck under it.
 
+### The character reel
+
+```
+npm run promo:shorts -- character   # out/PsycheAI-character.mp4, about 25 s
+```
+
+*Which character are you?* (24 October 2026). Its own stage, `character-stage.html`, and its own music; Ryan's
+voice. Made for viewers to answer with their own card.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | I let PsycheAI read six years of my Instagram. / Then it told me which character I am. | the two lines |
+| 1 | Twenty eight characters. / One match. | a slot machine with lights, its scenes spinning past with no names and slowing, *28 characters. 1 match.* above it |
+| 2 | The Tin Man. | it lands on the Tin Man with a flash and sparkles; his name and *The Wonderful Wizard of Oz* |
+| 3 | It said I worry I'm not warm enough. / But I'm the first to ask if you got home safe. | the machine rises; the two lines and the evidence, *"Home safe?" sent 212 times* |
+| 4 | The heart was there all along. | Noah Bennett's Tin Man card (`assets/card-tinman.png`) |
+| 5 | Which character are you? / Find out at psycheai.io. | *Comment yours*, the address |
+
+The slot shows only the six public-domain characters in the catalogue (Mulan, Odysseus, Rapunzel, Sherlock Holmes,
+Dr Watson, the Tin Man), as everything the marketing shows does, though the voice says 28; their scenes are the
+app's own (`docs/character-art.js`, cropped to the subject by `characterArt`), loaded by the stage from `docs/`.
+The site has no Tin Man sample, so `capture.mjs` adds one (Noah Bennett, written to the card's rules) to the
+gallery in its own browser for the picture only. The spin follows one curve in both the stage and the music
+(`spin` tiles, eased out): the music ticks once per tile passing, so the ticks slow as it does; then a riser and a
+hit as it lands, a sparkle of bells, and bright pop in C major (C G Am F at 108) to the end.
+
