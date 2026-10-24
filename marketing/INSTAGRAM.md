@@ -120,7 +120,7 @@ I always thought I was a great listener. 5 messages sent for every 1 received.
 I always thought I was easygoing. "Just to confirm", 96 times.
 I thought I was over my ex. Searched her profile 63 times this year.
 
-You're not who you think you are. Time for some self-discovery 🪞
+You're not who you think you are. Get to understand yourself better 🪞
 
 Which one is you? 👇
 Comment MIRROR for the link.

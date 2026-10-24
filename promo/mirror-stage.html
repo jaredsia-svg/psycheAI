@@ -91,7 +91,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div class="el app" id="wa"><div class="ic"></div></div>
     <div class="el app" id="gg"><div class="ic"></div></div>
 
-    <div class="el lab" id="labSay">WHAT I SAY</div>
+    <div class="el lab" id="labSay">WHAT I THOUGHT</div>
     <div class="el lab data" id="labData">WHAT MY DATA SAYS</div>
     <div class="el" id="round"></div>
     <div id="bubbles"></div>
@@ -108,7 +108,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div id="chips"></div>
 
     <div class="el" id="c1">You’re not who<br>you think you are.</div>
-    <div class="el" id="c2">It’s time for some<br><span class="data">self-discovery.</span></div>
+    <div class="el" id="c2">Get to understand<br><span class="data">yourself better.</span></div>
     <div class="el" id="tag">Your personal AI coach</div>
     <div class="el" id="site">psycheai.io ↗</div>
   </div>
@@ -267,9 +267,11 @@ function close(t, pulse) {
   show('c1', clamp(a * 2), 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
   const b = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
   show('c2', clamp(b * 2), 'scale(' + (0.7 + 0.3 * Math.min(1, b) + pulse * 0.015) + ')');
-  const c = back(prog(t, s.marks[2] - 0.2, s.marks[2] + 0.2));
+  // The address as it is said, at the end of the second line (or as the third line, in an older cut).
+  const atSite = s.marks[2] || s.voEnd - 1.3;
+  const c = back(prog(t, atSite - 0.2, atSite + 0.2));
   show('tag', clamp(c * 2), 'translateY(' + (1 - Math.min(1, c)) * 30 + 'px)');
-  const d = back(prog(t, s.marks[2], s.marks[2] + 0.35));
+  const d = back(prog(t, atSite, atSite + 0.35));
   show('site', clamp(d * 2), 'translateX(-50%) scale(' + (Math.min(1.05, d) + pulse * 0.04 * Math.min(1, d)) + ')');
 }
 window.render = render;

@@ -358,7 +358,7 @@ and her name, never Disney's artwork.
 ### The mirror reel
 
 ```
-npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 25 s
+npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 23 s
 ```
 
 *Who I think I am against what my data says* (24 October 2026). Its own stage, `mirror-stage.html`, and its own
@@ -368,10 +368,10 @@ keeps them as scenes that never come, `NEVER`).
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
+| 0 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I thought* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
 | 1 | I always thought I was easygoing, and chill. / Until my data showed me otherwise. | *just to confirm* typed into a search of his messages, one from every chat, counting to 96×; *"Just to confirm" 96 times* |
 | 2 | I thought I was over my ex. / Apparently not. | Instagram's recent searches, the same blurred profile row after row, counting to 63×; *Searched her profile 63 times this year* |
-| 3 | You're not who you think you are. / It's time for some self discovery. / Try it at psycheai.io. | the two lines, *Your personal AI coach*, the address |
+| 3 | You're not who you think you are. / Get to understand yourself better at psycheai.io. | the two lines, *Your personal AI coach*, the address |
 
 The numbers are shown, never said: the voice only admits it. Each claim is a trait a little less flattering than
 the speaker would admit, answered with something the app reads (his messages, and Instagram's search history).
@@ -379,11 +379,12 @@ Earlier cuts: a lighter set read as quirks (a morning person most active at 1:12
 Tokyo); then the data said the numbers aloud (*Three messages sent, for each one received*), which made it a list
 rather than a confession. ("Hmm" is said "ugh" by this voice; the line is now just *Apparently not*.)
 
-The music (the second piece): lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung, on a warm electric
-piano, a soft boom-bap beat, a round bass and vinyl crackle. On each *until* the record slows to a stop (a tape
-stop) and the beat drops back in on the punchline; for the close it opens into F major with a bell tune,
-ending on a held Fmaj9. The cover is the first number, just after it lands. The first piece, pizzicato over a half-time 808 with a record scratch on each punchline, was
-dropped (24 October).
+The music (the third piece, 24 October 2026): a cool-jazz trio in F at 116, swung, for a confession told against
+oneself. Brushes and a ride cymbal, a walking upright bass, piano comping the Charleston on a turnaround (Fmaj7 D7
+Gm7 C7). On each *until* the band stops dead, and on the punchline a muted trumpet goes wah-wah, falling, before it
+swings back in; a vibraphone answers on the close, which ends on a held Fmaj9. Dropped before it: lo-fi chill hop
+with a tape stop on each *until*, and pizzicato over a half-time 808 with a record scratch. The cover is the first
+number, just after it lands.
 
 ### The character reel
 
