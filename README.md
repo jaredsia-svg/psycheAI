@@ -2289,10 +2289,15 @@ weigh freshness and a named author, and AI crawlers read Markdown more cheaply t
   `Link: <https://psycheai.io/<slug>>; rel="canonical"` so it is never indexed as a second copy, and
   sends the copy in place of the page to a reader whose `Accept` ranks `text/markdown` above HTML
   (`Vary: Accept`). `llms.txt` now points at the copies.
-- **IndexNow.** `npm run indexnow` after a deploy tells Bing and the other IndexNow engines (which
-  also feed ChatGPT search and Copilot) that pages changed. The key is served at
-  `/ffd11799b5d07d5cf6542ebb723deaff.txt`; it is not a secret. `npm run indexnow -- /faq` sends only
-  the pages named.
+- **IndexNow.** Bing and the other IndexNow engines (which also feed ChatGPT search and Copilot)
+  are told which pages changed by the live server itself (`lib/indexnow.js`): 90 seconds after a
+  deploy starts listening, once Render has moved traffic to it, it compares `sitemap.xml` with the
+  one it last sent (each address's `<lastmod>`, kept in the store as `indexnow:sent`) and sends only
+  the new or re-dated addresses; nothing changed, nothing sent, so a restart costs nothing. A refused
+  ping is not remembered, so the next deploy tries again. On Render only (`RENDER=true`), never in
+  mock mode; `PSYCHEAI_INDEXNOW=0` turns it off; the log says what was sent. `npm run indexnow`
+  (`-- /faq` for named pages) sends by hand. The key is served at
+  `/ffd11799b5d07d5cf6542ebb723deaff.txt`; it is not a secret.
 
 **Draft pages** (23 October 2026). A topic with `draft: true` is written as a page but with
 `noindex, nofollow`, no dates or byline, no Markdown copy, and left out of the sitemap and llms.txt,
@@ -2302,8 +2307,9 @@ honest lists (`/best-free-personality-tests`, `/best-ai-life-coach-apps`,
 option is best for) and three questions people actually ask (`/am-i-in-the-wrong-job`,
 `/what-will-i-regret-when-im-old`, citing Bronnie Ware's five regrets, and
 `/why-do-we-fight-over-small-things`, citing Gottman's finding that 69% of a couple's conflicts are
-perpetual). Each opens with a one-sentence answer for AI summaries. Publishing one is deleting its
-`draft: true` and running the generator, then `npm run indexnow` after the deploy.
+perpetual). Each opens with a one-sentence answer for AI summaries. All six were published on
+24 October 2026 (their flag deleted, dated that day); the next deploy sends them to IndexNow on its
+own. 69 pages in the sitemap.
 
 ## Kept across deploys (Upstash)
 

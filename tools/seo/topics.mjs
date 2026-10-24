@@ -134,13 +134,12 @@ export const TOPICS = [
     ],
   },
 
-  // ---------- drafts (October 2026), for the owner to check before they go live ----------
-  // `draft: true`: written to docs/ so they can be read at their address, but
-  // marked noindex and kept out of the sitemap and llms.txt. Delete the flag
-  // to publish. The comparisons describe each tool by how it works, not by a
-  // price, which changes; PsycheAI is named as ours.
+  // ---------- three honest lists and three questions (published 24 October 2026) ----------
+  // The comparisons describe each tool by how it works, not by a price, which
+  // changes; PsycheAI is named as ours. A new topic can be marked `draft: true`
+  // to be read at its address first: noindex, and out of the sitemap and
+  // llms.txt until the flag is deleted.
   {
-    draft: true,
     slug: 'best-free-personality-tests',
     title: 'Best free personality tests in 2026 | PsycheAI',
     description: 'The best free personality tests in 2026 compared: 16Personalities, Truity, Big Five research tests, and PsycheAI, which asks no questions.',
@@ -158,7 +157,6 @@ export const TOPICS = [
     ],
   },
   {
-    draft: true,
     slug: 'best-ai-life-coach-apps',
     title: 'Best AI life coach apps in 2026 | PsycheAI',
     description: 'AI life coach apps in 2026 compared by what they know about you: chat, journals, goals or your own data. Rocky.ai, Rosebud, Pi, Purpose and more.',
@@ -176,7 +174,6 @@ export const TOPICS = [
     ],
   },
   {
-    draft: true,
     slug: 'best-friendship-compatibility-tests',
     title: 'Best friendship compatibility tests 2026 | PsycheAI',
     description: 'Ways to test friendship compatibility in 2026: BFF quizzes, MBTI charts, love language quizzes, and Psyche Sync, which compares two real readings.',
@@ -193,7 +190,6 @@ export const TOPICS = [
     ],
   },
   {
-    draft: true,
     slug: 'am-i-in-the-wrong-job',
     title: 'Am I in the wrong job? How to tell | PsycheAI',
     description: 'Am I in the wrong job, or am I the problem? Signs it is the job, signs it is the part of the job, and how your own behaviour shows which part you love.',
@@ -212,7 +208,6 @@ export const TOPICS = [
     ],
   },
   {
-    draft: true,
     slug: 'what-will-i-regret-when-im-old',
     title: 'What will I regret most when I’m old? | PsycheAI',
     description: 'The most common regrets at the end of life, from a palliative carer’s notes, and how to spot which apply to you from your own behaviour.',
@@ -230,7 +225,6 @@ export const TOPICS = [
     ],
   },
   {
-    draft: true,
     slug: 'why-do-we-fight-over-small-things',
     title: 'Why do we fight over small things? | PsycheAI',
     description: 'Why couples and families fight over small things, what the fight is usually about, and how knowing how you love and handle conflict breaks the cycle.',

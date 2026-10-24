@@ -29,6 +29,7 @@ const referral = require('./lib/referral');
 const askCredits = require('./lib/askcredits');
 const links = require('./lib/links');
 const syncbox = require('./lib/syncbox');
+const indexNow = require('./lib/indexnow');
 const staticFiles = require('./lib/staticfiles');
 // Short personal links need a store that survives a deploy (Upstash); in
 // memory they would break on the next one, so the page keeps the long link.
@@ -2169,6 +2170,8 @@ if (require.main === module) {
     // The build, for the operator only: /api/status no longer serves it.
     console.log('  Build: ' + [BUILD.version && 'v' + BUILD.version, BUILD.shortCommit, BUILD.branch, BUILD.platform]
       .filter(Boolean).join(' · '));
+    // Search engines told which pages this deploy changed (lib/indexnow.js).
+    indexNow.afterDeploy({ root: ROOT, store, mock: status.mock });
   }));
   // A deploy stops this process with SIGTERM. Today's totals go to the log
   // first, so they are not lost with the memory they were kept in.

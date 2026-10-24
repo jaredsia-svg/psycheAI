@@ -8043,7 +8043,7 @@ check('the schema requires evidence on where they align and differ',
       });
       setTimeout(async () => {
         const out = {};
-        for (const path of ${JSON.stringify(['/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/no-such-guide', '/faq.md', '/am-i-in-the-wrong-job.md', '/ffd11799b5d07d5cf6542ebb723deaff.txt'])}.concat(${JSON.stringify(paths)})) {
+        for (const path of ${JSON.stringify(['/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/no-such-guide', '/faq.md', '/am-i-in-the-wrong-job.md', '/no-such-guide.md', '/ffd11799b5d07d5cf6542ebb723deaff.txt'])}.concat(${JSON.stringify(paths)})) {
           const r = await fetch('http://localhost:${port}' + path);
           const body = await r.text();
           out[path] = { status: r.status, type: r.headers.get('content-type'), link: r.headers.get('link'), vary: r.headers.get('vary'), body: path.endsWith('.txt') ? body : '',
@@ -8059,7 +8059,7 @@ check('the schema requires evidence on where they align and differ',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 40 &&
+  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 46 &&
     ['/', '/privacy', '/terms', '/refunds', '/faq', '/sample-report', '/characters', '/mbti-types', '/intj-personality']
       .every(path => paths.includes(path)), JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
@@ -8108,15 +8108,19 @@ check('the schema requires evidence on where they align and differ',
         !md.startsWith('---\n') || !md.includes('canonical: https://psycheai.io' + p + '\n') || !md.includes('updated: ' + d.modified + '\n') || /<[a-z\/]/.test(md);
     }).map(([p]) => p);
     check('every guide and generated page carries its dates, its author and a clean Markdown copy, and the sitemap its last change',
-      dated.length === 36 && undated.length === 0, undated.join());
+      dated.length === 42 && undated.length === 0, undated.join());
     const drafts = TOPICS.filter(t => t.draft).map(t => '/' + t.slug);
     const llmsText = readFileSync(join(root, 'docs', 'llms.txt'), 'utf8');
     check('a draft page is written but kept out of search: noindex, undated, no Markdown copy, not in the sitemap or llms.txt',
-      drafts.length >= 1 && drafts.every(p => {
+      drafts.every(p => {
         const h = readFileSync(join(root, 'docs', p.slice(1) + '.html'), 'utf8');
         return /<meta name="robots" content="noindex, nofollow">/.test(h) && !/guide-byline|datePublished|text\/markdown/.test(h) &&
           !existsSync(join(root, 'docs', p.slice(1) + '.md')) && !paths.includes(p) && !llmsText.includes(p) && !(p.slice(1) in dates);
-      }) && got['/am-i-in-the-wrong-job.md'].status === 404, drafts.join());
+      }) && got['/no-such-guide.md'].status === 404, drafts.join());
+    check('the six lists and questions published on 24 October are in the sitemap, with Markdown copies',
+      ['/best-free-personality-tests', '/best-ai-life-coach-apps', '/best-friendship-compatibility-tests', '/am-i-in-the-wrong-job',
+        '/what-will-i-regret-when-im-old', '/why-do-we-fight-over-small-things'].every(p => paths.includes(p) && llmsText.includes(p + '.md')) &&
+        got['/am-i-in-the-wrong-job.md'].status === 200);
     check('a Markdown copy is served as Markdown naming its page as canonical',
       got['/faq.md'].status === 200 && /^text\/markdown/.test(got['/faq.md'].type) && got['/faq.md'].link === '<https://psycheai.io/faq>; rel="canonical"',
       JSON.stringify(got['/faq.md']));
@@ -8125,10 +8129,36 @@ check('the schema requires evidence on where they align and differ',
         /Accept,/.test(got['/faq as md'].vary) && /Accept,/.test(got['/faq as browser'].vary), JSON.stringify([got['/faq as md'], got['/faq as browser']]));
     check('llms.txt points AI readers at the Markdown copies', /https:\/\/psycheai\.io\/faq\.md/.test(llmsText) && /\.md\)/.test(llmsText));
     {
-      const key = (/const KEY = '([0-9a-f]{32})'/.exec(readFileSync(join(root, 'tools', 'indexnow.mjs'), 'utf8')) || [])[1];
+      const key = (/const KEY = '([0-9a-f]{32})'/.exec(readFileSync(join(root, 'lib', 'indexnow.js'), 'utf8')) || [])[1];
       check('the IndexNow key is served at the site\'s root as plain text, matching the script that pings with it',
         key === 'ffd11799b5d07d5cf6542ebb723deaff' && got['/' + key + '.txt'].status === 200 && got['/' + key + '.txt'].body === key &&
           /^text\/plain/.test(got['/' + key + '.txt'].type));
+    }
+    // IndexNow after a deploy: only on Render, only what changed, remembered so a restart sends nothing.
+    {
+      const indexNow = (await import(join(root, 'lib', 'indexnow.js'))).default;
+      const store = (await import(join(root, 'lib', 'store.js'))).default;
+      const xml = v => `<url><loc>https://psycheai.io/a</loc><lastmod>2026-10-0${v}</lastmod></url><url><loc>https://psycheai.io/b</loc><lastmod>2026-10-01</lastmod></url>`;
+      check('IndexNow finds what changed in the sitemap: everything the first time, then only new or re-dated pages',
+        indexNow.changed(indexNow.entries(xml(1)), null).length === 2 &&
+          JSON.stringify(indexNow.changed(indexNow.entries(xml(2)), indexNow.entries(xml(1)))) === '["https://psycheai.io/a"]' &&
+          indexNow.changed(indexNow.entries(xml(1)), indexNow.entries(xml(1))).length === 0);
+      check('it runs only on Render, never in mock mode, and can be turned off',
+        indexNow.enabled({ RENDER: 'true' }, false) && !indexNow.enabled({}, false) && !indexNow.enabled({ RENDER: 'true' }, true) &&
+          !indexNow.enabled({ RENDER: 'true', PSYCHEAI_INDEXNOW: '0' }, false) && indexNow.afterDeploy({ root, store, mock: false, env: {} }) === null);
+      store._memory.reset();
+      const sent = [];
+      const fakeFetch = async (url, init) => { sent.push([url, JSON.parse(init.body)]); return { status: 202 }; };
+      const quiet = () => {};
+      const first = await indexNow.sendChanges({ root: join(root, 'docs'), store, fetchImpl: fakeFetch, log: quiet });
+      const again = await indexNow.sendChanges({ root: join(root, 'docs'), store, fetchImpl: fakeFetch, log: quiet });
+      check('after a deploy it sends the sitemap\'s pages with the key, then nothing again until the sitemap changes',
+        first.sent === paths.length && again.sent === 0 && sent.length === 1 && sent[0][0] === 'https://api.indexnow.org/indexnow' &&
+          sent[0][1].key === indexNow.KEY && sent[0][1].keyLocation === 'https://psycheai.io/' + indexNow.KEY + '.txt' && sent[0][1].host === 'psycheai.io',
+        JSON.stringify([first, again]));
+      const refused = await indexNow.sendChanges({ root: join(root, 'docs'), store: { run: async () => [null] }, fetchImpl: async () => ({ status: 403 }), log: quiet });
+      check('a refused ping is not remembered as sent, and never throws', refused.sent === 0 && refused.status === 403);
+      store._memory.reset();
     }
     check('the guides link to them instead',
       ['/characters', '/mbti-types', '/faq', '/sample-report'].every(p => pages.find(([q]) => q === '/instagram-personality-test')[1].includes('href="' + p + '"')));
