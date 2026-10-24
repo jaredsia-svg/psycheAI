@@ -48,16 +48,18 @@ My Psyche Card was so nice. Then I clicked "Reveal my roast" 💀
 
 It read my own data and found:
 🍜 300 cooking videos saved. Most-cooked dish: instant noodles.
-💬 "k." sent 214 times.
-📵 47 people on read. Including my dad.
+🏠 58 apartments viewed. Still living with my parents.
+🔍 "Is it too late to…" searched 23 times. I'm 27.
 
-Then it told me what an honest friend would.
+Then it told me what an honest friend would: I'm not lazy, I'm scared of choosing wrong.
+
+Tag the overthinker in your life 👇
 
 The roast is free with every Psyche Card.
 Comment ROAST and I'll send you the link 🔥
 (Request your Instagram data first, it takes a few hours to arrive. Read it tonight.)
 
-#personalitytest #roastme #selfimprovement #psycheai
+#overthinking #personalitytest #roastme #selfimprovement #psycheai
 ```
 
 ### 2. Coach: regret

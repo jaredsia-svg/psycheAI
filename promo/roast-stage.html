@@ -1,7 +1,8 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <style>
-/* The roast reel (shorts.py roast): the nice card, the roast button, three burns, the advice, the ask. */
+/* The roast reel (shorts.py roast): the nice card, the roast button, three burns (the overthinker: saving, comparing,
+   doubting), the advice, the ask. */
 @font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; }
 html, body { width: 1080px; height: 1920px; overflow: hidden; background: #fdf7fc; }
@@ -59,25 +60,29 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   padding-top: 34px; text-align: center; font-weight: 900; background: rgba(30,8,24,.9); box-shadow: 0 0 60px rgba(255,61,110,.45); }
 #stamp b { display: block; font-size: 160px; line-height: 1; }
 #stamp small { display: block; margin-top: 6px; font-size: 44px; letter-spacing: .12em; }
-/* 2: the "k." chat */
-#thread { position: absolute; left: 30px; right: 30px; top: 150px; bottom: 30px; overflow: hidden; }
-.msg { position: absolute; max-width: 78%; padding: 20px 30px; border-radius: 34px; font-size: 38px; font-weight: 650; line-height: 1.25; }
-.msg.them { left: 0; background: rgba(255,255,255,.08); color: #d9cfcf; border-bottom-left-radius: 10px; }
-.msg.you { right: 0; color: #ffd9c2; font-weight: 900; background: #6e170d; border-bottom-right-radius: 10px; }
-.kk { position: absolute; z-index: 26; padding: 16px 30px; border-radius: 30px; color: #fff; font-size: 46px; font-weight: 900;
-  background: #a3200f; color: #ffd9c2; border: 2px solid #ff5a2b; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
-#c2.hot { background: #ff3d6e; }
-/* 3: messages */
+/* 2: apartments viewed, then home */
 #list { position: absolute; left: 0; right: 0; top: 120px; }
 .row { position: absolute; left: 24px; right: 24px; height: 118px; display: flex; align-items: center; gap: 24px; padding: 0 22px; border-radius: 28px; }
-.row .pic { flex: none; width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 46px;
-  background: linear-gradient(135deg, #ffd6a5, #ff9ec4); }
+.row .pic { flex: none; width: 96px; height: 84px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 50px;
+  background: linear-gradient(135deg, #4a3a36, #2a1f1d); }
 .row .txt { flex: 1; min-width: 0; color: #fff; }
 .row .nm { font-size: 36px; font-weight: 850; }
 .row .pv { font-size: 30px; color: rgba(255,255,255,.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .seen { flex: none; font-size: 28px; font-weight: 800; color: rgba(255,255,255,.55); }
-.row.mom { background: rgba(255,80,30,.12); }
-.row.mom .seen { color: #ff6a3d; }
+.row.home { background: rgba(255,80,30,.12); }
+.row.home .pic { background: linear-gradient(135deg, #ffd6a5, #ff9ec4); }
+.row.home .seen { color: #ff6a3d; }
+#c3.hot, #c2.hot { background: #ff3d6e; }
+/* 3: the search */
+#q { position: absolute; left: 34px; right: 34px; top: 160px; height: 112px; border-radius: 56px; display: flex; align-items: center; gap: 22px; padding: 0 38px;
+  background: #2c2020; border: 3px solid rgba(255,90,40,.4); color: #fff; font-size: 46px; font-weight: 750; white-space: nowrap; }
+#q .ico { color: rgba(255,255,255,.55); font-size: 40px; }
+#q .caret { display: inline-block; width: 4px; height: 54px; margin-left: 3px; vertical-align: middle; background: #ff6a3d; }
+#sugg { position: absolute; left: 34px; right: 34px; top: 300px; }
+.sug { position: absolute; left: 0; right: 0; height: 118px; display: flex; align-items: center; gap: 26px; padding: 0 36px; border-radius: 28px;
+  font-size: 42px; font-weight: 550; color: rgba(255,255,255,.7); white-space: nowrap; background: rgba(255,255,255,.04); }
+.sug .ico { color: rgba(255,255,255,.4); font-size: 36px; }
+.sug b { color: #fff; font-weight: 850; }
 /* The advice: the honest friend, on a warmer ground. */
 #advice { z-index: 30; left: 80px; width: 920px; top: 600px; padding: 50px 56px 56px; border-radius: 48px; border: 6px solid transparent;
   background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box; box-shadow: 0 40px 100px rgba(60,10,60,.35); }
@@ -114,9 +119,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="punches"></div>
     <div class="el panel" id="p1"><div class="bar"><span>🔖 Saved · Cooking</span><span class="count" id="c1">0</span></div><div id="grid"></div></div>
     <div class="el" id="stamp"><b>🍜</b><small>#1 MOST COOKED</small></div>
-    <div class="el panel" id="p2"><div class="bar"><span>💬 Alex</span><span class="count" id="c2">0 “k.” sent</span></div><div id="thread"></div></div>
-    <div id="kks"></div>
-    <div class="el panel" id="p3"><div class="bar"><span>💬 Messages</span><span class="count" id="c3">0 left on read</span></div><div id="list"></div></div>
+    <div class="el panel" id="p2"><div class="bar"><span>🏠 Apartments</span><span class="count" id="c2">0 viewed</span></div><div id="list"></div></div>
+    <div class="el panel" id="p3"><div class="bar"><span>🔍 Search history</span><span class="count" id="c3">0×</span></div>
+      <div id="q"><span class="ico">🔍</span><span><span id="typed"></span><span class="caret" id="caret"></span></span></div><div id="sugg"></div></div>
 
     <div class="el" id="advice"><h3>What an honest friend would tell you</h3><div id="read"></div></div>
     <div class="el" id="flame">🔥</div>
@@ -147,8 +152,8 @@ const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
 // The setups, word by word as they are said, and the punchlines.
 const BURNS = [
   { badge: 'ROAST #1 🔥', setup: 'You’ve saved <b>300</b> cooking videos.', punch: 'Your most-cooked dish is instant noodles.', size: 92 },
-  { badge: 'ROAST #2 🔥', setup: 'You type <b>“k.”</b> when you’re angry.', punch: 'You’ve sent “k.” 214 times.', size: 100 },
-  { badge: 'ROAST #3 🔥', setup: 'You left <b>47</b> people on read.', punch: 'Including your dad.' },
+  { badge: 'ROAST #2 🔥', setup: 'You’ve viewed <b>58</b> apartments.', punch: 'You still live with your parents.', size: 100 },
+  { badge: 'ROAST #3 🔥', setup: 'You’ve searched <b>“is it too late to…”</b> <b>23</b> times.', punch: 'You’re 27.', size: 170 },
 ];
 const setups = BURNS.map(b => { const d = mk('setup el', '', $('setups'));
   d.innerHTML = b.setup.split(' ').map(w => '<i>' + w + '</i>').join(' '); return d; });
@@ -165,24 +170,24 @@ const GRADS = ['#3d2b26,#1f1513', '#4a2a1f,#22130f', '#36302d,#1a1514', '#4f2219
 const tiles = Array.from({ length: 24 }, (_, i) => { const d = mk('tile', EMO[i % EMO.length], $('grid'));
   d.style.left = (i % 4) * 202 + 'px'; d.style.top = Math.floor(i / 4) * 202 + 'px';
   d.style.background = 'linear-gradient(135deg,' + GRADS[(i * 5) % GRADS.length] + ')'; return d; });
-// 2: a friend trying, and "k." every time; then a flood of them.
-const CHAT = [['them', 'can we talk about earlier?'], ['you', 'k.'], ['them', 'you seem upset'], ['you', 'k.'],
-  ['them', 'I said I’m sorry 😕'], ['you', 'k.'], ['them', 'are you mad at me?'], ['you', 'k.']];
-const msgs = CHAT.map(([who, tx]) => mk('msg ' + who, tx, $('thread')));
-const kks = Array.from({ length: 26 }, (_, i) => { const d = mk('kk el', 'k.', $('kks'));
-  d.style.left = (130 + hash(i + 40) * 700) + 'px'; d.style.top = (640 + hash(i + 70) * 620) + 'px'; return d; });
-// 3: the inbox, every chat seen and not answered, Dad's last.
-const CHATS = [['Sam', '😄', 'are we still on for tonight?? 👀', '2d'], ['Group chat 🎂', '🥳', 'who’s bringing the cake', '3d'],
-  ['Jess', '🤩', 'omg look at this 😂😂', '3d'], ['Alex', '🙂', 'hey, you free this week?', '4d'], ['Coach Dan', '😊', 'you coming saturday?', '5d'],
-  ['Priya', '😄', 'happy birthday!!! 🎉', '6d'], ['Leo', '🤩', 'did you see my message?', '1w'], ['Dad', '👨', 'Proud of you. Call when you can 🙂', '4d']];
-const rows = CHATS.map(([nm, pic, pv, when], i) => { const d = mk('row' + (i === CHATS.length - 1 ? ' mom' : ''),
-  '<div class="pic">' + pic + '</div><div class="txt"><div class="nm">' + nm + '</div><div class="pv">' + pv + '</div></div><div class="seen">Seen ' + when + '</div>', $('list'));
-  return d; });
+// 2: listing after listing, all viewed; at the punchline it stops on the room they never left.
+const FLATS = [['🏙️', '$2,450 · 1 bed', 'Downtown · 5 min to the station'], ['🏢', '$1,980 · Studio', 'Riverside · gym, rooftop'],
+  ['🌇', '$2,700 · 2 bed', 'Midtown · balcony, city view'], ['🏘️', '$1,750 · 1 bed', 'Eastside · pets allowed'],
+  ['🌆', '$2,300 · 1 bed', 'Harbour · just renovated'], ['🏬', '$3,100 · 2 bed', 'Old Town · loft ceilings'],
+  ['🏡', '$2,050 · 1 bed', 'Park side · quiet street'], ['🛏️', 'Mum and Dad’s', 'Your room since 1999 · rent $0']];
+const rows = FLATS.map(([pic, nm, pv], i) => { const home = i === FLATS.length - 1;
+  return mk('row' + (home ? ' home' : ''), '<div class="pic">' + pic + '</div><div class="txt"><div class="nm">' + nm + '</div><div class="pv">' + pv +
+    '</div></div><div class="seen">' + (home ? 'Still here' : 'Viewed') + '</div>', $('list')); });
+// 3: the question typed in, and the ways it ends dropping in under it.
+const QUERY = 'is it too late to';
+const SUGG = ['move abroad', 'change careers', 'start over'];
+const suggs = SUGG.map((x, i) => { const d = mk('sug', '<span class="ico">🔍</span><span>is it too late to <b>' + x + '</b></span>', $('sugg'));
+  d.style.top = i * 132 + 'px'; return d; });
 // The honest friend: not the burns turned round, but what is under all three, typed in as it is read.
-const READ = [['<b>You’re not lazy, and you’re not cold.</b>'],
-  ['Saving something feels like starting it, without the risk of failing at it.'],
-  ['And “k.” is easier than saying what actually hurt.'],
-  ['<b class="last">Start the thing. Call your dad.</b>']];
+const READ = [['<b>You’re not lazy. You’re scared of choosing wrong.</b>'],
+  ['Thinking it through feels like progress. It isn’t.'],
+  ['It’s not too late. It just gets later every time you search.'],
+  ['<b class="last">Pick one. Start badly. Start today.</b>']];
 const readWords = READ.map(([html]) => html.split(/(?<=\s)/));
 $('ask').innerHTML = '<div class="small">' + 'Your roast is free with every card'.split(' ').map(w => '<i style="font-style:normal;display:inline-block">' + w + '</i>').join(' ') +
   '</div><div class="big">Comment<br><span class="fire">“ROAST”</span></div><div class="brave">if you’re brave 😈</div>';
@@ -270,27 +275,27 @@ function burns(t, pulse) {
       d.style.transform = 'scale(' + Math.min(1.05, p) * (1 - dead * 0.06) + ')'; d.style.filter = 'grayscale(' + (0.45 + 0.55 * dead) + ') brightness(' + (0.85 - dead * 0.4) + ')'; });
     const st = prog(t, PUNCH[0], PUNCH[0] + 0.18);
     show('stamp', t >= PUNCH[0] && t < s.end ? clamp(st * 3) * (1 - prog(t, s.end - 0.15, s.end)) : 0, 'scale(' + (1 + (1 - ease(st)) * 1.6) + ') rotate(-10deg)'); }
-  // 2: the friend tries, you answer "k.", the count climbing; at the punchline the screen floods with them.
-  { const s = S[2], p = PUNCH[1], on = t >= s.start - 0.05 && t < s.end, out = prog(t, s.end - 0.15, s.end);
-    $('c2').textContent = Math.round(214 * easeIO(prog(t, s.vo, p))) + ' “k.” sent';
+  // 2: the listings scroll past, every one viewed, the count climbing to 58; at the punchline it stops on home.
+  { const s = S[2], p = PUNCH[1], run = easeIO(prog(t, s.vo - 0.1, p - 0.05));
+    $('c2').textContent = Math.round(58 * run) + ' viewed';
     $('c2').className = 'count' + (t >= p ? ' hot' : '');
-    // One message after another, each pushing the thread up; the newest at the bottom.
-    const shown = prog(t, s.start + 0.2, p - 0.1) * msgs.length;
-    let y = 0; const heights = msgs.map(m => m.offsetHeight + 18);
-    const visible = Math.min(msgs.length, Math.floor(shown) + 1), lift = heights.slice(0, visible).reduce((a, h) => a + h, 0);
-    msgs.forEach((m, i) => { const pp = back(clamp(shown - i)); m.style.top = (590 - lift + y) + 'px'; y += heights[i];
-      m.style.opacity = i < visible ? clamp(pp * 2) : 0; m.style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1, pp)) + ')';
-      m.style.transformOrigin = m.classList.contains('you') ? '100% 100%' : '0 100%'; });
-    kks.forEach((d, i) => { const at = p + i * 0.03, pp = back(prog(t, at, at + 0.2));
-      show(d, on && t >= at ? clamp(pp * 2) * (1 - out) : 0, 'scale(' + Math.min(1.1, pp) + ') rotate(' + ((hash(i + 9) - 0.5) * 30) + 'deg)'); }); }
-  // 3: the inbox scrolls, every chat seen; the count climbs to 47; at the punchline it stops on Dad.
-  { const s = S[3], p = PUNCH[2], run = easeIO(prog(t, s.vo - 0.1, p - 0.05));
-    $('c3').textContent = Math.round(47 * run) + ' left on read';
     const top = 140 - run * (rows.length - 4.4) * 130;
-    rows.forEach((r, i) => { const y = top + i * 130, focus = i === rows.length - 1 ? back(prog(t, p, p + 0.3)) : 0, dim = t >= p && i !== rows.length - 1;
-      r.style.top = (y - 120) + 'px'; r.style.opacity = dim ? 0.3 : 1;
+    rows.forEach((r, i) => { const y = top + i * 130, home = i === rows.length - 1, focus = home ? back(prog(t, p, p + 0.3)) : 0, dim = t >= p && !home;
+      // Home stays hidden until the punchline, so the joke is not read early.
+      r.style.top = (y - 120) + 'px'; r.style.opacity = dim ? 0.3 : home ? prog(t, p - 0.12, p + 0.08) : 1;
       r.style.transform = 'scale(' + (1 + focus * 0.06) + ')';
       r.style.boxShadow = focus ? '0 0 0 4px #ff5a2b, 0 0 50px rgba(255,70,30,' + 0.6 * clamp(focus) + ')' : 'none'; }); }
+  // 3: "is it too late to" typed as it is said; the endings drop in under it as the count runs to 23; at the
+  // punchline they go dark and only the question is left.
+  { const s = S[3], p = PUNCH[2], typeEnd = said(3, 'to', s.vo + 1.4);
+    $('typed').textContent = QUERY.slice(0, Math.round(QUERY.length * prog(t, s.vo + 0.35, typeEnd)));
+    $('caret').style.opacity = t < p && Math.floor(t * 2.6) % 2 === 0 ? 1 : (t >= p ? 0 : 0.15);
+    $('c3').textContent = Math.round(23 * easeIO(prog(t, typeEnd - 0.2, p - 0.1))) + '×';
+    $('c3').className = 'count' + (t >= p ? ' hot' : '');
+    const dark = prog(t, p, p + 0.25);
+    suggs.forEach((d, i) => { const at = typeEnd + (p - 0.35 - typeEnd) * i / SUGG.length, pp = back(prog(t, at, at + 0.3));
+      d.style.opacity = clamp(pp * 2) * (1 - dark * 0.75); d.style.transform = 'translateY(' + (1 - Math.min(1, pp)) * -30 + 'px)'; });
+    $('q').style.boxShadow = dark ? '0 0 0 4px #ff5a2b, 0 0 50px rgba(255,70,30,' + 0.6 * dark + ')' : 'none'; }
 }
 
 // A paragraph cut part way through a bold run: close the tag so the typed part still reads bold.

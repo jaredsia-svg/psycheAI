@@ -76,12 +76,12 @@ REELS['roast'] = {
     'lines': [
         (['My Psyche Card was so nice.', 'Then I clicked, reveal my roast.'], 0.85, True, 0.2),
         (["You've saved three hundred cooking videos.", 'Your most cooked dish is instant noodles.'], 0.85, True, 0.15),
-        (["You type K when you're angry.", "You've sent K two hundred fourteen times."], 0.85, True, 0.15),
-        (['You left forty seven people on red.', 'Including your dad.'], 0.85, True, 0.15),
+        (["You've viewed fifty eight apartments.", 'You still live with your parents.'], 0.85, True, 0.15),
+        (["You've searched, is it too late to, twenty three times.", "You're twenty seven."], 0.85, True, 0.15),
         (['Then it tells you what an honest friend would.'], 0.85, None),
         (['Your roast is free with every card.', "Comment roast, if you're brave."], 0.85, True, 0.15),
     ],
-    'hold': {1: 0.15, 2: 0.15, 3: 0.4, 4: 3.2},  # 4: time to read the honest friend
+    'hold': {1: 0.15, 2: 0.15, 3: 0.6, 4: 3.6},  # 4: time to read the honest friend
     'punch': (1, 2, 3),
     # Its own piece, brass house: F major (F Dm Bb C) at 124. Piano stabs and a soft kick under the nice card;
     # then four on the floor, open hats on the offbeat, a funky octave bass and a bright brass hook; the drums drop

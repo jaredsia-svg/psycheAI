@@ -151,7 +151,7 @@ Both end like the main video: riser, hit, the full beat. `coach-misunderstood` i
 ### The roast reel
 
 ```
-npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 28 s
+npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 30 s
 ```
 
 Built by `shorts.py` like the others, but with a stage of its own, `roast-stage.html`, and music of its own.
@@ -161,9 +161,9 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 | --- | --- | --- |
 | 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) on a warm sand ground with an orange glow round it and *so nice* in orange (pink read as too sweet for a man's reel), then the site's roast cover; a finger presses the button |
 | 1 | You've saved three hundred cooking videos. / Your most cooked dish is instant noodles. | a saved grid of recipes counting to 300, greyed out under a *#1 most cooked 🍜* stamp |
-| 2 | You type K when you're angry. / You've sent K two hundred fourteen times. | a friend trying to make up, answered "k." each time, the count climbing to 214; then the chat floods with them |
-| 3 | You left forty seven people on red. / Including your dad. | an inbox of "Seen" chats stopping on *Dad: Proud of you. Call when you can 🙂* |
-| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy, and you're not cold.* … *And "k." is easier than saying what actually hurt.* *Start the thing. Call your dad.* |
+| 2 | You've viewed fifty eight apartments. / You still live with your parents. | apartment listings scrolling past, each *Viewed*, the count climbing to 58; at the punchline the rest dim and *Mum and Dad's: your room since 1999 · rent $0 · Still here* lands, hidden until then |
+| 3 | You've searched, is it too late to, twenty three times. / You're twenty seven. | a search bar typing *is it too late to* as it is said, then *…move abroad*, *…change careers*, *…start over* dropping in under it as the count runs to 23; at the punchline they go dark and *You're 27.* lands large |
+| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy. You're scared of choosing wrong.* *Thinking it through feels like progress. It isn't.* *It's not too late. It just gets later every time you search.* *Pick one. Start badly. Start today.* |
 | 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
 
 Burns 1 to 3 are ash and ember rather than the brand's colours: a charcoal ground lit red from below, charcoal
@@ -172,6 +172,13 @@ slams in, in ember red, with a red flash in from the edges and a shake (a first 
 purples read as too friendly). The honest friend, by contrast, is in the brand's colours, but only its words:
 *an honest friend* and the card's heading in the gradient, the card edged in it, on a dark plum ground (a full
 gradient background was too loud); the ask goes back to the brand's dusk.
+
+The three burns are one person (24 October 2026): the chronic overthinker who saves instead of doing, compares
+instead of choosing, and ends up asking whether it is too late. Each escalates the last, from a laugh (noodles)
+to a life (27). The endings of "is it too late to" are shown, not said, so the hardest beat stays short;
+"move abroad" rather than "further my studies" (Singapore and British) or "go back to school" (American), so
+it reads the same everywhere. Replaced: "k." sent 214 times and 47 people left on read, including your dad.
+The cover is *You're 27.* just after it lands.
 
 The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
 romance, and simple enough to get on one hearing. Earlier ones were cut: "your thumb has never been in better
