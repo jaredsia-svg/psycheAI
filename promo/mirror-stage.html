@@ -98,12 +98,12 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div id="punches"></div>
     <div class="el panel" id="p1"><div class="bar"><span>💬 Messages</span><span class="count" id="n1">0 sent · 0 received</span></div>
       <div id="chat"></div></div>
-    <div class="el" id="peakTag">3 : 1</div>
+    <div class="el" id="peakTag">5 : 1</div>
     <div class="el panel" id="p2"><div class="bar"><span>🔍 Recent searches</span><span class="count" id="n2">0×</span></div><div id="igList"></div></div>
     <div class="el panel" id="p3"><div class="bar"><span>💬 Search in messages</span><span class="count" id="n3">0×</span></div>
       <div id="gq"><span>🔍</span><span><span id="gtyped"></span><span class="caret" id="gcaret"></span></span></div><div id="dates"></div></div>
 
-    <div class="el" id="turn">Then it told me who<br>I <span class="grad">actually</span> am.</div>
+    <div class="el" id="turn">It’s time I spent more time<br><span class="grad">understanding myself.</span></div>
     <img class="el" id="card" src="assets/card-odysseus.png">
     <div id="chips"></div>
 
@@ -132,28 +132,28 @@ const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
 
 // What I say, and what the data says back.
 const CLAIMS = [
-  { say: 'I’m a great listener.', punch: '3 messages sent<br>for every 1 received.' },
-  { say: 'I’m totally over my ex.', punch: 'Searched her profile<br>63 times this year.' },
-  { say: 'I’m easygoing.', punch: '“Just to confirm”<br>96 times.' },
+  { say: 'I’m a great listener.', punch: '5 messages sent<br>for every 1 received.' },
+  { say: 'I’m easygoing and chill.', punch: '“Just to confirm”<br>96 times.' },
+  { say: 'I’m over my ex.', punch: 'Searched her profile<br>63 times this year.' },
 ];
 const bubbles = CLAIMS.map(c => { const d = mk('el bubble', c.say + '<div class="strike"></div>', $('bubbles')); return d; });
 const punches = CLAIMS.map(c => mk('el punch data', c.punch, $('punches')));
 
 // 1: a friend's bad day, and his answers to it: three of his for every one of theirs.
 const CHAT = [['them', 'rough day tbh'], ['me', 'omg same'], ['me', 'so my boss today…'], ['me', 'and THEN he said'],
-  ['them', 'oh no'], ['me', 'right?? anyway'], ['me', 'also my landlord'], ['me', 'long story 😂'],
-  ['them', 'haha ok'], ['me', 'wait what was yours'], ['me', 'sorry I got carried away'], ['me', 'tell me!!']];
+  ['me', 'right?? anyway'], ['me', 'also my landlord'], ['them', 'haha ok'], ['me', 'long story 😂'], ['me', 'wait what was yours'],
+  ['me', 'sorry I got carried away'], ['me', 'tell me!!'], ['me', 'actually one more thing']];
 const cbs = CHAT.map(([who, tx]) => mk('cb ' + who, tx, $('chat')));
-// 2: the same profile, over and over.
+// The ex (the third claim, panel p2): the same profile, over and over.
 const igRows = Array.from({ length: 9 }, (_, i) => mk('row', '<div class="pic"></div><div class="nm">h•••••_•••<small>Searched · ' +
   ['2d', '4d', '6d', '1w', '1w', '2w', '3w', '1mo', '2mo'][i] + '</small></div><div class="x">✕</div>', $('igList')));
-// 3: one search, again and again since 2021.
+// Easygoing (the second claim, panel p3): one phrase, in every chat.
 const GQ = 'just to confirm';
 const DATES = [['Sam', '7:15, not 7:30?'], ['Mum', 'you got my last message?'], ['Team', 'slide 4 before 5?'], ['Alex', 'you’re bringing the plates?'],
   ['Jess', 'we’re splitting it 4 ways?'], ['Landlord', 'the 3rd, by noon?'], ['Dan', 'gate B, not C?'], ['Priya', 'the blue one, right?'], ['Group', 'everyone’s ok with 8?']];
 const dates = DATES.map(([w, x], i) => { const d = mk('when', '<b>' + w + '</b><span>“Just to confirm, ' + x + '”</span>', $('dates')); d.style.top = (i * 76) + 'px'; return d; });
 // Who it says I am.
-const CHIPS = ['🗣️ Needs to be heard', '💭 Feels more than he shows', '📐 Needs things just right'];
+const CHIPS = ['🗣️ Needs to be heard', '📐 Needs things just right', '💭 Feels more than he shows'];
 const chips = CHIPS.map((c, i) => { const d = mk('el chip', c, $('chips')); d.style.top = (1290 + i * 128) + 'px'; return d; });
 
 function render(t) {
@@ -207,7 +207,8 @@ function claims(t, pulse) {
     bubbles[k].style.filter = t >= p ? 'saturate(' + (1 - 0.6 * prog(t, p, p + 0.3)) + ')' : '';
     // The panel rises in; the punchline slams in under it.
     const pin = back(prog(t, s.start + 0.05, s.start + 0.45));
-    show('p' + (k + 1), live ? clamp(pin * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, pin)) * 200 + 'px)');
+    // The panels in the order the claims come: the chat, the message search, then Instagram's searches.
+    show(['p1', 'p3', 'p2'][k], live ? clamp(pin * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, pin)) * 200 + 'px)');
     const pp = prog(t, p - 0.04, p + 0.22), slam = 1 + (1 - ease(pp)) * 1.0;
     show(punches[k], live && t >= p - 0.04 ? clamp(pp * 3) * (1 - out) : 0, 'scale(' + (slam + pulse * 0.02) + ')');
   });
@@ -221,19 +222,19 @@ function claims(t, pulse) {
       c.style.opacity = (i < visible ? clamp(pp * 2) : 0) * (t >= p && c.classList.contains('me') ? 0.5 : 1);
       c.style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1, pp)) + ')'; c.style.transformOrigin = c.classList.contains('me') ? '100% 100%' : '0 100%'; });
     const run = easeIO(grow);
-    $('n1').textContent = Math.round(4812 * run).toLocaleString('en-US') + ' sent · ' + Math.round(1604 * run).toLocaleString('en-US') + ' received';
+    $('n1').textContent = Math.round(4812 * run).toLocaleString('en-US') + ' sent · ' + Math.round(962 * run).toLocaleString('en-US') + ' received';
     const tg = back(prog(t, p, p + 0.3));
     Object.assign($('peakTag').style, { left: '420px', top: '980px', fontSize: '84px', padding: '18px 44px', borderRadius: '34px' });
     show('peakTag', t >= p && t < s.end ? clamp(tg * 2) * (1 - prog(t, s.end - 0.2, s.end)) : 0, 'scale(' + Math.min(1.08, tg) + ')'); }
-  // 2: the same profile, row after row, the count running to 63.
-  { const s = S[2], p = PUNCH[1], run = prog(t, s.vo, p - 0.1);
+  // The ex: the same profile, row after row, the count running to 63.
+  { const s = S[3], p = PUNCH[2], run = prog(t, s.vo, p - 0.1);
     $('n2').textContent = Math.round(63 * easeIO(run)) + '×';
     const top = 20 - easeIO(run) * 4 * 118;
     igRows.forEach((r, i) => { const a = s.start + 0.2 + i * 0.12, pp = back(prog(t, a, a + 0.25));
       r.style.top = (top + i * 118) + 'px'; r.style.opacity = clamp(pp * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, pp)) * 60 + 'px)';
       r.style.background = t >= p ? 'rgba(94,242,255,' + (0.08 + 0.06 * Math.sin(t * 8 + i)) + ')' : 'transparent'; }); }
-  // 3: "just to confirm" typed into the search, a message from every chat filling in, the count running to 96.
-  { const s = S[3], p = PUNCH[2], typed = Math.round(GQ.length * prog(t, s.vo + 0.1, s.marks[1] - 0.4));
+  // Easygoing: "just to confirm" typed into the search, a message from every chat filling in, the count running to 96.
+  { const s = S[2], p = PUNCH[1], typed = Math.round(GQ.length * prog(t, s.vo + 0.1, s.marks[1] - 0.4));
     $('gtyped').textContent = GQ.slice(0, typed);
     $('gcaret').style.opacity = Math.floor(t * 2.6) % 2 === 0 ? 1 : 0.1;
     const run = prog(t, s.vo + 0.3, p - 0.1);

@@ -118,11 +118,11 @@ Comment COACH and I'll send you the link 👇
 ```
 I told an AI who I am. Then I let it read my data. 🪞
 
-"I'm a great listener." 3 messages sent for every 1 received.
-"I'm totally over my ex." Searched her profile 63 times this year.
-"I'm easygoing." Typed "just to confirm" 96 times.
+I always thought I was a great listener. 5 messages sent for every 1 received.
+I always thought I was easygoing. "Just to confirm", 96 times.
+I thought I was over my ex. Searched her profile 63 times this year.
 
-Then it told me who I actually am.
+It's time I spent more time understanding myself.
 
 Which one is you? 👇
 Comment MIRROR for the link.

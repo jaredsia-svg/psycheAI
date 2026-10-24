@@ -358,31 +358,32 @@ and her name, never Disney's artwork.
 ### The mirror reel
 
 ```
-npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 32 s
+npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 34 s
 ```
 
 *Who I think I am against what my data says* (24 October 2026). Its own stage, `mirror-stage.html`, and its own
-music; Ryan's voice.
+music; Ryan's voice. Told as a confession: *I always thought I was…, until…*.
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | I told an AI who I am. / Then I let it read my data. | the two lines; Instagram, WhatsApp and Google pop up and fly into *my data* |
-| 1 | I'm a great listener. / Three messages sent, for each one received. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, three of his to each of theirs, the counts climbing to 4,812 sent and 1,604 received; on the punchline the bubble is struck through and *3 : 1* lands |
-| 2 | I'm totally over my ex. / Searched her profile sixty three times this year. | Instagram's recent searches, the same blurred profile row after row, counting to 63× |
-| 3 | I'm easygoing. / Typed, just to confirm, ninety six times. | *just to confirm* typed into a search of his messages, one from every chat (7:15 not 7:30, the plates, gate B), counting to 96× |
-| 4 | Then it told me who I actually am. | Odysseus's sample card (Lucas Moreau, `assets/card-odysseus.png`; his patterns, *A plan B for every plan* and *Talks a room round*, back the claims up), then three lines that answer the claims: *Needs to be heard*, *Feels more than he shows*, *Needs things just right* |
+| 0 | I told an AI who I am. / Then I let it read my data. | the two lines; Instagram, WhatsApp and Google fly into *my data* |
+| 1 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
+| 2 | I always thought I was easygoing, and chill. / Until my data showed me otherwise. | *just to confirm* typed into a search of his messages, one from every chat, counting to 96×; *"Just to confirm" 96 times* |
+| 3 | I thought I was over my ex. / Mmm. Apparently not. | Instagram's recent searches, the same blurred profile row after row, counting to 63×; *Searched her profile 63 times this year* |
+| 4 | It's time I spent more time understanding myself. | Odysseus's sample card (`assets/card-odysseus.png`), then three lines: *Needs to be heard*, *Needs things just right*, *Feels more than he shows* |
 | 5 | You're not who you think you are. / Your data knows. / Try it at psycheai.io. | the two lines, *Your personal AI coach*, the address |
 
-Every claim is a trait a little less flattering than the speaker would admit, answered with something the app
-reads: his messages (how many he sends against receives, and what he types), and Instagram's search history. The
-first cut (24 October) was lighter (a morning person most active at 1:12 am; spontaneous, searching Tokyo since
-2021) and read as quirks rather than blind spots. Archived posts and saved places were dropped earlier, because
-the app reads neither. The answers are a made-up sample, kind rather than cruel: the card's three lines say what each
-contradiction means, not that the reader was wrong.
+The numbers are shown, never said: the voice only admits it. Each claim is a trait a little less flattering than
+the speaker would admit, answered with something the app reads (his messages, and Instagram's search history).
+Earlier cuts: a lighter set read as quirks (a morning person most active at 1:12 am; spontaneous, searching
+Tokyo); then the data said the numbers aloud (*Three messages sent, for each one received*), which made it a list
+rather than a confession. "Hmm" is said "ugh" by this voice, so it is "Mmm".
 
-The music: pizzicato over a half-time 808 groove in E minor at 90 under the claims, the beat dropping out for the
-beat before each punchline, a record scratch into it and a sub drop on it; a swell into G major for the card, a
-warm electric piano, a pad and a soft beat, a bell tune, ending on a held G with nothing struck under it.
+The music (the second piece): lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung, on a warm electric
+piano, a soft boom-bap beat, a round bass and vinyl crackle. On each *until* the record slows to a stop (a tape
+stop) and the beat drops back in on the punchline; for the card it opens into F major with a bell tune, ending
+on a held Fmaj9. The first piece, pizzicato over a half-time 808 with a record scratch on each punchline, was
+dropped (24 October).
 
 ### The character reel
 
