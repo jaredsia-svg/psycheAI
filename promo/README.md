@@ -370,7 +370,7 @@ music; Ryan's voice.
 | 1 | I'm a great listener. / Three messages sent, for each one received. | *What I say* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, three of his to each of theirs, the counts climbing to 4,812 sent and 1,604 received; on the punchline the bubble is struck through and *3 : 1* lands |
 | 2 | I'm totally over my ex. / Searched her profile sixty three times this year. | Instagram's recent searches, the same blurred profile row after row, counting to 63× |
 | 3 | I'm easygoing. / Typed, just to confirm, ninety six times. | *just to confirm* typed into a search of his messages, one from every chat (7:15 not 7:30, the plates, gate B), counting to 96× |
-| 4 | Then it told me who I actually am. | Sherlock's card, then three lines that answer the claims: *Needs to be heard*, *Feels more than he shows*, *Needs things just right* |
+| 4 | Then it told me who I actually am. | Odysseus's sample card (Lucas Moreau, `assets/card-odysseus.png`; his patterns, *A plan B for every plan* and *Talks a room round*, back the claims up), then three lines that answer the claims: *Needs to be heard*, *Feels more than he shows*, *Needs things just right* |
 | 5 | You're not who you think you are. / Your data knows. / Try it at psycheai.io. | the two lines, *Your personal AI coach*, the address |
 
 Every claim is a trait a little less flattering than the speaker would admit, answered with something the app
