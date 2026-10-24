@@ -135,11 +135,16 @@ const CARDS = [
     '<div class="no"><b>Likely to drain you</b>Compliance · Data entry</div></div>'],
 ];
 const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
-  d.style.top = (560 + i * 300) + 'px'; return d; });
+  return d; });
+// Stacked by their own heights with an even gap, since a card can run to two lines or three. Measured every frame:
+// on the first, a card can still be shorter than it ends up (its icon's font settling after the first paint).
+function stackCards() { let y = 560; cards.forEach(d => { const was = d.style.display; d.style.display = 'block';
+  d.style.top = y + 'px'; y += d.offsetHeight + 40; d.style.display = was; }); }
 const motes = Array.from({ length: 26 }, (_, i) => { const d = document.createElement('div'); d.className = 'mote'; $('motes').appendChild(d);
   return { el: d, x: hash(i) * 1080, speed: 30 + hash(i + 4) * 50, phase: hash(i + 8), size: 3 + hash(i + 2) * 6 }; });
 
 function render(t) {
+  stackCards();
   const ph = (t % BEAT) / BEAT, pulse = t >= ANS.start ? Math.exp(-ph * 6) : 0;
   // Dusk for the questions; it warms as PsycheAI is asked.
   const warm = easeIO(prog(t, ASK.start - 0.3, ASK.start + 0.6));
