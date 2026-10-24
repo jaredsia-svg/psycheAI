@@ -2309,7 +2309,7 @@ option is best for) and three questions people actually ask (`/am-i-in-the-wrong
 `/why-do-we-fight-over-small-things`, citing Gottman's finding that 69% of a couple's conflicts are
 perpetual). Each opens with a one-sentence answer for AI summaries. All six were published on
 24 October 2026 (their flag deleted, dated that day); the next deploy sends them to IndexNow on its
-own. 69 pages in the sitemap.
+own. 46 addresses in the sitemap.
 
 ## Kept across deploys (Upstash)
 
