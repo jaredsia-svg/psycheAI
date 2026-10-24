@@ -269,7 +269,7 @@ ending, in A, sounded like a change of key here).
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | I asked ChatGPT and PsycheAI the same question. What would I regret most about my life when I'm old? | the line, then both panels, the question typed into both at once as the voice reads it out, a little slower than the rest |
-| 1 | ChatGPT gave me a list that could fit anyone. | ChatGPT's real answer, trimmed only: its opening line cut to its two ends (*You might regret the things you kept postponing because you thought you had more time.*) and three of the five headings of its list (*Not loving people more openly*, *Being too afraid to try*, *Not being present for your own life*), set larger (24 October 2026: the full list read as a wall); a grey *Could be anyone* stamp; held about two seconds after the voice, to read it |
+| 1 | ChatGPT gave me a list that could fit anyone. | ChatGPT's real answer, trimmed only: its opening line cut to its two ends (*You might regret the things you kept postponing because you thought you had more time.*) and three of the five headings of its list (*Working too hard*, its *Trading too much of your life for approval or achievement* put plainly, *Being too afraid to try*, *Not being present for your own life*), set larger (24 October 2026: the full list read as a wall); being reworded, the caption no longer says unedited; a grey *Could be anyone* stamp; held about two seconds after the voice, to read it |
 | 2 | PsycheAI read my data first. (written "red", for the past tense) | Instagram, Google and WhatsApp fly into PsycheAI's panel; *Reading your data…* |
 | 3 | And it told me exactly why. | four excerpts of PsycheAI's real answers, typed in at reading pace; an *Only me* stamp in the gradient |
 | 4 | Same question. Only one of them actually knew me. | both panels lit, with their stamps |
@@ -290,12 +290,12 @@ said as "sigh key": given the brand's own sounds, Ryan ran the A and I together.
 (its question and answers are in `CONTENT`, picked by the reel's name), music and close. ChatGPT's answer says
 of itself *I don't know whether this truly describes you. I'm drawing a hypothesis*, so that line is highlighted,
 its stamp is *Just a guess*, and the voice says *ChatGPT admitted it was guessing*. PsycheAI's answer is cut to
-three plain excerpts (left behind; the acts of service it saw in the data, logistics and birthdays; *someone might
+three plain excerpts (left behind; the acts of service it saw in the data, chores and accommodating others; *someone might
 simply stop choosing you*), and both answers are set larger than the first reel's, having fewer words. About 34 s. Two phrases are reworded for a general audience
 (24 October): *contrarian banter* became *cheerful disposition*, and *vetting lease terms* became *handling all
 the logistics*, so this one's caption says the answers are trimmed and lightly reworded, not unedited. It is a woman's answer, so it
 is in a woman's voice (the relationship reel's, `en_US-hfc_female-medium`), and *offering rides* became
-*remembering everyone's birthdays*; nothing else in it is gendered.
+*doing all the chores, always accommodating others* (*handling all the logistics* before it); nothing else in it is gendered.
 
 ## The privacy post
 

@@ -89,7 +89,7 @@ Same question. Two AIs. Only one actually knew me.
 ChatGPT gave me a thoughtful list that could fit anyone.
 PsycheAI read my Instagram, WhatsApp and Google data first, and told me exactly why.
 
-Both answers are real and unedited, only trimmed.
+Both answers are real, trimmed and lightly reworded.
 
 Which question would you ask both? 👇
 

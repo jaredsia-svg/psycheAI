@@ -105,9 +105,10 @@ const [HOOK, GPT, LOAD, ANS, VERDICT, CLOSE] = S;
 const CONTENT = {
   compare: {
     question: 'What would I regret most about my life when I’m old?',
-    // Cut to its opening's two ends and three of its five headings (24 October 2026): the full list read as a wall.
+    // Cut to its opening's two ends and three of its five headings, one reworded (24 October 2026): the full list
+    // read as a wall.
     gpt: ['<p><b>You might regret the things you kept postponing because you thought you had more time.</b></p>',
-      '<li>Not loving people more openly.</li>', '<li>Being too afraid to try.</li>', '<li>Not being present for your own life.</li>'],
+      '<li>Working too hard.</li>', '<li>Being too afraid to try.</li>', '<li>Not being present for your own life.</li>'],
     bigA: true,
     stamp: 'Could be anyone',
     psy: ['“Your deepest regret will not be a missed business deal…”',
@@ -122,7 +123,7 @@ const CONTENT = {
       '<p>“<mark>I don’t know whether this truly describes you. I’m drawing a hypothesis…</mark>”</p>'],
     stamp: 'Just a guess', big: true,
     psy: ['“Beneath your cheerful disposition lies a deep sensitivity to being <b>unappreciated, misunderstood, or quietly left behind.</b>”',
-      '“That is why you invest so heavily in acts of service – <b>handling all the logistics, remembering everyone’s birthdays</b>…”',
+      '“That is why you invest so heavily in acts of service – <b>doing all the chores, always accommodating others</b>…”',
       '“…you protect yourself from the vulnerable possibility that <b>someone might simply stop choosing you.</b>”'],
   },
 }[TL.reel] || null;
