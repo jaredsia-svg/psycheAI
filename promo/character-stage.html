@@ -20,7 +20,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
   clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
 /* The hook. */
 #h1 { z-index: 20; left: 60px; right: 60px; top: 600px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
-#h2 { z-index: 20; left: 60px; right: 60px; top: 960px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
+#h2 { z-index: 20; left: 60px; right: 60px; top: 1120px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
 /* The data the app reads, shown with Instagram as it is said. */
 .app { z-index: 21; width: 130px; height: 130px; }
 .app .ic { position: relative; width: 130px; height: 130px; border-radius: 34px; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
@@ -161,8 +161,8 @@ function hook(t) {
   // second line comes.
   const said = (((s.words || []).find(([w]) => w === 'instagram') || [])[1]) || s.vo + 1.6;
   ['ig', 'wa', 'gg', 'fb'].forEach((id, i) => {
-    const a = said - 0.1 + i * 0.12, p = back(prog(t, a, a + 0.3)), gone = prog(t, s.marks[1] - 0.25, s.marks[1] + 0.05);
-    Object.assign($(id).style, { left: (540 - 2 * 160 + 15 + i * 160) + 'px', top: '820px' });
+    const a = said - 0.1 + i * 0.12, p = back(prog(t, a, a + 0.3)), gone = prog(t, s.end - 0.5, s.end - 0.2);
+    Object.assign($(id).style, { left: (540 - 2 * 160 + 15 + i * 160) + 'px', top: '920px' });
     show(id, t >= a ? clamp(p * 2) * (1 - gone) : 0, 'scale(' + Math.min(1.08, p) * (1 - 0.3 * gone) + ')');
   });
   const a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), b = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.25));
