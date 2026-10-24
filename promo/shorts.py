@@ -227,15 +227,16 @@ REELS['mirror'] = {
     ],
     'hold': {0: 0.9, 1: 0.9, 2: 1.1},  # the number read after each
     'punch': (0, 1, 2),
-    # Its own piece (24 October 2026, the third): a cool-jazz trio in F at 116, swung. Brushes and a ride cymbal, a
-    # walking bass, piano comping on a turnaround (Fmaj7 D7 Gm7 C7), a vibraphone answering. On each "until" the band
-    # stops dead, and on the punchline a muted trumpet goes wah-wah, down and down; then it swings back in. The close
-    # resolves to a held Fmaj9. (Before it: lo-fi chill hop with a tape stop, then pizzicato over an 808.)
-    'mood': 'mirror', 'bpm': 116,
-    'chords': [[57, 60, 64, 65], [54, 57, 60, 62], [53, 58, 62, 65], [52, 55, 58, 60]], 'roots': [41, 38, 43, 36],
-    'walk': [[41, 45, 48, 49], [50, 48, 45, 44], [43, 46, 50, 48], [48, 46, 45, 43]],
-    'melody': [[72, 76, 79, 77], [74, 72, 69, 66], [70, 74, 77, 74], [76, 72, 70, 67]],
-    'reveal': 3, 'swing': 0.0, 'early_claps': False,
+    # Its own piece: lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung: a warm electric piano, a soft
+    # boom-bap beat, a bouncing bass, a soft pad, vinyl crackle, from the first word, rolling on under every "until"
+    # with only a soft accent on the punchline (no stop); for the close it opens into F major (Fmaj7 C Dm7 Bbmaj7), ending on a held Fmaj9.
+    # (Tried and dropped on 24 October: pizzicato over an 808 with a record scratch; this with a tape stop on each
+    # "until"; a cool-jazz trio with a muted-trumpet wah-wah.)
+    'mood': 'mirror', 'bpm': 84,
+    'chords': [[62, 65, 69, 72], [58, 62, 65, 69], [55, 58, 62, 65], [57, 61, 64, 67]], 'roots': [38, 34, 43, 45],
+    'lift': [[65, 69, 72, 76], [60, 64, 67, 72], [62, 65, 69, 72], [58, 62, 65, 69]], 'lift_roots': [41, 36, 38, 34],
+    'melody': [[74, 72, 69, 72], [74, 77, 76, 72], [70, 69, 67, 65], [69, 73, 76, 73]],
+    'reveal': 3, 'swing': 0.06, 'early_claps': False,
 }
 # The comparison reel's music, chosen from three tried under the same video (the career reel's instruments, the
 # coach reel's piano and strings, and this): the relationship reel's electric piano groove, in A minor to C, its
@@ -692,81 +693,82 @@ elif R.get('mood') == 'roast':
     at(last, house_bass(41, 2.5) * 0.6, 0.6)
 elif R.get('mood') == 'mirror':
     sc = scenes
-    DROP = sc[R['reveal']]['start']            # the close
+    CLAIMS = sc[0]['start']                    # the beat from the start
+    DROP = sc[R['reveal']]['start']            # the close: opening into F major
     PUNCH = [sc[i]['marks'][1] for i in R['punch']]
     END = sc[-1]['voEnd'] + 0.6
-    TRIP = BEAT / 3                            # swung eighths: long-short, two thirds and one third of the beat
+    EIGHTH = BEAT / 2
+    SW = R['swing']
 
     def lp(x, fc):
         X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
         return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
-    def upright(m, length):
-        # A plucked upright bass: a thump, then a round tone that dies away.
-        L = int(length * SR); x = np.arange(L) / SR
-        y = np.sin(2 * np.pi * hz(m) * x) + 0.35 * np.sin(4 * np.pi * hz(m) * x) * np.exp(-x * 6) + 0.1 * np.sin(6 * np.pi * hz(m) * x) * np.exp(-x * 12)
-        thump = rng.standard_normal(L) * np.exp(-x * 120) * 0.15
-        return lp(((y * np.exp(-x * 2.5) + thump) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.04, 0, 1) * 0.32).astype(np.float32), 1800)
-    def jazz_piano(chord, length, gain=0.05):
+    def rhodes(chord, length, gain=0.045):
+        # A warm electric piano: a bell-ish attack over a round body, a slow tremolo, the top a little dull.
         L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
         for m in chord:
-            y += sum(np.sin(2 * np.pi * hz(m) * k * x) * a_ * np.exp(-x * (3 + 2 * k)) for k, a_ in ((1, 1), (2, 0.35), (3, 0.12)))
-        return (y * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.05, 0, 1) * gain).astype(np.float32)
-    def vibes(m):
-        L = int(1.4 * SR); x = np.arange(L) / SR
-        y = (np.sin(2 * np.pi * hz(m) * x) + 0.25 * np.sin(2 * np.pi * hz(m) * 4 * x) * np.exp(-x * 8)) * (1 + 0.25 * np.sin(2 * np.pi * 5.5 * x))
-        return (y * np.exp(-x * 2.4) * np.minimum(1, x / 0.003) * 0.06).astype(np.float32)
-    def ride():
-        L = int(0.5 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
-        bell_ = np.sin(2 * np.pi * 5200 * x) * np.exp(-x * 9) * 0.15
-        return ((noise - lp(noise, 6000)) * np.exp(-x * 7) * 0.12 + bell_).astype(np.float32)
-    def brush(length):
-        L = int(length * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
-        return lp(noise - lp(noise, 1500), 6000) * np.sin(np.pi * x / length) * 0.1
-    def feather():
-        L = int(0.25 * SR); x = np.arange(L) / SR
-        return (np.sin(2 * np.pi * np.cumsum(55 + 40 * np.exp(-x * 30)) / SR) * np.exp(-x * 14) * 0.45).astype(np.float32)
-    def wah(m, length):
-        # A muted trumpet with a plunger: a buzzy tone whose filter opens and closes, sliding down at the end.
+            y += np.sin(2 * np.pi * hz(m) * x) + 0.3 * np.sin(2 * np.pi * hz(m) * 2 * x) * np.exp(-x * 3) \
+                 + 0.1 * np.sin(2 * np.pi * hz(m) * 7 * x) * np.exp(-x * 16)
+        trem = 1 + 0.1 * np.sin(2 * np.pi * 4.2 * x)
+        return lp((y * trem * np.minimum(1, x / 0.01) * np.exp(-x * 0.8) * np.clip((length - x) / 0.3, 0, 1) * gain).astype(np.float32), 3200)
+    def lofi_kick():
+        L = int(0.35 * SR); x = np.arange(L) / SR
+        return (np.sin(2 * np.pi * np.cumsum(50 + 70 * np.exp(-x * 28)) / SR) * np.exp(-x * 9) * 0.9).astype(np.float32)
+    def lofi_snare():
+        L = int(0.3 * SR); x = np.arange(L) / SR
+        noise = rng.standard_normal(L).astype(np.float32)
+        return (lp(noise - lp(noise, 1200), 4500) * np.exp(-x * 14) * 0.35 + np.sin(2 * np.pi * 180 * x) * np.exp(-x * 25) * 0.2).astype(np.float32)
+    def lofi_hat():
+        L = int(0.05 * SR); x = np.arange(L) / SR
+        noise = rng.standard_normal(L).astype(np.float32)
+        return lp(noise - lp(noise, 6000), 9000) * np.exp(-x * 70) * 0.16
+    def round_bass(m, length):
         L = int(length * SR); x = np.arange(L) / SR
-        f = hz(m) * (1 - 0.06 * np.clip((x - length * 0.55) / (length * 0.45), 0, 1))
-        ph = np.cumsum(f) / SR
-        y = sum(np.sin(2 * np.pi * k * ph) / k for k in range(1, 9))
-        cutoff = 500 + 1600 * np.sin(np.pi * np.clip(x / (length * 0.8), 0, 1))
-        out = np.zeros(L, np.float32)
-        for a0 in range(0, L, 1024):   # the plunger: the filter moving block by block
-            seg = y[a0:a0 + 1024]; out[a0:a0 + 1024] = lp(seg.astype(np.float32), float(cutoff[min(L - 1, a0)]))
-        return out * np.minimum(1, x / 0.03) * np.clip((length - x) / 0.08, 0, 1) * 0.11
-
-    RIDE = ride(); FEATHER = feather()
+        y = np.sin(2 * np.pi * hz(m) * x) + 0.15 * np.sin(4 * np.pi * hz(m) * x)
+        return (y * np.minimum(1, x / 0.01) * np.exp(-x * 1.2) * np.clip((length - x) / 0.06, 0, 1) * 0.3).astype(np.float32)
+    def pad_(chord, length, gain=0.022):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord:
+            for det in (-0.12, 0.12): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x)
+        return lp((y * np.minimum(1, x / 0.4) * np.clip((length - x) / 0.4, 0, 1) * gain).astype(np.float32), 1600)
+    def crackle(length):
+        L = int(length * SR); y = np.zeros(L, np.float32)
+        hits = rng.integers(0, L, int(length * 22))
+        y[hits] = rng.standard_normal(len(hits)).astype(np.float32) * 0.5
+        return lp(y, 5000) * 0.25 + lp(rng.standard_normal(L).astype(np.float32), 700) * 0.012
+    K, SN, HH = lofi_kick(), lofi_snare(), lofi_hat()
     pump = np.ones(n, np.float32)
-    beat = 0
+    at(0, crackle(TOTAL), 0.6)
     b = 0.0
     while b < END:
-        bar_i = beat // 4 % 4; q = beat % 4
-        chord, walk = R['chords'][bar_i], R['walk'][bar_i]
-        closing = b >= DROP
-        # The band stops dead from each "until" to its punchline.
-        stopped = any(sc[i]['marks'][1] - 0.55 <= b < sc[i]['marks'][1] - 0.02 for i in R['punch'])
-        if b < END - BAR and not stopped:
-            # Ride: ding, ding-a ding, ding-a (on the beat, and the swung "a" before two and four); brushes; a feathered kick.
-            at(b, RIDE, 0.8, 0.3)
-            if q in (1, 3): at(b - TRIP, RIDE, 0.45, 0.3); at(b, brush(BEAT * 0.9), 0.9, -0.2)
-            at(b, FEATHER, 0.6)
-            # The walking bass, a note a beat.
-            at(b, upright(walk[q], BEAT * 0.95), 1.0)
-            # Piano comping: the Charleston (on one, and the "and" of two), quieter under the voice.
-            if q == 0: at(b, jazz_piano(chord, BEAT * 0.8), 0.9, -0.15)
-            if q == 1: at(b + 2 * TRIP, jazz_piano(chord, BEAT * 0.6), 0.75, -0.15)
-            # The vibraphone answers on the close.
-            if closing: at(b, vibes(R['melody'][bar_i][q] + 12), 0.8, 0.2)
-        b += BEAT; beat += 1
+        k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8
+        warm = b >= DROP
+        chords, roots = (R['lift'], R['lift_roots']) if warm else (R['chords'], R['roots'])
+        chord, root = chords[bar_i], roots[bar_i]
+        swung = b + (SW if e % 2 else 0)
+        if b < END - BAR:
+            if e == 0:
+                at(b, rhodes(chord, BAR * 1.02), 1.0, -0.1)
+                # A soft pad under it all, so no bar falls quiet at its end.
+                at(b, pad_(chord, BAR * 1.04), 1.0)
+            if e == 5: at(swung, rhodes(chord[1:], BEAT * 1.2, 0.03), 1.0, 0.15)
+            if b >= CLAIMS:
+                if e in (0, 5): at(swung, K, 0.8 if not warm else 0.6)
+                if e in (2, 6): at(b, SN, 0.7 if not warm else 0.5)
+                at(swung, HH, 0.9 if e % 2 else 0.6, 0.25)
+                # A bouncing bass: root, the fifth, and back, on the swung eighths.
+                if e in (0, 3, 4, 6): at(swung, round_bass(root + 12 + (7 if e == 3 else 0), BEAT * (1.4 if e == 0 else 0.7)), 1.0 if e == 0 else 0.8)
+            if warm and e % 2 == 0: at(b, bell(R['melody'][bar_i][e // 2] + 12), 0.45, 0.2)
+        b += EIGHTH
 
-    # Each punchline: the muted trumpet's wah-wah, two notes falling, the second longer.
-    for p in PUNCH:
-        at(p, wah(67, 0.32), 1.0, 0.1); at(p + 0.36, wah(66, 0.32), 1.0, 0.1); at(p + 0.72, wah(65, 0.75), 1.0, 0.1)
-    # The close: the last chord held, Fmaj9, on piano and vibes with the bass, nothing struck under it.
+    # Each punchline: the groove rolls on, with a soft accent on it (a low piano chord and a little air).
+    for i in R['punch']:
+        p = sc[i]['marks'][1]
+        at(p, rhodes([50, 57, 60, 65], 1.6, 0.05), 0.9); at(p, swell(0.6)[::-1].copy(), 0.35)
+    # Into the card: a soft swell; at the end, the last chord held with nothing struck under it.
+    at(DROP - 1.2, swell(1.2), 0.7)
     last = snap(END - BAR, BAR)
-    at(last, jazz_piano([53, 57, 60, 64, 67], 3.4, 0.06), 1.0); at(last, vibes(81), 0.9); at(last, upright(41, 2.6), 1.0)
+    at(last, rhodes([53, 60, 64, 67, 69, 72], 3.4, 0.05), 1.0); at(last, round_bass(29 + 12, 2.8), 0.8)
 
 else:
     sc = scenes

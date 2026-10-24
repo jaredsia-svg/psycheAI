@@ -379,12 +379,12 @@ Earlier cuts: a lighter set read as quirks (a morning person most active at 1:12
 Tokyo); then the data said the numbers aloud (*Three messages sent, for each one received*), which made it a list
 rather than a confession. ("Hmm" is said "ugh" by this voice; the line is now just *Apparently not*.)
 
-The music (the third piece, 24 October 2026): a cool-jazz trio in F at 116, swung, for a confession told against
-oneself. Brushes and a ride cymbal, a walking upright bass, piano comping the Charleston on a turnaround (Fmaj7 D7
-Gm7 C7). On each *until* the band stops dead, and on the punchline a muted trumpet goes wah-wah, falling, before it
-swings back in; a vibraphone answers on the close, which ends on a held Fmaj9. Dropped before it: lo-fi chill hop
-with a tape stop on each *until*, and pizzicato over a half-time 808 with a record scratch. The cover is the first
-number, just after it lands.
+The music: lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung, from the first word: a warm electric
+piano over a soft pad, a soft boom-bap beat, a bouncing bass (root and fifth on the swung eighths) and vinyl
+crackle. It rolls on smoothly under every *until*, with only a soft accent on the punchline; for the close it opens
+into F major with a bell tune, ending on a held Fmaj9. Tried and dropped (24 October 2026): pizzicato over a
+half-time 808 with a record scratch; this piece with a tape stop on each *until*, which broke the groove; a
+cool-jazz trio with a muted-trumpet wah-wah. The cover is the first number, just after it lands.
 
 ### The character reel
 
