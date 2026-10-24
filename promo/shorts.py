@@ -178,7 +178,8 @@ REELS['compare-insecure'] = dict(REELS['compare'], lines=[
     (['Chat G P T admitted it was guessing.'], 0.85, None),
     REELS['compare']['lines'][2],
     (['And it found the fear I never say out loud.'], 0.85, None),
-] + REELS['compare']['lines'][4:], hold={0: 0.6, 1: 2.4, 2: 0.9, 3: 6.0, 4: 0.8})
+] + REELS['compare']['lines'][4:], hold={0: 0.6, 1: 2.4, 2: 0.9, 3: 6.0, 4: 0.8},
+    voice='en_US-hfc_female-medium')  # a woman's answer, so a woman's voice (the relationship reel's)
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +

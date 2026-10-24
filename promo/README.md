@@ -290,10 +290,12 @@ said as "sigh key": given the brand's own sounds, Ryan ran the A and I together.
 (its question and answers are in `CONTENT`, picked by the reel's name), music and close. ChatGPT's answer says
 of itself *I don't know whether this truly describes you. I'm drawing a hypothesis*, so that line is highlighted,
 its stamp is *Just a guess*, and the voice says *ChatGPT admitted it was guessing*. PsycheAI's answer is cut to
-three plain excerpts (left behind; the acts of service it saw in the data, logistics and rides; *someone might
+three plain excerpts (left behind; the acts of service it saw in the data, logistics and birthdays; *someone might
 simply stop choosing you*), and both answers are set larger than the first reel's, having fewer words. About 34 s. Two phrases are reworded for a general audience
 (24 October): *contrarian banter* became *cheerful disposition*, and *vetting lease terms* became *handling all
-the logistics*, so this one's caption says the answers are trimmed and lightly reworded, not unedited.
+the logistics*, so this one's caption says the answers are trimmed and lightly reworded, not unedited. It is a woman's answer, so it
+is in a woman's voice (the relationship reel's, `en_US-hfc_female-medium`), and *offering rides* became
+*remembering everyone's birthdays*; nothing else in it is gendered.
 
 ## The privacy post
 
