@@ -187,6 +187,30 @@ REELS['character'] = {
     'reveal': 2, 'swing': 0.0, 'early_claps': False,
     'spin': 58, 'spin_ease': 2,  # tiles the slot passes before it stops, and how long it crawls at the end (character-stage.html uses the same)
 }
+# The same for Rapunzel (24 October 2026): Sofia Reyes's sample card, tagging Sherlock (the Tin Man's tags Mulan).
+# A woman's voice (the relationship reel's), the same music.
+REELS['character-rapunzel'] = dict(REELS['character'], voice='en_US-hfc_female-medium', lines=[
+    REELS['character']['lines'][0], REELS['character']['lines'][1],
+    (['Rapunzel.'], 0.85, None),
+    (['Hopeful maker, who turns a small room into a studio.', 'Makes something of every corner.', 'Most in sync with Sherlock.'], 0.85, True, [0.6, 0.6]),
+    (["Who's your Sherlock?", 'Tag them.'], 0.85, True, 0.3),
+    REELS['character']['lines'][5],
+])
+
+# And for Mulan, Odysseus and Sherlock (24 October 2026): no tag; each tour stops on parts of its card the others do
+# not (character-stage.html, WHO), then the close.
+def character_reel(voice, name_line, stops):
+    return dict(REELS['character'], voice=voice, lines=[
+        REELS['character']['lines'][0], REELS['character']['lines'][1], ([name_line], 0.85, None),
+        (stops, 0.85, True, [0.6, 0.6]), REELS['character']['lines'][5]],
+        hold={1: 2.6, 2: 0.4, 3: 1.6}, lead={3: 0.9})
+REELS['character-mulan'] = character_reel('en_US-hfc_female-medium', '{Mulan}.',
+    ['Organiser with a warm centre, and a quiet battery.', 'Driven by care for my people.', 'Shows care through acts of service.'])
+REELS['character-odysseus'] = character_reel('en_US-ryan-high', '{Odysseus}.',
+    ['Resourceful planner, with a way out of every corner.', 'E N T P.', 'A plan B, for every plan.'])
+REELS['character-sherlock'] = character_reel('en_US-ryan-high', 'Sherlock Holmes.',
+    ['Quiet investigator, who notices what others miss.', 'Openness, eighty six.', 'Look closely, before you decide.'])
+
 # The mirror reel (24 October 2026): who I say I am against what my data says, three times, then who it says I am.
 # Each claim is a trait a little less flattering than he would admit (a talker, not over her, particular), a set-up
 # and a punchline as the roast's burns are. Ryan's voice.

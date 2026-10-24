@@ -3,7 +3,8 @@
 // card), which the stage uses to draw its highlight boxes. Also the sample
 // report's opening, assets/report.png, for the privacy reel, and the Odysseus
 // sample card, assets/card-odysseus.png, for the MBTI reel, and Sherlock's, assets/card-sherlock.png, for
-// the roast reel, and a Tin Man card, assets/card-tinman.png, for the character reel: the site has no Tin Man
+// the roast reel, and for the character reels Rapunzel's, assets/card-rapunzel.png, and a Tin Man card,
+// assets/card-tinman.png (each with -parts.json, where its parts sit): the site has no Tin Man
 // sample, so one (TINMAN below, a made-up person written to the card's rules) is added to the gallery for this
 // picture only, in the browser, and the site is left as it is.
 //
@@ -121,33 +122,38 @@ try {
   if (/Daniel Okafor/.test(await card.innerText())) await card.screenshot({ path: dir + '/assets/card-sherlock.png' });
   else console.error('no Sherlock sample card found');
 
-  // And the Tin Man's (Noah Bennett), for the character reel: last on the same arrows.
-  for (let step = 0; step < 8; step++) {
-    if (/Noah Bennett/.test(await card.innerText())) break;
-    await page.evaluate(() => { const next = document.querySelector('#sample-card-dialog .sample-card-next');
-      next.style.visibility = ''; next.click(); });
+  // And for the character reels, each card with where its parts sit (for the camera's zooms, as
+  // assets/card-parts.json for the sample): the Tin Man's (Noah Bennett) and Rapunzel's (Sofia Reyes), and the
+  // rest, further along the same arrows.
+  const measure = (root, targets) => {
+    const box = root.getBoundingClientRect(); const out = {};
+    for (const [key, selector] of Object.entries(targets)) {
+      const node = root.querySelector(selector); if (!node) continue;
+      const r = (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).getBoundingClientRect();
+      out[key] = { x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height };
+    }
+    return out;
+  };
+  // Mulan's, Odysseus's and Sherlock's again as char-*.png, measured the same way, so the older reels keep the
+  // pictures they were made with.
+  for (const [who, slug] of [['Noah Bennett', 'tinman'], ['Sofia Reyes', 'rapunzel'], ['Emily Carter', 'char-mulan'],
+    ['Lucas Moreau', 'char-odysseus'], ['Daniel Okafor', 'char-sherlock']]) {
+    for (let step = 0; step < 10; step++) {
+      if (new RegExp(who).test(await card.innerText())) break;
+      await page.evaluate(() => { const next = document.querySelector('#sample-card-dialog .sample-card-next');
+        next.style.visibility = ''; next.click(); });
+      await page.mouse.move(1, 1);
+      await page.waitForTimeout(700);
+    }
+    await page.evaluate(() => document.querySelectorAll('#sample-card-dialog button').forEach(b => {
+      if (!b.closest('#sample-psyche-card-full')) b.style.visibility = 'hidden';
+    }));
     await page.mouse.move(1, 1);
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(500);
+    if (!new RegExp(who).test(await card.innerText())) { console.error('no card for ' + who); continue; }
+    await card.screenshot({ path: dir + '/assets/card-' + slug + '.png' });
+    writeFileSync(dir + '/assets/card-' + slug + '-parts.json', JSON.stringify(await card.evaluate(measure, TARGETS), null, 1) + '\n');
   }
-  await page.evaluate(() => document.querySelectorAll('#sample-card-dialog button').forEach(b => {
-    if (!b.closest('#sample-psyche-card-full')) b.style.visibility = 'hidden';
-  }));
-  await page.mouse.move(1, 1);
-  await page.waitForTimeout(500);
-  if (/Noah Bennett/.test(await card.innerText())) {
-    await card.screenshot({ path: dir + '/assets/card-tinman.png' });
-    // Where its parts sit, for the character reel's zooms (as assets/card-parts.json for the sample).
-    const tinParts = await card.evaluate((root, targets) => {
-      const box = root.getBoundingClientRect(); const out = {};
-      for (const [key, selector] of Object.entries(targets)) {
-        const node = root.querySelector(selector); if (!node) continue;
-        const r = (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).getBoundingClientRect();
-        out[key] = { x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height };
-      }
-      return out;
-    }, TARGETS);
-    writeFileSync(dir + '/assets/card-tinman-parts.json', JSON.stringify(tinParts, null, 1) + '\n');
-  } else console.error('no Tin Man card found');
 
   // The sample report's opening, for the privacy reel (assets/report.png): from its part nav (00 to 05)
   // down, as tall as 1.4 times its width, without the dialog's title bar.
