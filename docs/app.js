@@ -11277,12 +11277,16 @@
     // back as this same person has to come from this same link
     // (adoptReceivedSync).
     const linkId = back && back.link && LINK_ID.test(back.link.id || '') ? back.link.id : '';
+    // The result as the server sealed it, before the names went in: what is
+    // sent back, so their device can check the words are the model's.
+    const sealed = result.data && typeof result.data.seal === 'string' ? result.data : null;
     history.unshift(Object.assign({
       when: new Date().toISOString(), withName: other.name, with: key, mode: report.mode, stance, report,
       // Their card as their link carried it, to open from My Syncs.
       card: Card.shape(other), face,
     // Where the result can still be shared to later, from its row.
-    }, linkId ? { linkId } : null, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null));
+    }, linkId ? { linkId } : null, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null,
+    canShare && sealed ? { sealed } : null));
     store.write(KEYS.history, history.slice(0, 25));
     renderReport(report, other.name, undefined, key);
     show('report');
@@ -11390,7 +11394,7 @@
     if (!entry || !entry.back || entry.shared || sharing.has(key)) return false;
     sharing.add(key);
     let sent = false;
-    try { sent = await sendSyncBack(entry.back.link, entry.back.ref, entry.report); } finally { sharing.delete(key); }
+    try { sent = await sendSyncBack(entry.back.link, entry.back.ref, entry.report, entry.sealed); } finally { sharing.delete(key); }
     const name = firstName(entry.withName) || entry.withName;
     if (sent) {
       const history = store.read(KEYS.history, []) || [];
@@ -11426,20 +11430,25 @@
   // link has no key and no owner to send to, so nothing can go.
   const LINK_ID = /^[A-Za-z0-9_-]{10}$/;
   const LINK_KEY = /^[A-Za-z0-9_-]{16}$/;
-  async function sendSyncBack(link, ref, report) {
+  async function sendSyncBack(link, ref, report, sealed) {
     if (!state.profile || !state.profile.payload || !link) return false;
     if (!LINK_ID.test(link.id || '') || !LINK_KEY.test(link.key || '') || !/^[0-9a-f]{12}$/.test(ref || '')) return false;
+    // The sealed result goes, and their device fills in the names. A sync
+    // from before the seal goes as it was only until their devices stop
+    // taking one (SEAL_FROM).
+    const unsealed = !(sealed && typeof sealed.seal === 'string');
+    if (unsealed && Date.now() >= SEAL_FROM) return false;
     const play = report.howToPartner || {};
-    const theirs = Object.assign({}, report, {
+    const theirs = unsealed ? Object.assign({}, report, {
       howToPartner: Object.assign({}, play, { forA: play.forB || [], forB: play.forA || [] }),
-    });
+    }) : null;
     // This reader's own link goes with it, so the other side can check the
     // card it carries really is the one this link shows (verifiedSender).
     await publishShortLink();
     const own = store.read(KEYS.link, null);
     if (!own || !LINK_ID.test(own.id || '') || !LINK_KEY.test(own.key || '')) return false;
-    const sent = { v: 2, payload: state.profile.payload, face: cardFace(state.profile.report), report: theirs,
-      from: { id: own.id, key: own.key }, when: new Date().toISOString() };
+    const sent = Object.assign({ v: unsealed ? 2 : 3, payload: state.profile.payload, face: cardFace(state.profile.report) },
+      unsealed ? { report: theirs } : { sealed }, { from: { id: own.id, key: own.key }, when: new Date().toISOString() });
     try {
       let blob = await lockCard(JSON.stringify(sent), link.key);
       // Past what the server keeps, the card goes without its face.
@@ -11477,14 +11486,16 @@
       try {
         const data = JSON.parse(await unlockCard(String(item.blob || ''), link.key));
         const card = data && typeof data.payload === 'string' ? await Card.decodeCard(data.payload) : null;
-        if (card && data.report && typeof data.report === 'object' && !Array.isArray(data.report)) {
+        if (card && (data.sealed || data.report)) {
           // Only from the person whose card it carries: their own link has to
           // show that same card. Anyone holding this reader's link could
           // otherwise send a sync dressed as a friend's.
           const sender = await verifiedSender(data);
+          // And only words the model wrote: the server's seal has to hold.
+          const report = sender === 'ok' ? await sealedReport(data, card, item.at) : null;
           let savedAs = '';
-          if (sender === 'retry') outcome = 'keep';
-          else if (sender === 'ok') ({ outcome, key: savedAs } = adoptReceivedSync(card, data));
+          if (sender === 'retry' || report === 'retry') outcome = 'keep';
+          else if (report) ({ outcome, key: savedAs } = adoptReceivedSync(card, Object.assign({}, data, { report })));
           if (outcome === 'saved') arrived.push({ key: savedAs, name: firstName(card.name) || card.name, character: data.face && data.face.c });
         }
       } catch (error) { /* cannot be unlocked: cleared below */ }
@@ -11542,6 +11553,32 @@
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     refreshReportPromo();
+  }
+  // From this moment a received sync has to carry the server's seal
+  // (lib/syncseal.js); one left in the inbox before it, by a page from before
+  // the seal, is still taken as it was.
+  const SEAL_FROM = Date.parse('2026-10-26T00:00:00Z');
+  /**
+   * The result a received sync carries, once the server says its seal holds:
+   * the names filled in as the sender saw them, and its advice turned round
+   * to this reader. Null when it fails, 'retry' when it could not be asked.
+   */
+  async function sealedReport(data, card, at) {
+    const sealed = data && data.sealed;
+    if (!(sealed && typeof sealed === 'object' && !Array.isArray(sealed) && typeof sealed.seal === 'string')) {
+      const report = data && data.report;
+      return Number(at) < SEAL_FROM && report && typeof report === 'object' && !Array.isArray(report) ? report : null;
+    }
+    try {
+      const response = await fetch('api/sync/check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: sealed }),
+      });
+      if (!response.ok) return 'retry';
+      if (!(await response.json()).ok) return null;
+    } catch (error) { return 'retry'; }
+    const named = restoreSyncNames(sealed, card.name, state.profile && state.profile.card ? state.profile.card.name : '');
+    const play = named.howToPartner && typeof named.howToPartner === 'object' ? named.howToPartner : {};
+    return Object.assign({}, named, { howToPartner: Object.assign({}, play, { forA: play.forB || [], forB: play.forA || [] }) });
   }
   /**
    * Whether a received sync comes from the person whose card it carries: the

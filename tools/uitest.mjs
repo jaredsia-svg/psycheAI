@@ -13933,6 +13933,34 @@ try {
             await rp.evaluate(() => !(JSON.parse(localStorage.getItem('psycheai_history') || '[]')).some(e => e && /Mallory/.test(e.withName || ''))) &&
               (await ownerInboxNow()).items.length === 0);
 
+          // From the real Pat, but with words Pat wrote over the model's: the
+          // sender checks out, the server's seal does not (lib/syncseal.js).
+          check('the shared sync went sealed: the sender kept the result as the server sealed it',
+            await friendPage.evaluate(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]'))
+              .some(e => e && e.back && e.sealed && /^[0-9a-f]{32}$/.test(e.sealed.seal))));
+          await friendPage.evaluate(async () => {
+            const entry = JSON.parse(localStorage.getItem('psycheai_history')).find(e => e && e.back && e.sealed);
+            const own = JSON.parse(localStorage.getItem('psycheai_link'));
+            const payload = JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+            const fromB64 = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((t.length + 3) % 4)), c => c.charCodeAt(0));
+            const toB64 = b => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const key = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', fromB64(entry.back.link.key)), 'AES-GCM', false, ['encrypt']);
+            const sealed = Object.assign({}, entry.sealed, { summary: 'Rewritten by the sender to sound like PsycheAI.' });
+            const body = JSON.stringify({ v: 3, payload, sealed, from: { id: own.id, key: own.key }, when: new Date().toISOString() });
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const locked = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(body)));
+            const nonce = (await (await fetch('api/nonce')).json()).nonce;
+            await fetch('api/sync/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
+              body: JSON.stringify({ id: entry.back.link.id, ref: entry.back.ref, blob: toB64(new Uint8Array([...iv, ...locked])) }) });
+          });
+          const rewrittenDropped = syncsCollected(rp);
+          await rp.reload({ waitUntil: 'load' });
+          await rewrittenDropped;
+          check('a sync from the real sender whose words were changed fails the seal, is dropped and never shown',
+            await rp.evaluate(() => !(JSON.parse(localStorage.getItem('psycheai_history') || '[]'))
+              .some(e => e && e.report && /Rewritten by the sender/.test(e.report.summary || ''))) &&
+              (await ownerInboxNow()).items.length === 0);
+
           // Not shared, nothing goes: Pat syncs with the same link again and
           // says no. A Share button on the row does it later, after the results.
           const ownerInbox = () => rp.evaluate(async () => {

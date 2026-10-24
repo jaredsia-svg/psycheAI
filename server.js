@@ -30,6 +30,7 @@ const askCredits = require('./lib/askcredits');
 const links = require('./lib/links');
 const syncbox = require('./lib/syncbox');
 const indexNow = require('./lib/indexnow');
+const syncSeal = require('./lib/syncseal');
 const staticFiles = require('./lib/staticfiles');
 // Short personal links need a store that survives a deploy (Upstash); in
 // memory they would break on the next one, so the page keeps the long link.
@@ -1559,6 +1560,13 @@ async function handleLinkOpen(response, url) {
   sendJson(response, 200, found);
 }
 
+// Whether a sync sent back to this reader carries a seal this server made
+// (lib/syncseal.js). Answers yes or no and keeps nothing.
+async function handleSyncCheck(request, response) {
+  const body = await readJsonBody(request);
+  sendJson(response, 200, { ok: syncSeal.check(body && body.data) });
+}
+
 async function handleCompatibility(request, response) {
   const body = await readJsonBody(request);
   if (!body || !body.a || !body.b || typeof body.a !== 'object' || typeof body.b !== 'object') {
@@ -1606,7 +1614,11 @@ async function handleCompatibility(request, response) {
       // Recorded only once the model came back, as the free card's is.
       budget.record('compatibility');
       stats.count('compatibility');
-      return readerText(result);
+      // Sealed, so the friend it is sent back to can check its words are
+      // the model's (lib/syncseal.js).
+      const out = readerText(result);
+      if (out && out.data && typeof out.data === 'object') out.data = syncSeal.seal(out.data);
+      return out;
     },
   });
 }
@@ -1748,6 +1760,7 @@ const API_GUARDS = {
   '/api/sync/send': { limit: 'sync-send', nonce: true },
   '/api/sync/inbox': { limit: 'referral', nonce: false },
   '/api/sync/done': { limit: 'referral', nonce: false },
+  '/api/sync/check': { limit: 'referral', nonce: false },
   // The operator's totals: behind a token, and a bucket of its own so the
   // token cannot be guessed at speed.
   '/api/stats': { limit: 'stats', nonce: false },
@@ -1826,6 +1839,10 @@ function applySecurityHeaders(request, response) {
   // cross-origin requests leaks no path, and the shared-profile payload lives
   // in the URL fragment, which is never sent in a Referer header at all.
   response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // A page that opens this site in a window of its own cannot reach into it
+  // through window.opener, nor this site into it. Windows this site (or
+  // Stripe's frame) opens keep theirs.
+  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
   // Hardware and capability access, denied by default and granted only where
   // this app actually uses something. A CSP governs what code may load; this
@@ -1967,6 +1984,9 @@ const server = http.createServer((request, response) => {
   try {
     url = new URL(request.url, 'http://localhost');
     route = decodeURIComponent(url.pathname);
+    // A NUL names no file or page, and the file system refuses it with a
+    // throw that surfaced as a 500.
+    if (route.includes('\0')) throw new URIError('NUL in path');
   } catch (error) {
     sendJson(response, 400, { error: 'That is not a valid request path.' });
     return;
@@ -2014,6 +2034,7 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
                   : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)
                   : route === '/api/sync/done' && request.method === 'POST' ? () => handleSyncDone(request, response)
+                  : route === '/api/sync/check' && request.method === 'POST' ? () => handleSyncCheck(request, response)
                   : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
                     : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
                       : null;

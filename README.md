@@ -655,8 +655,11 @@ Google Gemini and Anthropic Claude as processors anyway.
 ### Security headers
 
 Every response — static and API alike — carries a CSP, `X-Content-Type-Options: nosniff`,
-`X-Frame-Options: DENY` and `Referrer-Policy: strict-origin-when-cross-origin`, set before the
-request branches so no route can be added that forgets them.
+`X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and (24 October 2026)
+`Cross-Origin-Opener-Policy: same-origin-allow-popups`, set before the request branches so no route
+can be added that forgets them. The last means a page that opens this site in a window of its own
+cannot reach into it through `window.opener`; windows this site or Stripe's frame opens keep theirs,
+so Apple Pay, Google Pay and the share links work as before.
 
 Worth being accurate about what the CSP does here rather than claiming more. Model output is
 rendered with `innerHTML`, which sounds alarming, but it passes through `esc()` in `docs/app.js`
@@ -2973,6 +2976,30 @@ a second, alarming disclosure. Now:
   HSTS, and the Gemini SDK calls Google over HTTPS), PsycheAI never writes it to disk, and anything Google keeps
   for a short time is encrypted at rest. *Can anyone else access my data?* drops the link's counts, which the
   privacy policy lists. The privacy page drops the bullet about the character guess, and says *100-200KB*.
+
+### Three fixes from the overnight review (24 October 2026)
+
+Pinned by B3 to B5 in `tools/selftest.mjs` and a UI check.
+
+- **B3. A sync's words are sealed.** A sync sent back to a link's owner travels locked with the
+  link's key, so the server never reads it, and the owner's device took the result on trust: anyone
+  with the link (it is on the owner's story card) and a friend's real card link could leave a
+  "sync" in words of their own, shown as PsycheAI's. Every result now leaves `/api/compatibility`
+  carrying `seal`, a keyed hash of the rest of it (`lib/syncseal.js`, under the store's key, so it
+  holds across deploys), made before the names go in. The sender's device keeps that sealed result
+  (`sealed` on the row) and sends it (`v: 3`) instead of its own copy; the owner's device asks
+  `/api/sync/check`, ticketless and keeping nothing, and only then fills in the names, turns the
+  advice round, and saves it. A seal that fails is dropped like a forged sender. Syncs left before
+  `SEAL_FROM` (26 October 2026, by the server's own clock on the item) are taken as before, so
+  nothing in flight was lost; after it, an unsealed one is dropped, and a row synced before the seal
+  can no longer be shared. What the seal does not prove is who ran the sync: a real result can be
+  sent as another's, but its words are still the model's.
+- **B4. A NUL in the address** (`/faq%00`) reached the file system, which threw, and was answered
+  500. It is now refused as a bad request (400), beside the malformed escapes.
+- **B5. `Cross-Origin-Opener-Policy`** (see Security headers).
+
+The review's other note, creator payouts on arrivals rather than conversions, is a business rule,
+not a code change.
 
 ### The link preview says the current tagline (October 2026)
 

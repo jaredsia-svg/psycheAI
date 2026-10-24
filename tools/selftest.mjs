@@ -9278,7 +9278,7 @@ check('the schema requires evidence on where they align and differ',
     JSON.stringify(guarded) === JSON.stringify([
       '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/guess', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
-      '/api/stats', '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
+      '/api/stats', '/api/sync/check', '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
   // Two routes are rate-limited without a ticket, and both are named here
   // rather than left to a rule, because "which reads are exempt" is exactly
@@ -9297,8 +9297,10 @@ check('the schema requires evidence on where they align and differ',
   // clears, keyed by their secret, as /api/referral is.
   // /api/stats is the operator's read, behind its token, with a bucket of
   // its own (October 2026) so the token cannot be guessed at speed.
+  // /api/sync/check says whether a received sync's seal holds: it spends
+  // nothing, keeps nothing and is asked once per sync collected.
   const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/guess', '/api/link', '/api/nonce', '/api/referral', '/api/result',
-    '/api/stats', '/api/sync/done', '/api/sync/inbox'];
+    '/api/stats', '/api/sync/check', '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
       guard.nonce === !TICKETLESS.includes(route)),
@@ -9693,6 +9695,14 @@ check('the schema requires evidence on where they align and differ',
         out.smallEvent = await post('/api/event', { event: 'open' });
         out.statsQuery = (await fetch(base + '/api/stats?token=selftest-fixes-token')).status;
         out.statsHeader = (await fetch(base + '/api/stats', { headers: { Authorization: 'Bearer selftest-fixes-token' } })).status;
+        const synced = (await post('/api/compatibility', { a: { name: 'Ada', headline: 'A planner' }, b: { name: 'Ben', headline: 'A dreamer' } })).json;
+        const checkSeal = async data => (await (await fetch(base + '/api/sync/check', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) })).json()).ok;
+        out.sealed = synced && synced.data && synced.data.seal;
+        out.sealHolds = await checkSeal(synced.data);
+        out.sealBroken = await checkSeal(Object.assign({}, synced.data, { summary: 'Invented.' }));
+        out.nul = (await fetch(base + '/faq%00')).status;
+        out.coop = (await fetch(base + '/')).headers.get('cross-origin-opener-policy');
         server.kill();
         process.stdout.write(JSON.stringify(out));
       })().catch(error => { server.kill(); process.stdout.write(JSON.stringify({ crashed: error.message })); });
@@ -9713,6 +9723,10 @@ check('the schema requires evidence on where they align and differ',
         got.bigEvent.status === 413 && got.smallEvent.status === 200, JSON.stringify([got.bigEvent, got.smallEvent]));
       check('S9: the stats token in the address is refused; in the Authorization header it works',
         got.statsQuery === 401 && got.statsHeader === 200, JSON.stringify([got.statsQuery, got.statsHeader]));
+      check('B3: a sync from /api/compatibility carries a seal /api/sync/check accepts, and refuses once its words change',
+        /^[0-9a-f]{32}$/.test(got.sealed || '') && got.sealHolds === true && got.sealBroken === false, JSON.stringify([got.sealed, got.sealHolds, got.sealBroken]));
+      check('B4: a NUL in the address is a bad request (400), not a server error', got.nul === 400, String(got.nul));
+      check('B5: every page is sent with Cross-Origin-Opener-Policy: same-origin-allow-popups', got.coop === 'same-origin-allow-popups', String(got.coop));
     }
   }
 
@@ -9723,7 +9737,26 @@ check('the schema requires evidence on where they align and differ',
     check('B1: a sync claiming a card with a row here replaces it only from that row\'s link; otherwise it is a row of its own',
       /const same = !theirs\.length \|\| theirs\.some\(entry => fromId && linkOf\(entry\) === fromId\);/.test(adopt) &&
         /const key = same \? cardKey : cardKey \+ '~' \+ fromId;/.test(adopt) && /fromId \? \{ linkId: fromId \} : null/.test(adopt) &&
-        /linkId \? \{ linkId \} : null/.test(appSource) && /\(\{ outcome, key: savedAs \} = adoptReceivedSync\(card, data\)\)/.test(appSource));
+        /linkId \? \{ linkId \} : null/.test(appSource) && /\(\{ outcome, key: savedAs \} = adoptReceivedSync\(card, Object\.assign\(\{\}, data, \{ report \}\)\)\)/.test(appSource));
+  }
+
+  // B3: a sync's words are the model's: sealed by the server, checked before
+  // they are shown (lib/syncseal.js).
+  {
+    const syncSeal = (await import(join(root, 'lib', 'syncseal.js'))).default;
+    const data = { mode: 'platonic', summary: 'Person A and Person B plan alike.', align: [{ title: 'Plans', detail: 'Both.', evidence: [] }] };
+    const sealed = syncSeal.seal(data);
+    check('B3: a sealed sync checks; changed words, a changed seal or no seal do not',
+      /^[0-9a-f]{32}$/.test(sealed.seal) && syncSeal.check(sealed) && syncSeal.check(JSON.parse(JSON.stringify(sealed))) &&
+        !syncSeal.check(Object.assign({}, sealed, { summary: 'Invented.' })) && !syncSeal.check(Object.assign({}, sealed, { seal: '0'.repeat(32) })) &&
+        !syncSeal.check(data) && !syncSeal.check(null) && !syncSeal.check([sealed]));
+    const sealedFn = (appSource.match(/async function sealedReport\(data, card, at\) \{[\s\S]*?\n  \}\n/) || [''])[0];
+    check('B3: a received sync is shown only once /api/sync/check says its seal holds; an unsealed one only if it was left before SEAL_FROM',
+      /fetch\('api\/sync\/check'/.test(sealedFn) && /if \(!\(await response\.json\(\)\)\.ok\) return null;/.test(sealedFn) &&
+        /Number\(at\) < SEAL_FROM/.test(sealedFn) && /const SEAL_FROM = Date\.parse\('2026-10-26T00:00:00Z'\);/.test(appSource) &&
+        /if \(unsealed && Date\.now\(\) >= SEAL_FROM\) return false;/.test(appSource) &&
+        /const report = sender === 'ok' \? await sealedReport\(data, card, item\.at\) : null;/.test(appSource));
+    check('B3: the server seals every sync result it writes', /out\.data = syncSeal\.seal\(out\.data\)/.test(serverSource));
   }
 
   // B2: a link is a card, not a decompression bomb.
