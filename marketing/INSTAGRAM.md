@@ -106,7 +106,7 @@ I asked ChatGPT and PsycheAI what I'm most insecure about.
 ChatGPT said it was "drawing a hypothesis".
 PsycheAI read my Instagram, WhatsApp and Google data first, and found the fear I never say out loud.
 
-Both answers are real and unedited, only trimmed.
+Both answers are real, trimmed and lightly reworded for clarity.
 
 Comment COACH and I'll send you the link 👇
 
@@ -118,7 +118,7 @@ Comment COACH and I'll send you the link 👇
 ```
 Struggling with your job? It might not be the job.
 
-I asked PsycheAI if I was in the wrong job, or if I was the problem.
+I asked PsycheAI why I dread going to work. Wrong job, or was I the problem?
 It read my own data and said I don't hate my job. I hate the routine parts of it.
 
 The Psyche Report goes further: your edge, what's holding you back, and the careers that suit you best.

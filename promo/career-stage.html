@@ -117,19 +117,19 @@ const [HOOK, QS, ASK, ANS, REP, CLOSE] = S;
 // The hook, letter by letter.
 const hookChars = [...'Struggling with your job?'].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
 // The questions: typed into a search bar one after another, piling up as recent searches. The voice says the first
-// and the last; the middle one is typed in the pause between them.
-const SEARCHES = ['am I in the wrong job?', 'why does my workday go so slowly?', 'am I the problem?'];
+// two; the last is typed in the quiet after them.
+const SEARCHES = ['am I in the wrong job?', 'why do I dread going to work?', 'am I the problem?'];
 const rows = SEARCHES.map(tx => mk('rs', '<span>🕘</span><div>' + tx + '</div>', $('recent')));
 // The answer: a sample reader's, from the kinds of evidence the app reads; the first sentence is what the voice says.
 const ANSWER = '<b>You don’t hate your job. You hate the routine parts of it.</b> Every time you’ve talked about quitting, ' +
   'it was the routine parts: reports, approvals, waiting on someone. But your longest, fastest messages are when you’re untangling ' +
-  'a problem – a friend’s CV, a trip that fell apart, a launch that went sideways. <b>A new job won’t fix that. Go after the messy ' +
-  'problems in the one you have.</b>';
+  'a problem – a friend’s CV, a trip that fell apart, a launch that went sideways. <b>A new job won’t fix that. Go after the complex, ' +
+  'challenging problems in the one you have.</b>';
 const answerWords = ANSWER.split(/(?<=\s)/);
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report adds: its career assessment, part by part, as the voice names each.
 const CARDS = [
-  ['🎯', 'Your edge', '<p>Untangling messy problems faster than anyone around you</p>'],
+  ['🎯', 'Your edge', '<p>Solving complex, challenging problems faster than anyone around you</p>'],
   ['🧱', 'What’s holding you back', '<p>Waiting for permission to start what you already see</p>'],
   ['🧭', 'Careers that suit you', '<div class="cols"><div class="yes"><b>Suits you best</b>Product operations · Consulting · Early-stage teams</div>' +
     '<div class="no"><b>Likely to drain you</b>Compliance · Data entry</div></div>'],
@@ -162,7 +162,7 @@ function render(t) {
   const sIn = back(prog(t, QS.start, QS.start + 0.4));
   show('search', qOn ? clamp(sIn * 2) * (1 - qOut) : 0, 'translateY(' + (1 - Math.min(1, sIn)) * 120 + 'px)');
   // The bar types the newest search while the rows pile up above the older ones.
-  const QT = [QS.marks[0], (QS.marks[0] + QS.marks[1]) / 2 + 0.15, QS.marks[1]];
+  const QT = [QS.marks[0], QS.marks[1], QS.voEnd + 0.2];
   const k = QT.filter(m => t >= m - 0.1).length - 1, cur = SEARCHES[Math.max(0, k)];
   const typed = Math.round(cur.length * prog(t, QT[Math.max(0, k)] - 0.1, QT[Math.max(0, k)] + 0.5));
   $('q').innerHTML = cur.slice(0, typed) + '<span class="caret" style="opacity:' + (Math.sin(t * 12) > 0 ? 1 : 0) + '"></span>';
