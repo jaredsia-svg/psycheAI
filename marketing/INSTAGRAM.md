@@ -98,6 +98,21 @@ Which question would you ask both? 👇
 
 *Before boosting this one with money: a quick comparative-advertising check, and the app logos (see `PLAN.md`).*
 
+### 3b. Comparison: insecurity
+
+```
+I asked ChatGPT and PsycheAI what I'm most insecure about.
+
+ChatGPT said it was "drawing a hypothesis".
+PsycheAI read my Instagram, WhatsApp and Google data first, and found the fear I never say out loud.
+
+Both answers are real and unedited, only trimmed.
+
+Comment COACH and I'll send you the link 👇
+
+#chatgpt #insecurity #selfawareness #aicoach #psycheai
+```
+
 ### 4. Career
 
 ```

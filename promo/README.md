@@ -285,6 +285,14 @@ advertising before paying to promote it. The voice says "Chat G P T"; written as
 "chatgbke". The address is `{PsycheAIdotIO}` in `vo.py`, seven even syllables with "Psyche"
 said as "sigh key": given the brand's own sounds, Ryan ran the A and I together.
 
+
+**The second comparison, `compare-insecure`** (24 October 2026): *What am I most insecure about?* The same stage
+(its question and answers are in `CONTENT`, picked by the reel's name), music and close. ChatGPT's answer says
+of itself *I don't know whether this truly describes you. I'm drawing a hypothesis*, so that line is highlighted,
+its stamp is *Just a guess*, and the voice says *ChatGPT admitted it was guessing*. PsycheAI's answer is cut to
+three plain excerpts (left behind; the acts of service it saw in the data, lease terms and rides; *someone might
+simply stop choosing you*), and both answers are set larger than the first reel's, having fewer words. About 34 s.
+
 ## The privacy post
 
 `node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the
