@@ -162,7 +162,7 @@ It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the 
 | 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) on a warm sand ground with an orange glow round it and *so nice* in orange (pink read as too sweet for a man's reel), then the site's roast cover; a finger presses the button |
 | 1 | You've saved three hundred cooking videos. / Your most cooked dish is instant noodles. | a saved grid of recipes counting to 300, greyed out under a *#1 most cooked 🍜* stamp |
 | 2 | You've viewed fifty eight apartments. / You still live with your parents. | apartment listings scrolling past, each *Viewed*, the count climbing to 58; at the punchline the rest dim and *Mum and Dad's: your room since 1999 · rent $0 · Still here* lands, hidden until then |
-| 3 | You've searched, is it too late to, twenty three times. / You're only twenty seven. | a search bar typing *is it too late to* as it is said, then *…move abroad*, *…change careers*, *…start over* dropping in under it as the count runs to 23; at the punchline they go dark and *You're only 27* lands large |
+| 3 | You've searched, is it too late to, twenty three times. / You're only twenty seven. | a search bar typing *is it too late to* as it is said, then *…move abroad*, *…change careers*, *…start over* dropping in under it as the count runs to 23; at the punchline they go dark and *You're only 27.* lands large |
 | 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy. You're scared of choosing wrong.* *Chasing the perfect choice is what keeps you stuck in analysis paralysis.* *Thinking it through feels like progress. It isn't.* *It's not too late. It just gets later every time you search.* *Pick one. Start badly. Start today.* |
 | 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
 
@@ -178,7 +178,7 @@ instead of choosing, and ends up asking whether it is too late. Each escalates t
 to a life (27). The endings of "is it too late to" are shown, not said, so the hardest beat stays short;
 "move abroad" rather than "further my studies" (Singapore and British) or "go back to school" (American), so
 it reads the same everywhere. Replaced: "k." sent 214 times and 47 people left on read, including your dad.
-The cover is *You're only 27* just after it lands. "Only" (24 October) turns the punchline: the fear is absurd at 27, which sets up the honest friend's *It's not too late*.
+The cover is *You're only 27.* just after it lands. "Only" (24 October) turns the punchline: the fear is absurd at 27, which sets up the honest friend's *It's not too late*.
 
 The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
 romance, and simple enough to get on one hearing. Earlier ones were cut: "your thumb has never been in better
