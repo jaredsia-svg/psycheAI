@@ -15,13 +15,15 @@ os.makedirs(BUILD, exist_ok=True)
 # (phrases, length scale, record each phrase on its own[, pause]), as in vo.py. One line a scene, each
 # said in one take at the main video's pace (0.92, its privacy line's): phrase by phrase, or faster, sounded clipped.
 LINES = [
-    (['What happens when you load your Instagram file onto {B}?'], 0.92, None),
+    # "your data", not "your Instagram file", since the four sources float in (25 October 2026).
+    (['What happens when you load your data onto {B}?'], 0.92, None),
     (['Your files are loaded on your phone, not uploaded.'], 0.92, None),
     (['Only a short summary is made,', 'with names and handles removed.'], 0.92, None),
     # Step 3 since 25 October 2026: the review sheet's two strongest choices, a topic and a chat.
     (['You review it,', 'leave out any topic,', 'and switch off any chat.'], 0.92, None),
     (['The summary is sent encrypted to Google Vertex AI,', 'which never trains on it.'], 0.92, None),
-    (['Your results come back to you,', 'and {B} keeps no copy.'], 0.92, None),
+    # As the ChatGPT reel says it (25 October 2026): no account, and nothing for a hack to take.
+    (['Your results come back to you,', 'and {B} keeps no copy.', 'It needs no account.', "Even if a hack occurs, there's no data to steal."], 0.92, None),
     (['See for yourself at {B} dot I O.'], 0.9, None),
 ]
 

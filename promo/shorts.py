@@ -262,18 +262,18 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['Everything goes up:', "your name, friends' messages, photos."], 0.85, True, 0.15),
     (['It may train on it.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.3),
     # Worded as the privacy video is (privacy.py), 25 October 2026.
-    (['Now watch {B}.', 'Your files are read locally on your phone.'], 0.85, True, 0.3),
+    (['Now watch {B}.', 'Your files are read locally on your phone.'], 0.8, True, 0.3),
     # The de-identification, one step a phrase so each lands on screen as it is said (the FAQ's list, in short).
-    (['On your phone, a summary is made,', 'your name blanked out,', 'friends turned into numbers,', 'contacts and links removed.'], 0.85, True, 0.15),
+    (['On your phone, a summary is made,', 'your name blanked out,', 'friends turned into numbers,', 'contacts and links removed.'], 0.8, True, 0.15),
     # The review sheet: the reader switches off what they would rather keep back (the app's own rows).
     # "Untick" was said "untake", and once "can't untake" (25 October 2026); the sheet's rows are switches anyway.
     # The review's two strongest choices, as the privacy reel's Step 3 (25 October 2026): a topic and a chat.
-    (["You review it before it's sent for analysis,", 'leave out any topic,', 'and switch off any chat.'], 0.85, True, 0.15),
-    (['{B} keeps no copy, and needs no account.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
+    (["You review it before it's sent for analysis,", 'leave out any topic,', 'and switch off any chat.'], 0.8, True, 0.15),
+    (['{B} keeps no copy, and needs no account.', "Even if a hack occurs, there's no data to steal."], 0.8, True, 0.3),
     # "The code is public" is on screen, not said (25 October 2026).
     # The address in seven even syllables, the form made for Ryan (the quick one sounded off here, 25 October 2026).
-    (['Your data stays yours.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.9),
-], hold={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.3, 4: 1.0, 5: 1.4, 6: 0.6}, lead={}, punch=(0,),  # quick cuts (25 October 2026)
+    (['Your data stays yours.', 'Try it at {PsycheAIdotIO}.'], 0.8, True, 0.9),
+], hold={0: 0.1, 1: 0.1, 2: 0.2, 3: 0.2, 4: 0.8, 5: 1.2, 6: 0.4}, lead={}, punch=(0,),  # quick cuts; spoken at 0.8 (25 October 2026, "shorten it more")  # quick cuts (25 October 2026)
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
     mood='thriller', bpm=120, reveal=3,
@@ -860,18 +860,23 @@ if R.get('mood') == 'thriller':
     b = 0.0
     while b < END:
         k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
-        if b < DROP - BEAT:
+        if b < DROP:
             chord = CHORDS[bar_i]; root = ROOTS[bar_i]; tense = b >= HOOK
-            if e == 0: at(b, strings(chord, BAR * 1.02, 0.035 if tense else 0.025), 1.0)
-            # The arpeggio: up and down the chord in eighths, soft.
-            if e % 2 == 0:
-                arp = [0, 1, 2, 3, 2, 1, 0, 1][e // 2]
+            # The last bar before PsycheAI builds into it rather than stopping: the arpeggio doubles to
+            # sixteenths, a clap roll quickens and rises, the kick goes to eighths (25 October 2026: the two
+            # halves "did not transition well").
+            build = max(0.0, min(1.0, (b - (DROP - BAR)) / BAR)) if b >= DROP - BAR else 0.0
+            if e == 0: at(b, strings(chord, min(BAR * 1.02, DROP - b + 0.1), 0.035 if tense else 0.025), 1.0)
+            # The arpeggio: up and down the chord in eighths, soft; sixteenths in the build.
+            if e % 2 == 0 or build:
+                arp = [0, 1, 2, 3, 2, 1, 0, 1][(e // 2) % 8]
                 notes = chord + [chord[0] + 12]
-                at(b, pluck(notes[arp] + 12, 0.09 if tense else 0.06), 1.0, 0.3 if (e // 2) % 2 else -0.3)
+                at(b, pluck(notes[arp] + 12, (0.09 if tense else 0.06) * (1 + 0.6 * build)), 1.0, 0.3 if (e // 2) % 2 else -0.3)
             if tense:
-                if e in (0, 8): at(b, K, 0.5)
+                if e in (0, 8) or (build and e % 2 == 0): at(b, K, 0.5 + 0.3 * build)
                 if e % 4 == 2: at(b, H, 0.18, 0.25)
                 if e % 4 == 0: at(b, bass(root + 12, EIGHTH * 0.9), 0.55)
+                if build and (e % 2 == 0 or build > 0.5): at(b, C, 0.25 + 0.5 * build, 0.2 if e % 2 else -0.2)
         elif b >= DROP and b < END - BAR:
             L_ = R['lift'][bar_i]; root = R['lift_roots'][bar_i]
             if e % 4 == 0:
@@ -888,18 +893,19 @@ if R.get('mood') == 'thriller':
             if e == 0: at(b, strings(L_, BAR * 1.02, 0.03), 1.0)
             if e in HOOK_STEPS:
                 step = HOOK_STEPS[e]; m = (L_[step] if step < len(L_) else L_[0] + 12) + 12
-                at(b, pluck(m, 0.16), 1.0, 0.15); at(b, bell(m + 12), 0.35, -0.2)
+                at(b, pluck(m, 0.16), 1.0, 0.15); at(b, bell(m), 0.2, -0.2)
         b += SIX
     # The hook lands on a soft hit; each warning on a hit, without the low rumble.
     at(HOOK, impact(), 0.6)
     for h in HITS: at(h, impact(), 0.55)
-    # Into the switch: a swell through the beat of air, then a bright run up the F major chord, no crash.
-    at(DROP - BEAT * 1.5, swell(BEAT * 1.5), 0.9)
-    for k, m in enumerate([65, 69, 72, 77, 81, 84]): at(DROP + k * 0.05, bell(m + 12), 0.6, 0.3 if k % 2 else -0.3)
+    # Into the switch: a swell under the build, then a warm run up the F major chord (an octave lower and
+    # softer than it was: "too piercing"), no crash.
+    at(DROP - BAR, swell(BAR), 0.7)
+    for k, m in enumerate([65, 69, 72, 77, 81]): at(DROP + k * 0.05, bell(m), 0.35, 0.3 if k % 2 else -0.3)
     at(DROP, strings([65, 69, 72, 77], BAR, 0.05), 1.0)
     last = snap(END - BAR, BAR)
     at(last, strings([65, 69, 72, 77], 3.0, 0.06), 1.0); at(last, bass(41, 2.5) * 0.7, 0.8)
-    for k, m in enumerate([77, 81, 84, 89]): at(last + k * 0.07, bell(m), 0.8, 0.3 if k % 2 else -0.3)
+    for k, m in enumerate([65, 69, 72, 77]): at(last + k * 0.07, bell(m), 0.4, 0.3 if k % 2 else -0.3)
 
 if R.get('mood') == 'character':
     # The slot's ticks: one each time a tile passes, slowing as it does (the stage moves by the same curve).

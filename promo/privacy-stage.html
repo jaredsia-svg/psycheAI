@@ -96,7 +96,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
   <div id="sparks"></div>
 
-  <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
+  <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">data</span> onto PsycheAI?</div></div>
   <div class="head" id="h1" style="top:230px;font-size:70px"><div><span class="step">Step 1</span></div><div>Your files are loaded<br><span class="grad">on your phone</span>,<br>not uploaded</div></div>
   <div class="head" id="h2" style="top:230px;font-size:60px;left:40px;right:40px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made<span class="later">,</span><br><span class="later">with names and handles removed</span></div></div>
   <div class="head" id="h3" style="top:230px;font-size:62px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">leave out any <span class="grad">topic</span>,</span><br><span class="later2">and switch off any <span class="grad">chat</span></span></div></div>
@@ -137,7 +137,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="onphone"><span id="noNet">✈️ No internet needed</span></div>
   </div></div>
   <div class="pill" id="kb" style="top:1660px">100–200 KB of text</div>
-  <div class="pill" id="nocopy" style="top:1660px">PsycheAI keeps <em>no copy</em></div>
+  <div class="pill" id="nocopy" style="top:1630px">PsycheAI keeps <em>no copy</em></div>
+  <div class="pill" id="noacct" style="top:1716px"><em>No account</em> needed</div>
+  <div class="pill" id="nohack" style="top:1802px">Hacked? <em>No data</em> to steal</div>
 
   <div class="file" id="f0"><span class="ext" style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)">ZIP</span><div class="name">Instagram</div></div>
   <div class="file" id="f1"><span class="ext" style="background:#25d366">TXT</span><div class="name">WhatsApp</div></div>
@@ -216,7 +218,7 @@ function render(t) {
   const said0 = w => (s0.words.find(([x]) => x === w) || [0, s0.vo + 1])[1];
   // The hook: the four files float in around the question, then fly into the phone's screen on Step 1.
   ['f0', 'f1', 'f2', 'f3'].forEach((id, i) => {
-    const due = i ? said0('onto') + (i - 1) * 0.12 : said0('instagram') - 0.2;
+    const due = i ? said0('onto') + (i - 1) * 0.12 : said0('data') - 0.2;
     const pin = back(prog(t, due, due + 0.4)), fly = easeIO(prog(t, s1.start - 0.1 + i * 0.07, s1.start + 0.45 + i * 0.07));
     const [x0, y0] = FILE_AT[i], bob = Math.sin(t * 2.4 + i * 1.7) * 14;
     const x = x0 + (SCREEN_MID.x - 150 - x0) * fly, y = y0 + bob + (SCREEN_MID.y - 70 - y0) * fly;
@@ -299,6 +301,9 @@ function render(t) {
   set('report', resOn, 'rotate(' + (6 - 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
   const nc = back(prog(t, s4.marks[1] - 0.1, s4.marks[1] + 0.3)), ncOut = prog(t, FINAL - 0.15, FINAL + 0.05);
   set('nocopy', clamp(nc * 2) * (1 - ncOut), 'translateX(-50%) scale(' + Math.min(1.08, nc) + ')');
+  // Then, as the voice says them, no account and nothing for a hack to take.
+  [['noacct', 2], ['nohack', 3]].forEach(([id, k]) => { const m = s4.marks[k] || s4.marks[1] + k, p = back(prog(t, m - 0.1, m + 0.3));
+    set(id, t >= m - 0.1 ? clamp(p * 2) * (1 - ncOut) : 0, 'translateX(-50%) scale(' + Math.min(1.08, p) + ')'); });
   ['result', 'report'].forEach(id => { $(id).style.opacity = resOn * (1 - ncOut); });
   // The last card: the mark spins in on the hit, the line, the address, the facts.
   const e = t - FINAL;

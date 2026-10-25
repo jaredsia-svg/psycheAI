@@ -483,8 +483,9 @@ comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's
 
 The music (`mood='thriller'`, rewritten 25 October 2026: the ChatGPT half "sounded weird", and the crash at the switch
 and at the end was "a loud clash"): while ChatGPT has the data, D minor under soft strings, a plucked minor arpeggio
-and a gentle pulse, a soft hit on each warning; a beat of air and a swell before *Now watch PsycheAI*, then a bright
-bell run (no crash) into a bouncy F major groove: kick on every beat, claps on two and four, offbeat chord stabs, an
-octave-bouncing bass and a repeating syncopated plucked hook. It ends on soft strings and a bell run, no crash.
+and a gentle pulse, a soft hit on each warning; the last bar before *Now watch PsycheAI* builds (the arpeggio in
+sixteenths, a rising clap roll, the kick on eighths, a swell) straight into a soft bell run (no crash; an octave
+lower than first cut, which was "too piercing") and a bouncy F major groove: kick on every beat, claps on two and four, offbeat chord stabs, an
+octave-bouncing bass and a repeating syncopated plucked hook. It ends on soft strings and a low bell run, no crash. Spoken at 0.8 from the PsycheAI half on (the first three lines stay at 0.85, where they are word for word), with shorter holds: about 42 s.
 (The first cuts had a saw-wave drone and ticking clock, a low boom, then a reversed cymbal and crash.)
 

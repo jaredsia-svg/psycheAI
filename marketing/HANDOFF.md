@@ -33,7 +33,8 @@ A second version was built on 25 Oct.
 - **Seventh cut (25 Oct):** worded as the privacy video: "Your files are read locally on your phone" with the *✈️ No internet needed* badge; "On your phone, a summary is made, your name blanked out, friends turned into numbers, contacts and links removed"; "You review it before it's sent for analysis, and can switch off anything" (sent to Google Vertex AI as the voice ends); "PsycheAI keeps no copy, and needs no account"; about 45 s.
 - **Eighth cut (25 Oct):** shorter scene 1 line ("Everything goes up: your name, friends' messages, photos."); "Your results stay on your device" and its card dropped; "~150 KB of text · no photos or videos" as a pill under the summary card; the address as `{PsycheAIdotIO}`; about 43 s.
 - **Ninth cut (25 Oct):** the review beat shows the new review sheet's two strongest choices: "leave out any topic, and switch off any chat" (*work* typed into the words box; a named chat switched off). The privacy reel's Step 3 says and shows the same; its site copy in `docs/media/` is rebuilt.
-- **Status:** awaiting the user's feedback on the ninth cut and the privacy reel. Next ideas, if it's still not punchy enough:
+- **Tenth cut (25 Oct):** "diagnosis" and "medication" typed in; music rewritten (no saw drone or crash; a build into the PsycheAI groove; softer, lower bells); faster voice from the PsycheAI half and shorter holds, about 42 s. Privacy reel: "load your data" (not Instagram); Step 5 adds "It needs no account. Even if a hack occurs, there's no data to steal."
+- **Status:** awaiting the user's feedback. Next ideas, if it's still not punchy enough:
   - faster cuts (lower `hold`);
   - a real-looking ChatGPT upload UI;
   - a bigger visual contrast at the switch.
