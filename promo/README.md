@@ -448,7 +448,9 @@ page (`stories-stage.html`) with a `<section data-name>` per slide. *Start here*
 four data sources it reads; the free card (Emily Carter's Mulan card, large, its key parts named beside it from
 card-char-mulan-parts.json); what else there is (report, Ask PsycheAI,
 Psyche Sync, the roast; "free to start" once, in the heading); the guide as the account's pinned post lays it out
-(every tap, each button a chip). *Privacy* (3): seven questions, two or three to a story, each answered in the FAQ's
-own words, shortened, so every claim stays literally true: the file never leaves the phone, how the summary is
-de-identified, PsycheAI keeps no copy, no training on it, no password, the airplane-mode check, and why not
-ChatGPT. Text keeps clear of the top 220px and bottom 300px, where Instagram puts its bars.
+(every tap, each button a chip). *Privacy* (4): two questions to a story, each answered in the FAQ's own words, shortened, so every claim stays
+literally true (the file never leaves the phone; how the summary is de-identified; no one else can get at it, even
+if PsycheAI were hacked; no training on it; a password only in Instagram, no accounts, results only on the device;
+the airplane-mode check), and the last story to itself, why not ChatGPT: consumer AI against PsycheAI, said as the
+FAQ says it (may train on what you share unless you turn it off; kept until deleted, then up to 30 days more).
+The guide story is headed *Start here.* Text keeps clear of the top 220px and bottom 300px, where Instagram puts its bars.
