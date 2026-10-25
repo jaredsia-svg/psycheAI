@@ -69,6 +69,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #phone .lock span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; margin-top: 6px; }
 #badge { z-index: 27; left: 660px; top: 470px; width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; font-size: 76px;
   background: linear-gradient(135deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 50px rgba(224,69,123,.45); border: 8px solid #fff; }
+#noNet { z-index: 26; left: 50%; top: 1310px; padding: 18px 40px; border-radius: 999px; background: #e8f6ee; color: #2f8a57; border: 3px solid #b5dfc6;
+  font-size: 46px; font-weight: 850; white-space: nowrap; }
 #deid { z-index: 22; left: 60px; right: 60px; top: 560px; padding: 38px 44px 30px; border-radius: 44px; background: #fff;
   border: 5px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
   box-shadow: 0 30px 80px rgba(138,63,208,.22); transform-origin: 50% 0; }
@@ -127,7 +129,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .stamp { z-index: 30; padding: 12px 30px; border-radius: 20px; font-size: 42px; font-weight: 900; white-space: nowrap; }
 #stA { right: 100px; top: 470px; color: #6b6b73; border: 6px solid #9a9aa3; background: rgba(255,255,255,.92); }
 #stB { right: 100px; top: 1010px; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.4); }
-/* Impact: the stamp on the hook, a flash on each hit, the upload bar, what leaves the phone. */
+/* Impact: the stamp on the hook, a flash on each hit, the upload bar. */
 #stop { z-index: 40; left: 50%; top: 940px; padding: 26px 56px; border-radius: 28px; border: 10px solid #e0362c; color: #e0362c; background: rgba(255,255,255,.94);
   font-size: 92px; font-weight: 950; letter-spacing: .02em; white-space: nowrap; box-shadow: 0 30px 80px rgba(224,54,44,.35); }
 #flash { position: absolute; inset: 0; z-index: 50; pointer-events: none; opacity: 0; }
@@ -135,10 +137,6 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #up .lbl { display: flex; justify-content: space-between; font-size: 36px; font-weight: 850; color: #e6e3ea; margin-bottom: 14px; }
 #up .track { height: 30px; border-radius: 15px; background: rgba(255,255,255,.12); overflow: hidden; }
 #up .fill { height: 100%; width: 0; border-radius: 15px; background: #ff5a4f; box-shadow: 0 0 24px rgba(255,90,79,.6); }
-#leaves { z-index: 26; left: 90px; right: 90px; top: 1330px; display: none; gap: 18px; justify-content: center; }
-#leaves div { padding: 18px 24px; border-radius: 24px; background: #fff; text-align: center; font-size: 30px; font-weight: 750; color: #6b6076;
-  box-shadow: 0 16px 40px rgba(90,40,120,.16); }
-#leaves b { display: block; font-size: 56px; font-weight: 950; color: #c2407a; line-height: 1.1; }
 /* 5: the close. */
 #c1 { z-index: 30; left: 60px; right: 60px; top: 520px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.08; }
 #code { z-index: 30; left: 110px; right: 110px; top: 800px; padding: 30px 36px; border-radius: 36px; background: #fff; text-align: center;
@@ -176,20 +174,20 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el warn" id="w2">Kept on its servers<small>until you delete it, then up to 30 days more</small></div>
 
   <div class="el caption" id="cap3">Now watch<br><span class="grad">PsycheAI.</span></div>
-  <div class="el" id="phone"><div class="notch"></div><div class="inside"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig2" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig2)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div><div class="lock">🔒 Read on your phone<span>Your files never leave it</span></div></div>
+  <div class="el" id="phone"><div class="notch"></div><div class="inside"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig2" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig2)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div><div class="lock">🔒 Read locally<span>on your phone</span></div></div>
   <div class="el" id="badge">🔒</div>
-  <div class="el" id="leaves"><div><b>0</b>photos</div><div><b>0</b>videos</div><div><b>0</b>files</div></div>
+  <div class="el" id="noNet">✈️ No internet needed</div>
 
-  <div class="el caption" id="capD">De-identified<br><span class="grad">on your phone.</span></div>
-  <div class="el" id="deid"><div class="ttl">YOUR SUMMARY<span>· made on your phone</span></div>
-    <div class="r"><span class="k">Name</span><span class="raw" data-fx="bar" data-m="0" data-d="0.75">Jamie Lee<i class="bar"></i></span></div>
-    <div class="r"><span class="k">Messages</span><span>with</span><span class="sw" data-fx="swap" data-m="1"><span class="raw">Sarah Kim<i class="strike"></i></span><span class="new">[N1]</span></span></div>
-    <div class="r"><span class="k">Comment</span><span class="sw" data-fx="swap" data-m="1" data-d="0.25"><span class="raw">@tom.r<i class="strike"></i></span><span class="new">[P1]</span></span><span>loved this!</span></div>
-    <div class="r"><span class="k">Email</span><span class="raw" data-fx="cut" data-m="2">jamie.lee@gmail.com<i class="strike"></i></span><span class="gone">removed</span></div>
-    <div class="r"><span class="k">Phone</span><span class="raw" data-fx="cut" data-m="2" data-d="0.2">+1 415 555 0134<i class="strike"></i></span><span class="gone">removed</span></div>
-    <div class="r"><span class="k">Link</span><span class="raw" data-fx="cut" data-m="2" data-d="0.4">instagram.com/p/C8x<i class="strike"></i></span><span class="gone">removed</span></div>
+  <div class="el caption" id="capD">A summary,<br><span class="grad">made on your phone.</span></div>
+  <div class="el" id="deid"><div class="ttl">YOUR SUMMARY<span>· de-identified</span></div>
+    <div class="r"><span class="k">Name</span><span class="raw" data-fx="bar" data-m="1" data-d="0.1">Jamie Lee<i class="bar"></i></span></div>
+    <div class="r"><span class="k">Messages</span><span>with</span><span class="sw" data-fx="swap" data-m="2"><span class="raw">Sarah Kim<i class="strike"></i></span><span class="new">[N1]</span></span></div>
+    <div class="r"><span class="k">Comment</span><span class="sw" data-fx="swap" data-m="2" data-d="0.25"><span class="raw">@tom.r<i class="strike"></i></span><span class="new">[P1]</span></span><span>loved this!</span></div>
+    <div class="r"><span class="k">Email</span><span class="raw" data-fx="cut" data-m="3">jamie.lee@gmail.com<i class="strike"></i></span><span class="gone">removed</span></div>
+    <div class="r"><span class="k">Phone</span><span class="raw" data-fx="cut" data-m="3" data-d="0.2">+1 415 555 0134<i class="strike"></i></span><span class="gone">removed</span></div>
+    <div class="r"><span class="k">Link</span><span class="raw" data-fx="cut" data-m="3" data-d="0.4">instagram.com/p/C8x<i class="strike"></i></span><span class="gone">removed</span></div>
   </div>
-  <div class="el caption" id="capR">You choose<br><span class="grad">what’s sent.</span></div>
+  <div class="el caption" id="capR">You review it<br><span class="grad">before it’s sent.</span></div>
   <div class="el" id="review"><h3>Review what gets sent</h3><div class="note">🛡️ De-identified before sending</div>
     <div class="r"><span>Your captions &amp; comments</span><span class="sw2"><i></i></span></div>
     <div class="r"><span>Posts you liked</span><span class="sw2"><i></i></span></div>
@@ -198,10 +196,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div class="r"><span>Activity &amp; timing</span><span class="sw2"><i></i></span></div>
     <div class="go" id="go">Send this</div></div>
   <div class="el" id="tap">👆</div>
-  <div class="el" id="ent">Enterprise AI<small>doesn’t train on it · nothing kept</small></div>
-  <div class="el" id="kb">~150 KB of text<span>only what you kept</span></div>
+  <div class="el" id="ent">Google Vertex AI<small>enterprise · never trains on it</small></div>
+  <div class="el" id="kb">~150 KB of text, sent encrypted<span>only what you kept</span></div>
 
-  <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps nothing.</div>
+  <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps no copy.</div>
   <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
   <div class="el" id="mine"><span class="ic">📱</span><b>Your card and report</b><small>saved only on your device</small></div>
   <div class="el" id="hack"><span class="ic">🛡️</span><b>Even if a hack occurs,<br>there’s no data to steal.</b></div>
@@ -289,15 +287,15 @@ function render(t) {
       $(id).style.top = (1060 + i * 260) + 'px';
       show(id, t >= a - 0.15 && t < KEPT.end ? clamp(p * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, p)) + ') rotate(' + (i ? 1 : -1) + 'deg)'); }); }
 
-  // 3: the phone keeps the export: it locks as the voice says the files never leave it.
+  // 3: the export read on the phone: it locks as "read locally" is said, with no internet needed (as in the privacy video).
   { const s = PHONE, on = live(s, t), o = out(s, t), a = back(prog(t, s.start, s.start + 0.45));
     const slam = back(prog(t, s.start + 0.05, s.start + 0.35));
     show('cap3', on && t >= s.start + 0.05 ? clamp(slam * 3) * (1 - o) : 0, 'scale(' + (1 + 0.8 * (1 - Math.min(1, slam))) + ')');
     show('phone', on ? clamp(a * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, a)) * 200 + 'px)');
     const k = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.2));
     show('badge', on && t >= s.marks[1] - 0.1 ? clamp(k * 2) * (1 - o) : 0, 'scale(' + (1 + 1.2 * (1 - Math.min(1, k))) + ') rotate(' + (1 - Math.min(1, k)) * -30 + 'deg)');
-    const lv = back(prog(t, s.marks[1] + 0.5, s.marks[1] + 0.8));
-    show('leaves', on && t >= s.marks[1] + 0.5 ? clamp(lv * 2) * (1 - o) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, lv)) + ')'); if ($('leaves').style.display === 'block') $('leaves').style.display = 'flex'; }
+    const nn = back(prog(t, s.marks[1] + 0.45, s.marks[1] + 0.75));
+    show('noNet', on && t >= s.marks[1] + 0.45 ? clamp(nn * 2) * (1 - o) : 0, 'translateX(-50%) scale(' + Math.min(1.05, nn) + ')'); }
 
   // 3b: the de-identification, each step as the voice names it (the FAQ's list): the name blacked out, friends
   // turned into [N1] and [P1], contacts and links struck out; then the summary flies into the enterprise AI.
@@ -319,13 +317,16 @@ function render(t) {
         el.style.opacity = 1 - 0.65 * prog(t, at + 0.35, at + 0.6);
         const g = el.nextElementSibling; g.style.opacity = prog(t, at + 0.35, at + 0.6); } });
     const d = back(prog(t, s.vo - 0.2, s.vo + 0.15));
-    show('deid', on ? clamp(d * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, d)) * 60 + 'px)'); }
+    show('deid', on ? clamp(d * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, d)) * 60 + 'px)');
+    // "A summary is made": its rows written in one after another.
+    $('deid').querySelectorAll('.r').forEach((r, i) => { const w = back(prog(t, s.vo + 0.35 + i * 0.16, s.vo + 0.6 + i * 0.16));
+      r.style.opacity = clamp(w * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, w)) * -40 + 'px)'; }); }
 
   // 3c: the review sheet. The finger switches off Direct messages as "off" is said, then the searches, then
   // presses Send this; only then does the sheet shrink and rise into the enterprise AI.
   { const s = REVIEW, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
     show('capR', on ? clamp(c * 2) * (1 - o) : 0);
-    const T1 = said(s, 'off', s.vo + 1.7), T2 = T1 + 0.7, T3 = s.marks[1] + 0.15;
+    const T1 = said(s, 'off', s.marks[1] + 0.6), T2 = T1 + 0.55, T3 = Math.max(T2 + 0.6, s.voEnd + 0.1);
     [['rv2', T1], ['rv1', T2]].forEach(([id, at]) => { const k = ease(prog(t, at, at + 0.15)), row = $(id);
       row.querySelector('i').style.left = (50 - 44 * k) + 'px';
       row.querySelector('.sw2').style.background = k > 0.5 ? '#d6d0dc' : '#8a3fd0'; row.classList.toggle('off', k > 0.5); });
