@@ -1,28 +1,43 @@
-/* Why not just upload it to ChatGPT? Two columns, each a path from your export to the answer you get back. */
+/* Why not just upload it to ChatGPT? The same question to both, their answers side by side, then the differences. */
 .vs-card h2 { margin-bottom: 4px; }
-.vs-card .vs-sub { margin: 0 0 18px; color: var(--ink-soft); }
-.vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 640px) { .vs-grid { grid-template-columns: 1fr; } }
-.vs-col { border-radius: 18px; padding: 16px; }
-.vs-them { background: #f4f2f6; border: 1px solid var(--line); }
-.vs-us { background: linear-gradient(160deg, #fbf3ff, #fff3f8); border: 1.5px solid #e4c8f2; }
-.vs-head { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; margin-bottom: 12px; }
-.vs-them .vs-head { color: #4b4553; }
-.vs-us .vs-head { color: var(--accent); }
-.vs-node { display: flex; gap: 10px; align-items: flex-start; background: #fff; border-radius: 12px; padding: 10px 12px; border: 1px solid var(--line); }
-.vs-node .vs-ic { font-size: 1.35rem; line-height: 1.2; }
-.vs-node b { display: block; font-size: .95rem; }
-.vs-node small { display: block; color: var(--ink-soft); font-size: .82rem; line-height: 1.35; margin-top: 2px; }
-.vs-arrow { text-align: center; font-size: .78rem; font-weight: 700; color: var(--ink-soft); padding: 5px 0; }
-.vs-arrow::before { content: '↓ '; }
-.vs-them .vs-node.vs-bad { border-color: #e9c9c6; background: #fff7f6; }
-.vs-them .vs-node.vs-bad b { color: #a3342b; }
-.vs-us .vs-node.vs-good { border-color: #d8c2ea; }
-.vs-answer { position: relative; margin-top: 2px; border-radius: 14px; padding: 12px 14px; font-size: .9rem; line-height: 1.4; font-style: italic; }
-.vs-them .vs-answer { background: #fff; border: 1px dashed #c9c3cf; color: #5b5463; }
-.vs-us .vs-answer { background: #fff; border: 1px solid #e4c8f2; color: var(--ink); }
-.vs-answer b { font-style: normal; color: #c2407a; }
-.vs-stamp { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; font-style: normal; font-size: .75rem; font-weight: 800; letter-spacing: .02em; }
-.vs-them .vs-stamp { color: #6b6b73; border: 1.5px solid #a8a3ae; }
+.vs-card .vs-sub { margin: 0 0 16px; color: var(--ink-soft); }
+.vs-q { margin: 0 0 14px auto; width: fit-content; max-width: 92%; padding: 10px 16px; border-radius: 16px 16px 4px 16px; font-weight: 700;
+  color: #fff; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+.vs-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .vs-answers { grid-template-columns: 1fr; } }
+.vs-ans { position: relative; border-radius: 16px; padding: 14px 16px 16px; font-size: .92rem; line-height: 1.45; }
+.vs-ans h3 { margin: 0 0 8px; font-size: 1rem; }
+.vs-ans p { margin: 0 0 8px; }
+.vs-ans ul { margin: 0; padding-left: 20px; }
+.vs-ans li { margin: 2px 0; font-weight: 650; }
+.vs-them { background: #f4f2f6; border: 1px solid var(--line); color: #4b4553; }
+.vs-them h3 { color: #4b4553; }
+.vs-us { background: #fff; border: 1.5px solid #e4c8f2; box-shadow: 0 8px 24px rgba(138,63,208,.1); }
+.vs-us h3 { color: var(--accent); }
+.vs-us p { font-style: italic; }
+.vs-us b { font-style: normal; color: #c2407a; }
+.vs-stamp { position: absolute; right: 12px; top: 12px; padding: 2px 10px; border-radius: 999px; font-size: .74rem; font-weight: 800; }
+.vs-them .vs-stamp { color: #6b6b73; border: 1.5px solid #a8a3ae; background: #fff; }
 .vs-us .vs-stamp { color: #fff; background: linear-gradient(90deg, #e0457b, #8a3fd0); }
-.vs-foot { margin: 14px 0 0; text-align: center; font-weight: 700; }
+.vs-note { margin: 8px 0 18px; font-size: .78rem; color: var(--ink-soft); text-align: center; }
+.vs-diff { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: .9rem; }
+.vs-row { display: grid; grid-template-columns: 24% 1fr 1fr; border-top: 1px solid var(--line); }
+.vs-row:first-child { border-top: 0; }
+.vs-row > span { padding: 10px 12px; line-height: 1.4; }
+.vs-headrow { background: #faf6fc; font-size: .82rem; font-weight: 800; letter-spacing: .03em; }
+.vs-headrow .vs-c1 { color: #6b6b73; } .vs-headrow .vs-c2 { color: var(--accent); }
+.vs-k { font-weight: 700; color: var(--ink-soft); font-size: .84rem; }
+.vs-row:not(.vs-headrow) .vs-c1 { color: #6b5f63; }
+.vs-row:not(.vs-headrow) .vs-c1::before { content: '✕ '; color: #b3261e; font-weight: 800; }
+.vs-row:not(.vs-headrow) .vs-c2 { font-weight: 650; background: #fdf9ff; }
+.vs-row:not(.vs-headrow) .vs-c2::before { content: '✓ '; color: var(--good); font-weight: 800; }
+/* On a phone, each row is its label, then the two answers under it, each named. */
+@media (max-width: 640px) {
+  .vs-headrow { display: none; }
+  .vs-row { grid-template-columns: 1fr; }
+  .vs-row > span { padding: 6px 12px; }
+  .vs-k { padding-top: 10px !important; }
+  .vs-row:not(.vs-headrow) .vs-c1::before { content: '✕ ChatGPT: '; }
+  .vs-row:not(.vs-headrow) .vs-c2::before { content: '✓ PsycheAI: '; }
+  .vs-row .vs-c2 { padding-bottom: 10px !important; }
+}
