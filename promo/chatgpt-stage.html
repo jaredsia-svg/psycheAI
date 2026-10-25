@@ -109,10 +109,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #vault b { display: block; font-size: 46px; font-weight: 900; margin-bottom: 18px; }
 #vault .zero { display: flex; align-items: baseline; justify-content: center; gap: 22px; margin-top: 8px; font-size: 44px; font-weight: 750; color: #4a2366; }
 #vault .zero span { font-size: 92px; font-weight: 900; color: #c2407a; min-width: 70px; }
-#mine { z-index: 20; left: 160px; right: 160px; top: 1000px; padding: 34px 40px; border-radius: 40px; background: #fff; text-align: center;
+#mine { z-index: 20; left: 160px; right: 160px; top: 900px; padding: 34px 40px; border-radius: 40px; background: #fff; text-align: center;
   box-shadow: 0 24px 60px rgba(90,40,120,.18); }
 #mine .ic { display: block; font-size: 90px; }
-#hack { z-index: 20; left: 120px; right: 120px; top: 1360px; padding: 34px 40px; border-radius: 40px; text-align: center; color: #fff;
+#hack { z-index: 20; left: 120px; right: 120px; top: 1260px; padding: 34px 40px; border-radius: 40px; text-align: center; color: #fff;
   background: linear-gradient(120deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.35); }
 #hack .ic { display: block; font-size: 80px; }
 #hack b { display: block; margin-top: 8px; font-size: 46px; font-weight: 900; line-height: 1.15; }
@@ -200,7 +200,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el" id="kb">~150 KB of text, sent encrypted<span>only what you kept</span></div>
 
   <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps no copy.</div>
-  <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
+  <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>reports kept</div></div>
   <div class="el" id="mine"><span class="ic">📱</span><b>Your card and report</b><small>saved only on your device</small></div>
   <div class="el" id="hack"><span class="ic">🛡️</span><b>Even if a hack occurs,<br>there’s no data to steal.</b></div>
 
@@ -233,9 +233,9 @@ $('cloud').innerHTML = '<svg viewBox="0 0 1000 560"><defs><linearGradient id="cg
   '<circle cx="250" cy="250" r="170"/><circle cx="480" cy="180" r="180"/><circle cx="720" cy="240" r="160"/><circle cx="860" cy="360" r="110"/>' +
   '<circle cx="140" cy="380" r="110"/><rect x="140" y="250" width="720" height="240" rx="110"/></g></svg>';
 mk('name', '<i></i>ChatGPT’s servers', $('cloud'));
-const ITEMS = [['👤 Your name', 0], ['💬 Friends’ private messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1], ['🎥 Your videos', 1], ['🔍 Your searches', 1]];
+const ITEMS = [['👤 Your name', 0], ['💬 Friends’ private messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1], ['🎥 Your videos', 1]];
 const items = ITEMS.map(([h]) => mk('item el', h, $('items')));
-const SPOTS = [[265, 610], [715, 610], [265, 705], [715, 705], [265, 800], [715, 800]];   // where each lands in the cloud: three rows of two, the label under them
+const SPOTS = [[265, 610], [715, 610], [265, 705], [715, 705], [490, 800]];   // where each lands in the cloud: two rows of two and one centred, the label under them
 
 // A shake and a flash on every hit: the hook's stamp, each warning, the switch to PsycheAI, the zeros.
 const HITS = () => [[ASK.marks[1], '#e0362c'], [UP.vo, null], [KEPT.vo, '#e0362c'], [KEPT.marks[1], '#e0362c'], [PHONE.start, '#ffffff'], [ANS.vo, null]];
