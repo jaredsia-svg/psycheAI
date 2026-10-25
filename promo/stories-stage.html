@@ -86,13 +86,24 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
 .qa .a li { font-size: 46px; }
 .qa .kicker { font-size: 38px; }
 /* Two or three Q&As to a story. */
-.qa2 .q { margin-top: 34px; font-size: 44px; padding: 24px 34px; }
-.qa2 .a { margin-top: 22px; padding: 30px 38px; }
-.qa2 .a .yes { font-size: 56px; }
-.qa2 .a p { margin-top: 12px; font-size: 36px; }
+.qa2 .q { margin-top: 28px; font-size: 42px; padding: 22px 32px; }
+.qa2 .a { margin-top: 18px; padding: 26px 36px; }
+.qa2 .a .yes { font-size: 52px; }
+.qa2 .a p { margin-top: 10px; font-size: 35px; }
 .qa2 .a li { margin-top: 10px; font-size: 34px; }
 .qa2 .a li::before { width: 36px; height: 36px; font-size: 22px; }
 .qa2 h2 { font-size: 70px; }
+.guide .gtitle { margin-top: 24px; font-size: 68px; }
+.guide .gcard { margin-top: 28px; padding: 30px 32px 28px; }
+.guide .ghead { font-size: 40px; }
+.guide .gsteps li { margin-top: 10px; font-size: 31px; line-height: 1.45; }
+.guide .gp { font-size: 32px; line-height: 1.5; }
+.guide .gbtn { margin-top: 32px; padding: 26px; font-size: 48px; }
+.guide .brandline { font-size: 36px; }
+.qa2[data-name="privacy-2"] .q { margin-top: 22px; font-size: 40px; padding: 20px 30px; }
+.qa2[data-name="privacy-2"] .a { padding: 24px 34px; }
+.qa2[data-name="privacy-2"] .a .yes { font-size: 48px; }
+.qa2[data-name="privacy-2"] .a p { font-size: 33px; }
 </style></head>
 <body>
 
@@ -182,15 +193,16 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
   <div class="blob b1"></div><div class="blob b2"></div>
   <div class="in" style="justify-content:center">
     <div class="kicker">🔒 Privacy · 2 / 3</div>
-    <div class="q">Does PsycheAI keep my data?</div>
-    <div class="a"><div class="yes">No.</div>
-      <p><b>No copy</b> of your data, summary or report. No account, no passwords: if PsycheAI were hacked, <b>there would be none of your data to take</b>.</p></div>
-    <div class="q">Is my data used to train AI?</div>
+    <div class="q">Can anyone else access my data? What if PsycheAI gets hacked?</div>
+    <div class="a"><div class="yes">No one can.</div>
+      <p>No account, and PsycheAI stores <b>none of your data, summary or report</b>. Even its administrator can't see them. If PsycheAI were hacked, <b>there would be none of your data to take</b>.</p></div>
+    <div class="q">Is my data used to train the AI model?</div>
     <div class="a"><div class="yes">No.</div>
       <p>It runs on <b>Google Vertex AI's enterprise tier</b>, where Google does not train its AI on it. It's used only to answer you.</p></div>
-    <div class="q">Do you need my Instagram password?</div>
-    <div class="a"><div class="yes">Never.</div>
-      <p>You download your own data from Instagram yourself, and choose the file.</p></div>
+    <div class="q">Do I need to enter my password anywhere?</div>
+    <div class="a"><div class="yes">Only in Instagram.</div>
+      <p>Instagram asks for it when <b>you request your data in its app</b>. PsycheAI <b>never asks for a password</b> and never logs in to your accounts.</p>
+      <p><b>There are no accounts</b>: your card and report stay <b>only on your device</b>.</p></div>
   </div>
 </section>
 
@@ -202,7 +214,7 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
     <div class="a"><div class="yes">Check it yourself. ✈️</div>
       <p>Turn on <b>airplane mode</b>, then load your file: it's still read and summarised, because that all happens on your phone.</p>
       <p>The site is <b>open source</b>: anyone can read exactly what it sends.</p></div>
-    <div class="q">Why not just upload it to ChatGPT?</div>
+    <div class="q">Why not just upload my data to ChatGPT?</div>
     <div class="a"><div class="yes">That sends the raw file.</div>
       <p>Your whole export goes to their servers, <b>names and messages included</b>. PsycheAI de-identifies it on your phone first, and keeps nothing.</p></div>
   </div>
