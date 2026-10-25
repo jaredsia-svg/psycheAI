@@ -437,3 +437,18 @@ Mulan, Odysseus and Sherlock never show *Most in sync with*, and each highlights
 cards are captured afresh as `card-char-*.png` with their `-parts.json`, so the older reels keep the pictures they
 were made with. A name longer than eleven letters (Sherlock Holmes) is set smaller under the machine.
 
+### Story highlights
+
+```
+node promo/stories.mjs   # marketing/stories/start-1..6.png and privacy-1..7.png, 1080x1920
+```
+
+Still images for the Instagram highlights *Start here* and *Privacy* (25 October 2026), one page
+(`stories-stage.html`) with a `<section data-name>` per slide. *Start here*: what PsycheAI is, the free card (Emily
+Carter's Mulan card), what else there is (report, Ask PsycheAI, Psyche Sync, the roast), the guide as the
+account's pinned post lays it out (every tap, each button a chip), the four data sources, and the free first card.
+*Privacy*: six questions, each answered in the FAQ's own words, shortened, so every claim stays literally true:
+the file never leaves the phone, how the summary is de-identified, PsycheAI keeps no copy, no training on it, no
+password, and the airplane-mode check. Text keeps clear of the top 220px and bottom 300px, where Instagram puts its
+bars.
+
