@@ -259,7 +259,7 @@ REELS['compare-insecure'] = dict(REELS['compare'], lines=[
 # music and voice; its own stage, chatgpt-stage.html. Every claim about ChatGPT is the FAQ's (personal plans).
 REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['Thinking of uploading your Instagram data to Chat G P T?', 'Watch this first.'], 0.85, True, 0.3),
-    (['Everything goes up, as it is.', "Your name. Your friends' private messages. Your photos."], 0.85, True, 0.3),
+    (['Everything goes up:', "your name, friends' messages, photos."], 0.85, True, 0.15),
     (['It may train on it.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.3),
     # Worded as the privacy video is (privacy.py), 25 October 2026.
     (['Now watch {B}.', 'Your files are read locally on your phone.'], 0.85, True, 0.3),
@@ -268,10 +268,11 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     # The review sheet: the reader switches off what they would rather keep back (the app's own rows).
     # "Untick" was said "untake", and once "can't untake" (25 October 2026); the sheet's rows are switches anyway.
     (["You review it before it's sent for analysis,", 'and can switch off anything.'], 0.85, True, 0.15),
-    (['{B} keeps no copy, and needs no account.', 'Your results stay on your device.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
+    (['{B} keeps no copy, and needs no account.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
     # "The code is public" is on screen, not said (25 October 2026).
-    (['Your data stays yours.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.9),
-], hold={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.3, 4: 0.4, 5: 1.5, 6: 0.6}, lead={}, punch=(0,),  # quick cuts (25 October 2026)
+    # The address in seven even syllables, the form made for Ryan (the quick one sounded off here, 25 October 2026).
+    (['Your data stays yours.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.9),
+], hold={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.3, 4: 1.0, 5: 1.4, 6: 0.6}, lead={}, punch=(0,),  # quick cuts (25 October 2026)
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
     mood='thriller', bpm=120, reveal=3,

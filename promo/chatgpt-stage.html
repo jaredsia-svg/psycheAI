@@ -97,8 +97,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #review .go { margin-top: 26px; padding: 28px; border-radius: 999px; text-align: center; color: #fff; font-size: 42px; font-weight: 900;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.35); }
 #tap { z-index: 35; font-size: 150px; filter: drop-shadow(0 20px 30px rgba(90,40,120,.35)); }
-#kb { z-index: 24; left: 0; right: 0; top: 590px; text-align: center; font-size: 36px; font-weight: 800; color: #4a2366; line-height: 1.35; }
-#kb span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; }
+#kb { z-index: 24; left: 50%; top: 1250px; padding: 22px 44px; border-radius: 999px; background: #fff; text-align: center; white-space: nowrap;
+  font-size: 50px; font-weight: 900; color: #c2407a; box-shadow: 0 20px 50px rgba(138,63,208,.2); }
+#kb span { margin-left: 14px; font-size: 34px; font-weight: 750; color: #6b6076; }
 #ent { z-index: 24; left: 230px; right: 230px; top: 400px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.4); }
 #ent small { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; opacity: .92; }
@@ -109,15 +110,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #vault b { display: block; font-size: 46px; font-weight: 900; margin-bottom: 18px; }
 #vault .zero { display: flex; align-items: baseline; justify-content: center; gap: 22px; margin-top: 8px; font-size: 44px; font-weight: 750; color: #4a2366; }
 #vault .zero span { font-size: 92px; font-weight: 900; color: #c2407a; min-width: 70px; }
-#mine { z-index: 20; left: 160px; right: 160px; top: 900px; padding: 34px 40px; border-radius: 40px; background: #fff; text-align: center;
-  box-shadow: 0 24px 60px rgba(90,40,120,.18); }
-#mine .ic { display: block; font-size: 90px; }
-#hack { z-index: 20; left: 120px; right: 120px; top: 1260px; padding: 34px 40px; border-radius: 40px; text-align: center; color: #fff;
+#hack { z-index: 20; left: 120px; right: 120px; top: 920px; padding: 34px 40px; border-radius: 40px; text-align: center; color: #fff;
   background: linear-gradient(120deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.35); }
 #hack .ic { display: block; font-size: 80px; }
 #hack b { display: block; margin-top: 8px; font-size: 46px; font-weight: 900; line-height: 1.15; }
-#mine b { display: block; margin-top: 10px; font-size: 46px; font-weight: 900; }
-#mine small { display: block; margin-top: 6px; font-size: 36px; font-weight: 650; color: #6b6076; }
 /* 4 (before): the answers. */
 .ans { z-index: 20; left: 70px; right: 70px; padding: 36px 42px; border-radius: 40px; font-size: 44px; line-height: 1.3; }
 .ans .who { display: block; margin-bottom: 14px; font-size: 34px; font-weight: 900; font-style: normal; }
@@ -197,11 +193,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div class="go" id="go">Send this</div></div>
   <div class="el" id="tap">👆</div>
   <div class="el" id="ent">Google Vertex AI<small>enterprise · never trains on it</small></div>
-  <div class="el" id="kb">~150 KB of text, sent encrypted<span>only what you kept</span></div>
+  <div class="el" id="kb">~150 KB of text<span>· no photos or videos</span></div>
 
   <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps no copy.</div>
   <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>reports kept</div></div>
-  <div class="el" id="mine"><span class="ic">📱</span><b>Your card and report</b><small>saved only on your device</small></div>
   <div class="el" id="hack"><span class="ic">🛡️</span><b>Even if a hack occurs,<br>there’s no data to steal.</b></div>
 
   <div class="el" id="c1">Your data<br><span class="grad">stays yours.</span></div>
@@ -320,7 +315,9 @@ function render(t) {
     show('deid', on ? clamp(d * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, d)) * 60 + 'px)');
     // "A summary is made": its rows written in one after another.
     $('deid').querySelectorAll('.r').forEach((r, i) => { const w = back(prog(t, s.vo + 0.35 + i * 0.16, s.vo + 0.6 + i * 0.16));
-      r.style.opacity = clamp(w * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, w)) * -40 + 'px)'; }); }
+      r.style.opacity = clamp(w * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, w)) * -40 + 'px)'; });
+    const kb = back(prog(t, s.marks[3] + 1.0, s.marks[3] + 1.3));
+    show('kb', on && t >= s.marks[3] + 1.0 ? clamp(kb * 2) * (1 - o) : 0, 'translateX(-50%) scale(' + (0.7 + 0.3 * Math.min(1.05, kb)) + ')'); }
 
   // 3c: the review sheet. The finger switches off Direct messages as "off" is said, then the searches, then
   // presses Send this; only then does the sheet shrink and rise into the enterprise AI.
@@ -346,20 +343,17 @@ function render(t) {
     } else show('tap', 0);
     const gulp = Math.sin(Math.PI * prog(t, T3 + 0.8, T3 + 1.1)) * 0.08;
     show('ent', on && t >= T3 + 0.05 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')');
-    const kb = back(prog(t, T3 + 1.0, T3 + 1.3));
-    show('kb', on && t >= T3 + 1.0 ? clamp(kb * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, kb)) * 40 + 'px)'); }
+  }
 
-  // 4: PsycheAI's servers keep nothing (only zeros, never another number), the results sit on your phone, and a hack finds nothing.
+  // 4: PsycheAI's servers keep nothing (only zeros, never another number), and a hack finds nothing.
   { const s = ANS, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
     show('cap4', on ? clamp(c * 2) * (1 - o) : 0);
     const v = back(prog(t, s.vo, s.vo + 0.4));
     show('vault', on ? clamp(v * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, v)) + ')');
     [...$('vault').querySelectorAll('.zero')].forEach((z, i) => { const p = back(prog(t, s.vo + 0.15 + i * 0.25, s.vo + 0.45 + i * 0.25));
       z.style.opacity = clamp(p * 2); z.style.transform = 'scale(' + (0.7 + 0.3 * Math.min(1.05, p)) + ')'; });
-    const m = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.2));
-    show('mine', on && t >= s.marks[1] - 0.2 ? clamp(m * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, m)) * 60 + 'px)');
-    const h = back(prog(t, s.marks[2] - 0.2, s.marks[2] + 0.2));
-    show('hack', on && t >= s.marks[2] - 0.2 ? clamp(h * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, h)) + ')'); }
+    const h = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.2));
+    show('hack', on && t >= s.marks[1] - 0.2 ? clamp(h * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, h)) + ')'); }
 
   // 5: the close.
   { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
