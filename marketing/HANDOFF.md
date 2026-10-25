@@ -5,8 +5,10 @@ Read this first in a new session, together with `CLAUDE.md` and `marketing/INSTA
 ## Where things stand
 
 - **Branch:** `claude/instagram-personality-compatibility-oqhpa3`. Pushing deploys to Render.
-- **Tests:** the site passes both suites, `npm test` (1513 checks) and `npm run test:ui` (1598 checks).
-- **Last site change:** the front-page header now reads "Your personal AI coach / that already knows you."
+- **Tests:** the site passes both suites, `npm test` (1513 checks) and `npm run test:ui` (1602 checks).
+- **Front page:** two sections sit above the Instagram steps, live since 25 Oct: `#vs-coach` (the regret question, both answers) and `#vs-chatgpt` (the five-row table).
+  - They are hidden for returning readers. The README's "Why PsycheAI, and why not just ChatGPT" section explains them.
+- **Last header change:** the front-page header now reads "Your personal AI coach / that already knows you."
   - The link-preview tags, og-card v=4, the manifest and the README tagline match it.
   - The source-code links point to the deploy-branch tree.
 - **Security:** fixes B3 (sync seal), B4 (NUL → 400) and B5 (COOP) are live.
@@ -45,11 +47,6 @@ A second version was built on 25 Oct.
 
 ## Awaiting the user's go-ahead (don't do these unasked)
 
-1. **Put the two front-page mock-up sections live.**
-   - The sections are "Why PsycheAI stands out as your personal AI coach" and "Why not just upload my data to ChatGPT?".
-   - The mock-ups are `marketing/site-mockups/front-page-sections.html` and `.css`.
-   - Add the HTML to `docs/index.html` before `#request-data`. The CSS goes in `docs/styles.css`, because the CSP forbids inline styles.
-   - Then add uitest checks, update the README, run both suites and push.
 2. **Relationship reel:** switch "Try it at psycheai.io" to `{PsycheAIdotIOquick}`.
 3. **Older reels:** optionally rebuild notes, mbti and intro with the new Mulan pronunciation.
 4. **Roast reel:** optionally soften the 4 s drop hit.

@@ -816,6 +816,31 @@ try {
       landed.text === 'below' && landed.top >= -2 && landed.top < 200 && landed.hash === '', JSON.stringify(landed));
     await page.evaluate(() => window.scrollTo(0, 0));
   }
+  {
+    // Above the Instagram steps: why PsycheAI stands out as a coach (one question, both answers), then why not just
+    // upload the data to ChatGPT. Its claims are the FAQ's.
+    const vs = await page.evaluate(() => {
+      const coach = document.querySelector('#view-welcome #vs-coach'), gpt = document.querySelector('#view-welcome #vs-chatgpt');
+      const req = document.querySelector('#request-data');
+      const rows = gpt ? [...gpt.querySelectorAll('.vs-row')].map(r => [...r.children].map(c => c.textContent.trim())) : [];
+      return { order: !!(coach && gpt) && !!(coach.compareDocumentPosition(gpt) & 4) && !!(gpt.compareDocumentPosition(req) & 4),
+        heads: [coach && coach.querySelector('h2').textContent, gpt && gpt.querySelector('h2').textContent],
+        q: coach && coach.querySelector('.vs-q').textContent, who: coach ? [...coach.querySelectorAll('.vs-ans h3')].map(h => h.textContent) : [],
+        side: coach ? [...coach.querySelectorAll('.vs-ans')].map(e => Math.round(e.getBoundingClientRect().top)) : [], rows };
+    });
+    check('the front page asks "why PsycheAI" and "why not ChatGPT" in two sections, just above the Instagram steps',
+      vs.order && vs.heads[0] === 'Why PsycheAI stands out as your personal AI coach' && vs.heads[1] === 'Why not just upload my data to ChatGPT?',
+      JSON.stringify(vs.heads));
+    check('the coach section puts one question to ChatGPT and PsycheAI, their answers side by side on a laptop',
+      vs.q === 'What would I regret most about my life when I’m old?' && vs.who.join('|') === 'ChatGPT|PsycheAI' &&
+        vs.side.length === 2 && Math.abs(vs.side[0] - vs.side[1]) < 2, JSON.stringify(vs));
+    const row = k => (vs.rows.find(r => r[0] === k) || []).slice(1).join(' | ');
+    check('the ChatGPT comparison keeps to the FAQ: consumer against enterprise, raw against a reviewed summary, may train, 30 days, no accounts',
+      vs.rows[0].join('|') === '|ChatGPT|PsycheAI' && row('Service') === 'Consumer plan | Enterprise tier (Google Vertex AI)' &&
+        row('What’s sent') === 'Your raw export: photos, videos, friends’ messages | A 100–200 KB de-identified text summary you review first' &&
+        row('Trains on it?') === 'May, unless you turn it off | No' && row('Kept') === 'Until you delete it, then up to 30 days | Nowhere. No accounts',
+      JSON.stringify(vs.rows));
+  }
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
 
@@ -3394,6 +3419,19 @@ try {
     try {
       await phone.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await booted(phone);
+      {
+        // The two "why PsycheAI" sections sit on a phone too: answers stacked, the comparison still a table, nothing
+        // wider than the screen.
+        const vs = await phone.evaluate(() => {
+          const ans = [...document.querySelectorAll('#vs-coach .vs-ans')].map(e => e.getBoundingClientRect());
+          const rows = [...document.querySelectorAll('#vs-chatgpt .vs-row')];
+          return { stacked: ans.length === 2 && ans[1].top >= ans[0].bottom - 1,
+            table: rows.every(r => r.children.length === 3 && Math.abs(r.children[1].getBoundingClientRect().top - r.children[2].getBoundingClientRect().top) < 2),
+            fits: [...document.querySelectorAll('.vs-card')].every(c => c.scrollWidth <= c.clientWidth + 1 && c.getBoundingClientRect().right <= innerWidth + 1) };
+        });
+        check('on a phone the two answers stack, the ChatGPT comparison stays a table, and neither is wider than the screen',
+          vs.stacked && vs.table && vs.fits, JSON.stringify(vs));
+      }
       check('on a phone the hint above the steps says to tap',
         await phone.evaluate(() => [...document.querySelector('#request-data .howto-hint').children]
           .filter(s => getComputedStyle(s).display !== 'none').map(s => s.textContent).join('|')) === 'Tap a purple label to see that screen.');

@@ -8565,6 +8565,25 @@ report"; Back leaves the unlock. That page, like every data popout, now lists In
 Google, Facebook. **Signature pattern names must sound flattering** (the behaviour at its best); the
 pattern's line, which only the paid report shows, may name the blind spot plainly.
 
+### Why PsycheAI, and why not just ChatGPT (25 October 2026)
+
+The question readers ask most before trying it is "why not just upload my data to ChatGPT?". Two short sections
+above the Instagram steps answer it, so a reader has it before they start the export.
+- **"Why PsycheAI stands out as your personal AI coach"** puts one question to both: "What would I regret most
+  about my life when I'm old?".
+  - The two real answers sit side by side, trimmed: ChatGPT's list that could fit anyone, and three lines of
+    PsycheAI's, written from one reader's own data.
+  - The note under them says so. ChatGPT is shown with nothing to go on, because that is how it was asked. With an
+    upload it would not be generic, so the section claims only that it starts from what you tell it.
+- **"Why not just upload my data to ChatGPT?"** is a five-row table of where the data goes with each: the service,
+  what is sent, training, what is kept and how much is read.
+  - It is the FAQ answer of the same name in short. Its claims are the FAQ's, about ChatGPT's personal plans: it
+    *may* train unless you turn that off, and it keeps data until you delete it and then up to 30 days.
+  - It stays a table on a phone, in smaller type, because the two columns side by side are the point.
+- Both use the theme's colour tokens, so they follow dark mode.
+- Like the request steps, both are hidden for a returning reader (`.is-returning`), who has already decided.
+- The UI suite pins the headings, the order, the table's rows and the phone layout.
+
 ## The compatibility link
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short
