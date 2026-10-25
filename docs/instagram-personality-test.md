@@ -4,7 +4,7 @@ description: "A free personality test from your own Instagram data, with no ques
 canonical: https://psycheai.io/instagram-personality-test
 author: "Jared, founder of PsycheAI"
 published: 2026-10-08
-updated: 2026-10-21
+updated: 2026-10-25
 ---
 
 # What does your Instagram say about you?
@@ -40,7 +40,7 @@ Adding your Google Takeout (searches and YouTube) or your Facebook data makes th
 
 ## What happens to your data
 
-Your Instagram zip, your photos and videos, the finished report and other people’s messages – apart from a short, anonymised line of what some of your messages were replying to – never leave your device. A short digest of your own words and activity is de-identified first (your name becomes a blank; emails, phone and ID numbers are removed; other people’s handles and the names of people you message become numbers like [P1] and [N1]) and is sent once to Google Gemini or Anthropic Claude to write the reading. PsycheAI keeps no copy, and there is no account – only a one-way scrambled code of your Instagram username, so each account gets one free card.
+Your Instagram zip, your photos and videos, the finished report and other people’s messages – apart from a short, anonymised line of what some of your messages were replying to – never leave your device. A short digest of your own words and activity is de-identified first (your name becomes a blank; emails, phone and ID numbers are removed; other people’s handles and the names of people you message become numbers like [P1] and [N1]) and is sent once to Google Vertex AI (Gemini, on Google Cloud’s enterprise tier, which does not train on it) to write the reading. PsycheAI keeps no copy, and there is no account – only a one-way scrambled code of your Instagram username, so each account gets one free card.
 
 ## What each part of your data says
 

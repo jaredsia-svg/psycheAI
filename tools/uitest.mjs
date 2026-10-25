@@ -7774,7 +7774,7 @@ try {
   // separately below.
   //
   // The badge is dropped before comparing because it lives inside the same
-  // <h2> as the title, so textContent reads "Mental wellness Premium"
+  // <h2> as the title, so textContent reads "Wellbeing Premium"
   // while the PDF prints the title alone. Stripping `.mode-badge` rather than
   // matching that one string keeps this working for any future badged section.
   const pageSections = await page.evaluate(() =>
@@ -7902,11 +7902,12 @@ try {
   // idealPartner and careerAssessment rather than three of them plus the roast.
   check('and none of the four paid sections is in it either',
     !/Mock overall wellness read/i.test(unpaidProse) && !/Mock edge headline/i.test(unpaidProse) &&
-    !unpaidPdfText.includes('(Mental wellness)') &&
+    // The wellbeing section is checked by its mock prose above: its title,
+    // "Wellbeing", is also the free plan's label for where an action came from.
     !unpaidPdfText.includes('(Attachment style)') &&
     !unpaidPdfText.includes('(Ideal partner traits)') &&
     !unpaidPdfText.includes('(Career assessment)'),
-    String(unpaidPdfText.match(/\((?:Mental wellness|Attachment style|Ideal partner traits|Career assessment)\)/g)));
+    String(unpaidPdfText.match(/\((?:Attachment style|Ideal partner traits|Career assessment)\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',

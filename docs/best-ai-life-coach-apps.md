@@ -4,7 +4,7 @@ description: "AI life coach apps in 2026 compared by what they know about you: c
 canonical: https://psycheai.io/best-ai-life-coach-apps
 author: "Jared, founder of PsycheAI"
 published: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # The best AI life coach apps in 2026
@@ -43,7 +43,7 @@ A coach that knows only what you tell it can only work with the story you alread
 
 ## A note on privacy
 
-Uploading your raw Instagram or chat history to a general chatbot sends everything, names and all, to its servers as it is. PsycheAI reads your files on your own device and sends only a de-identified summary. [How PsycheAI handles your data](https://psycheai.io/faq).
+Uploading your raw Instagram or chat history to a general chatbot sends everything, names and all, to its servers as it is. PsycheAI reads your files on your own device and sends only a de-identified summary. [How PsycheAI handles your data](https://psycheai.io/faq), and [what ChatGPT can see when you ask it about yourself](https://psycheai.io/chatgpt-tell-me-about-myself).
 
 ## Questions
 

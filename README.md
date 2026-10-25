@@ -443,7 +443,7 @@ it claims to be.
 
 ### The US$5 unlock: four sections behind one paywall
 
-**Mental wellness, Attachment style, Career assessment and Let us roast you** sit behind a single
+**Wellbeing (titled Mental wellness until 25 October 2026), Attachment style, Career assessment and Let us roast you** sit behind a single
 one-time **US$5** charge. One payment (or one promo code) opens all four; each renders as its own
 cover until then, saying specifically what is behind it rather than gesturing at "more analysis".
 Unlocking is taken on-site through Stripe's Payment Request Button so the browser offers Apple Pay or
@@ -2299,8 +2299,9 @@ are linked from the guides' footer on the front page and every generated page. 6
 **Dates, an author and Markdown copies** (23 October 2026). Search engines and AI answer engines
 weigh freshness and a named author, and AI crawlers read Markdown more cheaply than HTML.
 - **Dates.** `tools/seo/dates.json` records when each page was published and last changed, with a
-  hash of the page with its dates left out. `node tools/seo-pages.mjs` moves a page's "Updated" date
-  to today only when that hash moves, so regenerating unchanged pages never makes them look fresh.
+  hash of the page with its dates and the shared footer left out. `node tools/seo-pages.mjs` moves a
+  page's "Updated" date to today only when that hash moves, so regenerating unchanged pages never makes
+  them look fresh, and a link added to the footer does not re-date every page (25 October 2026).
   First dates came from the day each file reached git. `SEO_TODAY=` pins today.
 - **Author.** Every guide and generated page (36: not the front page or the policies) carries a
   visible byline, *By Jared, founder of PsycheAI · Updated …*, linking to his LinkedIn, and Article
@@ -2334,6 +2335,34 @@ option is best for) and three questions people actually ask (`/am-i-in-the-wrong
 perpetual). Each opens with a one-sentence answer for AI summaries. All six were published on
 24 October 2026 (their flag deleted, dated that day); the next deploy sends them to IndexNow on its
 own. 46 addresses in the sitemap.
+
+**Two chat analyzers and the ChatGPT comparison** (25 October 2026), from the competitive review:
+the searches thin "Instagram analyzer" tools hold, and the viral "ChatGPT, tell me about myself"
+prompt.
+- `/instagram-chat-analyzer`: what the digest reads in DMs (how many people, how much of each
+  conversation is the reader, message length, a sample of their words) and the privacy difference.
+- `/whatsapp-chat-analysis`: who starts, reply times, hours, question share, why hand-picked chats
+  are not read as sociability, and the export steps. It says Instagram is still required.
+- `/chatgpt-tell-me-about-myself`: what ChatGPT answers from (memory, past chats, files, connected
+  apps), the front page's regret question with both answers, and the FAQ's upload facts.
+
+All three say exactly what goes: the reader's own messages, some with a short, de-identified line of
+what they answered (`messageContextShare`), never "only your messages". The shared footer links them,
+and `/best-ai-life-coach-apps` links the ChatGPT page. 49 addresses in the sitemap.
+
+**No therapy claims** (25 October 2026). Illinois and Nevada ban AI therapy, Utah requires
+disclosure, and five more states restricted it in 2026. PsycheAI is coaching and insight, and its
+words have to say so everywhere. A selftest scans every page, Markdown copy, `llms.txt`, `copy.js`,
+the Instagram captions, the topic sources and the reel scripts for affirmative clinical phrases
+("AI therapist", "therapy app", "mental health app", "clinically proven", "treats your…", "diagnoses
+you…"). Disclaimers ("not a diagnosis", "Is it therapy? No.") are untouched. The same audit:
+- renamed the report's paid section title *Mental wellness* to **Wellbeing**, the structured layout's
+  name for it;
+- corrected the review sheet's chat note, which said *Only your messages are sent*, to *Your messages
+  are sent, some with a short line of what they answered*;
+- added the same detail to the FAQ's "Why not just upload my data to ChatGPT?";
+- replaced "Google Gemini or Anthropic Claude" on three guides and in `llms.txt` with Google Vertex
+  AI, as the privacy policy says.
 
 ## Kept across deploys (Upstash)
 

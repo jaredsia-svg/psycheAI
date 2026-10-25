@@ -8059,7 +8059,7 @@ check('the schema requires evidence on where they align and differ',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 46 &&
+  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 49 &&
     ['/', '/privacy', '/terms', '/refunds', '/faq', '/sample-report', '/characters', '/mbti-types', '/intj-personality']
       .every(path => paths.includes(path)), JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
@@ -8076,6 +8076,18 @@ check('the schema requires evidence on where they align and differ',
     let fresh = true;
     try { execFileSync(process.execPath, [join(root, 'tools', 'seo-pages.mjs'), '--check'], { stdio: 'pipe' }); } catch (e) { fresh = false; }
     check('the generated search pages match their generator (node tools/seo-pages.mjs)', fresh);
+    // No clinical claims anywhere a reader, a search engine or a reel's
+    // viewer meets (README "No therapy claims"): several US states now
+    // restrict AI therapy, and PsycheAI is coaching and insight. Disclaimers
+    // ("not a diagnosis", "Is it therapy? No.") are fine; these phrases are not.
+    {
+      const CLINICAL = /\b(AI therapist|AI therapy|therapy app|therapist in your pocket|mental health (app|coach|treatment)|clinically proven|(treats?|cures?) (your|anxiety|depression)|diagnoses? (you|your))\b/i;
+      const listed = (dir, ext) => readdirSync(join(root, dir)).filter(f => ext.test(f)).map(f => dir + '/' + f);
+      const surfaces = listed('docs', /\.(html|md|txt)$/).concat(['docs/copy.js', 'marketing/INSTAGRAM.md'],
+        listed('tools/seo', /\.mjs$/), listed('promo', /\.(py|html)$/));
+      const hits = surfaces.filter(f => CLINICAL.test(readFileSync(join(root, f), 'utf8')));
+      check('no page, caption or reel line claims therapy, treatment or a diagnosis', surfaces.length > 60 && hits.length === 0, hits.join());
+    }
     const pages = paths.filter(p => p !== '/').map(p => [p, readFileSync(join(root, 'docs', p.slice(1) + '.html'), 'utf8')]);
     const long = pages.map(([p, h]) => [p, (/<title>(.*?)<\/title>/.exec(h) || [, ''])[1].replace(/&amp;/g, '&').length,
       (/<meta name="description" content="(.*?)">/.exec(h) || [, ''])[1].replace(/&amp;/g, '&').length])
@@ -8108,7 +8120,7 @@ check('the schema requires evidence on where they align and differ',
         !md.startsWith('---\n') || !md.includes('canonical: https://psycheai.io' + p + '\n') || !md.includes('updated: ' + d.modified + '\n') || /<[a-z\/]/.test(md);
     }).map(([p]) => p);
     check('every guide and generated page carries its dates, its author and a clean Markdown copy, and the sitemap its last change',
-      dated.length === 42 && undated.length === 0, undated.join());
+      dated.length === 45 && undated.length === 0, undated.join());
     const drafts = TOPICS.filter(t => t.draft).map(t => '/' + t.slug);
     const llmsText = readFileSync(join(root, 'docs', 'llms.txt'), 'utf8');
     check('a draft page is written but kept out of search: noindex, undated, no Markdown copy, not in the sitemap or llms.txt',

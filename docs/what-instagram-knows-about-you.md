@@ -4,7 +4,7 @@ description: "What is in your Instagram data download, from posts and messages t
 canonical: https://psycheai.io/what-instagram-knows-about-you
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-21
+updated: 2026-10-25
 ---
 
 # What Instagram knows about you
@@ -25,7 +25,7 @@ Together these are a detailed record of how you spend attention and how you trea
 
 ## How PsycheAI reads it, privately
 
-PsycheAI opens your download inside your own browser. The zip, your photos and your full messages never leave your device. A short summary of your own activity is de-identified first, you review it, and only then is it sent to Google Gemini or Anthropic Claude to write your reading. PsycheAI keeps no copy.
+PsycheAI opens your download inside your own browser. The zip, your photos and your full messages never leave your device. A short summary of your own activity is de-identified first, you review it, and only then is it sent to Google Vertex AI (Gemini, on Google Cloud’s enterprise tier, which does not train on it) to write your reading. PsycheAI keeps no copy.
 
 ## How to get your data
 

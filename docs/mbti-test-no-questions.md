@@ -4,7 +4,7 @@ description: "Your MBTI type and Big Five traits without a single question, read
 canonical: https://psycheai.io/mbti-test-no-questions
 author: "Jared, founder of PsycheAI"
 published: 2026-10-08
-updated: 2026-10-21
+updated: 2026-10-25
 ---
 
 # Your MBTI type, without answering a single question
@@ -31,7 +31,7 @@ Self-report tests have a well-known problem: the answers drift with mood, with h
 
 ## What happens to your data
 
-Your Instagram zip, your photos and videos, the finished report and other people’s messages – apart from a short, anonymised line of what some of your messages were replying to – never leave your device. A short digest of your own words and activity is de-identified first (your name becomes a blank; emails, phone and ID numbers are removed; other people’s handles and the names of people you message become numbers like [P1] and [N1]) and is sent once to Google Gemini or Anthropic Claude to write the reading. PsycheAI keeps no copy, and there is no account – only a one-way scrambled code of your Instagram username, so each account gets one free card.
+Your Instagram zip, your photos and videos, the finished report and other people’s messages – apart from a short, anonymised line of what some of your messages were replying to – never leave your device. A short digest of your own words and activity is de-identified first (your name becomes a blank; emails, phone and ID numbers are removed; other people’s handles and the names of people you message become numbers like [P1] and [N1]) and is sent once to Google Vertex AI (Gemini, on Google Cloud’s enterprise tier, which does not train on it) to write the reading. PsycheAI keeps no copy, and there is no account – only a one-way scrambled code of your Instagram username, so each account gets one free card.
 
 ## Why behaviour, not questions
 

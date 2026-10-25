@@ -1,6 +1,6 @@
 # PsycheAI
 
-> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 Every page below is also plain Markdown at the same address with .md on the end.
 
@@ -27,6 +27,9 @@ Every page below is also plain Markdown at the same address with .md on the end.
 - [am i in the wrong job](https://psycheai.io/am-i-in-the-wrong-job.md)
 - [what will i regret when im old](https://psycheai.io/what-will-i-regret-when-im-old.md)
 - [why do we fight over small things](https://psycheai.io/why-do-we-fight-over-small-things.md)
+- [instagram chat analyzer](https://psycheai.io/instagram-chat-analyzer.md)
+- [whatsapp chat analysis](https://psycheai.io/whatsapp-chat-analysis.md)
+- [chatgpt tell me about myself](https://psycheai.io/chatgpt-tell-me-about-myself.md)
 
 ## Characters and types
 - [Which character are you?](https://psycheai.io/characters.md)

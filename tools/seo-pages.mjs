@@ -131,7 +131,9 @@ const FOOTER = `<footer class="footer">
   <p><a href="/">PsycheAI</a> · <a href="/instagram-personality-test">Instagram personality test</a> ·
     <a href="/mbti-test-no-questions">MBTI test without questions</a> · <a href="/big-five-personality-test">Big Five test</a> ·
     <a href="/love-language-test">Love language test</a> · <a href="/compatibility-test">Friend compatibility test</a> ·
-    <a href="/psyche-personality-test">Psyche personality test</a> · <a href="/ai-personality-coach">AI personality coach</a></p>
+    <a href="/psyche-personality-test">Psyche personality test</a> · <a href="/ai-personality-coach">AI personality coach</a> ·
+    <a href="/instagram-chat-analyzer">Instagram chat analyzer</a> · <a href="/whatsapp-chat-analysis">WhatsApp chat analysis</a> ·
+    <a href="/chatgpt-tell-me-about-myself">ChatGPT, tell me about myself</a></p>
   <p><a href="/characters">Which character are you?</a> · <a href="/mbti-types">The 16 MBTI types</a> ·
     <a href="/sample-report">Sample report</a> · <a href="/faq">FAQ</a> ·
     <a href="/download-instagram-data">Download your Instagram data</a> · <a href="/instagram-data-download-help">Download help</a></p>
@@ -331,8 +333,9 @@ for (const slug of LEGAL) {
 }
 
 // ---------- dates ----------
-// Every page but the drafts is dated: hashed with its dates left out, and
-// given today's date as "modified" when that hash moves.
+// Every page but the drafts is dated: hashed with its dates and the shared
+// footer left out, and given today's date as "modified" when that hash
+// moves. A link added to the footer is not a change to every page's words.
 const DRAFTS = new Set(TOPICS.filter(t => t.draft).map(t => t.slug));
 const datesFile = join(root, 'tools', 'seo', 'dates.json');
 const known = existsSync(datesFile) ? JSON.parse(readFileSync(datesFile, 'utf8')) : {};
@@ -347,7 +350,7 @@ const longDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB',
 const dates = {};
 for (const [slug, html] of pages) {
   if (DRAFTS.has(slug)) continue;
-  const hash = createHash('sha256').update(html).digest('hex').slice(0, 16);
+  const hash = createHash('sha256').update(html.replace(FOOTER, '')).digest('hex').slice(0, 16);
   const was = known[slug];
   if (was && was.hash === hash) dates[slug] = was;
   else if (was) dates[slug] = { published: was.published, modified: today, hash };
@@ -435,7 +438,7 @@ ${LEGAL.map(s => url(s, 'yearly', '0.3')).join('\n')}
 `;
 const llms = `# PsycheAI
 
-> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 Every page below is also plain Markdown at the same address with .md on the end.
 

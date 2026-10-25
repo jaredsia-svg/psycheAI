@@ -89,5 +89,6 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 
 - **README.md is the design log.** It records why each behaviour exists, often with the numbers behind it. Update the relevant section with every behaviour change. Its opening overview predates later product changes: Psyche Sync is now friends-only, and links rather than camera QR scanning are the main path.
 - **Card wording:** anything printed on the Psyche Card (headline, write-up, pattern names) must be neutral or positive and never romantic. Psyche Sync output is written constructively. These are enforced in the prompts and pinned by selftest.
+- **No therapy claims:** PsycheAI is coaching and insight, never therapy, treatment or diagnosis, because several US states restrict AI therapy. Disclaimers are fine. A selftest scans every page, caption and reel script for clinical claim phrases.
 - **Privacy wording:** user-facing privacy claims must stay literally true (e.g. the review sheet and the "Load your data" note). The tests check several of them against the code.
 - **Branch:** work happens on the long-lived branch `claude/instagram-personality-compatibility-oqhpa3`, which Render auto-deploys from. Pushing deploys.

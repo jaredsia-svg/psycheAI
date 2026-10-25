@@ -465,7 +465,7 @@
     // them (see PREMIUM_SYSTEM), and a reader who is told that up front can
     // decide when to read it — which is a kinder thing to offer than a
     // softened section they were not warned about.
-    wellness: 'Mental wellness',
+    wellness: 'Wellbeing',
     wellnessSub: 'Six dimensions read from how you actually use these accounts. This is a behavioural ' +
       'read, not a health assessment – there is no score here, and there is not meant to be. It is ' +
       'written to be honest rather than gentle, including about the harder stretches.',
@@ -846,7 +846,7 @@
       wordsRemoved: n => n + (n === 1 ? ' post or message removed' : ' posts & messages removed'),
       wordRemove: word => 'Stop leaving out ' + word,
       linesNote: '✕ leaves a line out.',
-      chatsNote: 'Names show only here; each labelled as its number. Only your messages are sent.',
+      chatsNote: 'Names show only here; each labelled as its number. Your messages are sent, some with a short line of what they answered.',
       chat: n => 'Chat ' + n,
       chats: n => n + (n === 1 ? ' chat' : ' chats'),
       // A chat that came in to fill the room a switched-off one left.

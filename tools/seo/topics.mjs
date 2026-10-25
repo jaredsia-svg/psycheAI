@@ -85,7 +85,7 @@ export const TOPICS = [
     sections: [
       ['What is in the download', '<ul class="ticks"><li><strong>Your content</strong>: posts, stories, reels and their captions.</li><li><strong>Your activity</strong>: likes, comments, saved posts, searches and the accounts you follow.</li><li><strong>Messages</strong>: your direct messages, with timestamps.</li><li><strong>How Instagram sees you</strong>: topics and ad interests it has inferred about you.</li><li><strong>Account information</strong>: your profile, login and device history.</li></ul>'],
       ['What it can reveal', '<p>Together these are a detailed record of how you spend attention and how you treat people: when you are active, who you talk to and how, what you return to, and what you announce but never mention again. That is the material a personality reading is built from.</p>'],
-      ['How PsycheAI reads it, privately', '<p>PsycheAI opens your download inside your own browser. The zip, your photos and your full messages never leave your device. A short summary of your own activity is de-identified first, you review it, and only then is it sent to Google Gemini or Anthropic Claude to write your reading. PsycheAI keeps no copy.</p>'],
+      ['How PsycheAI reads it, privately', '<p>PsycheAI opens your download inside your own browser. The zip, your photos and your full messages never leave your device. A short summary of your own activity is de-identified first, you review it, and only then is it sent to Google Vertex AI (Gemini, on Google Cloud’s enterprise tier, which does not train on it) to write your reading. PsycheAI keeps no copy.</p>'],
       ['How to get your data', '<p>It takes about 30 seconds to request, and Instagram emails you the file, usually within 1–2 hours. <a href="/download-instagram-data">Follow the step-by-step guide</a>, choosing JSON format and All time.</p>'],
     ],
     faq: [
@@ -165,7 +165,7 @@ export const TOPICS = [
     sections: [
       ['The list', '<ol class="guide-list"><li><h3>Rocky.ai</h3><p>A daily coaching chat: reflective questions, goals and check-ins that hold you to them, with a free tier. <strong>Knows you from:</strong> what you tell it each day. <strong>Best for:</strong> building a habit of reflection.</p></li><li><h3>Rosebud and Mindsera</h3><p>AI journals: you write, and they reflect patterns back, ask follow-up questions and summarise your entries over time. <strong>Knows you from:</strong> your journal. <strong>Best for:</strong> people who already like writing things down.</p></li><li><h3>Pi, ChatGPT and Claude</h3><p>General assistants, warm and capable, and good to think aloud with. With memory turned on they remember what you have said before. <strong>Knows you from:</strong> your conversations, and whatever you upload. <strong>Best for:</strong> working through one problem at a time.</p></li><li><h3>Purpose</h3><p>A coaching app from the author Mark Manson, built to challenge your assumptions rather than reassure you. <strong>Knows you from:</strong> chat and a values intake. <strong>Best for:</strong> people who want to be pushed.</p></li><li><h3>BetterUp</h3><p>Human coaches with AI support, mostly through employers. <strong>Knows you from:</strong> assessments and sessions. <strong>Best for:</strong> work and leadership, if your company offers it.</p></li><li><h3>Ask PsycheAI (ours)</h3><p>Starts from a full personality study of your own Instagram data (and, if you like, WhatsApp, Google or Facebook): your type, traits, patterns and values, each with its evidence. You skip the background and ask the real question, such as <a href="/am-i-in-the-wrong-job">am I in the wrong job?</a> or <a href="/what-will-i-regret-when-im-old">what will I regret when I am old?</a> Your first question is free. <strong>Knows you from:</strong> what you actually do. <strong>Best for:</strong> deep questions about yourself.</p></li></ol>'],
       ['Why where the advice comes from matters', '<p>A coach that knows only what you tell it can only work with the story you already believe about yourself. That is fine for goals and accountability. For the hard questions, what you are avoiding, what you will regret, why a pattern keeps repeating, the most useful evidence is often what you would not think to say. That is the gap a coach built on your own behaviour fills.</p>'],
-      ['A note on privacy', '<p>Uploading your raw Instagram or chat history to a general chatbot sends everything, names and all, to its servers as it is. PsycheAI reads your files on your own device and sends only a de-identified summary. <a href="/faq">How PsycheAI handles your data</a>.</p>'],
+      ['A note on privacy', '<p>Uploading your raw Instagram or chat history to a general chatbot sends everything, names and all, to its servers as it is. PsycheAI reads your files on your own device and sends only a de-identified summary. <a href="/faq">How PsycheAI handles your data</a>, and <a href="/chatgpt-tell-me-about-myself">what ChatGPT can see when you ask it about yourself</a>.</p>'],
     ],
     faq: [
       ['What is the best free AI life coach?', 'Several have free tiers: Rocky.ai for daily goals, Pi and ChatGPT for conversation. PsycheAI gives a free personality reading and one free question to its coach.'],
@@ -240,6 +240,69 @@ export const TOPICS = [
       ['Is it normal to fight over small things?', 'Yes. Most couples do. What matters is whether the real issue underneath gets talked about.'],
       ['How do I stop fighting about the same thing?', 'Find what the fights have in common, say the feeling underneath, and agree on how to handle it rather than trying to win.'],
       ['Can PsycheAI analyse my relationship?', 'It reads only your own data: how you love, your attachment style and how you handle conflict. Psyche Sync compares two people, but for friends and family, never romance. For serious difficulties, a couples counsellor can help.'],
+    ],
+  },
+
+  // ---------- two chat analyzers and the ChatGPT comparison (25 October 2026) ----------
+  // The searches the thin "Instagram analyzer" tools hold, answered with what
+  // PsycheAI actually sends: the reader's own messages, some with a short,
+  // de-identified line of what they answered (messageContextShare in
+  // docs/digest.js). Every claim about ChatGPT is the FAQ's.
+  {
+    slug: 'instagram-chat-analyzer',
+    title: 'Instagram chat analyzer: what your DMs say | PsycheAI',
+    description: 'An Instagram chat analyzer that reads your side of your DMs on your own device and turns it into a personality reading. Free, private, no account.',
+    h1: 'An Instagram chat analyzer that reads you',
+    lede: 'The short answer: most chat analyzers take one conversation and count it: who texts more, who replies faster, a score. PsycheAI reads your side of all your direct messages, with your posts and comments, on your own device, and says what they show about you: how you keep up with people, how you show care and how you handle a disagreement.',
+    sections: [
+      ['What it reads in your DMs', '<ul class="ticks"><li><strong>How many people you keep up with</strong>, and how many of those conversations are still going.</li><li><strong>How much of each conversation is you</strong>: what you send against what you receive.</li><li><strong>How you write</strong>: the length of your messages, and a sample of your own words spread across the years, not just last month.</li><li><strong>What you are like with people</strong>: warmth, humour, the plans you make and how you answer when a conversation turns tense.</li></ul>'],
+      ['Your side, de-identified', '<p>Your download is read on your own phone or computer, and the zip never leaves it. The summary holds a sample of your own messages, some with a short, de-identified line of what they answered so the reading makes sense. The names of the people you message become numbers like [N1], and links, emails and phone numbers are removed. Before anything is sent you see which chats are in it, and can switch any of them off. <a href="/faq">How your data is handled</a>.</p>'],
+      ['More than a chat analyzer', '<p>A chat analyzer describes one conversation. PsycheAI reads your whole account, DMs, posts, comments and what you keep coming back to, and gives you a free Psyche Card: your MBTI, Big Five, love languages, values and three patterns of yours, each with its evidence. To compare yourself with a friend, <a href="/best-friend-compatibility-test">Psyche Sync</a> reads both of your cards, never your messages.</p>'],
+      ['How to get your messages', '<p>Instagram has no export button inside a chat. Request your data download instead: Accounts Centre → Your information and permissions → Download your information, with Format set to <strong>JSON</strong> and Date range to <strong>All time</strong>. It takes about 30 seconds, and the file usually arrives within 1–2 hours. <a href="/download-instagram-data">The step-by-step guide</a>.</p>'],
+    ],
+    faq: [
+      ['Does it read the other person’s messages?', 'They are read on your device to follow the conversation. What is sent is a sample of your own messages, some with a short, de-identified line of what they answered, and the other person’s name becomes a number.'],
+      ['Can I analyse just one chat?', 'PsycheAI reads your whole account rather than one chat, because one conversation says more about that friendship than about you. In the review you can switch off any chat you would rather leave out.'],
+      ['Does it give a compatibility score?', 'No. Psyche Sync compares two people’s cards and explains where you align and where you differ, without a score. It is for friends and family, never romance.'],
+      ['Is it free?', 'Yes. Your first Psyche Card and Psyche Report are free.'],
+    ],
+  },
+  {
+    slug: 'whatsapp-chat-analysis',
+    title: 'WhatsApp chat analysis: what it says about you | PsycheAI',
+    description: 'Analyse an exported WhatsApp chat privately: who starts conversations, how fast you reply, when you are active, and what it says about your personality.',
+    h1: 'A WhatsApp chat analysis that is about you',
+    lede: 'The short answer: export the chat from WhatsApp, without media, and PsycheAI reads it on your own device: who starts the conversations, how quickly each of you replies, when you are active and how you write. It adds that to your Instagram data for a personality reading, and what is sent is the chat’s numbers and a de-identified sample of your side of it.',
+    sections: [
+      ['What it reads in a chat', '<ul class="ticks"><li><strong>Who starts conversations</strong>, you or them.</li><li><strong>How quickly each of you replies</strong>, as a typical time, not a race.</li><li><strong>When you are active</strong>, by hour and by day of the week.</li><li><strong>How you write</strong>: the length of your messages, how often you ask questions, and a sample of your own words across the life of the chat.</li></ul>'],
+      ['Why one chat adds so much', '<p>Instagram shows how you are in public and in your DMs. A WhatsApp chat with someone close is your private voice: how you comfort, plan, tease and disagree. Attachment, conflict and the way you show care depend on that most, so a chat or two sharpens those parts of your reading.</p><p>Because you choose the chats, they are usually with your closest people. The reading is told so, and does not take how much you message in them as a sign of how social you are.</p>'],
+      ['What is sent', '<p>The chat is read on your device and never uploaded, and you are asked which sender is you. The summary holds the chat’s numbers and a sample of your own messages, some with a short, de-identified line of what they answered. Names become numbers, and links, emails and phone numbers are removed. You review it before anything is sent, and PsycheAI keeps no copy.</p>'],
+      ['How to export a WhatsApp chat', '<ol class="guide-steps"><li>Open the chat and tap ⋮ (or the contact’s name on iPhone), then More → Export chat.</li><li>Choose <strong>Without media</strong> and save the .zip it makes.</li><li>Load it in PsycheAI with your Instagram data. You can add up to three chats.</li></ol>'],
+    ],
+    faq: [
+      ['Do I need Instagram too?', 'Yes, for now. Your Psyche Card starts from your Instagram data, and WhatsApp chats are added to it. Requesting the Instagram download takes about 30 seconds, and the file usually arrives within 1–2 hours.'],
+      ['Does it read my friend’s messages?', 'They are read on your device to time the conversation. What is sent is a sample of your own messages, some with a short, de-identified line of what they answered, and your friend’s name becomes a number.'],
+      ['Can I add a group chat?', 'Yes. A group chat loads the same way, and the reading is told it is a group.'],
+      ['Is it free?', 'Yes. Your first Psyche Card and Psyche Report are free.'],
+    ],
+  },
+  {
+    slug: 'chatgpt-tell-me-about-myself',
+    title: 'ChatGPT, tell me about myself: what it can see | PsycheAI',
+    description: 'What ChatGPT knows when you ask it to tell you about yourself, what happens if you upload your Instagram data to it, and how PsycheAI is different.',
+    h1: '“ChatGPT, tell me about myself”',
+    lede: 'The short answer: ChatGPT can only describe the person in your chats, from what you have typed, uploaded or connected. That is the story you already tell about yourself. PsycheAI reads what you actually do, years of it, from your own Instagram data on your own device, and shows the evidence for each finding.',
+    sections: [
+      ['What ChatGPT knows about you', '<p>With memory on, ChatGPT answers from what it has saved about you, your past chats and your custom instructions, and on some plans from your files and connected apps. Asked to tell you about yourself, it works from that, so it is limited to what you have told it, and to how you were presenting yourself when you did.</p>'],
+      ['The same question, two answers', '<p>We asked both: <em>What would I regret most about my life when I’m old?</em></p><ul class="ticks"><li><strong>ChatGPT:</strong> “The things you kept postponing because you thought you had more time”: working too hard, being too afraid to try, not being present for your own life. True of almost anyone.</li><li><strong>PsycheAI:</strong> “You let your analytical shield turn any form of intimacy into an audit.” “You quoted <em>The Little Prince</em> in 2023, so you know this trap, yet you still fall in.” “You won’t regret getting hurt; you will regret never having dared to let someone in completely.”</li></ul><p class="fineprint">Real answers, trimmed. More on <a href="/what-will-i-regret-when-im-old">what people regret when they are old</a>.</p>'],
+      ['Why not upload your Instagram data to ChatGPT?', '<p>You can, and it is a capable assistant. But your raw export holds your name, your contacts, other people’s @handles, the messages friends wrote to you, and your photos and videos, and all of it goes to its servers as it is. On its personal plans, what you share may be used to train its models unless you turn that off, and it is kept until you delete it, then for up to 30 days. A full export is also thousands of files, usually more than a chatbot can take in at once.</p>'],
+      ['How PsycheAI does it', '<ul class="ticks"><li><strong>Read on your device.</strong> The zip, your photos and your videos never leave it.</li><li><strong>De-identified first.</strong> Your name becomes a blank, other people become numbers like [P1], and links, emails and phone numbers are removed.</li><li><strong>Reviewed by you.</strong> You see what will be sent, and can leave out any topic or chat.</li><li><strong>Not trained on, not kept.</strong> The summary goes to Google Vertex AI on Google Cloud’s enterprise tier, which does not train on it. PsycheAI keeps no copy, and there are no accounts.</li><li><strong>Made to share.</strong> A free Psyche Card sized for your story, and <a href="/best-friend-compatibility-test">Psyche Sync</a> to compare with a friend.</li></ul>'],
+    ],
+    faq: [
+      ['Is ChatGPT’s answer about me accurate?', 'It can only be as accurate as what you have told it. It has no view of how you behave when you are not describing yourself.'],
+      ['Can I use both?', 'Yes. ChatGPT is good for working through a problem; PsycheAI reads how you actually behave, and Ask PsycheAI answers your questions about it.'],
+      ['Does PsycheAI use ChatGPT?', 'No. It uses Google Vertex AI (Gemini) on Google Cloud’s enterprise tier.'],
+      ['Is PsycheAI free?', 'Your first Psyche Card and Psyche Report are free, with one Ask PsycheAI question. After that, five questions are US$5.'],
     ],
   },
 ];
