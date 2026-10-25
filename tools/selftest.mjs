@@ -9862,6 +9862,55 @@ check('the schema requires evidence on where they align and differ',
   }
 }
 
+// ---------- the review's finer choices (Digest.trimLines, 25 October 2026) ----------
+{
+  const make = () => ({
+    __names: { 'sam lee': 2, 'mum': 3 }, __people: { 'sam_runs': 1 },
+    samples: { captions: ['[2021] Beach day', '[2023] Lunch with [N2]', '[2024] Shout out to [P1]', 'Undated caption'],
+      comments: ['[2023] So proud of you'], likedPostCaptions: [], likedPostHashtags: [] },
+    instagramSearches: [{ name: 'sam lee photos', count: 2 }, { name: 'running shoes', count: 1 }],
+    directMessages: { ownMessageSample: ['[2024] [t1] see you soon', '[2024] [t2] thanks [N3]', '[2025] [t2] on my way'] },
+  });
+  const years = make();
+  const goneByYear = Digest.trimLines(years, { yearsOff: [2023] });
+  check('trimLines: a year left out takes every line dated to it, from every list, and nothing undated',
+    goneByYear === 2 && years.samples.captions.join('|') === '[2021] Beach day|[2024] Shout out to [P1]|Undated caption' &&
+      years.samples.comments.length === 0, JSON.stringify(years.samples));
+  const word = make();
+  Digest.trimLines(word, { words: ['Sam'] });
+  check('trimLines: a word takes whole lines, and finds the [N…] and [P…] that stand for a name or handle it is part of',
+    word.samples.captions.join('|') === '[2021] Beach day|Undated caption' &&
+      word.instagramSearches.map(x => x.name).join() === 'running shoes', JSON.stringify(word));
+  const partial = make();
+  Digest.trimLines(partial, { words: ['sa'] });
+  check('trimLines: only the whole word, so "sa" leaves "sam" alone',
+    partial.samples.captions.length === 4 && partial.instagramSearches.length === 2);
+  const chats = make();
+  Digest.trimLines(chats, { chatsOff: { 'directMessages.ownMessageSample': ['t2'] } });
+  check('trimLines: a chat switched off takes its messages and keeps the others',
+    chats.directMessages.ownMessageSample.join('|') === '[2024] [t1] see you soon');
+  const lines = make();
+  Digest.trimLines(lines, { drop: { 'samples.captions': ['Beach day'] } });
+  check('trimLines: a single line, as the review shows it (tags left off), is the only one that goes',
+    lines.samples.captions.length === 3 && !lines.samples.captions.includes('[2021] Beach day'));
+  check('trimLines: the helpers read a line\'s year, chat and text',
+    Digest.lineYear('[2024] [t2] hi') === 2024 && Digest.lineChat('[2024] [t2] hi') === 't2' &&
+      Digest.reviewText('[2024] [t2] hi') === 'hi' && Digest.lineYear('Undated') === 0 &&
+      Digest.reviewText({ name: 'running shoes', count: 1 }) === 'running shoes ×1');
+  const untouched = make();
+  check('trimLines: no choices, no change', Digest.trimLines(untouched, {}) === 0 &&
+    JSON.stringify(untouched) === JSON.stringify(make()));
+}
+// The chats' names for the review ride on the digest where JSON cannot see them: never sent, stored or backed up.
+{
+  const named = Digest.build({ ...signals, threadTitles: [{ title: 'Sarah Kim', participants: [] }] }, { includeMessages: true });
+  check('chatNames: kept off the digest\'s JSON, so nothing that saves or sends it carries a chat\'s name',
+    !Object.keys(named).includes('chatNames') && !JSON.stringify(named).includes('Sarah Kim'));
+  const appSrc = readFileSync(join(docs, 'app.js'), 'utf8');
+  check('the review applies its finer choices through the one shared decision, so the download and Send match',
+    /if \(decision\.lines\) Digest\.trimLines\(target, decision\.lines\);/.test(appSrc));
+}
+
 // ---------- results ----------
 
 console.log('\nPsycheAI self-test');

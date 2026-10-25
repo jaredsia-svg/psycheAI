@@ -480,6 +480,13 @@
       // that reason, and nothing added here changes what leaves this file.
       const threadIndex = out.threadSenders.length;
       out.threadSenders.push({ group: participants.length > 2, bySender });
+      // The chat's own title ("Sarah Kim", or a group's name), for the
+      // pre-send review to label its per-chat switches with on this device.
+      // It never reaches the digest's sendable fields: Digest.build hangs it on
+      // a property JSON cannot see (chatNames), so it is neither sent, stored
+      // nor backed up. The participants stand in when the export has no title
+      // (the owner among them is left out there, once known).
+      out.threadTitles[threadIndex] = { title: fixText((data && data.title) || ''), participants };
       for (const msg of messages) {
         const sender = fixText(msg && msg.sender_name);
         const ts = toSeconds(msg && msg.timestamp_ms);
@@ -598,6 +605,8 @@
       // owner is known, and is emptied there. No name from it reaches the
       // digest.
       threadSenders: [],
+      // Each chat's title by thread index: see messages() above. In memory only.
+      threadTitles: [],
       messageEvents: [],
       messageTexts: [],
       corpusChars: 0,

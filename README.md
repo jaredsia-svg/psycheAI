@@ -4946,6 +4946,52 @@ unconditionally fails the two paid cases, forcing it to `'Make payment'` uncondi
 free one — proving the text tracks the real condition rather than one hard-coded value happening to
 read correctly in whichever case was tested first.
 
+### The review's finer choices (25 October 2026)
+
+The review sheet was rebuilt so a reader who is unsure about sending anything to Google Vertex AI can cut
+it down as far as they like, line by line, and see what that costs. It was mocked up first
+(`marketing/site-mockups/review-sheet.html`) and agreed one change at a time before it was built.
+
+- **Layout.** The body scrolls; the foot stays put: a read-quality meter, the size of what is sent
+  ("~13 KB of text"), *Download what's sent*, the terms line and Back / Send this. While a word is being typed
+  the foot steps aside (`.is-typing`), so on a phone the keyboard has the room. At the top, *Nothing sent
+  yet* and what is already taken out; *Where does it go?* folds the provider, that Google does not train its
+  AI on it and that PsycheAI keeps no copy.
+- **What's included** is one list, least personal first (`TEXT.review.rows` sets the order and the short
+  names): activity and timing, Chrome, Instagram's guesses, accounts, Facebook friends, liked posts, YouTube,
+  your posts and comments, Facebook posts, your searches, YouTube and Google searches, then direct messages,
+  Messenger and WhatsApp. A scale runs down its left edge. Each row is a name, a live count and a switch; the
+  switch is still the real checkbox with the row's old id, so the decision, every flow that unticks one and
+  the download table read it as before. Tapping a row's name previews its actual lines, each with a ✕ that
+  leaves that one line out (↺ puts it back). Messages count their chats ("2 chats, yours only") and open
+  into one switch per chat.
+- **Chats by their real names, on this device only.** The summary tags each chat [t1]…, [c1]… or [m1]…
+  by rank; the reader cannot know which is which. `instagram.js` now keeps each thread's title in memory
+  (`threadTitles`) and WhatsApp's summary carries its file-name title, and `Digest.build` hangs the names on
+  the digest as `chatNames`, a property JSON cannot see (`chatLabels`): never sent, stored or backed up. A
+  digest read back from storage has none, and its chats read "Chat 1", "Chat 2". The row says the name
+  stays here and the chat goes as its number. A single chat's messages carry no tag, so that row does not
+  open.
+- **Which years.** A bar a year, from every dated line the model would read; each bar switches its year
+  off on its own, and All / 3 yrs / 1 yr set a range. The last year left cannot be switched off.
+- **Leave out anything mentioning.** Removes the whole post or message, never just the word: "Happy
+  birthday ___! 30 looks good on you" would still say who. Whole words, any case. By the review the
+  digest's people are numbers already, so the word also finds the [N…] or [P…] that stands for a name or
+  handle it is part of (from `__names` and `__people`, which the device keeps and never sends); "Sam" finds
+  [N2] and sam_runs. It does not understand context ("she", "my ex"): that would need a model to read the
+  data first. An option to also drop the messages either side of a match was mocked and dropped as
+  confusing; switching the chat off does that job.
+- **Read quality** is an estimate: the square root of how much of the text is kept, against all of it,
+  as Strong, Good, Fair or Thin. It moves as the reader removes things so the trade is visible; the real
+  confidence still comes from the model.
+- **One code path.** `Digest.trimLines(digest, { yearsOff, words, chatsOff, drop })` does all of it over
+  `EVIDENCE_LISTS`, and `applyReviewDecision` calls it first, so Send and the download cannot differ. The
+  download says what was left out under its table ("Also left out: everything from 2014; anything
+  mentioning “older”; 1 chat"). The self-test pins `trimLines` on a small digest, and the UI suite pins each
+  control against the file that would be sent, then undoes them all and checks the file is the default one.
+- **Nothing says "photos".** The size line was "~13 KB of text, no photos" until the suite's rule that the
+  review never mentions photos caught it: a reader approving what leaves must not read the word at all.
+
 ### Re-running with additional data, from the report page
 
 A reader who uploaded Instagram alone the first time is not stuck with that choice forever. "Re-run

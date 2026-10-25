@@ -288,7 +288,7 @@
           owner, { blankOwnText: true, otherNames: others, extra: m => ({ len: m.text.length }) })
           .map(o => Object.assign(o, { text: root.PsycheInstagram.keepEnds(blank ? o.text.replace(blank, 'someone') : o.text) }));
         const iso = ms => (Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString().slice(0, 10) : null);
-        return {
+        const summary = {
           chat: 'c' + (index + 1),
           kind: chat.participants.length > 2 ? 'group' : 'one-to-one',
           members: chat.participants.length,
@@ -304,6 +304,10 @@
           userQuestionShare: sent ? Math.round((questions / sent) * 100) / 100 : 0,
           ownMessages: own.slice(-LIMITS.ownPerChat),
         };
+        // The chat's name, for the pre-send review's per-chat switch on this
+        // device only: a property JSON cannot see, so it is never sent or stored.
+        Object.defineProperty(summary, 'title', { value: chat.title || others.join(', '), enumerable: false });
+        return summary;
       }),
     };
   }

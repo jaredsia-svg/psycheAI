@@ -1356,7 +1356,7 @@ try {
         await off.click('#datasources-continue');
       }
       check('and with the network off, the export is read and summarised through to the review',
-        (await off.locator('#review-dialog[open]').count()) === 1 && /Your captions & comments/.test(await off.locator('#review-list').innerText()));
+        (await off.locator('#review-dialog[open]').count()) === 1 && /Your posts & comments/.test(await off.locator('#review-list').innerText()));
       await off.click('#review-send');
       const held = await off.evaluate(() => ({ open: document.querySelector('#review-dialog').open,
         said: document.querySelector('#review-offline').hidden ? '' : document.querySelector('#review-offline').textContent }));
@@ -1470,7 +1470,7 @@ try {
       await newPage.waitForSelector('#review-dialog[open]', { timeout: 30000 });
       const review = await newPage.locator('#review-dialog').innerText();
       check('both chats reach the review, beside Instagram',
-        /WhatsApp/.test(review) && /\b2 chats\b|two chats/i.test(review), review.slice(0, 600));
+        /WhatsApp\s*2 chats\b/.test(review), review.slice(0, 600));
     } finally {
       await newPage.close();
     }
@@ -4805,27 +4805,36 @@ try {
   // Every count in here is read off the digest that was just built, not
   // typed as a description of what the app generally does — so the numbers
   // must actually be numbers, not a placeholder left over from a template.
-  check('the review names your own captions and comments, with real counts',
-    /\d+ captions?, \d+ comments?/.test(reviewText), reviewText.slice(0, 400));
+  // Each row is a short name and a live count, least personal first (25 October 2026).
+  check('the review names your own posts and comments, with a real count',
+    /Your posts & comments\s*\d+/.test(reviewText), reviewText.slice(0, 400));
   // The raw follow list is no longer sent, so the row no longer offers it —
   // and must not, since a review screen naming something the digest does not
   // contain is the one failure it cannot have. How many accounts they follow
   // still goes, as a number, with the other counts.
-  check('the review names the accounts you engage with, with a real count',
-    /\d+ names among who you like/.test(reviewText), reviewText.slice(0, 400));
+  check('the review names the accounts you like, with a real count',
+    /Accounts you like\s*\d+/.test(reviewText), reviewText.slice(0, 400));
+  check('its rows run from least to most personal: activity first, direct messages last',
+    await page.evaluate(() => [...document.querySelectorAll('#review-list .review-row')].map(r => r.dataset.row).join()) ===
+      'review-activity,review-topics,review-accounts,review-liked-captions,review-captions,review-searches,review-dms',
+    await page.evaluate(() => [...document.querySelectorAll('#review-list .review-row')].map(r => r.dataset.row).join()));
   check('and no longer offers a list of follows it does not send',
     !/followed accounts/.test(reviewText), reviewText.slice(0, 400));
-  check('the review names both providers and says PsycheAI keeps no copy — not that nobody can access it',
-    /Choose which data gets analysed by Google Vertex AI/i.test(reviewText) &&
-    /PsycheAI keeps no copy of this data or your report/i.test(reviewText));
+  // Said under "Where does it go?", folded until opened, so read from the text rather than what shows.
+  const whereText = await page.locator('#review-dialog .review-where').textContent();
+  check('the review names the provider and says PsycheAI keeps no copy — not that nobody can access it',
+    /Google Vertex AI/.test(whereText) && /Google does not train its AI on it/.test(whereText) &&
+    /PsycheAI keeps no copy of this data or your report/i.test(whereText) &&
+    /Nothing sent yet\./.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
   // subtitle carries it; held as an exact count so it cannot quietly become
   // two again.
+  const dialogText = await page.locator('#review-dialog').textContent();
   check('the claim appears once, not repeated as a fineprint line under the buttons',
-    (reviewText.match(/Choose which data gets analysed/gi) || []).length === 1 &&
+    (dialogText.match(/PsycheAI keeps no copy/gi) || []).length === 1 &&
     (await page.locator('#review-dialog .fineprint:not(.review-legal)').count()) === 0,
-    (reviewText.match(/Choose which data gets analysed/gi) || []).length + ' mentions');
+    (dialogText.match(/PsycheAI keeps no copy/gi) || []).length + ' mentions');
   // A <dialog> shown with showModal() gets `overflow: auto` from the
   // browser's own stylesheet by default. With a scrollable list already
   // inside it, an unscoped dialog would grow its own scrollbar the moment
@@ -4840,10 +4849,10 @@ try {
     await page.setViewportSize({ width: 1100, height });
     reviewAtHeights[height] = await page.evaluate(() => {
       const dialog = document.querySelector('#review-dialog');
-      const list = document.querySelector('#review-list');
+      const body = document.querySelector('#review-body');
       return {
         outerScrolls: dialog.scrollHeight > dialog.clientHeight,
-        innerScrolls: list.scrollHeight > list.clientHeight,
+        innerScrolls: body.scrollHeight > body.clientHeight,
       };
     });
   }
@@ -4851,7 +4860,7 @@ try {
   check('the dialog itself never grows a second, outer scrollbar, at any height',
     Object.values(reviewAtHeights).every(v => !v.outerScrolls),
     JSON.stringify(reviewAtHeights));
-  check('the list is what actually scrolls once the window gets short',
+  check('the body is what actually scrolls once the window gets short, the buttons staying put',
     reviewAtHeights[560].innerScrolls,
     JSON.stringify(reviewAtHeights));
   // Every row used to be a static line with an emoji icon and no control,
@@ -4888,22 +4897,20 @@ try {
   // what leaves their device must not be told photographs are part of it.
   check('and the review never mentions photos at all any more',
     !/photo/i.test(reviewText), reviewText.slice(0, 400));
-  check('the messages switch states a real sampled count out of a real total',
-    /\d+ of your own messages sampled out of \d+ total/.test(
-      await page.locator('#review-dms ~ span').innerText()),
-    await page.locator('#review-dms ~ span').innerText());
+  check('the messages row counts its chats and says only your own messages go',
+    /^\d+ chats?, yours only$/.test(await page.locator('#review-dms-n').innerText()),
+    await page.locator('#review-dms-n').innerText());
 
   // The download link has to sit inside the same scroll region as the seven
   // checkboxes, below the last of them — not above the list, where it would
   // always be visible regardless of scroll position, and not in the
   // subtitle's spot where it used to live before this moved.
-  check('the download link lives inside the scrollable list, below the last row',
+  // Since 25 October 2026 it sits in the foot beside the size, so it is always in reach.
+  check('the download link sits in the foot, beside the size of what is sent',
     await page.evaluate(() => {
-      const list = document.querySelector('#review-list');
-      const link = document.querySelector('#review-download');
-      const last = document.querySelector('#review-dms');
-      if (!list.contains(link)) return false;
-      return Boolean(last.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const foot = document.querySelector('#review-dialog .review-foot');
+      return foot.contains(document.querySelector('#review-download')) &&
+        /^~\d+ KB of text$/.test(document.querySelector('#review-size').textContent);
     }));
 
   // ---- downloading what's actually being sent ----
@@ -5011,6 +5018,89 @@ try {
   await page.check('#review-dms');
   await page.check('#review-topics');
 
+  // ---- the finer choices (25 October 2026) ----
+  // Years, words, chats and single lines: each must change the file that is
+  // sent, exactly as it says, and be undone again before the ordinary send.
+  const downloadNow = async name => {
+    const [event] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), page.click('#review-download')]);
+    const path = join(shotDir, name);
+    await event.saveAs(path);
+    const html = readFileSync(path, 'utf8');
+    return { html, digest: extractDigestFromPreviewHtml(html) };
+  };
+  const allLines = d => [...d.samples.captions, ...d.samples.comments, ...d.samples.likedPostCaptions,
+    ...((d.directMessages && d.directMessages.ownMessageSample) || [])];
+  const yearsShown = await page.evaluate(() => [...document.querySelectorAll('#review-years .review-year')].map(b => Number(b.dataset.year)));
+  check('a bar for each year the lines come from, every one on',
+    yearsShown.length >= 2 && await page.evaluate(() => [...document.querySelectorAll('#review-years .review-year')]
+      .every(b => b.getAttribute('aria-pressed') === 'true')), JSON.stringify(yearsShown));
+  const firstYear = yearsShown[0];
+  await page.click('#review-years .review-year >> nth=0');
+  const byYear = await downloadNow('digest-preview-year.html');
+  check('tapping a year leaves out every line from it, and only from it',
+    !allLines(byYear.digest).some(l => l.startsWith('[' + firstYear + '] ')) &&
+      allLines(preview1).some(l => l.startsWith('[' + firstYear + '] ')) &&
+      allLines(byYear.digest).length > 0 &&
+      /’\d\d left out/.test(await page.locator('#review-years-note').innerText()) &&
+      /Also left out: everything from \d{4}/.test(byYear.html),
+    await page.locator('#review-years-note').innerText());
+  await page.click('#review-year-chips .review-chip >> nth=0');
+  check('and All brings every year back',
+    await page.evaluate(() => [...document.querySelectorAll('#review-years .review-year')].every(b => b.getAttribute('aria-pressed') === 'true')));
+
+  // A word: the whole line goes, not just the word.
+  const withWord = allLines(preview1).filter(l => /\bolder\b/i.test(l)).length;
+  await page.fill('#review-kw', 'Older');
+  check('while a word is being typed, the foot steps aside for the keyboard',
+    !(await page.locator('#review-dialog .review-foot').isVisible()));
+  await page.press('#review-kw', 'Enter');
+  await page.locator('#review-kw').blur();
+  check('and comes back once it is done',
+    await page.locator('#review-dialog .review-foot').isVisible());
+  const byWord = await downloadNow('digest-preview-word.html');
+  check('a word leaves out every post and message mentioning it, whole, and says how many',
+    withWord > 0 && !allLines(byWord.digest).some(l => /\bolder\b/i.test(l)) &&
+      (await page.locator('#review-kw-note').innerText()) === withWord + (withWord === 1 ? ' post or message removed' : ' posts & messages removed') &&
+      /anything mentioning “older”/.test(byWord.html),
+    await page.locator('#review-kw-note').innerText());
+  await page.click('#review-kw-chips button');
+  check('and its × puts them back',
+    (await page.locator('#review-kw-chips .review-kw-chip').count()) === 0 &&
+      (await page.locator('#review-kw-note').innerText()) === 'Removes the whole post or message');
+
+  // A chat: its messages go, the rest stay; its name is shown here and nowhere else.
+  await page.click('[data-peek="review-dms"]');
+  const chatRows = await page.evaluate(() => [...document.querySelectorAll('#review-dms-more .review-chat')]
+    .map(r => ({ name: r.querySelector('b').textContent, tag: r.querySelector('em').textContent })));
+  check('the messages open into one switch per chat, each named and showing the number it goes as',
+    chatRows.length >= 2 && chatRows.every(r => /^\[t\d+\]$/.test(r.tag) && r.name && !/^Chat \d/.test(r.name)),
+    JSON.stringify(chatRows));
+  await page.click('#review-dms-more .review-chat-switch >> nth=0');
+  const byChat = await downloadNow('digest-preview-chat.html');
+  const dms = byChat.digest.directMessages.ownMessageSample;
+  check('switching a chat off leaves out its messages and keeps the others',
+    !dms.some(l => /\[t1\]/.test(l)) && dms.some(l => /\[t2\]/.test(l)) && /1 chat\b/.test(byChat.html),
+    JSON.stringify(dms.slice(0, 3)));
+  check('and the chat names are in neither the file nor the digest that would be sent',
+    chatRows.every(r => !byChat.html.includes('>' + r.name + '<') && !JSON.stringify(byChat.digest).includes('"' + r.name + '"')),
+    JSON.stringify(chatRows.map(r => r.name)));
+  await page.click('#review-dms-more .review-chat-switch >> nth=0');
+  await page.click('[data-peek="review-dms"]');
+
+  // A single line, from the preview.
+  await page.click('[data-peek="review-captions"]');
+  const line = await page.locator('#review-captions-more .review-line q >> nth=0').textContent();
+  await page.click('#review-captions-more .review-line button >> nth=0');
+  const byLine = await downloadNow('digest-preview-line.html');
+  check('✕ leaves out exactly that line',
+    !byLine.digest.samples.captions.some(l => l.endsWith(line)) &&
+      byLine.digest.samples.captions.length === preview1.samples.captions.length - preview1.samples.captions.filter(l => l.endsWith(line)).length, line);
+  await page.click('#review-captions-more .review-line button >> nth=0');
+  await page.click('[data-peek="review-captions"]');
+  const reset = await downloadNow('digest-preview-reset.html');
+  check('with every choice undone, the file is the default one again',
+    JSON.stringify(reset.digest) === JSON.stringify(preview1));
+
   await shot('1c-review');
 
   // Send is only ever "send this to the model" here — a first upload is free,
@@ -5019,7 +5109,8 @@ try {
     const review = await page.locator('#review-dialog').innerText();
     check('the review sheet asks for 18+ and the terms right above Send, and claims nothing it cannot keep',
       /By sending, you confirm you are 18 or over and agree to the terms and privacy policy\./.test(review) &&
-        /PsycheAI keeps no copy of this data or your report/.test(review) && !/accessed by PsycheAI or others/.test(review),
+        /PsycheAI keeps no copy of this data or your report/.test(await page.locator('#review-dialog').textContent()) &&
+        !/accessed by PsycheAI or others/.test(review),
       review.slice(0, 200));
     check('its rows count in the right number: no "1 comments", no "the 0 hashtags"',
       !/\b1 (comments|captions|names|topics|hashtags)\b/.test(review) && !/\b0 hashtags\b/.test(review),
@@ -8792,9 +8883,9 @@ try {
     (await page.locator('#review-list input[type="checkbox"]').count()) === 14,
     (await page.locator('#review-list input[type="checkbox"]').count()) + ' rows');
   const supplementedReview = await page.locator('#review-dialog').innerText();
-  for (const label of ['YouTube watch history', 'YouTube searches', 'Google searches',
-    'Chrome browsing history', 'Facebook posts & comments',
-    'Facebook friends & follows', 'Facebook Messenger']) {
+  for (const label of ['YouTube watching', 'YouTube searches', 'Google searches',
+    'Chrome browsing', 'Facebook posts & comments',
+    'Facebook friends', 'Messenger']) {
     check('the review names ' + JSON.stringify(label) + ' as its own row',
       supplementedReview.includes(label));
   }
@@ -8802,10 +8893,10 @@ try {
     await page.evaluate(() => [...document.querySelectorAll('#review-list input[type="checkbox"]')]
       .every(el => el.checked)));
   // The two most sensitive rows in the app say plainly what they contain.
-  check('the Chrome row promises two numbers and no site name at all',
-    /as two numbers\. No site name, page, address or time/.test(supplementedReview));
-  check('the Messenger row says only an anonymised line of the other side is included',
-    /Facebook Messenger[\s\S]*anonymised line of the message they answered; nothing else from the other side is included/.test(supplementedReview));
+  check('the Chrome row promises two numbers and nothing more',
+    /Chrome browsing\s*two numbers/.test(supplementedReview), supplementedReview.slice(0, 600));
+  check('the Messenger row says only your own messages go',
+    /Messenger\s*\d+ chats?, yours only/.test(supplementedReview), supplementedReview.slice(0, 600));
   await shot('1c-review-supplemented');
   await page.click('#review-send');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });

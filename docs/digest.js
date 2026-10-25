@@ -1456,6 +1456,8 @@
     const top = ranked.slice(0, opts.topThreads || ranked.length);
     stats.threadsAvailable = ranked.length;
     stats.threadsUsed = top.length;
+    // Which conversation each tag stands for (t1 is top[0]), for the review's per-chat labels.
+    stats.topKeys = top.map(([key]) => key);
     if (!top.length) return [];
 
     const sizes = top.map(([, list]) => list.length);
@@ -1530,6 +1532,25 @@
     return picked.map(m => (m.year ? '[' + m.year + '] ' : '') +
       (tagged ? '[' + (opts.label ? opts.label(m.key, m.rank) : 't' + (m.rank + 1)) + '] ' : '') +
       (quoted.has(m) ? '«them: ' + m.ctx + '» ' : '') + m.text);
+  }
+
+  /**
+   * Each conversation tag's real name ("t1" → "Sarah Kim"), for the pre-send
+   * review to label its per-chat switches with, on this device only. Kept on
+   * the digest as a property JSON cannot see, so it is never sent, stored or
+   * backed up, and a digest read back from storage simply has none (the
+   * review then says "Chat 1").
+   */
+  function chatLabels(digest, keys, tagOf, nameOf) {
+    let names = Object.getOwnPropertyDescriptor(digest, 'chatNames');
+    if (!names) {
+      Object.defineProperty(digest, 'chatNames', { value: {}, enumerable: false, writable: true, configurable: true });
+      names = Object.getOwnPropertyDescriptor(digest, 'chatNames');
+    }
+    (keys || []).forEach((key, rank) => {
+      const name = nameOf(key);
+      if (name) names.value[tagOf(rank, key)] = name;
+    });
   }
 
   /**
@@ -1975,6 +1996,11 @@
       // without them the model cannot tell a sample drawn from ten
       // conversations from one drawn across four hundred, and those support
       // very different claims about somebody's relationships.
+      chatLabels(digest, dmStats.topKeys, rank => 't' + (rank + 1), key => {
+        const t = (signals.threadTitles || [])[key];
+        if (!t) return '';
+        return t.title || (t.participants || []).filter(p => p !== messages.owner).join(', ');
+      });
       digest.coverage.sampling.ownMessages = {
         shown: digest.directMessages.ownMessageSample.length,
         available: messages.ownTexts.length,
@@ -2498,6 +2524,10 @@
           threadChars: LIMITS.waThreadChars, label: key => key, alwaysTag: true, stats: waStats,
         }),
       };
+      chatLabels(digest, chats.map(c => c.chat), (rank, key) => key, key => {
+        const c = chats.find(x => x.chat === key);
+        return (c && c.title) || '';
+      });
       digest.coverage.sampling.whatsappMessages = {
         shown: digest.whatsapp.ownMessageSample.length,
         available: chats.reduce((sum, c) => sum + ((c.counts && c.counts.sentByUser) || 0), 0),
@@ -3252,13 +3282,90 @@
     return digest;
   }
 
+  // ---- the pre-send review's finer choices ----
+  //
+  // The review's switches drop a whole kind of data (the omit* functions
+  // above). These drop single lines from any list the model reads
+  // (EVIDENCE_LISTS), for the review's year chart, its "leave out anything
+  // mentioning" box, its per-chat switches and the ✕ beside a previewed line.
+  // Like the omit* functions they mutate in place, and the review's download
+  // runs the same call on a clone, so the file and the request cannot differ.
+
+  // The year a line opens with ("[2024] …"), or 0 for an undated line.
+  function lineYear(item) {
+    const m = typeof item === 'string' ? /^\[(\d{4})\] /.exec(item) : null;
+    return m ? Number(m[1]) : 0;
+  }
+
+  // The conversation tag a message line carries ("[t3]", "[c1]", "[m2]"), or ''.
+  function lineChat(item) {
+    const m = typeof item === 'string' ? LINE_TAGS.exec(item) : null;
+    const tag = m && /\[([tcm]\d{1,2})\]/.exec(m[1]);
+    return tag ? tag[1] : '';
+  }
+
+  // A line as the review shows it: the text the model reads, its year and chat tags left off.
+  function reviewText(item) {
+    const line = evidenceLine(item);
+    const m = LINE_TAGS.exec(line);
+    return m ? line.slice(m[1].length) : line;
+  }
+
+  // What a word typed into the review matches: the word itself, whole and in
+  // any case, and the [N…] or [P…] that stands for a name or handle it is
+  // part of. By the review the digest's people are numbers already, so
+  // "Sam" alone would find nothing; the device still holds which number is
+  // whose (__names, __people, never sent), so "Sam" also finds [N2].
+  function wordMatcher(digest, words) {
+    const list = (words || []).map(w => String(w).trim().toLowerCase()).filter(Boolean);
+    if (!list.length) return null;
+    const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tokens = new Set();
+    // In a name or handle, "_" and "." part words too: "Sam" finds sam_runs.
+    const has = (key, word) => new RegExp('(^|[^\\p{L}\\p{N}])' + esc(word) + '($|[^\\p{L}\\p{N}])', 'iu').test(key);
+    for (const word of list) {
+      for (const [key, n] of Object.entries((digest && digest.__names) || {})) if (has(key, word)) tokens.add('[N' + n + ']');
+      for (const [key, n] of Object.entries((digest && digest.__people) || {})) if (has(key, word)) tokens.add('[P' + n + ']');
+    }
+    const parts = list.map(w => '(?:^|[^\\p{L}\\p{N}_])' + esc(w) + '(?=$|[^\\p{L}\\p{N}_])');
+    for (const t of tokens) parts.push(esc(t));
+    const re = new RegExp(parts.join('|'), 'iu');
+    return item => re.test(reviewText(item));
+  }
+
+  /**
+   * Drops lines the reader chose to leave out, from every list the model reads.
+   * choice: { yearsOff: [2019, …], words: ['sam', …], chatsOff: { path: ['t3', …] },
+   * drop: { path: [line as reviewText shows it, …] } }. Returns how many lines went.
+   */
+  function trimLines(digest, choice) {
+    const c = choice || {};
+    const yearsOff = new Set((c.yearsOff || []).map(Number));
+    const matches = wordMatcher(digest, c.words);
+    let removed = 0;
+    for (const path of EVIDENCE_LISTS) {
+      const keys = path.split('.');
+      let parent = digest;
+      for (const key of keys.slice(0, -1)) parent = parent && typeof parent === 'object' ? parent[key] : undefined;
+      const last = keys[keys.length - 1];
+      if (!parent || !Array.isArray(parent[last])) continue;
+      const chats = new Set((c.chatsOff && c.chatsOff[path]) || []);
+      const drop = new Set((c.drop && c.drop[path]) || []);
+      const before = parent[last].length;
+      parent[last] = parent[last].filter(item => !(yearsOff.has(lineYear(item)) ||
+        (chats.size && chats.has(lineChat(item))) || (drop.size && drop.has(reviewText(item))) || (matches && matches(item))));
+      removed += before - parent[last].length;
+    }
+    return removed;
+  }
+
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, ownWritingChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
     MERGED_FIXED_INPUT_TOKENS, MERGED_MAX_OUTPUT_TOKENS, MERGED_COST_CAP,
     EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize,
     POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes, SHORT_MESSAGE_FLOORS,
     SOLO_POOL_CAPS, SOLO_FIXED_CHARS, SOLO_DIGEST_CHARS, SOLO_FREE_COST_CAP, SOLO_COST_CAP, carriesSecondSource, poolCapsFor,
-    sourceSizes, sampleConversations, EVIDENCE_LISTS,
+    sourceSizes, sampleConversations, EVIDENCE_LISTS, trimLines, lineYear, lineChat, reviewText,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,

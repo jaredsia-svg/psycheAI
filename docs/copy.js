@@ -818,6 +818,45 @@
     reviewSend: 'Send this',
     // Send pressed with the device offline (an airplane-mode test, say): the review stays open, its choices kept.
     reviewOffline: 'You are offline. Turn your connection back on to send.',
+    // The review sheet's finer choices (25 October 2026): each kind of data by a
+    // short name, least personal first, with a note where a count says nothing;
+    // the year chart, the words box, the per-chat switches and the read meter.
+    review: {
+      rows: {
+        'review-activity': ['Activity & timing', 'numbers only'],
+        'review-chrome': ['Chrome browsing', 'two numbers'],
+        'review-topics': ['Instagram’s guesses'],
+        'review-accounts': ['Accounts you like'],
+        'review-fb-connections': ['Facebook friends'],
+        'review-liked-captions': ['Posts you liked'],
+        'review-yt-watched': ['YouTube watching'],
+        'review-captions': ['Your posts & comments'],
+        'review-fb-posts': ['Facebook posts & comments'],
+        'review-searches': ['Your searches'],
+        'review-yt-searches': ['YouTube searches'],
+        'review-google-searches': ['Google searches'],
+        'review-dms': ['Direct messages', 'yours only'],
+        'review-fb-messages': ['Messenger', 'yours only'],
+        'review-whatsapp': ['WhatsApp', 'yours only'],
+      },
+      none: 'none found',
+      allYears: 'All',
+      lastYears: n => n === 1 ? '1 yr' : n + ' yrs',
+      yearsOff: list => list + ' left out',
+      wordsHint: 'Removes the whole post or message',
+      wordsRemoved: n => n + (n === 1 ? ' post or message removed' : ' posts & messages removed'),
+      wordRemove: word => 'Stop leaving out ' + word,
+      linesNote: '✕ leaves a line out.',
+      chatsNote: 'Names show only here; each goes as its number. Only your messages are sent.',
+      chat: n => 'Chat ' + n,
+      chats: n => n + (n === 1 ? ' chat' : ' chats'),
+      lineOut: 'Leave this line out',
+      lineBack: 'Put this line back',
+      quality: 'Read quality',
+      qualities: ['Thin', 'Fair', 'Good', 'Strong'],
+      size: kb => '~' + kb + ' KB of text',
+      alsoLeftOut: 'Also left out',
+    },
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',
     // The server makes no free read from data it cannot tie to an Instagram
     // account (server.js, noAccount; October 2026): no username in it, and no

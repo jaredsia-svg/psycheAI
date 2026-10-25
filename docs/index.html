@@ -1482,31 +1482,62 @@
      because a choice made before you can see what it actually contains is
      not an informed one. -->
 <dialog id="review-dialog" class="mode-dialog review-dialog" aria-labelledby="review-dialog-title">
-  <h2 id="review-dialog-title">Review what gets sent</h2>
-  <p class="muted">Choose which data gets analysed by Google Vertex AI. PsycheAI keeps no copy of
-    this data or your report.</p>
-  <!-- What is taken out before anything leaves the device. Always shown. -->
-  <div class="deid-note">
-    <span class="deid-icon" aria-hidden="true">🛡️</span>
-    <p><strong>De-identified before sending.</strong> Your name, contact details, ID numbers and
-      the handles in your own words are removed.</p>
+  <!-- The last stop before anything leaves the device (25 October 2026): the
+       body scrolls, the read meter, size and buttons stay at the foot. Rows,
+       years and chats are written in by askReview in app.js from the digest
+       just built. -->
+  <div class="review-body" id="review-body">
+    <h2 id="review-dialog-title">Review what gets sent</h2>
+    <!-- What is taken out before anything leaves the device. Always shown. -->
+    <div class="deid-note review-status">
+      <span class="review-dot" aria-hidden="true"></span>
+      <p><strong>Nothing sent yet.</strong> Your name, contact details, ID numbers and other people’s names and
+        handles are already removed.</p>
+    </div>
+    <details class="review-where">
+      <summary>Where does it go?</summary>
+      <ul>
+        <li>To Google Vertex AI, Google Cloud’s enterprise tier, over an encrypted connection. Google does not train its AI on it.</li>
+        <li>PsycheAI keeps no copy of this data or your report. Your results come back to this device only.</li>
+      </ul>
+    </details>
+    <section class="review-sec" id="review-years-sec" hidden>
+      <div class="review-sec-h"><h3>Which years</h3><div class="review-chips" id="review-year-chips"></div></div>
+      <div class="review-years" id="review-years"></div>
+      <p class="review-note" id="review-years-note"></p>
+    </section>
+    <section class="review-sec">
+      <div class="review-sec-h"><h3>Leave out anything mentioning</h3></div>
+      <form class="review-kw" id="review-kw-form">
+        <input type="text" id="review-kw" autocomplete="off" enterkeyhint="done" placeholder="A name, place or topic" aria-label="A word to leave out">
+        <button class="btn" type="submit">Leave out</button>
+      </form>
+      <div class="review-kw-chips" id="review-kw-chips"></div>
+      <p class="review-note" id="review-kw-note"></p>
+    </section>
+    <section class="review-sec">
+      <div class="review-sec-h"><h3>What’s included</h3><small>Tap to preview</small></div>
+      <div class="review-list" id="review-list"></div>
+      <div class="review-ends" aria-hidden="true"><span>↑ Least personal</span><span>Most personal ↓</span></div>
+    </section>
   </div>
-  <!-- The download row is written into #review-list itself, as its last
-       child, rather than placed here as static markup — it has to sit below
-       Photos, inside the same scroll region as the seven rows above it, not
-       float above the list where it would always be visible regardless of
-       scroll position. See reviewSwitch's caller in app.js. -->
-  <div class="review-list" id="review-list"></div>
-  <!-- The terms' two conditions, where the reader's data is about to leave:
-       the free path never reaches the payment sheet's own line. -->
-  <p class="fineprint review-legal" id="review-legal">By sending, you confirm you are 18 or over and agree to the
-    <a href="/terms" target="_blank" rel="noopener">terms</a> and
-    <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</p>
-  <!-- Send pressed while offline: said here, and the review stays open (copy.js, reviewOffline). -->
-  <p class="alert" id="review-offline" role="status" hidden></p>
-  <div class="btn-row">
-    <button class="btn btn-outline" id="review-cancel" type="button">Back</button>
-    <button class="btn" id="review-send" type="button">Send this</button>
+  <div class="review-foot">
+    <div class="review-meter"><span class="review-meter-label" id="review-quality-label"></span>
+      <span class="review-meter-bar"><span class="review-meter-fill" id="review-quality-fill"></span></span>
+      <strong id="review-quality"></strong></div>
+    <div class="review-facts"><span id="review-size"></span>
+      <button class="link-btn" id="review-download" type="button">Download what’s sent</button></div>
+    <!-- The terms' two conditions, where the reader's data is about to leave:
+         the free path never reaches the payment sheet's own line. -->
+    <p class="fineprint review-legal" id="review-legal">By sending, you confirm you are 18 or over and agree to the
+      <a href="/terms" target="_blank" rel="noopener">terms</a> and
+      <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</p>
+    <!-- Send pressed while offline: said here, and the review stays open (copy.js, reviewOffline). -->
+    <p class="alert" id="review-offline" role="status" hidden></p>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="review-cancel" type="button">Back</button>
+      <button class="btn" id="review-send" type="button">Send this</button>
+    </div>
   </div>
 </dialog>
 

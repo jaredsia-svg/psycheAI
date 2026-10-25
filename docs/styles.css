@@ -2225,28 +2225,106 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    inside it, that produced two nested scrollbars competing for the same
    gesture. Flex column, so the title, subtitle and buttons keep their
    natural size and the list absorbs whatever height is left over. */
-.review-dialog[open] { display: flex; flex-direction: column; max-height: min(42rem, calc(100vh - 2rem)); overflow: hidden; }
-/* `min-height: 0` is the part that actually makes the list shrink: a flex
-   child defaults to never sizing below its content's natural height no
-   matter what its parent allows, which is exactly the outer-scrollbar bug
-   above, moved one level down. With it unset, the fixed 30rem card and a
-   full digest's worth of rows means this scrolls on every ordinary screen,
-   not just a short one — which is the point, since the alternative is the
-   card growing to match its content instead. */
-.review-list { display: flex; flex-direction: column; gap: .1rem; margin-bottom: 1rem; flex: 1 1 auto; min-height: min(14rem, 35vh); overflow-y: auto; }
-/* Every row here is a real checkbox — .switch-row is the exact control the
-   main page used to show for direct messages and photos, reused for all
-   seven rows so the list reads as one control rather than a description with
-   two toggles glued to the end of it. */
-.review-list .switch-row { margin: 0; padding: .55rem 0; border-bottom: 1px solid var(--line); }
-/* The download link is the list's real last child now, not Photos — the
-   border this removes would otherwise sit under a link with nothing below
-   it, and the border above the link is what actually separates it from
-   Photos. Centred and given breathing room so it reads as a small utility
-   at the foot of the list rather than an eighth row trying to pass as one
-   of the seven checkboxes above it. */
-.review-list .switch-row:last-child { border-bottom: 0; }
-.review-download-row { margin: 0; padding: .8rem 0 .3rem; text-align: center; }
+.review-dialog[open] { display: flex; flex-direction: column; max-height: min(54rem, calc(100dvh - 2rem)); overflow: hidden; padding: 0;
+  width: min(34rem, calc(100vw - 2rem)); }
+/* Since 25 October 2026 the body is what scrolls (years, words and the list
+   together) and the foot stays put: the read meter, the size, the terms and
+   the two buttons. `min-height: 0` lets the body shrink below its content. */
+.review-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: clamp(1rem, 3vw, 1.4rem) clamp(1rem, 3vw, 1.4rem) .6rem; }
+.review-foot { flex: none; border-top: 1px solid var(--line); padding: .6rem clamp(1rem, 3vw, 1.4rem) clamp(.8rem, 2.5vw, 1.1rem); background: var(--bg-alt); }
+/* While a word is being typed the foot steps aside, so the keyboard has the room. */
+.review-dialog.is-typing .review-foot { display: none; }
+.review-status { align-items: center; margin: .5rem 0 0; }
+.review-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 20%, transparent); }
+.review-where { margin-top: .4rem; font-size: .8rem; color: var(--ink-soft); }
+.review-where summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.review-where ul { margin: .3rem 0 0; padding-left: 1.1rem; }
+.review-sec { margin-top: 1rem; }
+.review-sec[hidden] { display: none; }
+.review-sec-h { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .4rem; }
+.review-sec-h h3 { margin: 0; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.review-sec-h small { font-size: .76rem; color: var(--ink-soft); }
+.review-note { margin: .3rem 0 0; font-size: .74rem; color: var(--ink-soft); }
+.review-note:empty { display: none; }
+/* Which years: each bar is its own switch; the chips set a range. */
+.review-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+.review-chip { border: 1.5px solid var(--line); background: var(--bg-alt); color: var(--ink); border-radius: 999px; padding: .12rem .6rem; font: inherit; font-size: .76rem; cursor: pointer; }
+.review-chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 10%, var(--bg-alt)); }
+.review-years { display: flex; gap: 4px; align-items: flex-end; height: 3.6rem; }
+.review-year { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%;
+  border: 0; background: none; padding: 0; font: inherit; cursor: pointer; color: var(--ink-soft); }
+.review-year i { display: block; width: 100%; border-radius: 5px 5px 2px 2px; background: linear-gradient(160deg, var(--accent-2), var(--accent)); transition: opacity .15s, filter .15s; }
+.review-year small { font-size: .66rem; }
+.review-year[aria-pressed="false"] i { opacity: .2; filter: grayscale(1); }
+.review-year[aria-pressed="false"] small { text-decoration: line-through; }
+/* Leave out anything mentioning. */
+.review-kw { display: flex; gap: .4rem; }
+.review-kw input { flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 11px; padding: .45rem .65rem; font: inherit; font-size: 16px; background: var(--bg); color: var(--ink); }
+.review-kw .btn { padding: .45rem .9rem; font-size: .86rem; }
+.review-kw-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+.review-kw-chips:empty { display: none; }
+.review-kw-chip { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; padding: .1rem .3rem .1rem .65rem; font-size: .78rem; font-weight: 600;
+  background: color-mix(in srgb, var(--accent-2) 14%, var(--bg-alt)); color: var(--accent-2); }
+.review-kw-chip button { border: 0; width: 18px; height: 18px; border-radius: 50%; padding: 0; line-height: 1; cursor: pointer;
+  background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: inherit; }
+/* What's included: one list, least personal first, a scale down its left edge. */
+.review-list { position: relative; border: 1.5px solid var(--line); border-radius: 14px; padding-left: 6px; overflow: hidden; }
+.review-list::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  background: linear-gradient(var(--good), color-mix(in srgb, var(--accent) 60%, var(--bg-alt)) 55%, var(--accent-2)); }
+.review-row { border-top: 1px solid var(--line); }
+.review-row:first-child { border-top: 0; }
+.review-row-main { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; }
+.review-row-name { flex: 1; min-width: 0; border: 0; background: none; padding: 0; font: inherit; text-align: left; color: inherit; cursor: pointer; }
+.review-row-name:disabled { cursor: default; }
+.review-row-name b { font-weight: 650; font-size: .9rem; }
+.review-row-name span { margin-left: .35rem; color: var(--ink-soft); font-size: .78rem; }
+.review-row-name:not(:disabled)::after { content: '›'; display: inline-block; margin-left: .35rem; color: var(--ink-soft); transition: transform .15s; }
+.review-row-name[aria-expanded="true"]::after { transform: rotate(90deg); }
+.review-row.is-off .review-row-name b { color: var(--ink-soft); text-decoration: line-through; }
+/* The type switches are the real checkboxes (their ids are what the decision reads), drawn as switches. */
+.review-switch { position: relative; flex: none; width: 42px; height: 25px; }
+.review-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.review-switch input:disabled { cursor: not-allowed; }
+.review-switch span, .review-chat-switch { display: block; width: 100%; height: 100%; border-radius: 13px; background: color-mix(in srgb, var(--ink-soft) 35%, var(--bg-alt)); transition: background .15s; position: relative; }
+.review-switch span::after, .review-chat-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: left .15s; }
+.review-switch input:checked + span, .review-chat-switch[aria-checked="true"] { background: var(--accent); }
+.review-switch input:checked + span::after, .review-chat-switch[aria-checked="true"]::after { left: 20px; }
+.review-switch input:disabled + span { opacity: .45; }
+.review-switch input:focus-visible + span, .review-chat-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.review-more { padding: 0 .7rem .6rem; }
+.review-more[hidden] { display: none; }
+.review-lines { max-height: 13rem; overflow-y: auto; }
+.review-line { display: flex; align-items: center; gap: .45rem; margin-top: .25rem; padding: .3rem .55rem; border-radius: 9px; background: var(--bg); font-size: .8rem; }
+.review-line q { flex: 1; min-width: 0; quotes: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-line small { color: var(--ink-soft); font-size: .7rem; }
+.review-line button { border: 0; background: none; color: var(--ink-soft); cursor: pointer; font-size: .9rem; padding: 0 .1rem; }
+.review-line.is-out { opacity: .45; }
+.review-line.is-out q { text-decoration: line-through; }
+.review-chat { display: flex; align-items: center; gap: .6rem; padding: .3rem .1rem; font-size: .84rem; }
+.review-chat-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review-chat-name b { font-weight: 650; }
+.review-chat-name small { margin-left: .35rem; color: var(--ink-soft); font-size: .74rem; }
+.review-chat-name em { font-style: normal; font-weight: 700; color: var(--accent-2); }
+.review-chat-switch { flex: none; width: 36px; height: 21px; border: 0; padding: 0; cursor: pointer; }
+.review-chat-switch::after { width: 15px; height: 15px; }
+.review-chat-switch[aria-checked="true"]::after { left: 18px; }
+.review-chat-switch:disabled { opacity: .45; cursor: not-allowed; }
+.review-ends { display: flex; justify-content: space-between; margin-top: .25rem; font-size: .68rem; color: var(--ink-soft); }
+/* The foot. */
+.review-meter { display: flex; align-items: center; gap: .6rem; font-size: .78rem; }
+.review-meter-label { color: var(--ink-soft); white-space: nowrap; }
+.review-meter-bar { display: block; flex: 1; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--line) 70%, var(--bg-alt)); overflow: hidden; }
+.review-meter-fill { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width .25s; }
+.review-meter strong { min-width: 3.2rem; text-align: right; color: var(--accent); }
+.review-meter.is-low strong { color: var(--warn, #b4572a); }
+.review-facts { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; margin-top: .15rem; font-size: .76rem; color: var(--ink-soft); }
+.review-facts .link-btn { font-size: .76rem; white-space: nowrap; }
+.review-facts span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-foot .review-legal { margin-top: .3rem; font-size: .68rem; line-height: 1.35; }
+.review-foot .btn-row { display: flex; gap: .5rem; margin-top: .5rem; }
+.review-foot .btn-row .btn { flex: 1; }
+.review-foot .btn-row #review-send { flex: 2; }
 
 /* ---------- print / PDF export ---------- */
 /*
@@ -4390,7 +4468,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .legal .section-card p:last-child { margin-bottom: 0; }
 .premium-legal { margin: .8rem 0 0; text-align: center; font-size: .78rem; }
 /* The review sheet's 18+ and terms line, just above Send this. */
-.review-legal { margin: .7rem 0 0; font-size: .78rem; color: var(--ink-soft); }
+.review-legal { margin: .45rem 0 0; font-size: .72rem; color: var(--ink-soft); }
 
 /* The QR code in the foot of the reader's own card: their one link, so any
    copy of the card leads back to it. Bottom of the card, out of the way of
