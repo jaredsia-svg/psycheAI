@@ -36,10 +36,10 @@ const og = `<!doctype html><html><head><style>${base}
 body { width: 1200px; height: 630px; color: #2a1238;
   background: radial-gradient(70% 90% at 15% 10%, #f3dcff 0%, transparent 70%),
     radial-gradient(60% 80% at 90% 90%, #ffd6e7 0%, transparent 70%), #fdf7fc; }
-.text { position: absolute; left: 72px; top: 70px; width: 640px; }
+.text { position: absolute; left: 72px; top: 70px; width: 690px; }
 .brand { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 800; }
 .brand svg { width: 52px; height: 52px; }
-h1 { margin-top: 40px; font-size: 60px; line-height: 1.05; font-weight: 850; letter-spacing: -0.03em; }
+h1 { margin-top: 40px; font-size: 50px; line-height: 1.08; white-space: nowrap; font-weight: 850; letter-spacing: -0.03em; }
 h1 span { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; color: transparent; }
 p { margin-top: 26px; font-size: 27px; line-height: 1.35; color: #6b3f8f; font-weight: 600; }
 .cta { position: absolute; left: 72px; bottom: 64px; padding: 16px 30px; border-radius: 999px; font-size: 26px; font-weight: 800;
@@ -49,8 +49,8 @@ p { margin-top: 26px; font-size: 27px; line-height: 1.35; color: #6b3f8f; font-w
 </style></head><body>
 <div class="text">
   <div class="brand">${mark('#7b3fa0', 6)}PsycheAI</div>
-  <h1>A full personality study.<br><span>No questions asked.</span></h1>
-  <p>Your personal AI coach that already knows you, built from your Instagram data.</p>
+  <h1>Your personal AI coach<br><span>that already knows you.</span></h1>
+  <p>A full personality study from your own Instagram data. No questions asked.</p>
 </div>
 <div class="cta">Your first Psyche Card is free · psycheai.io</div>
 <img class="card" src="${card}">

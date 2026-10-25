@@ -1,6 +1,6 @@
 # 🧠 PsycheAI
 
-*A full personality study. No questions asked.*
+*Your personal AI coach that already knows you.*
 
 Load your own Instagram data, and optionally up to three WhatsApp chats with close connections and
 your Google data. PsycheAI reads them in your browser and reduces them to a de-identified **digest**:
@@ -3021,6 +3021,15 @@ moved on to *A full personality study. No questions asked.* The preview now says
 - **`?v=2`** on the image address in every page's `og:image` and `twitter:image`: WhatsApp, iMessage and
   Facebook keep a preview cached against its address, so a new address is what makes them fetch the new one.
 
+
+**Since 25 October 2026**, with the hero: the preview's title is *PsycheAI – Your personal AI coach that already
+knows you* (og and twitter alike), its description *A full personality study from your own Instagram data. No
+questions asked: MBTI, attachment style, career strengths and blind spots. Your first Psyche Card is free.*, the
+image says the same two lines (the headline set at 50px on two lines, where 60px wrapped to four) and its alt text
+leads with the coach; the front page asks for `og-card.jpg?v=4` so apps fetch the new picture. The other pages keep
+`?v=3`: changing it there would move every page's "Updated" date for a change that is not to its words, and the
+picture refreshes in their previews as the apps' caches expire. The web app manifest's description leads with the
+coach too.
 ### The guessing game on every card's wait (October 2026)
 
 **What went wrong.** A reader loaded their data and ran their card and report, and there was no game. It
