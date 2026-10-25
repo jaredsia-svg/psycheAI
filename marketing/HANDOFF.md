@@ -31,7 +31,8 @@ A second version was built on 25 Oct.
 - **Fifth cut (25 Oct):** the de-identification is its own beat, each step shown as it is said (name blanked, friends → [N1]/[P1], contacts and links removed, then only the summary flies to the enterprise AI); about 42 s.
 - **Sixth cut (25 Oct):** a review beat after the de-identification (the app's review sheet; a finger switches off Direct messages and searches, presses Send this; only then does it go to the enterprise AI); "The code is public" on screen only, no longer said; about 44 s.
 - **Seventh cut (25 Oct):** worded as the privacy video: "Your files are read locally on your phone" with the *✈️ No internet needed* badge; "On your phone, a summary is made, your name blanked out, friends turned into numbers, contacts and links removed"; "You review it before it's sent for analysis, and can switch off anything" (sent to Google Vertex AI as the voice ends); "PsycheAI keeps no copy, and needs no account"; about 45 s.
-- **Status:** awaiting the user's feedback on the seventh cut. Next ideas, if it's still not punchy enough:
+- **Eighth cut (25 Oct):** shorter scene 1 line ("Everything goes up: your name, friends' messages, photos."); "Your results stay on your device" and its card dropped; "~150 KB of text · no photos or videos" as a pill under the summary card; the address as `{PsycheAIdotIO}`; about 43 s.
+- **Status:** awaiting the user's feedback on the eighth cut. Next ideas, if it's still not punchy enough:
   - faster cuts (lower `hold`);
   - a real-looking ChatGPT upload UI;
   - a bigger visual contrast at the switch.
