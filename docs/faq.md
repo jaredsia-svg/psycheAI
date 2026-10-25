@@ -4,7 +4,7 @@ description: "Answers about PsycheAI: what it is, what file you need, what happe
 canonical: https://psycheai.io/faq
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # Frequently asked questions
@@ -75,7 +75,7 @@ Only daily totals, such as how many cards, reports and syncs were made, and how 
 
 Yes. Open Load your data, turn on airplane mode, then pick your file: it is still read and summarised, because that all happens on your device. Turn your connection back on only to send.
 
-The site is also open source, so you can [read what the browser sends](https://github.com/jaredsia-svg/psycheAI).
+The site is also open source, so you can [read what the browser sends](https://github.com/jaredsia-svg/psycheAI/tree/claude/instagram-personality-compatibility-oqhpa3).
 
 ## The report
 

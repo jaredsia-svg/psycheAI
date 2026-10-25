@@ -3226,7 +3226,8 @@ try {
         /Full refund within 24 hours/.test(document.querySelector('#premium-dialog a[href="/refunds"]').textContent)));
   }
   check('the footer links to the source, so the privacy claims can be checked',
-    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(footer.href || '') &&
+    // The branch Render deploys from (since 25 October 2026), so what it shows is the code that is live.
+    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/tree\/claude\/instagram-personality-compatibility-oqhpa3$/.test(footer.href || '') &&
     /source|code/i.test(footer.text || ''),
     footer.href + ' — ' + footer.text);
   check('the source link opens away without handing the new tab this one',

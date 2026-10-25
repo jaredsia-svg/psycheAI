@@ -642,6 +642,12 @@ deployed. None of it was needed by the page:
 - The footer now shows only the version (`v3.0.0`), with no commit link. The PDF's running head
   does the same.
 
+**The source links** (the footer's *Source code on GitHub*, the FAQ's *read what the browser sends*, the privacy
+page's *is public*) go to the branch Render deploys from, `tree/claude/instagram-personality-compatibility-oqhpa3`,
+since 25 October 2026, rather than the repository's front page: every push to it deploys, so what a reader reads
+there is the code that is live, whatever the repository's default branch becomes. Not to the exact commit, which
+would mean serving the commit to the page, and that stays in the log (below).
+
 The operator still sees the build: the server logs the version, commit, branch and platform at
 startup (`Build: v3.0.0 · 02f449d · <branch>`), and Render's dashboard shows the deployed commit.
 
