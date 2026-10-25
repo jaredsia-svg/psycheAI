@@ -156,12 +156,12 @@ Hashtags: swap #wizardofoz for #rapunzel, #mulan, #odyssey or #sherlockholmes.
 ### 3f. ChatGPT vs PsycheAI: where your data goes
 
 ```
-"Why not just upload my Instagram data to ChatGPT?" 🤔
+Thinking of uploading your Instagram data to ChatGPT? ✋ Watch this first.
 
-With ChatGPT, it all goes up as it is: your name, your friends' messages, your photos.
+With ChatGPT, everything goes up as it is: your name, your friends' private messages, your photos.
 It may be used to train its models unless you switch that off, and it's kept until you delete it, then up to 30 days more.
 
-With PsycheAI, your files stay on your phone. Only a de-identified summary leaves, to enterprise AI that doesn't train on it.
+With PsycheAI, your files never leave your phone. Only a small de-identified text summary does (no photos, no videos, about 150 KB), to enterprise AI that doesn't train on it.
 And PsycheAI keeps nothing: no accounts, your results stay on your device.
 
 Your data stays yours 🔒

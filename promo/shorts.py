@@ -258,13 +258,19 @@ REELS['compare-insecure'] = dict(REELS['compare'], lines=[
 # ChatGPT against PsycheAI (25 October 2026): where your data goes with each, and what is kept. The comparison reel's
 # music and voice; its own stage, chatgpt-stage.html. Every claim about ChatGPT is the FAQ's (personal plans).
 REELS['chatgpt'] = dict(REELS['compare'], lines=[
-    (['Why not just upload my Instagram data to Chat G P T?'], 0.92, None),
-    (['Because it all goes up, as it is.', "Your name. Your friends' messages. Your photos."], 0.85, True, 0.35),
-    (['It may train on it, unless you switch that off.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.35),
-    (['{B} reads it on your phone.', 'Only a de-identified summary leaves.'], 0.85, True, 0.35),
-    (['And {B} keeps nothing.', 'No accounts. Your results stay on your device.'], 0.85, True, 0.3),
+    (['Thinking of uploading your Instagram data to Chat G P T?', 'Watch this first.'], 0.85, True, 0.3),
+    (['Everything goes up, as it is.', "Your name. Your friends' private messages. Your photos."], 0.85, True, 0.3),
+    (['It may train on it, unless you switch that off.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.3),
+    (['Now watch {B}.', 'Your files never leave your phone. Only a small, de-identified summary does.'], 0.85, True, 0.3),
+    (['Zero accounts. Zero exports kept.', 'Your results stay on your device.'], 0.85, True, 0.3),
     (['Your data stays yours.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
-], hold={0: 0.5, 1: 0.6, 2: 0.9, 3: 1.0, 4: 1.2}, lead={})
+], hold={0: 0.3, 1: 0.5, 2: 0.6, 3: 0.9, 4: 0.8}, lead={}, punch=(0,),
+    # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
+    # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
+    mood='thriller', bpm=120, reveal=3,
+    chords=[[62, 65, 69], [58, 62, 65], [55, 58, 62], [57, 61, 64]], roots=[38, 34, 31, 33],
+    lift=[[65, 69, 72], [60, 64, 67], [62, 65, 69], [58, 62, 65]], lift_roots=[41, 36, 38, 34],
+    melody=[[77, 72, 69, 72], [76, 72, 67, 72], [74, 69, 65, 69], [74, 70, 65, 70]])
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +
@@ -782,7 +788,7 @@ elif R.get('mood') == 'mirror':
     last = snap(END - BAR, BAR)
     at(last, rhodes([53, 60, 64, 67, 69, 72], 3.4, 0.05), 1.0); at(last, round_bass(29 + 12, 2.8), 0.8)
 
-else:
+elif R.get('mood') != 'thriller':
     sc = scenes
     MID = sc[1]['start']       # a light pulse comes in after the hook
     DROP = sc[REVEAL]['start']  # the card: riser, hit, the full beat to the end
@@ -827,6 +833,69 @@ else:
 
     for k in range(1, REVEAL): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
     at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
+
+if R.get('mood') == 'thriller':
+    sc = scenes
+    HOOK = sc[0]['marks'][1]; DROP = sc[REVEAL]['start']; END = sc[-1]['voEnd'] + 0.6
+    HITS = [sc[1]['vo'], sc[2]['vo'], sc[2]['marks'][1]]
+    EIGHTH = BEAT / 2; SIX = BEAT / 4
+    def lp(x, fc):
+        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+        return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
+    def saw(f, x): return 2 * (x * f % 1) - 1
+    def drone(chord, length, fc=700, gain=0.05):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in [chord[0] - 12] + chord:
+            for det in (-0.2, 0.2): y += saw(hz(m) * (1 + det / 100), x)
+        return lp(y * np.minimum(1, x / 0.3) * np.clip((length - x) / 0.2, 0, 1), fc) * gain
+    def sub(m, length):
+        L = int(length * SR); x = np.arange(L) / SR
+        return np.tanh(2.2 * np.sin(2 * np.pi * hz(m) * x)) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.03, 0, 1) * 0.32
+    def tick():
+        L = int(0.03 * SR); x = np.arange(L) / SR; nz = rng.standard_normal(L).astype(np.float32)
+        return (nz - lowpass(nz, 6000)) * np.exp(-x * 160) * 0.25
+    def lead_(m, length):
+        L = int(length * SR); x = np.arange(L) / SR
+        y = saw(hz(m), x) + saw(hz(m) * 1.004, x) + 0.6 * np.sin(2 * np.pi * hz(m) * x)
+        return lp(y * np.exp(-x * 5) * np.minimum(1, x / 0.004), 4200) * 0.06
+    def crash():
+        L = int(1.6 * SR); x = np.arange(L) / SR; nz = rng.standard_normal(L).astype(np.float32)
+        return (nz - lp(nz, 5000)) * np.exp(-x * 2.5) * 0.3
+    K, C, H, HO, T = kick(), clap(), hat(), hat(True), tick()
+    pump = np.ones(n, np.float32)
+    b = 0.0
+    while b < END:
+        k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
+        if b < DROP:
+            # Tension: a ticking clock in sixteenths, a heartbeat kick, the sub on the one; louder after the hook.
+            tense = b >= HOOK
+            at(b, T, (0.5 if e % 4 == 0 else 0.25) * (1.0 if tense else 0.6), 0.25 if e % 2 else -0.25)
+            if tense and e in (0, 3, 8, 11) and b < DROP - BEAT: at(b, K, 0.75 if e in (0, 8) else 0.45)
+            if tense and e == 0: at(b, sub(ROOTS[bar_i], BAR * 0.95), 0.8)
+            if e == 0: at(b, drone(CHORDS[bar_i], BAR * 1.02, 600 if not tense else 1100), 1.0)
+        elif b < END - BAR:
+            # The drop: four on the floor, claps on two and four, offbeat open hats, the bass on eighths, a bright lead.
+            L_ = R['lift'][bar_i]; root = R['lift_roots'][bar_i]
+            if e % 4 == 0:
+                at(b, K, 1.0)
+                a_ = int(b * SR); Lp = int(0.2 * SR)
+                if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.45 + 0.55 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
+            if e % 4 == 2: at(b, HO, 0.4, 0.3)
+            if e % 2 == 1: at(b, H, 0.2, -0.3)
+            if e in (4, 12): at(b, C, 0.85)
+            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.8), 1.1)
+            if e == 0: at(b, strings(L_, BAR * 1.02, 0.045), 1.0)
+            if e % 4 == 0: at(b, lead_(R['melody'][bar_i][e // 4], BEAT * 0.9), 1.0, -0.1)
+            if e in (6, 14): at(b, pluck(L_[2] + 12, 0.1), 1.0, 0.3)
+        b += SIX
+    # The hook lands on a boom; each warning on a hit; the riser into the drop; a bright last chord.
+    at(HOOK, impact(), 1.0); at(HOOK, crash(), 0.6)
+    for h in HITS: at(h, impact(), 0.8); at(h, sub(26, 0.8), 0.9)
+    at(DROP - 2.0, riser(2.0), 1.0); at(DROP - 1.0, swell(1.0), 0.8)
+    at(DROP, impact(), 1.0); at(DROP, crash(), 0.9)
+    last = snap(END - BAR, BAR)
+    at(last, crash(), 0.6); at(last, strings([65, 69, 72, 77], 3.0, 0.07), 1.0); at(last, bass(41, 2.5) * 0.7, 0.8)
+    for k, m in enumerate([77, 81, 84, 89]): at(last + k * 0.07, bell(m), 0.9, 0.3 if k % 2 else -0.3)
 
 if R.get('mood') == 'character':
     # The slot's ticks: one each time a tile passes, slowing as it does (the stage moves by the same curve).

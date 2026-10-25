@@ -17,6 +17,18 @@ Read this first in a new session, together with `CLAUDE.md` and `marketing/INSTA
 
 The user wants it much more engaging and convincing ("high impact"), with different music.
 
+A second version was built on 25 Oct.
+- **Hook:** "Thinking of uploading your Instagram data to ChatGPT? Watch this first." A red "✋ WAIT" stamp slams in.
+- **Upload scene:** the export zip shows an upload bar, and six chips fly into the ChatGPT cloud.
+- **Warnings:** each one lands with a shake and a red flash.
+- **Switch:** "Now watch PsycheAI" opens on a white flash and a music drop. A "0 photos · 0 videos · ~150 KB of text" row follows.
+- **Close:** the zeros, then the call to action.
+- **Music:** the new `thriller` mood in shorts.py. It is a tense D-minor tick and heartbeat with hits, then a riser and a drop into F-major four-on-the-floor.
+- **Status:** awaiting the user's feedback. Next ideas, if it's still not punchy enough:
+  - faster cuts (lower `hold`);
+  - a real-looking ChatGPT upload UI;
+  - a bigger visual contrast at the switch.
+
 - **Stage:** `promo/chatgpt-stage.html`.
 - **Script:** the `REELS['chatgpt']` entry in `promo/shorts.py`.
 - **Build:** `bash promo/shorts.sh chatgpt`, then `cp promo/out/PsycheAI-chatgpt* marketing/reels/`.

@@ -15,7 +15,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .caption { z-index: 30; left: 70px; right: 70px; top: 230px; text-align: center; font-size: 64px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
 /* 0: the question. */
-#ask { z-index: 20; left: 70px; right: 70px; top: 760px; padding: 40px 46px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.12);
+#ask { z-index: 20; left: 70px; right: 70px; top: 640px; padding: 40px 46px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.12);
   font-size: 58px; font-weight: 750; line-height: 1.2; min-height: 260px; }
 #ask .who { display: block; margin-bottom: 18px; font-size: 32px; font-weight: 800; color: #6b6b73; letter-spacing: .02em; }
 #ask .caret { display: inline-block; width: 5px; height: 60px; margin-left: 4px; vertical-align: middle; background: #2a1238; }
@@ -69,6 +69,19 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .stamp { z-index: 30; padding: 12px 30px; border-radius: 20px; font-size: 42px; font-weight: 900; white-space: nowrap; }
 #stA { right: 100px; top: 470px; color: #6b6b73; border: 6px solid #9a9aa3; background: rgba(255,255,255,.92); }
 #stB { right: 100px; top: 1010px; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.4); }
+/* Impact: the stamp on the hook, a flash on each hit, the upload bar, what leaves the phone. */
+#stop { z-index: 40; left: 50%; top: 1190px; padding: 26px 56px; border-radius: 28px; border: 10px solid #e0362c; color: #e0362c; background: rgba(255,255,255,.94);
+  font-size: 92px; font-weight: 950; letter-spacing: .02em; white-space: nowrap; box-shadow: 0 30px 80px rgba(224,54,44,.35); }
+#flash { position: absolute; inset: 0; z-index: 50; pointer-events: none; opacity: 0; }
+#attach { display: inline-block; margin-top: 22px; padding: 14px 26px; border-radius: 22px; background: #f0eef3; font-size: 36px; font-weight: 800; color: #4b4553; }
+#up { z-index: 24; left: 140px; right: 140px; top: 1660px; }
+#up .lbl { display: flex; justify-content: space-between; font-size: 36px; font-weight: 850; color: #4b4553; margin-bottom: 14px; }
+#up .track { height: 30px; border-radius: 15px; background: rgba(0,0,0,.1); overflow: hidden; }
+#up .fill { height: 100%; width: 0; border-radius: 15px; background: #d9625a; }
+#leaves { z-index: 26; left: 90px; right: 90px; top: 1590px; display: none; gap: 18px; justify-content: center; }
+#leaves div { padding: 18px 24px; border-radius: 24px; background: #fff; text-align: center; font-size: 30px; font-weight: 750; color: #6b6076;
+  box-shadow: 0 16px 40px rgba(90,40,120,.16); }
+#leaves b { display: block; font-size: 56px; font-weight: 950; color: #c2407a; line-height: 1.1; }
 /* 5: the close. */
 #c1 { z-index: 30; left: 60px; right: 60px; top: 640px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.08; }
 #tag { z-index: 30; left: 0; right: 0; top: 1010px; text-align: center; font-size: 56px; font-weight: 850; }
@@ -78,22 +91,26 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 <body>
   <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
   <div id="grey"></div>
-  <div class="el" id="ask"><span class="who">To ChatGPT</span><span id="typed"></span><span class="caret" id="caret"></span></div>
+  <div class="el" id="ask"><span class="who">To ChatGPT</span><span id="typed"></span><span class="caret" id="caret"></span><br><span id="attach">📎 instagram-export.zip</span></div>
+  <div class="el" id="stop">✋ WAIT</div>
+  <div id="flash"></div>
 
-  <div class="el caption" id="cap1">With <span style="color:#4b4553">ChatGPT</span>,<br>it all goes up as it is.</div>
+  <div class="el caption" id="cap1">With <span style="color:#4b4553">ChatGPT</span>,<br>everything goes up.</div>
   <div class="el" id="cloud"></div>
   <div class="el" id="zip">📦</div>
   <div class="el" id="zipLabel">Your Instagram export</div>
   <div id="items"></div>
+  <div class="el" id="up"><div class="lbl"><span>Uploading…</span><span id="pct">0%</span></div><div class="track"><div class="fill" id="fill"></div></div></div>
   <div class="el warn" id="w1">May be used to train its models<small>unless you turn that off</small></div>
   <div class="el warn" id="w2">Kept on its servers<small>until you delete it, then up to 30 days more</small></div>
 
-  <div class="el caption" id="cap3">With <span class="grad">PsycheAI</span>,<br>it stays on your phone.</div>
+  <div class="el caption" id="cap3">Now watch<br><span class="grad">PsycheAI.</span></div>
   <div class="el" id="phone"><div class="notch"></div><div class="inside">📦</div><div class="lock">🔒 Read on your phone<span>Your files never leave it</span></div></div>
   <div class="el" id="summary"><b>SUMMARY</b>Name: <span class="bar"></span><br>@friend → <span class="tag">[P1]</span><br>Links: removed</div>
+  <div class="el" id="leaves"><div><b>0</b>photos</div><div><b>0</b>videos</div><div><b>~150 KB</b>of text</div></div>
   <div class="el" id="ent">Enterprise AI<small>doesn’t train on it · nothing kept</small></div>
 
-  <div class="el caption" id="cap4"><span class="grad">PsycheAI</span> keeps nothing.</div>
+  <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps nothing.</div>
   <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
   <div class="el" id="mine"><span class="ic">📱</span><b>Your card and report</b><small>saved only on your device</small></div>
 
@@ -116,16 +133,22 @@ const [ASK, UP, KEPT, PHONE, ANS, CLOSE] = S;
 const live = (s, t) => t >= s.start - 0.05 && t < s.end;
 const out = (s, t) => prog(t, s.end - 0.25, s.end);
 
-const QUESTION = 'Why not just upload my Instagram data to ChatGPT?';
+const QUESTION = 'Here’s my whole Instagram export. Tell me who I am.';
 // The cloud, from overlapping puffs.
 [[0, 120, 300], [180, 40, 360], [420, 70, 320], [560, 150, 240], [90, 190, 620]].forEach(([x, y, d]) => {
   const p = mk('puff', '', $('cloud')); Object.assign(p.style, { left: x + 'px', top: y + 'px', width: d + 'px', height: d * 0.72 + 'px' }); });
 mk('name', '☁️ ChatGPT’s servers', $('cloud'));
-const ITEMS = [['👤 Your name', 0], ['💬 Friends’ messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1]];
+const ITEMS = [['👤 Your name', 0], ['💬 Friends’ private messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1], ['🎥 Your videos', 1], ['🔍 Your searches', 1]];
 const items = ITEMS.map(([h]) => mk('item el', h, $('items')));
-const SPOTS = [[330, 610], [750, 610], [330, 720], [750, 720]];   // where each lands in the cloud: two rows, the label under them
+const SPOTS = [[300, 560], [760, 560], [300, 660], [760, 660], [300, 760], [760, 760]];   // where each lands in the cloud: two rows, the label under them
 
+// A shake and a flash on every hit: the hook's stamp, each warning, the switch to PsycheAI, the zeros.
+const HITS = () => [[ASK.marks[1], '#e0362c'], [UP.vo, null], [KEPT.vo, '#e0362c'], [KEPT.marks[1], '#e0362c'], [PHONE.start, '#ffffff'], [ANS.vo, null]];
 function render(t) {
+  { let sh = 0, fl = 0, col = '#fff';
+    HITS().forEach(([h, c]) => { const d = t - h; if (d >= 0 && d < 0.5) { sh = Math.max(sh, (1 - d / 0.5) ** 2); if (c && d < 0.35) { const f = (1 - d / 0.35) * (c === '#ffffff' ? 0.9 : 0.3); if (f > fl) { fl = f; col = c; } } } });
+    document.body.style.transform = sh ? 'translate(' + Math.sin(t * 90) * 18 * sh + 'px,' + Math.cos(t * 77) * 14 * sh + 'px) scale(' + (1 + 0.03 * sh) + ')' : '';
+    $('flash').style.opacity = fl; $('flash').style.background = col; }
   // Grey while ChatGPT has the data; the brand's ground from PsycheAI on.
   const g = 1 - easeIO(prog(t, PHONE.start - 0.2, PHONE.start + 0.4));
   $('grey').style.opacity = g;
@@ -136,7 +159,9 @@ function render(t) {
   { const s = ASK, a = back(prog(t, s.start, s.start + 0.35));
     show('ask', live(s, t) ? clamp(a * 2) * (1 - out(s, t)) : 0, 'translateY(' + (1 - Math.min(1, a)) * 40 + 'px)');
     $('typed').textContent = QUESTION.slice(0, Math.round(QUESTION.length * prog(t, s.vo, s.voEnd - 0.2)));
-    $('caret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.1 : 1; }
+    $('caret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.1 : 1;
+    const st = back(prog(t, s.marks[1] - 0.12, s.marks[1] + 0.12)), big = 1 + 1.6 * (1 - Math.min(1, prog(t, s.marks[1] - 0.12, s.marks[1] + 0.1)));
+    show('stop', live(s, t) && t >= s.marks[1] - 0.12 ? clamp(st * 3) * (1 - out(s, t)) : 0, 'translateX(-50%) rotate(-7deg) scale(' + big + ')'); }
 
   // 1-2: the export opens and its contents fly up into the cloud, which stays for the two warnings.
   { const on = t >= UP.start - 0.05 && t < KEPT.end, o = prog(t, KEPT.end - 0.25, KEPT.end);
@@ -146,10 +171,12 @@ function render(t) {
     const zipOn = t >= UP.start - 0.05 && t < UP.end;
     show('zip', zipOn ? clamp(c * 2) * (1 - out(UP, t)) : 0, 'rotate(' + Math.sin(t * 9) * 4 * prog(t, UP.vo, UP.marks[1]) + 'deg)');
     show('zipLabel', zipOn ? clamp(c * 2) * (1 - out(UP, t)) : 0);
-    items.forEach((d, i) => { const a = UP.marks[1] + i * 0.55 - 0.1, f = easeIO(prog(t, a, a + 0.7)), pop = back(prog(t, a - 0.05, a + 0.2));
+    items.forEach((d, i) => { const a = UP.marks[1] + i * 0.38 - 0.1, f = easeIO(prog(t, a, a + 0.7)), pop = back(prog(t, a - 0.05, a + 0.2));
       const [x1, y1] = SPOTS[i], x0 = 540, y0 = 1380;
       d.style.left = (x0 + (x1 - x0) * f) + 'px'; d.style.top = (y0 + (y1 - y0) * f) + 'px';
       show(d, on && t >= a - 0.05 ? clamp(pop * 2) * (1 - o) : 0, 'translate(-50%,-50%) scale(' + Math.min(1.05, pop) * (1 - 0.15 * f) + ')'); });
+    const u = easeIO(prog(t, UP.marks[1] - 0.2, UP.end - 0.2));
+    show('up', zipOn ? clamp(c * 2) * (1 - out(UP, t)) : 0); $('fill').style.width = (u * 100) + '%'; $('pct').textContent = Math.round(u * 100) + '%';
     [['w1', KEPT.vo], ['w2', KEPT.marks[1]]].forEach(([id, a], i) => { const p = back(prog(t, a - 0.15, a + 0.25));
       $(id).style.top = (1060 + i * 260) + 'px';
       show(id, t >= a - 0.15 && t < KEPT.end ? clamp(p * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, p)) + ') rotate(' + (i ? 1 : -1) + 'deg)'); }); }
@@ -162,6 +189,8 @@ function render(t) {
     $('summary').style.top = (1240 - leave * 640) + 'px';
     show('summary', on && t >= s.marks[1] - 0.2 ? clamp(sp * 2) * (1 - o) : 0, 'scale(' + Math.min(1.05, sp) * (1 - 0.2 * leave) + ')');
     const e = back(prog(t, s.marks[1] + 0.7, s.marks[1] + 1.0));
+    const lv = back(prog(t, s.marks[1] + 1.3, s.marks[1] + 1.6));
+    show('leaves', on && t >= s.marks[1] + 1.3 ? clamp(lv * 2) * (1 - o) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, lv)) + ')'); if ($('leaves').style.display === 'block') $('leaves').style.display = 'flex';
     show('ent', on && t >= s.marks[1] + 0.7 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + Math.min(1.05, e) + ')'); }
 
   // 4: PsycheAI's servers keep nothing (the zeros counting down onto 0), and the results sit on your phone.
