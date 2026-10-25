@@ -122,6 +122,12 @@ does your data go?" came out oddly on "data go", and "It's sent encrypted…" so
 starts "The summary is sent…". An ending on "PsycheAI takes your data privacy very seriously" was
 tried and dropped for "See for yourself".
 
+**Since 25 October 2026 it has music of its own** (the user wanted something else, near the other reels but not the
+launch video's track): warm lo-fi at 92, swung, in A flat (Abmaj7 Fm7 Dbmaj7 Eb7sus), electric piano and vinyl
+crackle under the hook, a soft boom-bap beat, swung hats and a round bass from Step 1, a gentle electric-piano
+melody on the last card, no risers, booms or bells, ending on a held chord. Step 5 now shrinks the phone and rises it,
+so its three points (*keeps no copy*, *No account needed*, *Hacked? No data to steal*) sit clear under it. The opening
+says "your data", not "your Instagram file". What follows describes the first music, kept for the record.
 The music is the main video's own track, so the two sound like one brand: it opens on the privacy
 break (pads, plucks and bells, no drums), a soft kick and then hats come in under the steps with a
 swoosh into each, and the last card gets the main video's ending (riser, hit, full beat, the bells

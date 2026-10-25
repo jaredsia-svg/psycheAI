@@ -377,8 +377,8 @@ function render(t) {
 
   // 5: the close.
   { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
-    // The code card, unspoken, in the pause between the two lines.
-    const kc = s.marks[1] - 0.8, k = back(prog(t, kc, kc + 0.35));
+    // The code card, unspoken, while the first line is said (no pause between the lines since 25 October 2026).
+    const kc = s.vo + 0.6, k = back(prog(t, kc, kc + 0.35));
     show('c1', on ? clamp(a * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
     show('code', on && t >= kc ? clamp(k * 2) : 0, 'translateY(' + (1 - Math.min(1, k)) * 50 + 'px)');
     show('tag', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0);

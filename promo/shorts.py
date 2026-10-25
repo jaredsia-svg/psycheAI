@@ -272,7 +272,7 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['{B} keeps no copy, and needs no account.', "Even if a hack occurs, there's no data to steal."], 0.8, True, 0.3),
     # "The code is public" is on screen, not said (25 October 2026).
     # The address in seven even syllables, the form made for Ryan (the quick one sounded off here, 25 October 2026).
-    (['Your data stays yours.', 'Try it at {PsycheAIdotIO}.'], 0.8, True, 0.9),
+    (['Your data stays yours.', 'Try it at {PsycheAIdotIO}.'], 0.8, True, 0.1),
 ], hold={0: 0.1, 1: 0.1, 2: 0.2, 3: 0.2, 4: 0.8, 5: 1.2, 6: 0.4}, lead={}, punch=(0,),  # quick cuts; spoken at 0.8 (25 October 2026, "shorten it more")  # quick cuts (25 October 2026)
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
@@ -844,68 +844,69 @@ elif R.get('mood') != 'thriller':
     at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
 
 if R.get('mood') == 'thriller':
-    # Rewritten 25 October 2026 ("sounds weird", and "that loud clash" at the switch). While ChatGPT has the data:
-    # dark but musical, D minor under soft strings, a plucked minor arpeggio and a gentle pulse, a soft hit on each
-    # warning. At "Now watch PsycheAI": no crash, a beat of air, then a bright bell run into a bouncy F major groove,
-    # kick on every beat, claps on two and four, offbeat chord stabs, an octave-bouncing bass and a syncopated
-    # plucked hook that repeats, so it sticks.
+    # One song in two states (25 October 2026, third version; the first two changed piece at the switch and
+    # "did not transition well"). One chord loop throughout, Dm Bb F C. While ChatGPT has the data it is heard
+    # muffled, as through a wall: pads, a soft electric piano, bass and a quiet kick, low-passed. Over the bar
+    # before "Now watch PsycheAI" the filter opens, and on the switch the same song is clear, with claps, hats,
+    # offbeat stabs, an octave-bouncing bass and a repeating plucked hook joining. No bells, no risers, no crash:
+    # it ends on one held electric-piano chord.
     sc = scenes
     HOOK = sc[0]['marks'][1]; DROP = sc[REVEAL]['start']; END = sc[-1]['voEnd'] + 0.6
     HITS = [sc[1]['vo'], sc[2]['vo'], sc[2]['marks'][1]]
     EIGHTH = BEAT / 2; SIX = BEAT / 4
+    LOOP = [[62, 65, 69], [58, 62, 65], [60, 65, 69], [60, 64, 67]]   # Dm, Bb, F, C (as voiced)
+    LOOP_ROOTS = [38, 34, 41, 36]
     K, C, H, HO = kick(), clap(), hat(), hat(True)
+    def lp(x, fc):
+        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+        return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
+    def ep(chord, length, gain=0.05):
+        # A soft electric piano: each note a sine with a bell-like second partial that fades fast.
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord:
+            f = hz(m)
+            y += np.sin(2 * np.pi * f * x) * np.exp(-x * 1.4) + 0.25 * np.sin(2 * np.pi * 2 * f * x) * np.exp(-x * 5)
+        return y * np.minimum(1, x / 0.006) * np.clip((length - x) / 0.25, 0, 1) * gain
     pump = np.ones(n, np.float32)
-    # The hook: chord-tone steps (index into the bar's chord, an octave up), on these sixteenths.
-    HOOK_STEPS = {0: 2, 3: 1, 6: 2, 8: 3, 10: 2, 13: 1, 14: 0}
+    HOOK_STEPS = {0: 2, 3: 1, 6: 2, 8: 0, 10: 2, 13: 1, 14: 0}
     b = 0.0
-    while b < END:
+    while b < END - BAR:
         k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
-        if b < DROP:
-            chord = CHORDS[bar_i]; root = ROOTS[bar_i]; tense = b >= HOOK
-            # The last bar before PsycheAI builds into it rather than stopping: the arpeggio doubles to
-            # sixteenths, a clap roll quickens and rises, the kick goes to eighths (25 October 2026: the two
-            # halves "did not transition well").
-            build = max(0.0, min(1.0, (b - (DROP - BAR)) / BAR)) if b >= DROP - BAR else 0.0
-            if e == 0: at(b, strings(chord, min(BAR * 1.02, DROP - b + 0.1), 0.035 if tense else 0.025), 1.0)
-            # The arpeggio: up and down the chord in eighths, soft; sixteenths in the build.
-            if e % 2 == 0 or build:
-                arp = [0, 1, 2, 3, 2, 1, 0, 1][(e // 2) % 8]
-                notes = chord + [chord[0] + 12]
-                at(b, pluck(notes[arp] + 12, (0.09 if tense else 0.06) * (1 + 0.6 * build)), 1.0, 0.3 if (e // 2) % 2 else -0.3)
-            if tense:
-                if e in (0, 8) or (build and e % 2 == 0): at(b, K, 0.5 + 0.3 * build)
-                if e % 4 == 2: at(b, H, 0.18, 0.25)
-                if e % 4 == 0: at(b, bass(root + 12, EIGHTH * 0.9), 0.55)
-                if build and (e % 2 == 0 or build > 0.5): at(b, C, 0.25 + 0.5 * build, 0.2 if e % 2 else -0.2)
-        elif b >= DROP and b < END - BAR:
-            L_ = R['lift'][bar_i]; root = R['lift_roots'][bar_i]
+        chord = LOOP[bar_i]; root = LOOP_ROOTS[bar_i]
+        clear = b >= DROP
+        if e == 0:
+            at(b, strings(chord, BAR * 1.02, 0.03), 1.0)
+            at(b, ep(chord, BAR * 0.95, 0.045), 1.0)
+        if e % 8 == 6: at(b, ep(chord[1:], BEAT * 1.2, 0.03), 1.0, 0.2)
+        if not clear:
+            if e % 4 == 0: at(b, bass(root, BEAT * 0.8), 0.9)
+            if b >= HOOK and e in (0, 8): at(b, K, 0.6)
+        else:
             if e % 4 == 0:
                 at(b, K, 1.0)
                 a_ = int(b * SR); Lp = int(0.18 * SR)
-                if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.5 + 0.5 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
-            if e in (4, 12): at(b, C, 0.75)
-            if e % 4 == 2: at(b, HO, 0.3, 0.3)
-            if e % 2 == 1: at(b, H, 0.14, -0.3)
-            # Offbeat stabs: the house "and".
-            if e % 4 == 2: at(b, stab(L_, EIGHTH * 0.8), 1.1)
-            # The bass bounces root, octave.
-            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.75), 1.0)
-            if e == 0: at(b, strings(L_, BAR * 1.02, 0.03), 1.0)
-            if e in HOOK_STEPS:
-                step = HOOK_STEPS[e]; m = (L_[step] if step < len(L_) else L_[0] + 12) + 12
-                at(b, pluck(m, 0.16), 1.0, 0.15); at(b, bell(m), 0.2, -0.2)
+                if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.55 + 0.45 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
+            if e in (4, 12): at(b, C, 0.7)
+            if e % 4 == 2: at(b, HO, 0.25, 0.3)
+            if e % 2 == 1: at(b, H, 0.12, -0.3)
+            if e % 4 == 2: at(b, stab(chord, EIGHTH * 0.8), 0.9)
+            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.75), 0.9)
+            if e in HOOK_STEPS: at(b, pluck(chord[HOOK_STEPS[e]] + 12, 0.15), 1.0, 0.15)
         b += SIX
-    # The hook lands on a soft hit; each warning on a hit, without the low rumble.
-    at(HOOK, impact(), 0.6)
-    for h in HITS: at(h, impact(), 0.55)
-    # Into the switch: a swell under the build, then a warm run up the F major chord (an octave lower and
-    # softer than it was: "too piercing"), no crash.
-    at(DROP - BAR, swell(BAR), 0.7)
-    for k, m in enumerate([65, 69, 72, 77, 81]): at(DROP + k * 0.05, bell(m), 0.35, 0.3 if k % 2 else -0.3)
-    at(DROP, strings([65, 69, 72, 77], BAR, 0.05), 1.0)
+    # A soft thud on each warning, muffled with the rest.
+    for h in HITS: at(h, impact(), 0.4)
+    # Muffled until the bar before the switch, then the filter opens across that bar.
+    d0 = int(max(0, DROP - BAR) * SR); d1 = min(n, int(DROP * SR))
+    if d1 > 0:
+        for ch in (0, 1):
+            dry = music[:d1, ch].copy(); wet = lp(dry, 650)
+            w = np.ones(d1, np.float32)
+            if d1 > d0: w[d0:d1] = np.linspace(1, 0, d1 - d0) ** 1.5
+            music[:d1, ch] = wet * w + dry * (1 - w)
+    # The end: one held F major chord on the electric piano, the bass under it.
     last = snap(END - BAR, BAR)
-    at(last, strings([65, 69, 72, 77], 3.0, 0.06), 1.0); at(last, bass(41, 2.5) * 0.7, 0.8)
-    for k, m in enumerate([65, 69, 72, 77]): at(last + k * 0.07, bell(m), 0.4, 0.3 if k % 2 else -0.3)
+    at(last, ep([53, 60, 65, 69, 72], 3.4, 0.06), 1.0); at(last, strings([65, 69, 72], 3.0, 0.03), 1.0)
+    at(last, bass(41, 2.5) * 0.7, 0.8)
 
 if R.get('mood') == 'character':
     # The slot's ticks: one each time a tile passes, slowing as it does (the stage moves by the same curve).

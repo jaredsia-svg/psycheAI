@@ -56,7 +56,8 @@ dur = [len(x) / SR for x in lines]
 word_marks = [stored['words'][name] for name in names]
 marks = [stored['lines'][name] for name in names]
 
-BPM = 118; BEAT = 60 / BPM; BAR = 4 * BEAT
+# Its own music since 25 October 2026 (it shared the launch video's track): warm lo-fi at 92, see below.
+BPM = 92; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 minimum = {}
@@ -85,9 +86,11 @@ voice /= max(1e-6, np.abs(voice).max()) / 0.9
 # The instruments, as in audio.py.
 rng = np.random.default_rng(11)
 def hz(m): return 440.0 * 2 ** ((m - 69) / 12)
-CHORDS = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]]  # C G Am F
-ROOTS = [36, 43, 45, 41]
-MELODY = [[76, 74, 72, 74], [74, 71, 67, 71], [72, 76, 79, 76], [77, 76, 72, 69]]
+# A flat major, jazzy: Abmaj7, Fm7, Dbmaj7, Eb7sus.
+CHORDS = [[56, 60, 63, 67], [53, 56, 60, 63], [49, 53, 56, 60], [51, 56, 58, 61]]
+ROOTS = [44, 41, 37, 39]
+# The melody on the last card: a beat each, None a rest.
+MELODY = [[75, None, 72, 70], [72, None, 68, None], [72, 70, 68, 65], [70, None, None, 67]]
 
 def lowpass(x, cutoff):
     a = np.exp(-2 * np.pi * cutoff / SR); out = np.empty_like(x); prev = 0.0
@@ -157,51 +160,60 @@ def impact():
     return (boom + noise) * 0.55
 
 sc = scenes
-STEPS = sc[1]['start']   # the five steps: a light pulse comes in under the break
-FINAL = sc[6]['start']   # the last card: the main video's ending
-K, C = kick(), clap()
-H, HO = hat(), hat(True)
+STEPS = sc[1]['start']   # the five steps: the beat comes in
+FINAL = sc[6]['start']   # the last card: the melody joins
+# Warm lo-fi (25 October 2026, in place of the launch video's track): electric piano and vinyl crackle under the
+# hook; a soft boom-bap beat, swung hats and a round bass from Step 1; a gentle electric-piano melody on the last
+# card. No risers, booms or bells; it ends on a held chord.
+SW = BEAT * 0.11   # the swing on every second eighth
+def rhodes(chord, length, gain=0.05):
+    L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+    for m in chord:
+        f = hz(m)
+        y += np.sin(2 * np.pi * f * x) * np.exp(-x * 1.1) + 0.3 * np.sin(2 * np.pi * 2 * f * x) * np.exp(-x * 4) \
+            + 0.08 * np.sin(2 * np.pi * 7 * f * x) * np.exp(-x * 30)
+    trem = 1 + 0.08 * np.sin(2 * np.pi * 4.5 * x)
+    return y * trem * np.minimum(1, x / 0.008) * np.clip((length - x) / 0.3, 0, 1) * gain
+def round_bass(m, length):
+    L = int(length * SR); x = np.arange(L) / SR
+    return np.sin(2 * np.pi * hz(m) * x) * np.minimum(1, x / 0.01) * np.clip((length - x) / 0.08, 0, 1) * np.exp(-x * 1.2) * 0.32
+def snare():
+    L = int(0.25 * SR); x = np.arange(L) / SR
+    noise = rng.standard_normal(L).astype(np.float32)
+    return (lowpass(noise, 3800) * np.exp(-x * 22) * 0.35 + np.sin(2 * np.pi * 190 * x) * np.exp(-x * 30) * 0.25)
+def soft_kick():
+    L = int(0.35 * SR); x = np.arange(L) / SR
+    f = 45 + 70 * np.exp(-x * 28)
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-x * 9) * 0.8
+def crackle(length):
+    L = int(length * SR); y = np.zeros(L, np.float32)
+    pops = rng.integers(0, L, int(length * 9))
+    y[pops] = rng.standard_normal(len(pops)).astype(np.float32) * 0.35
+    return lowpass(y, 3500) + lowpass(rng.standard_normal(L).astype(np.float32), 900) * 0.006
+K, SN, H = soft_kick(), snare(), hat()
 pump = np.ones(n, np.float32)
+at(0, crackle(TOTAL + 1), 1.0)
 b = 0.0
-while b < TOTAL + BEAT:
-    bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
-    full = FINAL <= b < TOTAL - 1.0
-    mid = STEPS <= b < FINAL
-    # A soft kick on every beat under the steps (the main video's hook pulse), four on the floor at the end.
-    if full or mid:
-        at(b, K, 0.95 if full else 0.45)
-        a = int(b * SR); L = int(0.22 * SR)
-        if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
-    if full and beat_i in (1, 3): at(b, C, 0.9)
-    if full or (mid and b >= sc[4]['start']):
-        for k in range(4 if full else 2):
-            at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
-        if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3)
-    if full:
-        at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0)
-        at(b, bass(ROOTS[bar_i], BEAT * 0.3), 0.7)
-    elif b >= STEPS:
-        at(b, bass(ROOTS[bar_i], BEAT * 0.8), 0.6)
-    notes = CHORDS[bar_i] + [CHORDS[bar_i][0] + 12]
-    for k in range(2):
-        m = notes[(beat_i * 2 + k) % 4] + 12
-        at(b + k * BEAT / 2, pluck(m, 0.1 if not full else 0.08), 1.0, 0.4 if k else -0.4)
-    if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
-    # The bell tune throughout; on the last card it leads, louder, with a soft octave above.
-    lead = min(1, (b - FINAL + BEAT) / (2 * BEAT)) if b >= FINAL else 0
-    at(b, bell(MELODY[bar_i][beat_i]), (0.7 if b < STEPS else 0.9) + 0.6 * lead, 0.15)
-    if lead: at(b, bell(MELODY[bar_i][beat_i] + 12), 0.28 * lead, -0.15)
-    b += BEAT
-
-# Pads under everything before the last card.
-for bar in range(int(TOTAL / BAR) + 2):
-    a0 = bar * BAR
-    if a0 >= FINAL: break
-    at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
-
-# A soft swoosh into each step, the riser and the hit into the last card.
-for k in (2, 3, 4, 5): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
-at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
+while b < TOTAL - BAR * 0.5:
+    k8 = int(round(b / (BEAT / 2))); bar_i = k8 // 8 % 4; e = k8 % 8
+    swung = b + (SW if e % 2 else 0)
+    chord = CHORDS[bar_i]
+    beat_on = b >= STEPS - 0.05
+    ending = b >= TOTAL - BAR * 1.5
+    if e == 0: at(b, rhodes(chord, BAR * 1.02), 1.0, -0.1)
+    if e == 5: at(swung, rhodes(chord[1:], BEAT * 1.1, 0.03), 1.0, 0.2)
+    if beat_on and not ending:
+        if e in (0, 5): at(swung, K, 0.75)
+        if e in (2, 6): at(b, SN, 0.6)
+        at(swung, H, 0.5 if e % 2 else 0.3, 0.25)
+        if e in (0, 3, 4, 7): at(swung, round_bass(ROOTS[bar_i] + (7 if e == 3 else 0), BEAT * (1.4 if e == 0 else 0.6)), 1.0 if e == 0 else 0.75)
+    if b >= FINAL - 0.05 and not ending and e % 2 == 0:
+        m = MELODY[bar_i][e // 2]
+        if m: at(b, rhodes([m + 12], BEAT * 1.6, 0.06), 1.0, 0.15)
+    b += BEAT / 2
+# The end: the first chord held, the bass under it, nothing struck after.
+last = snap(TOTAL - BAR * 1.5, BAR)
+at(last, rhodes(CHORDS[0] + [72], BAR * 1.5, 0.06), 1.0); at(last, round_bass(ROOTS[0], BAR), 0.9)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)

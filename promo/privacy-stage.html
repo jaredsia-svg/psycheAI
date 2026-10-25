@@ -137,9 +137,9 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="onphone"><span id="noNet">✈️ No internet needed</span></div>
   </div></div>
   <div class="pill" id="kb" style="top:1660px">100–200 KB of text</div>
-  <div class="pill" id="nocopy" style="top:1630px">PsycheAI keeps <em>no copy</em></div>
-  <div class="pill" id="noacct" style="top:1716px"><em>No account</em> needed</div>
-  <div class="pill" id="nohack" style="top:1802px">Hacked? <em>No data</em> to steal</div>
+  <div class="pill" id="nocopy" style="top:1180px">PsycheAI keeps <em>no copy</em></div>
+  <div class="pill" id="noacct" style="top:1270px"><em>No account</em> needed</div>
+  <div class="pill" id="nohack" style="top:1360px">Hacked? <em>No data</em> to steal</div>
 
   <div class="file" id="f0"><span class="ext" style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)">ZIP</span><div class="name">Instagram</div></div>
   <div class="file" id="f1"><span class="ext" style="background:#25d366">TXT</span><div class="name">WhatsApp</div></div>
@@ -231,9 +231,10 @@ function render(t) {
   // up at 600), and settles back to its own size as Step 4 starts, for the Vertex AI panel above it.
   // And again in Step 5, once the Vertex AI panel has gone and the results are in the phone.
   const zoomBack = easeIO(prog(t, s4.marks[1] - 0.25, s4.marks[1] + 0.35));
-  const zoom = Math.max(easeIO(prog(t, s1.start + 0.4, s1.start + 1.0)) * (1 - easeIO(prog(t, s3.start - 0.1, s3.start + 0.35))), zoomBack);
-  set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + ((1 - Math.min(1, phoneIn)) * 300 - 300 * zoom) + 'px) scale(' +
-    (1 + 0.4 * zoom + pulse * 0.015) + ')');
+  // In Step 5 it shrinks and rises instead (since 25 October 2026), so the three points under it are clear.
+  const zoom = easeIO(prog(t, s1.start + 0.4, s1.start + 1.0)) * (1 - easeIO(prog(t, s3.start - 0.1, s3.start + 0.35)));
+  set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + ((1 - Math.min(1, phoneIn)) * 300 - 300 * zoom - 380 * zoomBack) + 'px) scale(' +
+    (1 + 0.4 * zoom - 0.15 * zoomBack + pulse * 0.015) + ')');
   // The rows land one by one (Step 1), then fold into the summary (Step 2).
   const fold = easeIO(prog(t, s2.vo, s2.vo + 0.5));
   ['r0', 'r1', 'r2', 'r3'].forEach((id, i) => {
@@ -294,7 +295,7 @@ function render(t) {
   const ry = CLOUD.y + (SCREEN_MID.y + 20 - CLOUD.y) * down;
   // Grown with the phone: the phone scales from its top centre (540, 900), so the card and report take the
   // same mapping, scaled from their own top-left corners.
-  const grow = 1 + 0.4 * zoomBack, lift = -300 * zoomBack;
+  const grow = 1 - 0.15 * zoomBack, lift = -380 * zoomBack;
   const place = (id, x) => { $(id).style.left = (540 + (x - 540) * grow) + 'px'; $(id).style.top = (900 + lift + (ry - 120 - 900) * grow) + 'px'; };
   place('result', 540 - 182); place('report', 540 + 12);
   set('result', resOn, 'rotate(' + (-6 + 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
