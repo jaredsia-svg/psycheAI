@@ -8569,14 +8569,16 @@ pattern's line, which only the paid report shows, may name the blind spot plainl
 
 The question readers ask most before trying it is "why not just upload my data to ChatGPT?". Two short sections
 above the Instagram steps answer it, so a reader has it before they start the export.
-- **"Why PsycheAI stands out as your personal AI coach"** puts one question to both: "What would I regret most
+- **"Why PsycheAI stands out?"** (until 25 October 2026 "…as your personal AI coach") puts one question to both: "What would I regret most
   about my life when I'm old?".
   - The two real answers sit side by side, trimmed: ChatGPT's list that could fit anyone, and three lines of
     PsycheAI's, written from one reader's own data.
-  - The note under them says so. ChatGPT is shown with nothing to go on, because that is how it was asked. With an
-    upload it would not be generic, so the section claims only that it starts from what you tell it.
-- **"Why not just upload my data to ChatGPT?"** is a five-row table of where the data goes with each: the service,
-  what is sent, training, what is kept and how much is read.
+  - The note under them says only "Real answers, trimmed." (Its second sentence, "ChatGPT had nothing to go on;
+    PsycheAI read one reader's own data.", was dropped on 25 October 2026.) ChatGPT was asked with nothing to go on;
+    with an upload it would not be generic, so the section claims only that it starts from what you tell it.
+- **"Why not just upload my data to ChatGPT?"** is a table of where the data goes with each: the service,
+  what is sent, training and what is kept. (A fifth row, "Reads", on how much each takes in, was dropped on 25
+  October 2026.)
   - It is the FAQ answer of the same name in short. Its claims are the FAQ's, about ChatGPT's personal plans: it
     *may* train unless you turn that off, and it keeps data until you delete it and then up to 30 days.
   - It stays a table on a phone, in smaller type, because the two columns side by side are the point.

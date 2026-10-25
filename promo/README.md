@@ -458,18 +458,21 @@ The guide story is headed *Start here.* Text keeps clear of the top 220px and bo
 ### The ChatGPT reel
 
 ```
-npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 39 s
+npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 37 s
 ```
 
 *Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, and what is kept. It
 keeps to that question: the two answers to the regret question, its first cut of scene 4, belong to *why PsycheAI
 stands out*, since someone who has uploaded their data would not get a generic answer.
-Its own stage, `chatgpt-stage.html`, grey while ChatGPT has the data and the brand's colours from PsycheAI on; the
+Its own stage, `chatgpt-stage.html`: dark while ChatGPT has the data (its app in dark mode, a dark storm cloud, warnings glowing
+red), then at *Now watch PsycheAI* a white flash and a burst of the brand's three colours in rings wipes the dark away
+from the centre onto the bright ground (25 October 2026: "a bigger visual contrast at the switch"). Cuts are quick:
+each scene holds 0.1 to 0.6 s after its voice, leaves in 0.12 s, and the next opens on a zoom punch. The
 comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's, about its personal plans.
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | Thinking of uploading your Instagram data to ChatGPT? / Watch this first. | the question typed into a box *To ChatGPT*, the export attached; a red *✋ WAIT* stamp slams in |
+| 0 | Thinking of uploading your Instagram data to ChatGPT? / Watch this first. | a phone's ChatGPT app in dark mode, drawn generically with its name in plain text (no logo): *What can I help with?*, *instagram-export.zip* attached, the question typed out, a finger reaching for send; a red *✋ WAIT* stamp slams in as it touches. The cover is this moment |
 | 1 | Everything goes up, as it is. / Your name. Your friends' private messages. Your photos. | the Instagram icon (the export) with an upload bar; its contents fly up into one smooth cloud, *ChatGPT's servers* |
 | 2 | It may train on it. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud, each on a hit (25 October 2026: "unless you switch that off" dropped, at the user's ask; "may" keeps it true) |
 | 3 | Now watch PsycheAI. / Your files never leave your phone. Only a small, de-identified summary does. | *Enterprise AI* at the top, the export locked in a phone below it; the summary rises from the phone into the enterprise AI and is gone; then *0 photos · 0 videos · ~150 KB of text* under the phone |

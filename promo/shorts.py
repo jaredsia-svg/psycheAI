@@ -264,7 +264,7 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['Now watch {B}.', 'Your files never leave your phone. Only a small, de-identified summary does.'], 0.85, True, 0.3),
     (['Zero accounts. Zero exports kept.', 'Your results stay on your device.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
     (['Your data stays yours.', 'The code is public for you to inspect.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
-], hold={0: 0.3, 1: 0.5, 2: 0.6, 3: 1.2, 4: 1.0}, lead={}, punch=(0,),
+], hold={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.6, 4: 0.6}, lead={}, punch=(0,),  # quick cuts (25 October 2026)
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
     mood='thriller', bpm=120, reveal=3,
