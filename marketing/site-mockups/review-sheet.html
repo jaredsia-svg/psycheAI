@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review sheet mock-up</title>
+<!-- A mock-up of a more detailed "Review what gets sent" sheet (25 October 2026). Not wired to the app: the numbers
+     are sample data and every control works on them only. The site's own colours, so it reads as part of it. -->
+<style>
+:root { --bg: #faf7fb; --card: #fff; --ink: #241a2e; --ink-soft: #6b6076; --line: #e7dfec; --accent: #7b3fa0; --pink: #c2407a;
+  --ok: #2f8a57; --ok-bg: #e8f6ee; --warn: #b4572a; --warn-bg: #fdf1e8; --grad: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: rgba(36,26,46,.45); font: 15px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink);
+  display: flex; justify-content: center; align-items: flex-start; padding: 28px 16px; }
+.sheet { width: 100%; max-width: 620px; background: var(--card); border-radius: 22px; box-shadow: 0 30px 80px rgba(36,26,46,.35); overflow: hidden; }
+.body { padding: 22px 22px 8px; }
+h2 { margin: 0 0 4px; font-size: 1.35rem; letter-spacing: -.01em; }
+.muted { color: var(--ink-soft); margin: 0; font-size: .9rem; }
+.status { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; background: var(--ok-bg); color: #1f5e3b; font-size: .88rem; }
+.status b { color: var(--ok); }
+.status .dot { flex: none; width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(47,138,87,.18); }
+details.where { margin-top: 8px; font-size: .86rem; color: var(--ink-soft); }
+details.where summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.where ul { margin: 6px 0 0; padding-left: 18px; }
+.sec { margin-top: 20px; }
+.sec-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.sec-h h3 { margin: 0; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.sec-h small { color: var(--ink-soft); font-size: .8rem; }
+/* Quick choices. */
+.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.preset { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 10px; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.preset b { display: block; font-size: .9rem; }
+.preset span { display: block; font-size: .76rem; color: var(--ink-soft); margin-top: 2px; }
+.preset[aria-pressed="true"] { border-color: var(--accent); background: #f6effa; }
+/* Years. */
+.years { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 92px; padding: 0 2px; }
+.yr { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; border: 0; background: none; padding: 0; font: inherit; color: inherit; height: 100%; justify-content: flex-end; }
+.yr i { display: block; width: 100%; border-radius: 6px 6px 3px 3px; background: var(--grad); transition: opacity .15s, filter .15s; }
+.yr small { font-size: .72rem; color: var(--ink-soft); }
+.yr.out i { opacity: .18; filter: grayscale(1); }
+.yr.out small { text-decoration: line-through; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .82rem; cursor: pointer; color: var(--ink); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: #f6effa; color: var(--accent); font-weight: 600; }
+/* Keywords. */
+.kw { display: flex; gap: 8px; }
+.kw input { flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; }
+.kw button { border: 0; border-radius: 12px; padding: 0 16px; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.kwchip { display: inline-flex; align-items: center; gap: 6px; background: #fde4ef; color: var(--pink); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .82rem; font-weight: 600; }
+.kwchip button { border: 0; background: rgba(194,64,122,.15); color: var(--pink); width: 20px; height: 20px; border-radius: 50%; cursor: pointer; line-height: 1; }
+/* Rows. */
+.group { border: 1.5px solid var(--line); border-radius: 16px; margin-bottom: 10px; overflow: hidden; }
+.group-h { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #fbf8fc; font-size: .78rem; font-weight: 700; color: var(--ink-soft); }
+.tag { font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.tag.low { background: var(--ok-bg); color: var(--ok); }
+.tag.mid { background: #f3ecfb; color: var(--accent); }
+.tag.high { background: var(--warn-bg); color: var(--warn); }
+.row { border-top: 1px solid var(--line); }
+.row-main { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.row-main .txt { flex: 1; min-width: 0; }
+.row-main .t { font-weight: 650; }
+.row-main .d { font-size: .8rem; color: var(--ink-soft); }
+.row.off .t { color: var(--ink-soft); text-decoration: line-through; }
+.peek { border: 0; background: none; color: var(--accent); font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; padding: 4px 0; white-space: nowrap; }
+.sw { position: relative; flex: none; width: 46px; height: 28px; border-radius: 14px; border: 0; background: var(--accent); cursor: pointer; transition: background .15s; }
+.sw::after { content: ''; position: absolute; top: 3px; left: 21px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: left .15s; }
+.sw[aria-checked="false"] { background: #d6d0dc; }
+.sw[aria-checked="false"]::after { left: 3px; }
+.sw:disabled { opacity: .55; cursor: not-allowed; }
+.lock { font-size: .75rem; color: var(--ink-soft); }
+.items { display: none; padding: 0 14px 12px; }
+.row.open .items { display: block; }
+.item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: #faf7fb; margin-top: 6px; font-size: .84rem; }
+.item q { flex: 1; min-width: 0; quotes: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .when { color: var(--ink-soft); font-size: .74rem; white-space: nowrap; }
+.item .x { border: 0; background: none; color: var(--ink-soft); cursor: pointer; font-size: 1rem; padding: 0 2px; }
+.item.gone { opacity: .45; }
+.item.gone q { text-decoration: line-through; }
+.item .ph { color: var(--pink); font-weight: 700; }
+.more { font-size: .8rem; color: var(--ink-soft); margin-top: 8px; }
+.chat { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px dashed var(--line); font-size: .86rem; }
+.chat:first-child { border-top: 0; }
+.chat .who { font-weight: 700; color: var(--pink); width: 44px; }
+.chat .n { flex: 1; color: var(--ink-soft); }
+.chat .sw { width: 40px; height: 24px; }
+.chat .sw::after { width: 18px; height: 18px; left: 19px; }
+.chat .sw[aria-checked="false"]::after { left: 3px; }
+/* Footer. */
+.foot { position: sticky; bottom: 0; background: #fff; border-top: 1.5px solid var(--line); padding: 14px 22px 18px; }
+.meter { display: flex; align-items: center; gap: 12px; }
+.meter .lbl { font-size: .82rem; color: var(--ink-soft); white-space: nowrap; }
+.meter .bar { display: block; flex: 1; height: 10px; border-radius: 5px; background: #eee8f2; overflow: hidden; }
+.meter .fill { display: block; height: 100%; border-radius: 5px; background: var(--grad); transition: width .25s; }
+.meter .q { font-weight: 800; font-size: .86rem; min-width: 56px; text-align: right; }
+.facts { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: .8rem; color: var(--ink-soft); }
+.facts a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.hint { margin-top: 6px; font-size: .78rem; color: var(--warn); min-height: 1.1em; }
+.btns { display: flex; gap: 10px; margin-top: 12px; }
+.btn { flex: 1; border-radius: 999px; padding: 13px; font: inherit; font-weight: 800; cursor: pointer; border: 2px solid var(--accent); background: #fff; color: var(--accent); }
+.btn.go { flex: 2; border: 0; color: #fff; background: var(--grad); }
+@media (max-width: 480px) {
+  body { padding: 0; align-items: stretch; }
+  .sheet { border-radius: 0; max-width: none; }
+  .body { padding: 18px 16px 8px; }
+  .foot { padding: 12px 16px 16px; }
+  .presets { grid-template-columns: 1fr; }
+  .preset { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .preset span { margin: 0; text-align: right; }
+}
+</style></head>
+<body>
+<div class="sheet" role="dialog" aria-labelledby="t">
+  <div class="body">
+    <h2 id="t">Review what gets sent</h2>
+    <p class="muted">You decide exactly what Google Vertex AI reads. Change anything below; nothing goes until you press Send.</p>
+    <div class="status"><span class="dot"></span><div><b>Nothing has been sent yet.</b> Your files were read on this device, and stay here.
+      Already taken out: your name, contact details, links, and everyone else’s names and handles.</div></div>
+    <details class="where"><summary>Where does it go, and what happens to it?</summary>
+      <ul><li>To Google Vertex AI, Google Cloud’s enterprise tier, over an encrypted connection.</li>
+        <li>Google does not train its AI on it, and uses it only to write your card and report.</li>
+        <li>PsycheAI keeps no copy. Your results come back to this device only.</li></ul></details>
+
+    <div class="sec">
+      <div class="sec-h"><h3>Quick choice</h3></div>
+      <div class="presets">
+        <button class="preset" data-preset="all" aria-pressed="true"><b>Recommended</b><span>Everything below, for the fullest read</span></button>
+        <button class="preset" data-preset="nochats" aria-pressed="false"><b>Keep chats private</b><span>No direct messages</span></button>
+        <button class="preset" data-preset="min" aria-pressed="false"><b>Only my own posts</b><span>Captions &amp; comments, the minimum</span></button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><h3>From when</h3><small id="range-note">All 8 years</small></div>
+      <div class="years" id="years"></div>
+      <div class="chips" id="range-chips">
+        <button class="chip" data-from="2019" aria-pressed="true">All</button>
+        <button class="chip" data-from="2024" aria-pressed="false">Last 3 years</button>
+        <button class="chip" data-from="2026" aria-pressed="false">This year</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><h3>Leave out anything that mentions…</h3><small id="kw-note"></small></div>
+      <form class="kw" id="kw-form"><input id="kw-in" placeholder="A name, a place, a topic" aria-label="A word to leave out"><button>Leave out</button></form>
+      <div class="chips" id="kw-chips"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><h3>What’s included</h3><small>Tap Preview to see the exact lines</small></div>
+      <div id="groups"></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="meter"><span class="lbl">Read quality</span><span class="bar"><span class="fill" id="q-fill"></span></span><span class="q" id="q-txt"></span></div>
+    <div class="facts"><span id="size"></span><a href="#">Download exactly what’s sent</a></div>
+    <div class="hint" id="hint"></div>
+    <div class="btns"><button class="btn">Back</button><button class="btn go">Send this</button></div>
+  </div>
+</div>
+<script>
+// Sample data. Per year 2019–2026: how many items each type holds; "w" its weight in the read-quality meter.
+const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+const TYPES = [
+  { g: 'Your own words', tag: ['mid', 'Always included'], id: 'cap', t: 'Your captions & comments', d: 'A sample of what you wrote', req: true, w: 30,
+    by: [6, 8, 9, 10, 12, 14, 12, 8], bytes: 260,
+    items: [['Finally finished the half marathon 🏃', 2025], ['Sunday reset: plants, playlist, pasta', 2024], ['[P1] this is the best news 🎉', 2023], ['Nobody talks about how hard it is to start again', 2022]] },
+  { g: 'What you like and look for', tag: ['low', 'Less personal'], id: 'liked', t: 'Posts you liked', d: 'Captions others wrote, and their top hashtags', w: 15,
+    by: [0, 0, 0, 0, 0, 40, 60, 35], bytes: 180, items: [['5 habits of people who never burn out', 2025], ['#slowliving #homecafe', 2026], ['How to tell a friend you need space', 2024]] },
+  { g: 'What you like and look for', id: 'acc', t: 'Accounts you engage with', d: 'Names of public accounts you like and save most', w: 10,
+    by: [2, 3, 3, 4, 5, 7, 9, 7], bytes: 40, items: [['@natgeo', 2025], ['@runnersworld', 2025], ['@minimalistbaker', 2024]] },
+  { g: 'What you like and look for', id: 'srch', t: 'Your Instagram searches', d: 'Most repeated, none that look like a username', w: 10,
+    by: [0, 0, 1, 2, 3, 6, 8, 5], bytes: 40, items: [['marathon training plan', 2025], ['anxiety tips', 2024], ['tokyo cafes', 2026]] },
+  { g: 'What you like and look for', id: 'top', t: 'Instagram’s guesses about you', d: 'Topics Instagram already inferred', w: 5,
+    by: [0, 0, 0, 0, 0, 0, 0, 30], bytes: 25, items: [['Running', 2026], ['Personal finance', 2026], ['Coffee', 2026]] },
+  { g: 'Private conversations', tag: ['high', 'Most personal'], id: 'dm', t: 'Direct messages', d: 'Only your own messages, sampled; names already numbers', w: 25,
+    by: [20, 25, 30, 35, 40, 50, 60, 40], bytes: 150, chats: [['[N1]', 120], ['[N2]', 84], ['[N3]', 46], ['[N4]', 30], ['[N5]', 20]],
+    items: [['ok but honestly I think I need a break from all of it', 2025], ['[N2] you were right, as usual 😅', 2024], ['can’t wait for saturday!!', 2026]] },
+  { g: 'How you use Instagram', tag: ['low', 'Numbers only'], id: 'act', t: 'Activity & timing', d: 'Counts and when you’re active. No words.', w: 5,
+    by: [1, 1, 1, 1, 1, 1, 1, 1], bytes: 300, items: [['Most active 9–11pm, weekdays', 0], ['Posts: 214 · Likes: 6,402 · Saves: 388', 0]] },
+];
+const KW_HITS = { default: 3 };   // in the mock-up, each word leaves out a few lines
+const state = { on: Object.fromEntries(TYPES.map(t => [t.id, true])), from: 2019, chats: {}, gone: new Set(), kws: [], open: new Set() };
+TYPES.find(t => t.id === 'dm').chats.forEach(([n]) => state.chats[n] = true);
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en');
+
+function count(t) {
+  let n = t.by.reduce((a, c, i) => a + (YEARS[i] >= state.from ? c : 0), 0);
+  if (t.chats) { const all = t.chats.reduce((a, c) => a + c[1], 0), kept = t.chats.reduce((a, c) => a + (state.chats[c[0]] ? c[1] : 0), 0); n = Math.round(n * kept / all); }
+  n -= [...state.gone].filter(k => k.startsWith(t.id + ':')).length;
+  return Math.max(0, n);
+}
+function render() {
+  const groups = {}; TYPES.forEach(t => (groups[t.g] = groups[t.g] || []).push(t));
+  $('#groups').innerHTML = Object.entries(groups).map(([g, ts]) => {
+    const tag = ts[0].tag;
+    return '<div class="group"><div class="group-h">' + g + (tag ? '<span class="tag ' + tag[0] + '">' + tag[1] + '</span>' : '') + '</div>' + ts.map(t => {
+      const on = state.on[t.id], n = count(t), open = state.open.has(t.id);
+      const items = t.items.map(([q, y], i) => { const key = t.id + ':' + i, gone = state.gone.has(key) || (y && y < state.from);
+        return '<div class="item' + (gone ? ' gone' : '') + '"><q>' + q.replace(/\[(P|N)\d\]/g, m => '<span class="ph">' + m + '</span>') + '</q>' +
+          (y ? '<span class="when">' + y + '</span>' : '') + (t.req && !gone ? '' : '') +
+          '<button class="x" data-x="' + key + '" aria-label="' + (gone ? 'Put back' : 'Leave this out') + '">' + (gone ? '↺' : '✕') + '</button></div>'; }).join('');
+      const chats = t.chats ? '<div class="more">Each chat on its own. Only your messages are sent; theirs are not.</div>' + t.chats.map(([c, k]) =>
+        '<div class="chat"><span class="who">' + c + '</span><span class="n">' + k + ' of your messages</span>' +
+        '<button class="sw" role="switch" data-chat="' + c + '" aria-checked="' + state.chats[c] + '" aria-label="Chat with ' + c + '"' + (on ? '' : ' disabled') + '></button></div>').join('') : '';
+      return '<div class="row' + (on ? '' : ' off') + (open ? ' open' : '') + '"><div class="row-main"><div class="txt"><div class="t">' + t.t + '</div>' +
+        '<div class="d">' + (on && t.id !== 'act' ? fmt(n) + ' · ' : '') + t.d + '</div>' +
+        '<button class="peek" data-peek="' + t.id + '">' + (open ? 'Hide' : 'Preview' + (t.chats ? ' & choose chats' : '')) + '</button></div>' +
+        (t.req ? '<span class="lock">Needed</span>' : '') +
+        '<button class="sw" role="switch" data-t="' + t.id + '" aria-checked="' + on + '"' + (t.req ? ' disabled' : '') + ' aria-label="' + t.t + '"></button></div>' +
+        '<div class="items">' + chats + '<div class="more">' + (t.chats ? 'Some of what is sent:' : 'Some of what is sent. ✕ leaves a line out.') + '</div>' + items +
+        (n > t.items.length ? '<div class="more">…and ' + fmt(n - t.items.length) + ' more like these</div>' : '') + '</div></div>';
+    }).join('') + '</div>';
+  }).join('');
+  // Years: bar heights from every type's total in that year.
+  const tot = YEARS.map((y, i) => TYPES.reduce((a, t) => a + t.by[i], 0)), max = Math.max(...tot);
+  $('#years').innerHTML = YEARS.map((y, i) => '<button class="yr' + (y < state.from ? ' out' : '') + '" data-y="' + y + '" aria-label="From ' + y + '">' +
+    '<i style="height:' + Math.max(8, Math.round(70 * tot[i] / max)) + 'px"></i><small>’' + String(y).slice(2) + '</small></button>').join('');
+  document.querySelectorAll('#range-chips .chip').forEach(c => c.setAttribute('aria-pressed', +c.dataset.from === state.from));
+  const yrs = 2026 - state.from + 1;
+  $('#range-note').textContent = state.from === 2019 ? 'All 8 years' : 'From ' + state.from + ' · ' + yrs + (yrs === 1 ? ' year' : ' years');
+  // Keywords.
+  $('#kw-chips').innerHTML = state.kws.map(k => '<span class="kwchip">' + k + '<button data-kw="' + k + '" aria-label="Remove ' + k + '">×</button></span>').join('');
+  const kwN = state.kws.length * KW_HITS.default;
+  $('#kw-note').textContent = state.kws.length ? kwN + ' lines left out' : '';
+  // Footer: size and read quality.
+  let bytes = 0, q = 0;
+  TYPES.forEach(t => { if (!state.on[t.id]) return; const n = count(t), full = t.by.reduce((a, c) => a + c, 0);
+    bytes += n * t.bytes / (t.id === 'act' ? 8 : 1); q += t.w * Math.min(1, n / full); });
+  bytes = Math.max(0, bytes - kwN * 150) + 6000;
+  q = Math.round(q);
+  $('#q-fill').style.width = q + '%';
+  $('#q-txt').textContent = q >= 75 ? 'Strong' : q >= 50 ? 'Good' : q >= 30 ? 'Fair' : 'Thin';
+  $('#q-txt').style.color = q >= 50 ? 'var(--accent)' : 'var(--warn)';
+  $('#size').textContent = '~' + Math.round(bytes / 1000) + ' KB of text · no photos or videos';
+  $('#hint').textContent = q < 50 ? 'Less to go on means a vaguer card. You can always run it again with more.' : '';
+}
+function preset(p) {
+  TYPES.forEach(t => state.on[t.id] = p === 'all' || t.req || (p === 'nochats' && t.id !== 'dm'));
+  document.querySelectorAll('.preset').forEach(b => b.setAttribute('aria-pressed', b.dataset.preset === p));
+  render();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.t) { state.on[b.dataset.t] = b.getAttribute('aria-checked') !== 'true'; document.querySelectorAll('.preset').forEach(x => x.setAttribute('aria-pressed', false)); }
+  else if (b.dataset.chat) state.chats[b.dataset.chat] = b.getAttribute('aria-checked') !== 'true';
+  else if (b.dataset.peek) state.open.has(b.dataset.peek) ? state.open.delete(b.dataset.peek) : state.open.add(b.dataset.peek);
+  else if (b.dataset.x) state.gone.has(b.dataset.x) ? state.gone.delete(b.dataset.x) : state.gone.add(b.dataset.x);
+  else if (b.dataset.y) state.from = +b.dataset.y;
+  else if (b.dataset.from) state.from = +b.dataset.from;
+  else if (b.dataset.preset) return preset(b.dataset.preset);
+  else if (b.dataset.kw) state.kws = state.kws.filter(k => k !== b.dataset.kw);
+  else return;
+  render();
+});
+$('#kw-form').addEventListener('submit', e => { e.preventDefault(); const v = $('#kw-in').value.trim(); if (v && !state.kws.includes(v)) state.kws.push(v); $('#kw-in').value = ''; render(); });
+// The mock-up's opening state: one chat opened, to show the per-chat switches. ?state=edited shows choices made.
+if (/state=edited/.test(location.search)) { state.from = 2024; state.kws = ['Sam']; state.chats['[N3]'] = false; state.open.add('dm'); state.gone.add('dm:0'); }
+render();
+</script>
+</body></html>
