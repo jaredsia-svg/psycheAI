@@ -74,7 +74,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   font-size: 92px; font-weight: 950; letter-spacing: .02em; white-space: nowrap; box-shadow: 0 30px 80px rgba(224,54,44,.35); }
 #flash { position: absolute; inset: 0; z-index: 50; pointer-events: none; opacity: 0; }
 #attach { display: inline-block; margin-top: 22px; padding: 14px 26px; border-radius: 22px; background: #f0eef3; font-size: 36px; font-weight: 800; color: #4b4553; }
-#up { z-index: 24; left: 140px; right: 140px; top: 1660px; }
+#up { z-index: 24; left: 140px; right: 140px; top: 1720px; }
 #up .lbl { display: flex; justify-content: space-between; font-size: 36px; font-weight: 850; color: #4b4553; margin-bottom: 14px; }
 #up .track { height: 30px; border-radius: 15px; background: rgba(0,0,0,.1); overflow: hidden; }
 #up .fill { height: 100%; width: 0; border-radius: 15px; background: #d9625a; }
@@ -140,7 +140,7 @@ const QUESTION = 'Here’s my whole Instagram export. Tell me who I am.';
 mk('name', '☁️ ChatGPT’s servers', $('cloud'));
 const ITEMS = [['👤 Your name', 0], ['💬 Friends’ private messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1], ['🎥 Your videos', 1], ['🔍 Your searches', 1]];
 const items = ITEMS.map(([h]) => mk('item el', h, $('items')));
-const SPOTS = [[300, 560], [760, 560], [300, 660], [760, 660], [300, 760], [760, 760]];   // where each lands in the cloud: two rows, the label under them
+const SPOTS = [[300, 530], [760, 530], [300, 615], [760, 615], [300, 700], [760, 700]];   // where each lands in the cloud: two rows, the label under them
 
 // A shake and a flash on every hit: the hook's stamp, each warning, the switch to PsycheAI, the zeros.
 const HITS = () => [[ASK.marks[1], '#e0362c'], [UP.vo, null], [KEPT.vo, '#e0362c'], [KEPT.marks[1], '#e0362c'], [PHONE.start, '#ffffff'], [ANS.vo, null]];
