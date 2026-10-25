@@ -32,6 +32,16 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .sw i { position: relative; flex: none; width: 58px; height: 32px; border-radius: 999px; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
 .sw i::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff;
   transform: translateX(calc(var(--k, 1) * 26px)); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.rvLabel { margin: 4px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .05em; white-space: nowrap; text-transform: uppercase; color: #8b7a99; }
+#rvInput { height: 46px; padding: 0 14px; border-radius: 14px; border: 2px solid #e6d6f0; display: flex; align-items: center; font-size: 21px; font-weight: 650; }
+#rvCaret { display: inline-block; width: 2px; height: 24px; margin-left: 2px; background: #8a3fd0; }
+#rvChipRow { display: flex; align-items: center; gap: 10px; height: 44px; margin-bottom: 8px; }
+#rvChip { flex: none; white-space: nowrap; padding: 5px 12px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 19px; font-weight: 800; }
+#rvChip em { font-style: normal; opacity: .6; }
+#rvGone { font-size: 14px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
+.sw small { margin-left: 6px; font-size: 16px; font-weight: 800; color: #e0457b; }
+.sw { justify-content: flex-start; }
+.sw i { margin-left: auto; }
 #sendBtn { margin-top: 18px; padding: 16px; border-radius: 999px; text-align: center; color: #fff; font-size: 24px; font-weight: 850;
   background: linear-gradient(90deg, #8a3fd0, #e0457b); box-shadow: 0 10px 24px rgba(224,69,123,.35); }
 #sent { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font-size: 30px; font-weight: 850; line-height: 1.25; color: #4a2366; }
@@ -89,7 +99,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">Instagram file</span> onto PsycheAI?</div></div>
   <div class="head" id="h1" style="top:230px;font-size:70px"><div><span class="step">Step 1</span></div><div>Your files are loaded<br><span class="grad">on your phone</span>,<br>not uploaded</div></div>
   <div class="head" id="h2" style="top:230px;font-size:60px;left:40px;right:40px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made<span class="later">,</span><br><span class="later">with names and handles removed</span></div></div>
-  <div class="head" id="h3" style="top:230px;font-size:66px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">and <span class="grad">untick</span> anything you&rsquo;d rather keep</span></div></div>
+  <div class="head" id="h3" style="top:230px;font-size:62px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">leave out any <span class="grad">topic</span>,</span><br><span class="later2">and switch off any <span class="grad">chat</span></span></div></div>
   <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>The summary is sent<br><span class="grad">encrypted</span></div></div>
   <div class="head" id="h5" style="top:230px;font-size:72px"><div><span class="step">Step 5</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
 
@@ -113,10 +123,13 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     </div>
     <!-- the app's review sheet, "Review what gets sent": a switch a kind of data -->
     <div id="review"><h5>Review what gets sent</h5>
-      <div class="sw on">Captions &amp; comments<i></i></div>
-      <div class="sw on">Activity &amp; timing<i></i></div>
-      <div class="sw on" id="swOff">Google searches<i></i></div>
-      <div class="sw on">WhatsApp chats<i></i></div>
+      <div class="rvLabel">Leave out anything mentioning</div>
+      <div id="rvInput"><span id="rvTyped"></span><b id="rvCaret"></b></div>
+      <div id="rvChipRow"><span id="rvChip">work <em>×</em></span><span id="rvGone">8 posts &amp; messages removed</span></div>
+      <div class="rvLabel">Direct messages</div>
+      <div class="sw on">Sarah Kim <small>[t1]</small><i></i></div>
+      <div class="sw on" id="swOff">Jordan Lee <small>[t2]</small><i></i></div>
+      <div class="sw on">Mum <small>[t3]</small><i></i></div>
       <div id="sendBtn">Send this</div>
     </div>
     <div id="sent"><svg viewBox="0 0 48 48" width="96" height="96" fill="none" stroke="#e0457b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="19" stroke="#f0d6e6"/><path d="M15 24.5l6.5 6.5L33 18"/></svg><div>Summary sent,<br>encrypted</div></div>
@@ -172,6 +185,9 @@ function head(i, t) {
     el.style.opacity = clamp(p * 2) * out; el.style.transform = 'translateY(' + (1 - ease(p)) * 40 + 'px) scale(' + (0.7 + 0.3 * back(p)) + ')'; });
   // A line's second half (.later) comes in when the voice reaches it.
   $('h' + i).querySelectorAll('.later').forEach(el => { const p = prog(t, s.marks[1] - 0.2, s.marks[1] + 0.1);
+    el.style.opacity = clamp(p * 2); el.style.filter = 'blur(' + (1 - p) * 8 + 'px)'; });
+  // And a third part (.later2), when there is one, with the line's third phrase.
+  $('h' + i).querySelectorAll('.later2').forEach(el => { const m = s.marks[2] || s.marks[1], p = prog(t, m - 0.2, m + 0.1);
     el.style.opacity = clamp(p * 2); el.style.filter = 'blur(' + (1 - p) * 8 + 'px)'; });
 }
 // Where things sit: the phone's screen, and the Vertex panel above it.
@@ -243,10 +259,19 @@ function render(t) {
   $('trail').style.top = (CLOUD.y + 100) + 'px'; $('trail').style.height = (PHONE.y - CLOUD.y - 100) * trailK + 'px';
   $('trail').style.opacity = trailK; $('trail').style.display = trailK > 0 ? 'block' : 'none';
   $('summary').style.opacity = clamp(sumIn * 2) * (1 - prog(t, sR.start - 0.05, sR.start + 0.2));
-  // Step 3: the review sheet; one switch goes off on "untick", then "Send this" is pressed and the sheet goes.
+  // Step 3: the review sheet. A topic is typed in as "topic" is said and becomes a chip, its posts and
+  // messages gone; a chat is switched off on "off"; then "Send this" is pressed and the sheet goes.
   const revIn = back(prog(t, sR.start, sR.start + 0.35)), revOut = prog(t, s3.start + 0.3, s3.start + 0.5);
   set('review', clamp(revIn * 2) * (1 - revOut), 'scale(' + Math.min(1.04, revIn) * (1 - 0.1 * revOut) + ')');
-  const untick = (sR.words.find(([w]) => w === 'untick') || [0, sR.marks[1] + 0.3])[1], off = easeIO(prog(t, untick, untick + 0.3));
+  const said3 = (w, fb) => (sR.words.find(([x]) => x === w) || [0, fb])[1];
+  const typeAt = said3('topic', sR.marks[1] + 0.5) - 0.35, WORD = 'work';
+  const typed = Math.round(WORD.length * prog(t, typeAt, typeAt + 0.45)), entered = t >= typeAt + 0.6;
+  $('rvTyped').textContent = entered ? '' : WORD.slice(0, typed);
+  $('rvCaret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.15 : 1;
+  const chip = back(prog(t, typeAt + 0.6, typeAt + 0.85));
+  $('rvChip').style.opacity = clamp(chip * 2); $('rvChip').style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')';
+  $('rvGone').style.opacity = prog(t, typeAt + 0.8, typeAt + 1.0);
+  const untick = said3('off', sR.marks[2] || sR.marks[1] + 0.8), off = easeIO(prog(t, untick, untick + 0.3));
   $('swOff').style.setProperty('--k', String(1 - off)); $('swOff').style.color = mixHex('#2a1238', '#b9a8c6', off);
   $('swOff').querySelector('i').style.background = off > 0.5 ? '#e4d8ee' : '';
   const press = prog(t, s3.start - 0.3, s3.start - 0.15) * (1 - prog(t, s3.start - 0.15, s3.start));

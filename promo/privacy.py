@@ -18,7 +18,8 @@ LINES = [
     (['What happens when you load your Instagram file onto {B}?'], 0.92, None),
     (['Your files are loaded on your phone, not uploaded.'], 0.92, None),
     (['Only a short summary is made,', 'with names and handles removed.'], 0.92, None),
-    (['You review it,', "and untick anything you'd rather keep."], 0.92, None),
+    # Step 3 since 25 October 2026: the review sheet's two strongest choices, a topic and a chat.
+    (['You review it,', 'leave out any topic,', 'and switch off any chat.'], 0.92, None),
     (['The summary is sent encrypted to Google Vertex AI,', 'which never trains on it.'], 0.92, None),
     (['Your results come back to you,', 'and {B} keeps no copy.'], 0.92, None),
     (['See for yourself at {B} dot I O.'], 0.9, None),

@@ -267,7 +267,8 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['On your phone, a summary is made,', 'your name blanked out,', 'friends turned into numbers,', 'contacts and links removed.'], 0.85, True, 0.15),
     # The review sheet: the reader switches off what they would rather keep back (the app's own rows).
     # "Untick" was said "untake", and once "can't untake" (25 October 2026); the sheet's rows are switches anyway.
-    (["You review it before it's sent for analysis,", 'and can switch off anything.'], 0.85, True, 0.15),
+    # The review's two strongest choices, as the privacy reel's Step 3 (25 October 2026): a topic and a chat.
+    (["You review it before it's sent for analysis,", 'leave out any topic,', 'and switch off any chat.'], 0.85, True, 0.15),
     (['{B} keeps no copy, and needs no account.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
     # "The code is public" is on screen, not said (25 October 2026).
     # The address in seven even syllables, the form made for Ryan (the quick one sounded off here, 25 October 2026).
