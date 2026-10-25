@@ -3800,7 +3800,8 @@ keeps.**
 
 **Agreement before anything is sent.** The terms used to be agreed only at payment, and the free path
 never reaches the payment sheet. So the review sheet now says, just above **Send this**, *By sending,
-you confirm you are 18 or over and agree to the terms and privacy policy* (`#review-legal`). Its
+you agree to the terms and privacy policy* (`#review-legal`; until 25 October 2026 it also had the reader confirm
+they were 18 or over, which the terms themselves still require). Its
 opening line said *None of this data or the results can be accessed by PsycheAI or others*, which
 was not true: Gemini or Claude read the data, and the server holds the finished report in memory for
 four hours. It now says *PsycheAI keeps no copy of this data or your report*. The review rows count

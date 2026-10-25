@@ -7955,9 +7955,9 @@ check('the schema requires evidence on where they align and differ',
       .map(n => [n, /<title>(.*?)<\/title>/.exec(html[n])[1].length, /<meta name="description" content="(.*?)">/.exec(html[n])[1].length]);
     check('titles fit a search result (60 characters) and descriptions too (155)',
       lengths.every(([, t, d]) => t <= 60 && d <= 155), JSON.stringify(lengths));
-    check('the review sheet does not claim nobody can access the data, and asks for 18+ and the terms before sending',
+    check('the review sheet does not claim nobody can access the data, and asks for the terms before sending',
       !/can be accessed by PsycheAI or others/.test(index) && /PsycheAI keeps no copy of\s+this data or your report/.test(index) &&
-        /id="review-legal">By sending, you confirm you are 18 or over and agree to the/.test(index) &&
+        /id="review-legal">By sending, you agree to the/.test(index) &&
         index.indexOf('id="review-legal"') < index.indexOf('id="review-send"'));
     const everywhere = pages.map(n => html[n]).join('') + readFileSync(join(root, 'docs', 'copy.js'), 'utf8');
     check('Psyche Sync promises one thing everywhere: how to relate better to each other',

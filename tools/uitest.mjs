@@ -5119,8 +5119,8 @@ try {
   // so nothing due after it should read as a charge.
   {
     const review = await page.locator('#review-dialog').innerText();
-    check('the review sheet asks for 18+ and the terms right above Send, and claims nothing it cannot keep',
-      /By sending, you confirm you are 18 or over and agree to the terms and privacy policy\./.test(review) &&
+    check('the review sheet asks for the terms right above Send, and claims nothing it cannot keep',
+      /By sending, you agree to the terms and privacy policy\./.test(review) &&
         /PsycheAI keeps no copy of this data or your report/.test(await page.locator('#review-dialog').textContent()) &&
         !/accessed by PsycheAI or others/.test(review),
       review.slice(0, 200));
