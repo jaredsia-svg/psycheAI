@@ -61,18 +61,30 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   font-size: 50px; font-weight: 900; line-height: 1.2; box-shadow: 0 0 60px rgba(255,90,79,.35); }
 .warn small { display: block; margin-top: 8px; font-size: 34px; font-weight: 650; color: #e2b8b4; }
 /* 3: the phone. */
-#phone { z-index: 20; left: 350px; top: 720px; width: 380px; height: 660px; border-radius: 70px; border: 14px solid #2a1238; background: #fff;
+#phone { z-index: 20; left: 330px; top: 520px; width: 420px; height: 720px; border-radius: 70px; border: 14px solid #2a1238; background: #fff;
   box-shadow: 0 40px 100px rgba(90,40,120,.3); }
 #phone .notch { position: absolute; left: 50%; top: 18px; width: 140px; height: 30px; margin-left: -70px; border-radius: 16px; background: #2a1238; }
-#phone .inside { position: absolute; left: 105px; top: 130px; width: 150px; height: 150px; }
-#phone .lock { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-size: 32px; font-weight: 850; color: #7b3fa0; }
+#phone .inside { position: absolute; left: 110px; top: 150px; width: 170px; height: 170px; }
+#phone .lock { position: absolute; left: 0; right: 0; top: 380px; text-align: center; font-size: 32px; font-weight: 850; color: #7b3fa0; }
 #phone .lock span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; margin-top: 6px; }
-#summary { z-index: 26; left: 380px; width: 320px; padding: 22px 26px; border-radius: 26px; background: #fff; border: 4px solid #c79bff;
-  box-shadow: 0 20px 50px rgba(138,63,208,.3); font-size: 28px; font-weight: 700; line-height: 1.45; }
-#summary b { display: block; font-size: 26px; font-weight: 900; letter-spacing: .08em; color: #8a3fd0; margin-bottom: 6px; }
-#summary .bar { display: inline-block; width: 120px; height: 24px; border-radius: 6px; background: #2a1238; vertical-align: middle; }
-#summary .tag { color: #c2407a; font-weight: 850; }
-#ent { z-index: 24; left: 230px; right: 230px; top: 440px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
+#badge { z-index: 27; left: 660px; top: 470px; width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; font-size: 76px;
+  background: linear-gradient(135deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 50px rgba(224,69,123,.45); border: 8px solid #fff; }
+#deid { z-index: 22; left: 60px; right: 60px; top: 560px; padding: 38px 44px 30px; border-radius: 44px; background: #fff;
+  border: 5px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
+  box-shadow: 0 30px 80px rgba(138,63,208,.22); transform-origin: 50% 0; }
+#deid .ttl { font-size: 30px; font-weight: 900; letter-spacing: .1em; color: #8a3fd0; margin-bottom: 18px; }
+#deid .ttl span { letter-spacing: 0; font-weight: 700; color: #8b8096; margin-left: 10px; }
+#deid .r { display: flex; align-items: center; gap: 24px; padding: 16px 0; border-top: 2px solid #f0eaf4; font-size: 42px; font-weight: 700; color: #2a1238; white-space: nowrap; }
+#deid .k { width: 190px; flex: none; font-size: 30px; font-weight: 750; color: #8b8096; }
+#deid .sw { position: relative; display: inline-block; }
+#deid .raw { position: relative; display: inline-block; }
+#deid .bar { position: absolute; left: -6px; top: 4px; bottom: 4px; width: 0; border-radius: 8px; background: #2a1238; }
+#deid .strike { position: absolute; left: -4px; top: 52%; height: 6px; width: 0; border-radius: 3px; background: #e0457b; }
+#deid .new { position: absolute; left: 0; top: 50%; padding: 4px 18px; border-radius: 14px; background: #fde4ef; color: #c2407a; font-weight: 900; opacity: 0; white-space: nowrap; }
+#deid .gone { margin-left: 18px; padding: 4px 16px; border-radius: 14px; background: #f1eef4; color: #8b8096; font-size: 30px; font-weight: 800; opacity: 0; }
+#kb { z-index: 24; left: 0; right: 0; top: 600px; text-align: center; font-size: 36px; font-weight: 800; color: #4a2366; line-height: 1.35; }
+#kb span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; }
+#ent { z-index: 24; left: 230px; right: 230px; top: 400px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.4); }
 #ent small { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; opacity: .92; }
 /* 4: nothing kept. */
@@ -110,7 +122,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #up .lbl { display: flex; justify-content: space-between; font-size: 36px; font-weight: 850; color: #e6e3ea; margin-bottom: 14px; }
 #up .track { height: 30px; border-radius: 15px; background: rgba(255,255,255,.12); overflow: hidden; }
 #up .fill { height: 100%; width: 0; border-radius: 15px; background: #ff5a4f; box-shadow: 0 0 24px rgba(255,90,79,.6); }
-#leaves { z-index: 26; left: 90px; right: 90px; top: 1460px; display: none; gap: 18px; justify-content: center; }
+#leaves { z-index: 26; left: 90px; right: 90px; top: 1330px; display: none; gap: 18px; justify-content: center; }
 #leaves div { padding: 18px 24px; border-radius: 24px; background: #fff; text-align: center; font-size: 30px; font-weight: 750; color: #6b6076;
   box-shadow: 0 16px 40px rgba(90,40,120,.16); }
 #leaves b { display: block; font-size: 56px; font-weight: 950; color: #c2407a; line-height: 1.1; }
@@ -152,9 +164,20 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 
   <div class="el caption" id="cap3">Now watch<br><span class="grad">PsycheAI.</span></div>
   <div class="el" id="phone"><div class="notch"></div><div class="inside"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig2" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig2)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div><div class="lock">🔒 Read on your phone<span>Your files never leave it</span></div></div>
-  <div class="el" id="summary"><b>SUMMARY</b>Name: <span class="bar"></span><br>@friend → <span class="tag">[P1]</span><br>Links: removed</div>
-  <div class="el" id="leaves"><div><b>0</b>photos</div><div><b>0</b>videos</div><div><b>~150 KB</b>of text</div></div>
+  <div class="el" id="badge">🔒</div>
+  <div class="el" id="leaves"><div><b>0</b>photos</div><div><b>0</b>videos</div><div><b>0</b>files</div></div>
+
+  <div class="el caption" id="capD">De-identified<br><span class="grad">on your phone.</span></div>
+  <div class="el" id="deid"><div class="ttl">YOUR SUMMARY<span>· made on your phone</span></div>
+    <div class="r"><span class="k">Name</span><span class="raw" data-fx="bar" data-m="0" data-d="0.75">Jamie Lee<i class="bar"></i></span></div>
+    <div class="r"><span class="k">Messages</span><span>with</span><span class="sw" data-fx="swap" data-m="1"><span class="raw">Sarah Kim<i class="strike"></i></span><span class="new">[N1]</span></span></div>
+    <div class="r"><span class="k">Comment</span><span class="sw" data-fx="swap" data-m="1" data-d="0.25"><span class="raw">@tom.r<i class="strike"></i></span><span class="new">[P1]</span></span><span>loved this!</span></div>
+    <div class="r"><span class="k">Email</span><span class="raw" data-fx="cut" data-m="2">jamie.lee@gmail.com<i class="strike"></i></span><span class="gone">removed</span></div>
+    <div class="r"><span class="k">Phone</span><span class="raw" data-fx="cut" data-m="2" data-d="0.2">+1 415 555 0134<i class="strike"></i></span><span class="gone">removed</span></div>
+    <div class="r"><span class="k">Link</span><span class="raw" data-fx="cut" data-m="2" data-d="0.4">instagram.com/p/C8x<i class="strike"></i></span><span class="gone">removed</span></div>
+  </div>
   <div class="el" id="ent">Enterprise AI<small>doesn’t train on it · nothing kept</small></div>
+  <div class="el" id="kb">~150 KB of text<span>reviewed by you before it’s sent</span></div>
 
   <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps nothing.</div>
   <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
@@ -177,7 +200,7 @@ const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c *
 const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
   if (tf !== undefined) el.style.transform = tf; };
 const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
-const [ASK, UP, KEPT, PHONE, ANS, CLOSE] = S;
+const [ASK, UP, KEPT, PHONE, DEID, ANS, CLOSE] = S;
 const live = (s, t) => t >= s.start - 0.05 && t < s.end;
 const out = (s, t) => prog(t, s.end - 0.12, s.end);   // quick cuts
 
@@ -242,20 +265,41 @@ function render(t) {
       $(id).style.top = (1060 + i * 260) + 'px';
       show(id, t >= a - 0.15 && t < KEPT.end ? clamp(p * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, p)) + ') rotate(' + (i ? 1 : -1) + 'deg)'); }); }
 
-  // 3: the phone keeps the export; only the summary leaves, up to the enterprise AI.
+  // 3: the phone keeps the export: it locks as the voice says the files never leave it.
   { const s = PHONE, on = live(s, t), o = out(s, t), a = back(prog(t, s.start, s.start + 0.45));
     const slam = back(prog(t, s.start + 0.05, s.start + 0.35));
     show('cap3', on && t >= s.start + 0.05 ? clamp(slam * 3) * (1 - o) : 0, 'scale(' + (1 + 0.8 * (1 - Math.min(1, slam))) + ')');
     show('phone', on ? clamp(a * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, a)) * 200 + 'px)');
-    // The enterprise AI is there first; the summary rises from the phone into it and is gone (nothing kept).
-    const e = back(prog(t, s.marks[1] - 0.4, s.marks[1] - 0.1));
-    const leave = easeIO(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.9)), sp = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.1)), gone = prog(t, s.marks[1] + 0.7, s.marks[1] + 0.95);
-    $('summary').style.top = (1000 - leave * 520) + 'px';
-    show('summary', on && t >= s.marks[1] - 0.2 && gone < 1 ? clamp(sp * 2) * (1 - gone) * (1 - o) : 0, 'scale(' + Math.min(1.05, sp) * (1 - 0.45 * leave) + ')');
-    const lv = back(prog(t, s.marks[1] + 1.1, s.marks[1] + 1.4));
-    show('leaves', on && t >= s.marks[1] + 1.1 ? clamp(lv * 2) * (1 - o) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, lv)) + ')'); if ($('leaves').style.display === 'block') $('leaves').style.display = 'flex';
-    const gulp = Math.sin(Math.PI * prog(t, s.marks[1] + 0.7, s.marks[1] + 1.0)) * 0.06;
-    show('ent', on && t >= s.marks[1] - 0.4 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')'); }
+    const k = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.2));
+    show('badge', on && t >= s.marks[1] - 0.1 ? clamp(k * 2) * (1 - o) : 0, 'scale(' + (1 + 1.2 * (1 - Math.min(1, k))) + ') rotate(' + (1 - Math.min(1, k)) * -30 + 'deg)');
+    const lv = back(prog(t, s.marks[1] + 0.5, s.marks[1] + 0.8));
+    show('leaves', on && t >= s.marks[1] + 0.5 ? clamp(lv * 2) * (1 - o) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, lv)) + ')'); if ($('leaves').style.display === 'block') $('leaves').style.display = 'flex'; }
+
+  // 3b: the de-identification, each step as the voice names it (the FAQ's list): the name blacked out, friends
+  // turned into [N1] and [P1], contacts and links struck out; then the summary flies into the enterprise AI.
+  { const s = DEID, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
+    show('capD', on ? clamp(c * 2) * (1 - o) : 0);
+    $('deid').querySelectorAll('[data-fx]').forEach(el => {
+      const at = s.marks[+el.dataset.m] + 0.15 + (+el.dataset.d || 0), p = ease(prog(t, at, at + 0.45)), fx = el.dataset.fx;
+      if (fx === 'bar') el.querySelector('.bar').style.width = 'calc((100% + 12px) * ' + p + ')';
+      if (fx === 'swap') { el.querySelector('.strike').style.width = 'calc((100% + 8px) * ' + clamp(p * 2) + ')';
+        el.querySelector('.raw').style.opacity = 1 - prog(t, at + 0.25, at + 0.45);
+        const n = back(prog(t, at + 0.3, at + 0.55)), nw = el.querySelector('.new');
+        nw.style.opacity = clamp(n * 2); nw.style.transform = 'translateY(-50%) scale(' + (0.4 + 0.6 * Math.min(1.08, n)) + ')';
+        // The gap closes onto the shorter tag, so the line reads on without a hole.
+        const rw = el.querySelector('.raw'), sh = easeIO(prog(t, at + 0.3, at + 0.6));
+        if (!sh) el.style.width = ''; else { const w0 = +(rw.dataset.w || (rw.dataset.w = rw.offsetWidth)); el.style.width = (w0 + (nw.offsetWidth - w0) * sh) + 'px'; } }
+      if (fx === 'cut') { el.querySelector('.strike').style.width = 'calc((100% + 8px) * ' + p + ')';
+        el.style.opacity = 1 - 0.65 * prog(t, at + 0.35, at + 0.6);
+        const g = el.nextElementSibling; g.style.opacity = prog(t, at + 0.35, at + 0.6); } });
+    // "Only that summary is sent": it shrinks and rises into the enterprise AI, which takes it in.
+    const e = back(prog(t, s.marks[3] - 0.35, s.marks[3] - 0.05)), f = easeIO(prog(t, s.marks[3], s.marks[3] + 0.8)), gone = prog(t, s.marks[3] + 0.6, s.marks[3] + 0.85);
+    const d = back(prog(t, s.vo - 0.2, s.vo + 0.15));
+    show('deid', on && gone < 1 ? clamp(d * 2) * (1 - gone) * (1 - o) : 0, 'translateY(' + ((1 - Math.min(1, d)) * 60 - 150 * f) + 'px) scale(' + (1 - 0.8 * f) + ')');
+    const gulp = Math.sin(Math.PI * prog(t, s.marks[3] + 0.6, s.marks[3] + 0.9)) * 0.08;
+    show('ent', on && t >= s.marks[3] - 0.35 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')');
+    const kb = back(prog(t, s.marks[3] + 0.8, s.marks[3] + 1.1));
+    show('kb', on && t >= s.marks[3] + 0.8 ? clamp(kb * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, kb)) * 40 + 'px)'); }
 
   // 4: PsycheAI's servers keep nothing (only zeros, never another number), the results sit on your phone, and a hack finds nothing.
   { const s = ANS, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));

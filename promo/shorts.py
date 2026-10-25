@@ -261,10 +261,13 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['Thinking of uploading your Instagram data to Chat G P T?', 'Watch this first.'], 0.85, True, 0.3),
     (['Everything goes up, as it is.', "Your name. Your friends' private messages. Your photos."], 0.85, True, 0.3),
     (['It may train on it.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.3),
-    (['Now watch {B}.', 'Your files never leave your phone. Only a small, de-identified summary does.'], 0.85, True, 0.3),
+    (['Now watch {B}.', 'Your files never leave your phone.'], 0.85, True, 0.3),
+    # The de-identification, one step a phrase so each lands on screen as it is said (the FAQ's list, in short).
+    (['On your phone, your name is blanked out,', 'friends become numbers,', 'and contacts and links are removed.',
+      'Only that summary is sent.'], 0.85, True, 0.2),
     (['Zero accounts. Zero exports kept.', 'Your results stay on your device.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
     (['Your data stays yours.', 'The code is public for you to inspect.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
-], hold={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.6, 4: 0.6}, lead={}, punch=(0,),  # quick cuts (25 October 2026)
+], hold={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.3, 4: 1.2, 5: 0.6}, lead={}, punch=(0,),  # quick cuts (25 October 2026)
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
     mood='thriller', bpm=120, reveal=3,

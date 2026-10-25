@@ -28,7 +28,8 @@ A second version was built on 25 Oct.
 - **Music:** the new `thriller` mood in shorts.py. It is a tense D-minor tick and heartbeat with hits, then a riser and a drop into F-major four-on-the-floor.
 - **Third cut (25 Oct, from the user's notes):** the Instagram icon instead of the 📦 box; one smooth SVG cloud; "unless you switch that off" removed; no boom into the switch (a beat of silence, a reversed cymbal, a bright F-major hit); the phone scene re-spaced (Enterprise AI first, the summary absorbed into it); only zeros, no countdown; "Even if a hack occurs, there's no data to steal."; "The code is public for you to inspect." at the end.
 - **Fourth cut (25 Oct, "more impressive and convincing"):** opens on a realistic dark-mode ChatGPT phone screen (export attached, question typed, a finger on send as WAIT lands; the cover); the whole ChatGPT half dark; the switch a white flash and a burst of brand-coloured rings wiping to the bright ground; quicker cuts with a zoom punch on each (about 37 s).
-- **Status:** awaiting the user's feedback on the fourth cut. Next ideas, if it's still not punchy enough:
+- **Fifth cut (25 Oct):** the de-identification is its own beat, each step shown as it is said (name blanked, friends → [N1]/[P1], contacts and links removed, then only the summary flies to the enterprise AI); about 42 s.
+- **Status:** awaiting the user's feedback on the fifth cut. Next ideas, if it's still not punchy enough:
   - faster cuts (lower `hold`);
   - a real-looking ChatGPT upload UI;
   - a bigger visual contrast at the switch.
