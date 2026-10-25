@@ -59,7 +59,7 @@ marks = [stored['lines'][name] for name in names]
 # The relationship reel's music since 25 October 2026 (it shared the launch video's track; a lo-fi of its own was
 # tried the same day and dropped): its instruments, key and tempo, laid over these steps. See below.
 # Set a little apart from it: a whole step up, a touch quicker, its own tune.
-BPM = 88; BEAT = 60 / BPM; BAR = 4 * BEAT
+BPM = 94; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 minimum = {}
