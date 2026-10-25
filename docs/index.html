@@ -1489,18 +1489,19 @@
   <div class="review-body" id="review-body">
     <h2 id="review-dialog-title">Review what gets sent</h2>
     <!-- What is taken out before anything leaves the device. Always shown. -->
+    <!-- "Where does it go?" ends the box's own text and opens inside the box, so it costs no line of its own. -->
     <div class="deid-note review-status">
       <span class="review-dot" aria-hidden="true"></span>
-      <p><strong>Nothing sent yet.</strong> Your name, contact details, ID numbers and other people’s names and
-        handles are already removed.</p>
+      <div>
+        <p><strong>Nothing sent yet.</strong> Your name, contact details, ID numbers and other people’s names and
+          handles are already removed. <button class="review-where-btn" id="review-where-btn" type="button"
+          aria-expanded="false" aria-controls="review-where">Where does it go?</button></p>
+        <ul class="review-where" id="review-where" hidden>
+          <li>To Google Vertex AI, Google Cloud’s enterprise tier, over an encrypted connection. Google does not train its AI on it.</li>
+          <li>PsycheAI keeps no copy of this data or your report. Your results come back to this device only.</li>
+        </ul>
+      </div>
     </div>
-    <details class="review-where">
-      <summary>Where does it go?</summary>
-      <ul>
-        <li>To Google Vertex AI, Google Cloud’s enterprise tier, over an encrypted connection. Google does not train its AI on it.</li>
-        <li>PsycheAI keeps no copy of this data or your report. Your results come back to this device only.</li>
-      </ul>
-    </details>
     <section class="review-sec" id="review-years-sec" hidden>
       <div class="review-sec-h"><h3>Which years</h3><div class="review-chips" id="review-year-chips"></div></div>
       <div class="review-years" id="review-years"></div>

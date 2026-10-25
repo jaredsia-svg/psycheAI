@@ -4955,8 +4955,8 @@ it down as far as they like, line by line, and see what that costs. It was mocke
 - **Layout.** The body scrolls; the foot stays put: a read-quality meter, the size of what is sent
   ("~13 KB of text"), *Download what's sent*, the terms line and Back / Send this. While a word is being typed
   the foot steps aside (`.is-typing`), so on a phone the keyboard has the room. At the top, *Nothing sent
-  yet* and what is already taken out; *Where does it go?* folds the provider, that Google does not train its
-  AI on it and that PsycheAI keeps no copy.
+  yet* and what is already taken out, ending in a *Where does it go?* link that opens inside the same green
+  box (no line of its own): the provider, that Google does not train its AI on it and that PsycheAI keeps no copy.
 - **What's included** is one list, least personal first (`TEXT.review.rows` sets the order and the short
   names): activity and timing, Chrome, Instagram's guesses, accounts, Facebook friends, liked posts, YouTube,
   your posts and comments, Facebook posts, your searches, YouTube and Google searches, then direct messages,

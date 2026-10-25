@@ -4822,6 +4822,18 @@ try {
     !/followed accounts/.test(reviewText), reviewText.slice(0, 400));
   // Said under "Where does it go?", folded until opened, so read from the text rather than what shows.
   const whereText = await page.locator('#review-dialog .review-where').textContent();
+  // "Where does it go?" ends the green box's own text, and opens inside the box.
+  const whereShut = await page.locator('#review-where').isVisible();
+  await page.click('#review-where-btn');
+  const whereOpen = await page.evaluate(() => {
+    const box = document.querySelector('#review-dialog .review-status');
+    const where = document.querySelector('#review-where');
+    return box.contains(document.querySelector('#review-where-btn')) && box.contains(where) && !where.hidden &&
+      document.querySelector('#review-where-btn').getAttribute('aria-expanded') === 'true';
+  });
+  await page.click('#review-where-btn');
+  check('"Where does it go?" sits inside the green box, shut, and opens there',
+    !whereShut && whereOpen && !(await page.locator('#review-where').isVisible()));
   check('the review names the provider and says PsycheAI keeps no copy — not that nobody can access it',
     /Google Vertex AI/.test(whereText) && /Google does not train its AI on it/.test(whereText) &&
     /PsycheAI keeps no copy of this data or your report/i.test(whereText) &&

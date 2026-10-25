@@ -5465,6 +5465,8 @@
     };
     $('#review-kw').value = '';
     dialog.classList.remove('is-typing');
+    $('#review-where').hidden = true;
+    $('#review-where-btn').setAttribute('aria-expanded', 'false');
     refresh();
 
     return new Promise(resolve => {
@@ -5516,6 +5518,13 @@
       const onClick = event => {
         const el = event.target.closest('button');
         if (!el || !dialog.contains(el)) return;
+        if (el.id === 'review-where-btn') {
+          // Opens inside the green box, and folds again.
+          const where = $('#review-where');
+          where.hidden = !where.hidden;
+          el.setAttribute('aria-expanded', String(!where.hidden));
+          return;
+        }
         if (el.dataset.peek) {
           if (openRows.has(el.dataset.peek)) openRows.delete(el.dataset.peek); else openRows.add(el.dataset.peek);
         } else if (el.dataset.tag) {
