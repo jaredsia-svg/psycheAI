@@ -151,9 +151,10 @@ function at(daysAgo, hour) {
 // otherwise the default path is untested. `sender_name` uses the same
 // mojibaked spelling as personal_information.json so the parser's owner
 // detection matches after repairing both.
-function messageThreads() {
+// `threads` talkative chats (three by default); the review's spare chats need more than ten.
+function messageThreads(threads = 3) {
   const owner = 'Aleç';
-  const talkative = [1, 2, 3].map(thread => ({
+  const talkative = Array.from({ length: threads }, (_, i) => i + 1).map(thread => ({
     name: 'your_instagram_activity/messages/inbox/friend_' + thread + '_123/message_1.json',
     content: JSON.stringify({
       participants: [{ name: owner }, { name: 'Friend ' + thread }],
@@ -423,7 +424,7 @@ function buildExport(options) {
     },
     { name: 'media/posts/0.jpg', content: 'not json, must be ignored' },
     { name: 'start_here.html', content: '<html>an HTML index that must not confuse the parser</html>' },
-    ...messageThreads(),
+    ...messageThreads((options && options.threads) || 3),
 
     // One real still per post, and stories for only the first ten — the rest
     // are referenced by JSON that has no matching file, which is the ordinary

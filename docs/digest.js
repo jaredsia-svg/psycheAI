@@ -1534,6 +1534,40 @@
       (quoted.has(m) ? '«them: ' + m.ctx + '» ' : '') + m.text);
   }
 
+  // Spare messages for the pre-send review (25 October 2026). A reader who
+  // switches a chat off leaves room; these fill it, from the chats that stay
+  // and the next ones in line, so the read does not simply shrink. Sampled the
+  // way the sent lines are, from more chats (SPARE_THREADS more) and more of
+  // each (SPARE_FACTOR), and kept on the digest at the top level as
+  // `__spareMessages`: device bookkeeping like __names, which forModel never
+  // copies, so a spare is sent only once trimLines has moved it into the list.
+  const SPARE_FACTOR = 1.5;
+  const SPARE_THREADS = 5;
+  // A line as itself, whatever context it was quoted with this time.
+  const lineKey = line => String(line).replace(/«them: [^»]*» /, '');
+  function spareMessages(digest, path, items, opts) {
+    const keys = path.split('.');
+    const parent = keys.slice(0, -1).reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), digest);
+    const sent = parent && Array.isArray(parent[keys[keys.length - 1]]) ? parent[keys[keys.length - 1]] : [];
+    if (!sent.length) return {};
+    const stats = {};
+    const pool = sampleConversations(items, Object.assign({}, opts, {
+      limit: Math.round(opts.limit * SPARE_FACTOR),
+      threadChars: opts.threadChars ? Math.round(opts.threadChars * SPARE_FACTOR) : opts.threadChars,
+      topThreads: (opts.topThreads || 0) + SPARE_THREADS,
+      // Tagged whenever the sent lines are, so a spare's tag means the same chat.
+      alwaysTag: sent.some(line => /^(?:\[\d{4}\] )?\[[tm]\d{1,2}\] /.test(line)),
+      stats,
+    }));
+    const have = new Set(sent.map(lineKey));
+    const spare = pool.filter(line => !have.has(lineKey(line)));
+    if (spare.length) {
+      digest.__spareMessages = digest.__spareMessages || {};
+      digest.__spareMessages[path] = spare;
+    }
+    return stats;
+  }
+
   /**
    * Each conversation tag's real name ("t1" → "Sarah Kim"), for the pre-send
    * review to label its per-chat switches with, on this device only. Kept on
@@ -1973,7 +2007,7 @@
         receivedByUser: messages.received,
         averageSentLength: messages.avgSentLength,
         note: 'Only the user\'s own messages are sampled below, spread across each conversation\'s whole span and across short, ordinary and long messages. '
-          + 'A [t1]…[t10] tag marks which conversation a message belongs to, ranked by how much the user writes in it — t1 is the one they use most. '
+          + 'A [t1], [t2] … tag marks which conversation a message belongs to, ranked by how much the user writes in it — t1 is the one they use most. '
           + 'The tags identify nobody; they are there so that how the user writes to one person can be told apart from how they write to another. '
           + 'A line may open with «them: …»: the message it replied to, from the other person, shortened and de-identified — context for reading the reply, never the user\'s own words. A " / " joins lines the user sent in one quick burst.',
         // Links stripped before sampling. A shared Grab ride-tracking link or
@@ -1996,7 +2030,11 @@
       // without them the model cannot tell a sample drawn from ten
       // conversations from one drawn across four hundred, and those support
       // very different claims about somebody's relationships.
-      chatLabels(digest, dmStats.topKeys, rank => 't' + (rank + 1), key => {
+      const dmSpare = spareMessages(digest, 'directMessages.ownMessageSample', messages.ownTexts, {
+        limit: LIMITS.messages, threadChars: LIMITS.igThreadChars, topThreads: LIMITS.messageTopThreads,
+        threadCap: LIMITS.messageThreadCap, minShare: LIMITS.messageMinShare,
+      });
+      chatLabels(digest, dmSpare.topKeys || dmStats.topKeys, rank => 't' + (rank + 1), key => {
         const t = (signals.threadTitles || [])[key];
         if (!t) return '';
         return t.title || (t.participants || []).filter(p => p !== messages.owner).join(', ');
@@ -2485,6 +2523,10 @@
           minShare: LIMITS.messageMinShare, label: (key, rank) => 'm' + (rank + 1), stats: fbStats,
         }),
       };
+      spareMessages(digest, 'facebook.ownMessageSample', f.ownMessages, {
+        limit: LIMITS.fbMessages, topThreads: LIMITS.messageTopThreads, threadCap: LIMITS.messageThreadCap,
+        minShare: LIMITS.messageMinShare, label: (key, rank) => 'm' + (rank + 1),
+      });
       digest.coverage.sampling.facebookPosts = {
         shown: digest.facebook.postSample.length, available: f.counts.posts,
       };
@@ -3352,11 +3394,42 @@
       const chats = new Set((c.chatsOff && c.chatsOff[path]) || []);
       const drop = new Set((c.drop && c.drop[path]) || []);
       const before = parent[last].length;
-      parent[last] = parent[last].filter(item => !(yearsOff.has(lineYear(item)) ||
-        (chats.size && chats.has(lineChat(item))) || (drop.size && drop.has(reviewText(item))) || (matches && matches(item))));
+      const gone = item => yearsOff.has(lineYear(item)) || (chats.size && chats.has(lineChat(item))) ||
+        (drop.size && drop.has(reviewText(item))) || Boolean(matches && matches(item));
+      // The room a switched-off chat leaves, in characters, is what its spares may fill.
+      const freed = chats.size ? parent[last].filter(item => chats.has(lineChat(item))).reduce((n, item) => n + String(item).length, 0) : 0;
+      parent[last] = parent[last].filter(item => !gone(item));
       removed += before - parent[last].length;
+      const spare = freed && digest.__spareMessages && digest.__spareMessages[path];
+      if (Array.isArray(spare)) parent[last] = refill(parent[last], spare.filter(item => !gone(item)), freed);
     }
     return removed;
+  }
+
+  // Spares into the room a chat left: shared among the chats that have them in
+  // proportion to how many each has (as the sample itself weights them), then
+  // the list put back in chat order so lines of one chat stay together.
+  function refill(list, spare, room) {
+    const byChat = new Map();
+    for (const line of spare) {
+      const tag = lineChat(line);
+      if (!byChat.has(tag)) byChat.set(tag, []);
+      byChat.get(tag).push(line);
+    }
+    const total = spare.reduce((n, line) => n + String(line).length, 0);
+    const taken = [];
+    let left = room;
+    for (const lines of byChat.values()) {
+      let quota = room * lines.reduce((n, line) => n + String(line).length, 0) / (total || 1);
+      for (const line of lines) {
+        if (String(line).length > quota || String(line).length > left) break;
+        taken.push(line); quota -= String(line).length; left -= String(line).length;
+      }
+    }
+    if (!taken.length) return list;
+    const rank = line => { const t = lineChat(line); return t ? Number(t.slice(1)) : 0; };
+    return list.concat(taken).map((line, i) => [line, i])
+      .sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([line]) => line);
   }
 
   root.PsycheDigest = {

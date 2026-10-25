@@ -847,9 +847,11 @@
       wordsRemoved: n => n + (n === 1 ? ' post or message removed' : ' posts & messages removed'),
       wordRemove: word => 'Stop leaving out ' + word,
       linesNote: '✕ leaves a line out.',
-      chatsNote: 'Names show only here; each goes as its number. Only your messages are sent.',
+      chatsNote: 'Names show only here; each goes as its number. Only your messages are sent. Switch one off and the next fills its room.',
       chat: n => 'Chat ' + n,
       chats: n => n + (n === 1 ? ' chat' : ' chats'),
+      // A chat that came in to fill the room a switched-off one left.
+      fillsIn: 'filling in',
       lineOut: 'Leave this line out',
       lineBack: 'Put this line back',
       quality: 'Read quality',

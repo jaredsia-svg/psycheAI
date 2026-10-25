@@ -9901,6 +9901,43 @@ check('the schema requires evidence on where they align and differ',
   check('trimLines: no choices, no change', Digest.trimLines(untouched, {}) === 0 &&
     JSON.stringify(untouched) === JSON.stringify(make()));
 }
+// Spares: switching a chat off fills its room from the chats that stay and the next in line (25 October 2026).
+{
+  const sentList = heavyWithDms.directMessages.ownMessageSample;
+  const spare = (heavyWithDms.__spareMessages || {})['directMessages.ownMessageSample'] || [];
+  const tagsOf = list => new Set(list.map(Digest.lineChat));
+  const strip = l => l.replace(/«them: [^»]*» /, '');
+  check('spares: a heavy account keeps spare lines, from its sent chats and from chats past the top ten',
+    spare.length > 0 && [...tagsOf(spare)].some(t => Number(t.slice(1)) > 10) && !tagsOf(sentList).has('t11'),
+    JSON.stringify([...tagsOf(spare)]));
+  check('spares: none repeats a line that is already sent',
+    !spare.some(l => new Set(sentList.map(strip)).has(strip(l))));
+  check('spares: never in what is sent, and never counted in its size',
+    !('__spareMessages' in Digest.forModel(heavyWithDms)) && !JSON.stringify(Digest.forModel(heavyWithDms)).includes(spare[0]) &&
+      Digest.evidenceChars(heavyWithDms) === Digest.evidenceChars(Object.assign({}, heavyWithDms, { __spareMessages: undefined })));
+  const chars = list => list.reduce((n, l) => n + l.length, 0);
+  const off = JSON.parse(JSON.stringify(heavyWithDms));
+  Digest.trimLines(off, { chatsOff: { 'directMessages.ownMessageSample': ['t1'] } });
+  const after = off.directMessages.ownMessageSample;
+  check('spares: with t1 off, its room is filled from the other chats and the next in line, no larger than before',
+    !tagsOf(after).has('t1') && tagsOf(after).has('t11') && chars(after) <= chars(sentList) &&
+      chars(after) > chars(sentList.filter(l => Digest.lineChat(l) !== 't1')),
+    JSON.stringify({ before: chars(sentList), after: chars(after), tags: [...tagsOf(after)] }));
+  check('spares: the list stays in chat order, so each chat\'s lines sit together',
+    after.map(l => Number(Digest.lineChat(l).slice(1))).every((n, i, a) => i === 0 || a[i - 1] <= n));
+  const twice = JSON.parse(JSON.stringify(heavyWithDms));
+  Digest.trimLines(twice, { chatsOff: { 'directMessages.ownMessageSample': ['t1', 't11'] } });
+  check('spares: a chat that filled in can be switched off too, and the next one comes in',
+    !tagsOf(twice.directMessages.ownMessageSample).has('t11') && tagsOf(twice.directMessages.ownMessageSample).has('t12'));
+  const kept = JSON.parse(JSON.stringify(heavyWithDms));
+  Digest.trimLines(kept, { yearsOff: [1900] });
+  check('spares: nothing fills in unless a chat is switched off',
+    JSON.stringify(kept.directMessages.ownMessageSample) === JSON.stringify(sentList));
+  const words = JSON.parse(JSON.stringify(heavyWithDms));
+  Digest.trimLines(words, { chatsOff: { 'directMessages.ownMessageSample': ['t1'] }, words: ['ordinary'] });
+  check('spares: a line the reader left out by a word never fills in',
+    !words.directMessages.ownMessageSample.some(l => /ordinary/.test(l)));
+}
 // The chats' names for the review ride on the digest where JSON cannot see them: never sent, stored or backed up.
 {
   const named = Digest.build({ ...signals, threadTitles: [{ title: 'Sarah Kim', participants: [] }] }, { includeMessages: true });

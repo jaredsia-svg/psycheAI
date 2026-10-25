@@ -4972,6 +4972,19 @@ it down as far as they like, line by line, and see what that costs. It was mocke
   digest read back from storage has none, and its chats read "Chat 1", "Chat 2". The row says the name
   stays here and the chat goes as its number. A single chat's messages carry no tag, so that row does not
   open.
+- **A switched-off chat's room is filled (25 October 2026).** The summary samples a second, larger pool of
+  the reader's own messages (`spareMessages` in digest.js: 1.5× the lines, from the top 15 chats rather than 10)
+  and keeps what is not already sent as `__spareMessages`, device bookkeeping like `__names`: forModel never
+  copies it and the evidence size never counts it. When a chat is switched off, `trimLines` fills the
+  characters it freed from the spares (`refill`): the chats that stay get more of their own lines and the
+  next chats in line come in, shared by how many spares each has, never past the room freed, and never a line
+  the reader left out by year, word or ✕. The list is put back in chat order. The review lists a chat that
+  came in this way as "filling in"; it can be switched off too, and the next one comes in. It works on a
+  summary read back from storage as well, since the spares are stored with it. It costs storage, not
+  tokens: about half the size of the sent messages again (56 KB beside 110 KB for 6,000 messages across 40
+  chats). Instagram and Messenger have spares; WhatsApp does not, since its three chats are hand-picked and
+  there is no next one. The message note's "[t1]…[t10]" became "[t1], [t2] …", since a chat that fills in
+  can be t11 or later.
 - **Which years.** A bar a year, from every dated line the model would read; each bar switches its year
   off on its own, and All / 3 yrs / 1 yr set a range. The last year left cannot be switched off.
 - **Leave out anything mentioning.** Removes the whole post or message, never just the word: "Happy

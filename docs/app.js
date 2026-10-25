@@ -5398,16 +5398,24 @@
         if (!isOpen) continue;
         if (CHATS[r[0]]) {
           const path = CHATS[r[0]];
-          const tags = new Map();
-          for (const item of listAt(digest, path)) {
+          // The chats as built, and any that came in to fill the room a switched-off one left
+          // (Digest.trimLines, from the spares): each counted as it now stands, an off one as it was.
+          const count = list => list.reduce((m, item) => {
             const tag = Digest.lineChat(item);
-            if (tag) tags.set(tag, (tags.get(tag) || 0) + 1);
-          }
+            if (tag) m.set(tag, (m.get(tag) || 0) + 1);
+            return m;
+          }, new Map());
+          const built = count(listAt(digest, path));
+          const now = count(listAt(trimmed, path));
           const off = new Set(lines.chatsOff[path] || []);
-          more.innerHTML = '<p class="review-note">' + esc(R.chatsNote) + '</p>' + [...tags].map(([tag, n], i) => {
-            const name = chatNames[tag] || R.chat(i + 1);
+          const tags = [...new Set([...built.keys(), ...now.keys(), ...off])]
+            .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+          more.innerHTML = '<p class="review-note">' + esc(R.chatsNote) + '</p>' + tags.map(tag => {
+            const name = chatNames[tag] || R.chat(Number(tag.slice(1)));
+            const n = off.has(tag) ? (built.get(tag) || 0) : (now.get(tag) || 0);
             return '<div class="review-chat"><span class="review-chat-name"><b>' + esc(name) + '</b><small>' + n +
-              ' · <em>[' + esc(tag) + ']</em></small></span><button class="review-chat-switch" type="button" role="switch" data-path="' +
+              ' · <em>[' + esc(tag) + ']</em>' + (built.has(tag) ? '' : ' · ' + esc(R.fillsIn)) +
+              '</small></span><button class="review-chat-switch" type="button" role="switch" data-path="' +
               esc(path) + '" data-tag="' + esc(tag) + '" aria-checked="' + !off.has(tag) + '" aria-label="' + esc(name) + '"' +
               (box.checked ? '' : ' disabled') + '></button></div>';
           }).join('');
