@@ -75,7 +75,8 @@ for i, d in enumerate(dur):
     lead = 0.3 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
     length = max(lead + d + GAP, minimum.get(i, 0))
     # The last card holds on the line and the button.
-    end = t + lead + d + 1.2 if i == len(dur) - 1 else snap(t + length, BEAT / 2)
+    # The last card holds a little longer for the music to wind down (25 October 2026: the end was abrupt).
+    end = t + lead + d + 2.0 if i == len(dur) - 1 else snap(t + length, BEAT / 2)
     scenes.append({'start': round(t, 3), 'end': round(end, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
                    'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})
@@ -238,7 +239,7 @@ else:
     # from Step 3 claps on two and four, hats, offbeat stabs, the octave-bouncing bass and the plucked hook.
     # It ends on one held electric-piano chord.
     sc = scenes
-    STEPS = sc[1]['start']; DROP = sc[3]['start']; FINAL = sc[6]['start']; END = sc[6]['voEnd'] + 0.6
+    STEPS = sc[1]['start']; DROP = sc[3]['start']; FINAL = sc[6]['start']; END = TOTAL
     EIGHTH = BEAT / 2; SIX = BEAT / 4
     LOOP = [[62, 65, 69], [58, 62, 65], [60, 65, 69], [60, 64, 67]]   # Dm, Bb, F, C
     LOOP_ROOTS = [38, 34, 41, 36]
@@ -259,9 +260,14 @@ else:
     pump = np.ones(n, np.float32)
     HOOK_STEPS = {0: 2, 3: 1, 6: 2, 8: 0, 10: 2, 13: 1, 14: 0}
     b = 0.0
-    while b < END - BAR:
+    last = snap(sc[6]['voEnd'] + 0.4, BAR)
+    while b < END:
         k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
         chord = LOOP[bar_i]; root = LOOP_ROOTS[bar_i]
+        # The end winds down rather than stopping: over the two bars before the last chord the claps, stabs and
+        # hats fall away, then the kick; the hook and the piano carry on softly into it.
+        thin = min(1.0, max(0.0, (last - b) / (2 * BAR)))
+        if b >= last: break
         if e == 0:
             at(b, strings(chord, BAR * 1.02, 0.03), 1.0)
             at(b, ep(chord, BAR * 0.95, 0.045), 1.0)
@@ -274,24 +280,26 @@ else:
             if e % 4 == 2: at(b, HO, 0.18, 0.3)
         else:
             if e % 4 == 0:
-                at(b, K, 1.0)
+                at(b, K, min(1.0, thin * 1.6))
                 a_ = int(b * SR); Lp = int(0.18 * SR)
                 if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.55 + 0.45 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
-            if e in (4, 12): at(b, C, 0.7)
-            if e % 4 == 2: at(b, HO, 0.25, 0.3)
-            if e % 2 == 1: at(b, H, 0.12, -0.3)
-            if e % 4 == 2: at(b, stab(chord, EIGHTH * 0.8), 0.9)
-            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.75), 0.9)
-            if e in HOOK_STEPS: at(b, pluck(chord[HOOK_STEPS[e]] + 12, 0.15), 1.0, 0.15)
+            if e in (4, 12): at(b, C, 0.7 * thin ** 2)
+            if e % 4 == 2: at(b, HO, 0.25 * thin ** 2, 0.3)
+            if e % 2 == 1: at(b, H, 0.12 * thin ** 2, -0.3)
+            if e % 4 == 2: at(b, stab(chord, EIGHTH * 0.8), 0.9 * thin ** 2)
+            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.75), 0.9 * (0.5 + 0.5 * thin))
+            if e in HOOK_STEPS: at(b, pluck(chord[HOOK_STEPS[e]] + 12, 0.15), 0.6 + 0.4 * thin, 0.15)
         b += SIX
-    last = snap(END - BAR, BAR)
-    at(last, ep([53, 60, 65, 69, 72], 3.4, 0.06), 1.0); at(last, strings([65, 69, 72], 3.0, 0.03), 1.0)
-    at(last, bass(41, 2.5) * 0.7, 0.8)
+    # The last chord, F major, held under the fade: piano, the soft pad and the bass.
+    hold = max(2.0, END - last + 0.5)
+    at(last, ep([53, 60, 65, 69, 72], hold, 0.06), 1.0); at(last, strings([65, 69, 72], hold, 0.035), 1.0)
+    at(last, bass(41, min(hold, 2.5)) * 0.7, 0.8)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
 fi = int(0.3 * SR); fade[:fi] = np.linspace(0, 1, fi)
-fo = int((TOTAL - 1.4) * SR); fade[fo:] = np.clip(np.linspace(1, 0, n - fo) * 1.6, 0, 1)
+# A long, gentle fade, not a quick one.
+fo = int((TOTAL - 2.6) * SR); fade[fo:] = np.clip(np.linspace(1, 0, n - fo) ** 1.4, 0, 1)
 music *= fade[:, None]
 music /= max(1e-6, np.abs(music).max())
 
