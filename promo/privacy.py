@@ -58,7 +58,8 @@ marks = [stored['lines'][name] for name in names]
 
 # The relationship reel's music since 25 October 2026 (it shared the launch video's track; a lo-fi of its own was
 # tried the same day and dropped): its instruments, key and tempo, laid over these steps. See below.
-BPM = 84; BEAT = 60 / BPM; BAR = 4 * BEAT
+# Set a little apart from it: a whole step up, a touch quicker, its own tune.
+BPM = 88; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 minimum = {}
@@ -87,10 +88,11 @@ voice /= max(1e-6, np.abs(voice).max()) / 0.9
 # The instruments, as in audio.py.
 rng = np.random.default_rng(11)
 def hz(m): return 440.0 * 2 ** ((m - 69) / 12)
-# The relationship reel's: F sharp minor to A (F#m D A E), its vibraphone tune.
-CHORDS = [[54, 57, 61], [50, 54, 57], [57, 61, 64], [52, 56, 59]]
-ROOTS = [42, 38, 45, 40]
-MELODY = [[73, 69, 66, 69], [74, 69, 66, 69], [76, 73, 69, 73], [71, 68, 64, 68]]
+# The relationship reel's progression a whole step up: G sharp minor to B (G#m E B F#). The tune is its own,
+# climbing where the relationship reel's falls.
+CHORDS = [[56, 59, 63], [52, 56, 59], [59, 63, 66], [54, 58, 61]]
+ROOTS = [44, 40, 47, 42]
+MELODY = [[71, 75, 78, 75], [76, 75, 71, 68], [75, 78, 83, 78], [73, 75, 70, 66]]
 
 def lowpass(x, cutoff):
     a = np.exp(-2 * np.pi * cutoff / SR); out = np.empty_like(x); prev = 0.0
@@ -220,7 +222,7 @@ while b < END:
         if e % 2 == 0: at(b, vibes(MELODY[bar_i][beat_i], 0.06 if bright else 0.045), 1.0, 0.15)
     b += EIGHTH
 at(DROP - 1.6, swell(1.6), 0.6)
-end = [45, 57, 61, 64, 69, 73]
+end = [47, 59, 63, 66, 71, 75]   # B major, rolled
 for k, m in enumerate(end): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
 at(last - 0.6, pad(end[1:4], 3.8, 0.04), 1.0)
 
