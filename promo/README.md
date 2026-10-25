@@ -458,7 +458,7 @@ The guide story is headed *Start here.* Text keeps clear of the top 220px and bo
 ### The ChatGPT reel
 
 ```
-npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 42 s
+npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 44 s
 ```
 
 *Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, and what is kept. It
@@ -476,9 +476,10 @@ comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's
 | 1 | Everything goes up, as it is. / Your name. Your friends' private messages. Your photos. | the Instagram icon (the export) with an upload bar; its contents fly up into one smooth cloud, *ChatGPT's servers* |
 | 2 | It may train on it. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud, each on a hit (25 October 2026: "unless you switch that off" dropped, at the user's ask; "may" keeps it true) |
 | 3 | Now watch PsycheAI. / Your files never leave your phone. | the export in a phone, a lock badge slamming onto it as the voice says the files never leave; *0 photos · 0 videos · 0 files* under it |
-| 3b | On your phone, your name is blanked out, / friends become numbers, / and contacts and links are removed. / Only that summary is sent. | *De-identified on your phone*: a *Your summary* card of sample lines, each cleaned as its phrase is said (the FAQ's list): the name under a black bar; *Sarah Kim* → [N1] and *@tom.r* → [P1]; the email, phone and link struck out, *removed*; then the card shrinks and flies into *Enterprise AI · doesn't train on it*, with *~150 KB of text, reviewed by you before it's sent* (25 October 2026: "the de-identification needs to be clearer"; the summary used to leave a beat early, on "your files never leave") |
+| 3b | On your phone, your name is blanked out, / friends become numbers, / and contacts and links are removed. | *De-identified on your phone*: a *Your summary* card of sample lines, each cleaned as its phrase is said (the FAQ's list): the name under a black bar; *Sarah Kim* → [N1] and *@tom.r* → [P1]; the email, phone and link struck out, *removed* (25 October 2026: "the de-identification needs to be clearer"; the summary used to leave a beat early, on "your files never leave") |
+| 3c | You see it before it's sent, and can switch off anything. / Only what you keep is sent. | *You choose what's sent*: the app's *Review what gets sent* sheet with five of its real rows as switches; a finger switches off *Direct messages* on "off", then *Your Instagram searches*, then presses *Send this*, and the sheet shrinks into *Enterprise AI · doesn't train on it*, *~150 KB of text, only what you kept* under it. ("Untick" was said "untake", once "can't untake", so the line says "switch off", as the sheet's switches do.) |
 | 4 | Zero accounts. Zero exports kept. / Your results stay on your device. / Even if a hack occurs, there's no data to steal. | *PsycheAI's servers*: 0 accounts, 0 exports kept, 0 reports kept, each popping in as a 0 (never another number: it counted down from 9 until 25 October); *Your card and report, saved only on your device*; a shield card for the hack line |
-| 5 | Your data stays yours. / The code is public for you to inspect. / Try it at psycheai.io. | the line, a *</> The code is public* card (*for you to inspect, on GitHub*), *Your personal AI coach*, the address |
+| 5 | Your data stays yours. / Try it at psycheai.io. | the line; in the pause after it a *</> The code is public* card (*for you to inspect, on GitHub*), on screen only, not said (25 October 2026); *Your personal AI coach*, the address |
 
 The music (`mood='thriller'`): a tense D-minor tick and heartbeat with a hit on each warning, then everything stops a
 beat before *Now watch PsycheAI* and a reversed cymbal rises through that silence into a bright F major chord, a clap

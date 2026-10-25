@@ -161,7 +161,7 @@ Thinking of uploading your Instagram data to ChatGPT? ✋ Watch this first.
 With ChatGPT, everything goes up as it is: your name, your friends' private messages, your photos.
 It may be used to train its models, and it's kept until you delete it, then up to 30 days more.
 
-With PsycheAI, your files never leave your phone. On your phone, your name is blanked out, friends become numbers, and contacts and links are removed. Only that summary is sent (no photos, no videos, about 150 KB), to enterprise AI that doesn't train on it.
+With PsycheAI, your files never leave your phone. On your phone, your name is blanked out, friends become numbers, and contacts and links are removed. You see it before it's sent and can switch off anything; only what you keep is sent (no photos, no videos, about 150 KB), to enterprise AI that doesn't train on it.
 And PsycheAI keeps nothing: no accounts, your results stay on your device.
 Even if a hack occurs, there's no data to steal. And the code is public for you to inspect.
 

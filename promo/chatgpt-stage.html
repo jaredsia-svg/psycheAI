@@ -82,7 +82,20 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #deid .strike { position: absolute; left: -4px; top: 52%; height: 6px; width: 0; border-radius: 3px; background: #e0457b; }
 #deid .new { position: absolute; left: 0; top: 50%; padding: 4px 18px; border-radius: 14px; background: #fde4ef; color: #c2407a; font-weight: 900; opacity: 0; white-space: nowrap; }
 #deid .gone { margin-left: 18px; padding: 4px 16px; border-radius: 14px; background: #f1eef4; color: #8b8096; font-size: 30px; font-weight: 800; opacity: 0; }
-#kb { z-index: 24; left: 0; right: 0; top: 600px; text-align: center; font-size: 36px; font-weight: 800; color: #4a2366; line-height: 1.35; }
+#review { z-index: 22; left: 70px; right: 70px; top: 600px; padding: 40px 44px 36px; border-radius: 44px; background: #fff;
+  box-shadow: 0 30px 80px rgba(90,40,120,.22); transform-origin: 50% 0; }
+#review h3 { font-size: 50px; font-weight: 900; letter-spacing: -0.02em; }
+#review .note { display: flex; align-items: center; gap: 14px; margin: 18px 0 10px; padding: 16px 20px; border-radius: 22px; background: #f6effa;
+  font-size: 30px; font-weight: 750; color: #4a2366; }
+#review .r { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; border-top: 2px solid #f0eaf4;
+  font-size: 40px; font-weight: 750; color: #2a1238; }
+#review .r.off span:first-child { color: #a79fb0; text-decoration: line-through; text-decoration-color: rgba(167,159,176,.6); }
+#review .sw2 { position: relative; width: 104px; height: 60px; border-radius: 30px; background: #8a3fd0; flex: none; }
+#review .sw2 i { position: absolute; top: 6px; left: 50px; width: 48px; height: 48px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.2); }
+#review .go { margin-top: 26px; padding: 28px; border-radius: 999px; text-align: center; color: #fff; font-size: 42px; font-weight: 900;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.35); }
+#tap { z-index: 35; font-size: 150px; filter: drop-shadow(0 20px 30px rgba(90,40,120,.35)); }
+#kb { z-index: 24; left: 0; right: 0; top: 590px; text-align: center; font-size: 36px; font-weight: 800; color: #4a2366; line-height: 1.35; }
 #kb span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; }
 #ent { z-index: 24; left: 230px; right: 230px; top: 400px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.4); }
@@ -176,8 +189,17 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div class="r"><span class="k">Phone</span><span class="raw" data-fx="cut" data-m="2" data-d="0.2">+1 415 555 0134<i class="strike"></i></span><span class="gone">removed</span></div>
     <div class="r"><span class="k">Link</span><span class="raw" data-fx="cut" data-m="2" data-d="0.4">instagram.com/p/C8x<i class="strike"></i></span><span class="gone">removed</span></div>
   </div>
+  <div class="el caption" id="capR">You choose<br><span class="grad">what’s sent.</span></div>
+  <div class="el" id="review"><h3>Review what gets sent</h3><div class="note">🛡️ De-identified before sending</div>
+    <div class="r"><span>Your captions &amp; comments</span><span class="sw2"><i></i></span></div>
+    <div class="r"><span>Posts you liked</span><span class="sw2"><i></i></span></div>
+    <div class="r" id="rv1"><span>Your Instagram searches</span><span class="sw2"><i></i></span></div>
+    <div class="r" id="rv2"><span>Direct messages</span><span class="sw2"><i></i></span></div>
+    <div class="r"><span>Activity &amp; timing</span><span class="sw2"><i></i></span></div>
+    <div class="go" id="go">Send this</div></div>
+  <div class="el" id="tap">👆</div>
   <div class="el" id="ent">Enterprise AI<small>doesn’t train on it · nothing kept</small></div>
-  <div class="el" id="kb">~150 KB of text<span>reviewed by you before it’s sent</span></div>
+  <div class="el" id="kb">~150 KB of text<span>only what you kept</span></div>
 
   <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps nothing.</div>
   <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
@@ -200,7 +222,9 @@ const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c *
 const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
   if (tf !== undefined) el.style.transform = tf; };
 const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
-const [ASK, UP, KEPT, PHONE, DEID, ANS, CLOSE] = S;
+const [ASK, UP, KEPT, PHONE, DEID, REVIEW, ANS, CLOSE] = S;
+// When a word is said in a scene (its first occurrence), for taps timed to it.
+const said = (s, w, fb) => { const x = s.words.find(([v]) => v.toLowerCase().replace(/[^a-z]/g, '') === w); return x ? x[1] : fb; };
 const live = (s, t) => t >= s.start - 0.05 && t < s.end;
 const out = (s, t) => prog(t, s.end - 0.12, s.end);   // quick cuts
 
@@ -288,18 +312,41 @@ function render(t) {
         nw.style.opacity = clamp(n * 2); nw.style.transform = 'translateY(-50%) scale(' + (0.4 + 0.6 * Math.min(1.08, n)) + ')';
         // The gap closes onto the shorter tag, so the line reads on without a hole.
         const rw = el.querySelector('.raw'), sh = easeIO(prog(t, at + 0.3, at + 0.6));
-        if (!sh) el.style.width = ''; else { const w0 = +(rw.dataset.w || (rw.dataset.w = rw.offsetWidth)); el.style.width = (w0 + (nw.offsetWidth - w0) * sh) + 'px'; } }
+        if (rw.offsetWidth && !rw.dataset.w && !el.style.width) rw.dataset.w = rw.offsetWidth;   // measured only while laid out
+        const w0 = +rw.dataset.w || 0;
+        if (!sh || !w0 || !nw.offsetWidth) el.style.width = ''; else el.style.width = (w0 + (nw.offsetWidth - w0) * sh) + 'px'; }
       if (fx === 'cut') { el.querySelector('.strike').style.width = 'calc((100% + 8px) * ' + p + ')';
         el.style.opacity = 1 - 0.65 * prog(t, at + 0.35, at + 0.6);
         const g = el.nextElementSibling; g.style.opacity = prog(t, at + 0.35, at + 0.6); } });
-    // "Only that summary is sent": it shrinks and rises into the enterprise AI, which takes it in.
-    const e = back(prog(t, s.marks[3] - 0.35, s.marks[3] - 0.05)), f = easeIO(prog(t, s.marks[3], s.marks[3] + 0.8)), gone = prog(t, s.marks[3] + 0.6, s.marks[3] + 0.85);
     const d = back(prog(t, s.vo - 0.2, s.vo + 0.15));
-    show('deid', on && gone < 1 ? clamp(d * 2) * (1 - gone) * (1 - o) : 0, 'translateY(' + ((1 - Math.min(1, d)) * 60 - 150 * f) + 'px) scale(' + (1 - 0.8 * f) + ')');
-    const gulp = Math.sin(Math.PI * prog(t, s.marks[3] + 0.6, s.marks[3] + 0.9)) * 0.08;
-    show('ent', on && t >= s.marks[3] - 0.35 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')');
-    const kb = back(prog(t, s.marks[3] + 0.8, s.marks[3] + 1.1));
-    show('kb', on && t >= s.marks[3] + 0.8 ? clamp(kb * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, kb)) * 40 + 'px)'); }
+    show('deid', on ? clamp(d * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, d)) * 60 + 'px)'); }
+
+  // 3c: the review sheet. The finger switches off Direct messages as "off" is said, then the searches, then
+  // presses Send this; only then does the sheet shrink and rise into the enterprise AI.
+  { const s = REVIEW, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
+    show('capR', on ? clamp(c * 2) * (1 - o) : 0);
+    const T1 = said(s, 'off', s.vo + 1.7), T2 = T1 + 0.7, T3 = s.marks[1] + 0.15;
+    [['rv2', T1], ['rv1', T2]].forEach(([id, at]) => { const k = ease(prog(t, at, at + 0.15)), row = $(id);
+      row.querySelector('i').style.left = (50 - 44 * k) + 'px';
+      row.querySelector('.sw2').style.background = k > 0.5 ? '#d6d0dc' : '#8a3fd0'; row.classList.toggle('off', k > 0.5); });
+    $('go').style.transform = 'scale(' + (1 - 0.06 * Math.sin(Math.PI * prog(t, T3 - 0.05, T3 + 0.15))) + ')';
+    const e = back(prog(t, T3 + 0.05, T3 + 0.35)), f = easeIO(prog(t, T3 + 0.25, T3 + 1.0)), gone = prog(t, T3 + 0.8, T3 + 1.05);
+    const d = back(prog(t, s.vo - 0.2, s.vo + 0.15));
+    show('review', on && gone < 1 ? clamp(d * 2) * (1 - gone) * (1 - o) : 0, 'translateY(' + ((1 - Math.min(1, d)) * 60 - 200 * f) + 'px) scale(' + (1 - 0.8 * f) + ')');
+    // The finger: in from below to the first switch, on to the second, then to Send this, and away.
+    const pt = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+    if (on && $('review').style.display === 'block') {
+      const P0 = [900, 2000], P1 = pt($('rv2').querySelector('.sw2')), P2 = pt($('rv1').querySelector('.sw2')), P3 = pt($('go'));
+      const legs = [[T1 - 0.6, T1, P0, P1], [T2 - 0.45, T2, P1, P2], [T3 - 0.5, T3, P2, P3], [T3 + 0.2, T3 + 0.6, P3, [900, 2100]]];
+      let pos = P0; legs.forEach(([a, b, A, B]) => { if (t >= a) { const k = easeIO(prog(t, a, b)); pos = [A[0] + (B[0] - A[0]) * k, A[1] + (B[1] - A[1]) * k]; } });
+      const press = [T1, T2, T3].some(x => t >= x - 0.05 && t < x + 0.12) ? 0.9 : 1;
+      $('tap').style.left = (pos[0] - 80) + 'px'; $('tap').style.top = (pos[1] - 34) + 'px';
+      show('tap', t >= T1 - 0.6 && t < T3 + 0.6 ? 1 - o : 0, 'scale(' + press + ')');
+    } else show('tap', 0);
+    const gulp = Math.sin(Math.PI * prog(t, T3 + 0.8, T3 + 1.1)) * 0.08;
+    show('ent', on && t >= T3 + 0.05 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')');
+    const kb = back(prog(t, T3 + 1.0, T3 + 1.3));
+    show('kb', on && t >= T3 + 1.0 ? clamp(kb * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, kb)) * 40 + 'px)'); }
 
   // 4: PsycheAI's servers keep nothing (only zeros, never another number), the results sit on your phone, and a hack finds nothing.
   { const s = ANS, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
@@ -314,12 +361,13 @@ function render(t) {
     show('hack', on && t >= s.marks[2] - 0.2 ? clamp(h * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, h)) + ')'); }
 
   // 5: the close.
-  { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[2] - 0.1, s.marks[2] + 0.25));
-    const k = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.2));
+  { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
+    // The code card, unspoken, in the pause between the two lines.
+    const kc = s.marks[1] - 0.8, k = back(prog(t, kc, kc + 0.35));
     show('c1', on ? clamp(a * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
-    show('code', on && t >= s.marks[1] - 0.15 ? clamp(k * 2) : 0, 'translateY(' + (1 - Math.min(1, k)) * 50 + 'px)');
-    show('tag', on && t >= s.marks[2] - 0.1 ? clamp(d * 2) : 0);
-    show('site', on && t >= s.marks[2] - 0.1 ? clamp(d * 2) : 0, 'translateX(-50%) scale(' + Math.min(1.05, d) + ')'); }
+    show('code', on && t >= kc ? clamp(k * 2) : 0, 'translateY(' + (1 - Math.min(1, k)) * 50 + 'px)');
+    show('tag', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0);
+    show('site', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0, 'translateX(-50%) scale(' + Math.min(1.05, d) + ')'); }
 }
 window.render = render;
 window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
