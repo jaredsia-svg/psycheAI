@@ -454,3 +454,23 @@ if PsycheAI were hacked; no training on it; a password only in Instagram, no acc
 the airplane-mode check), and the last story to itself, why not ChatGPT: consumer AI against PsycheAI, said as the
 FAQ says it (may train on what you share unless you turn it off; kept until deleted, then up to 30 days more).
 The guide story is headed *Start here.* Text keeps clear of the top 220px and bottom 300px, where Instagram puts its bars.
+
+### The ChatGPT reel
+
+```
+npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 35 s
+```
+
+*Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, then what comes back.
+Its own stage, `chatgpt-stage.html`, grey while ChatGPT has the data and the brand's colours from PsycheAI on; the
+comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's, about its personal plans.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | Why not just upload my Instagram data to ChatGPT? | the question typed into a box *To ChatGPT* |
+| 1 | Because it all goes up, as it is. / Your name. Your friends' messages. Your photos. | the export, shaking, and its contents flying up into a cloud, *ChatGPT's servers* |
+| 2 | It may train on it, unless you switch that off. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud |
+| 3 | PsycheAI reads it on your phone. / Only a de-identified summary leaves. | the export locked in a phone; a summary (name blacked out, @friend → [P1]) leaving for *Enterprise AI · doesn't train on it* |
+| 4 | And because it actually knows you, / its answers are about you. | the comparison reel's two real answers, *Could be anyone* and *Only you* |
+| 5 | Same question. Only one actually knows you. / Try it at psycheai.io. | the line, *Your personal AI coach*, the address |
+

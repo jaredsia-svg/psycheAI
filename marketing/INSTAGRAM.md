@@ -153,6 +153,22 @@ Same caption as 3d, with the reveal line swapped:
 
 Hashtags: swap #wizardofoz for #rapunzel, #mulan, #odyssey or #sherlockholmes.
 
+### 3f. ChatGPT vs PsycheAI: where your data goes
+
+```
+"Why not just upload my Instagram data to ChatGPT?" 🤔
+
+With ChatGPT, it all goes up as it is: your name, your friends' messages, your photos.
+It may be used to train its models unless you switch that off, and it's kept until you delete it, then up to 30 days more.
+
+With PsycheAI, your files stay on your phone. Only a de-identified summary leaves, to enterprise AI that doesn't train on it.
+
+Same question. Only one actually knows you.
+Comment COACH for the link 👇
+
+#chatgpt #privacy #aicoach #dataprivacy #psycheai
+```
+
 ### 4. Career
 
 ```
