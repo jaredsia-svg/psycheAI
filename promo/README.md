@@ -86,6 +86,8 @@ A second, short reel (about 28 seconds) walks through the privacy page's five st
 ```
 npm run promo:privacy            # after a first npm run promo, which sets up .cache
 npm run promo:privacy -- --vo    # remake its voice too
+.cache/venv/bin/python promo/privacy.py --groove && node promo/render.mjs privacy-groove --video <ffmpeg>
+                                 # the alternative to the ChatGPT reel's second-half music, build/privacy-groove
 ```
 
 `out/PsycheAI-privacy.mp4` (post this), `out/PsycheAI-privacy-music-only.mp4` and `out/PsycheAI-privacy-cover.jpg`.

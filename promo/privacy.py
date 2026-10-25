@@ -10,6 +10,11 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = HERE + '/build/privacy'
+# --groove: the same reel and voice to the ChatGPT reel's second half instead (25 October 2026, an alternative to
+# compare), built into build/privacy-groove and rendered as `node render.mjs privacy-groove`.
+GROOVE = '--groove' in sys.argv
+OUTDIR = HERE + '/build/privacy-groove' if GROOVE else BUILD
+os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(BUILD, exist_ok=True)
 
 # (phrases, length scale, record each phrase on its own[, pause]), as in vo.py. One line a scene, each
@@ -59,7 +64,7 @@ marks = [stored['lines'][name] for name in names]
 # The relationship reel's music since 25 October 2026 (it shared the launch video's track; a lo-fi of its own was
 # tried the same day and dropped): its instruments, key and tempo, laid over these steps. See below.
 # Set a little apart from it: a whole step up, a touch quicker, its own tune.
-BPM = 94; BEAT = 60 / BPM; BAR = 4 * BEAT
+BPM = 120 if GROOVE else 94; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 minimum = {}
@@ -76,7 +81,7 @@ for i, d in enumerate(dur):
                    'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})
     t = end
 TOTAL = round(t, 3)
-json.dump({'total': TOTAL, 'bpm': BPM, 'scenes': scenes}, open(BUILD + '/timeline.json', 'w'), indent=1)
+json.dump({'total': TOTAL, 'bpm': BPM, 'scenes': scenes}, open(OUTDIR + '/timeline.json', 'w'), indent=1)
 print('total', TOTAL)
 
 n = int(TOTAL * SR) + SR
@@ -161,70 +166,125 @@ def impact():
     noise = lowpass(rng.standard_normal(L).astype(np.float32), 3000) * np.exp(-x * 9) * 0.5
     return (boom + noise) * 0.55
 
-sc = scenes
-STEPS = sc[1]['start']   # the steps: a soft low pulse comes in
-DROP = sc[3]['start']    # Step 3 on: the gentle groove and the tune
-BRIGHT = sc[5]['start']  # Step 5 on: the tune a touch brighter
-FINAL = sc[6]['start']   # the last card
-END = sc[6]['voEnd'] + 0.6
-# The relationship reel's music (shorts.py, mood 'relationship'), its instruments copied as they are: an electric
-# piano with a slow tremolo and a soft pad throughout; a low pulse under Steps 1 and 2; from Step 3 a soft groove of
-# brushed snare, rim and bass with a vibraphone tune; a softly rolled A chord to close.
-EIGHTH = BEAT / 2
-def lp(x, fc):
-    X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
-    return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
-def rhodes(m, length=2.0, gain=0.07):
-    L = int(length * SR); x = np.arange(L) / SR; f = hz(m)
-    y = np.sin(2 * np.pi * f * x + 1.4 * np.exp(-x * 7) * np.sin(2 * np.pi * f * x)) + 0.25 * np.sin(2 * np.pi * f * 2 * x) * np.exp(-x * 3)
-    y *= np.exp(-x * 1.3) * (1 + 0.18 * np.sin(2 * np.pi * 4.2 * x)) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.1, 0, 1)
-    return y.astype(np.float32) * gain
-def vibes(m, gain=0.06):
-    L = int(1.6 * SR); x = np.arange(L) / SR; f = hz(m)
-    y = np.sin(2 * np.pi * f * x) + 0.3 * np.sin(2 * np.pi * f * 4 * x) * np.exp(-x * 8)
-    return (y * np.exp(-x * 2.2) * (1 + 0.25 * np.sin(2 * np.pi * 5.5 * x))).astype(np.float32) * gain
-def brush():
-    L = int(0.35 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
-    return lp(noise - lp(noise, 1500), 6000) * np.minimum(1, x / 0.03) * np.exp(-x * 9) * 0.3
-def rim():
-    L = int(0.06 * SR); x = np.arange(L) / SR
-    return (np.sin(2 * np.pi * 1800 * x) * np.exp(-x * 120) + np.sin(2 * np.pi * 520 * x) * np.exp(-x * 60) * 0.5) * 0.25
-def soft_bass(m, length):
-    L = int(length * SR); x = np.arange(L) / SR
-    return (np.sin(2 * np.pi * hz(m) * x) + 0.2 * np.sin(4 * np.pi * hz(m) * x)) * np.minimum(1, x / 0.01) * np.clip((length - x) / 0.08, 0, 1) * 0.3
-def pad(chord, length, gain=0.03):
-    L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
-    for m in chord + [chord[0] + 12]:
-        for det in (-0.12, 0.12): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x) + 0.2 * (2 * (x * hz(m) * (1 + det / 100) % 1) - 1)
-    return lp(y * np.minimum(1, x / 0.6) * np.clip((length - x) / 0.5, 0, 1), 1500) * gain
-K = kick()
-pump = np.ones(n, np.float32)
-last = snap(END - BAR, BAR)
-stop = END - BAR
-b = 0.0
-while b < END:
-    k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8; beat_i = e // 2
-    chord, root = CHORDS[bar_i], ROOTS[bar_i]
-    if b >= stop: b += EIGHTH; continue
-    if e in (0, 3):
-        for m in chord: at(b, rhodes(m + 12, 2.2, 0.05), 1.0, -0.15)
-    if e == 6: at(b, rhodes(chord[2] + 24, 1.2, 0.04), 1.0, 0.2)
-    if e == 0: at(b, pad(chord, BAR * 1.02), 1.0)
-    if STEPS <= b < DROP:
-        if e % 2 == 0: at(b, K, 0.25)
-        if e == 0: at(b, soft_bass(root - 12, BAR * 0.95), 0.8)
-    elif DROP <= b:
-        bright = b >= BRIGHT
-        if e in (0, 5): at(b, K, 0.55)
-        if e in (2, 6): at(b, brush(), 1.0)
-        if e % 2 == 1: at(b, rim(), 0.6 if bright else 0.4, 0.3)
-        if e in (0, 3, 4): at(b, soft_bass(root - 12, EIGHTH * 1.7), 1.0)
-        if e % 2 == 0: at(b, vibes(MELODY[bar_i][beat_i], 0.06 if bright else 0.045), 1.0, 0.15)
-    b += EIGHTH
-at(DROP - 1.6, swell(1.6), 0.6)
-end = [47, 59, 63, 66, 71, 75]   # B major, rolled
-for k, m in enumerate(end): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
-at(last - 0.6, pad(end[1:4], 3.8, 0.04), 1.0)
+if not GROOVE:
+    sc = scenes
+    STEPS = sc[1]['start']   # the steps: a soft low pulse comes in
+    DROP = sc[3]['start']    # Step 3 on: the gentle groove and the tune
+    BRIGHT = sc[5]['start']  # Step 5 on: the tune a touch brighter
+    FINAL = sc[6]['start']   # the last card
+    END = sc[6]['voEnd'] + 0.6
+    # The relationship reel's music (shorts.py, mood 'relationship'), its instruments copied as they are: an electric
+    # piano with a slow tremolo and a soft pad throughout; a low pulse under Steps 1 and 2; from Step 3 a soft groove of
+    # brushed snare, rim and bass with a vibraphone tune; a softly rolled A chord to close.
+    EIGHTH = BEAT / 2
+    def lp(x, fc):
+        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+        return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
+    def rhodes(m, length=2.0, gain=0.07):
+        L = int(length * SR); x = np.arange(L) / SR; f = hz(m)
+        y = np.sin(2 * np.pi * f * x + 1.4 * np.exp(-x * 7) * np.sin(2 * np.pi * f * x)) + 0.25 * np.sin(2 * np.pi * f * 2 * x) * np.exp(-x * 3)
+        y *= np.exp(-x * 1.3) * (1 + 0.18 * np.sin(2 * np.pi * 4.2 * x)) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.1, 0, 1)
+        return y.astype(np.float32) * gain
+    def vibes(m, gain=0.06):
+        L = int(1.6 * SR); x = np.arange(L) / SR; f = hz(m)
+        y = np.sin(2 * np.pi * f * x) + 0.3 * np.sin(2 * np.pi * f * 4 * x) * np.exp(-x * 8)
+        return (y * np.exp(-x * 2.2) * (1 + 0.25 * np.sin(2 * np.pi * 5.5 * x))).astype(np.float32) * gain
+    def brush():
+        L = int(0.35 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+        return lp(noise - lp(noise, 1500), 6000) * np.minimum(1, x / 0.03) * np.exp(-x * 9) * 0.3
+    def rim():
+        L = int(0.06 * SR); x = np.arange(L) / SR
+        return (np.sin(2 * np.pi * 1800 * x) * np.exp(-x * 120) + np.sin(2 * np.pi * 520 * x) * np.exp(-x * 60) * 0.5) * 0.25
+    def soft_bass(m, length):
+        L = int(length * SR); x = np.arange(L) / SR
+        return (np.sin(2 * np.pi * hz(m) * x) + 0.2 * np.sin(4 * np.pi * hz(m) * x)) * np.minimum(1, x / 0.01) * np.clip((length - x) / 0.08, 0, 1) * 0.3
+    def pad(chord, length, gain=0.03):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord + [chord[0] + 12]:
+            for det in (-0.12, 0.12): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x) + 0.2 * (2 * (x * hz(m) * (1 + det / 100) % 1) - 1)
+        return lp(y * np.minimum(1, x / 0.6) * np.clip((length - x) / 0.5, 0, 1), 1500) * gain
+    K = kick()
+    pump = np.ones(n, np.float32)
+    last = snap(END - BAR, BAR)
+    stop = END - BAR
+    b = 0.0
+    while b < END:
+        k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8; beat_i = e // 2
+        chord, root = CHORDS[bar_i], ROOTS[bar_i]
+        if b >= stop: b += EIGHTH; continue
+        if e in (0, 3):
+            for m in chord: at(b, rhodes(m + 12, 2.2, 0.05), 1.0, -0.15)
+        if e == 6: at(b, rhodes(chord[2] + 24, 1.2, 0.04), 1.0, 0.2)
+        if e == 0: at(b, pad(chord, BAR * 1.02), 1.0)
+        if STEPS <= b < DROP:
+            if e % 2 == 0: at(b, K, 0.25)
+            if e == 0: at(b, soft_bass(root - 12, BAR * 0.95), 0.8)
+        elif DROP <= b:
+            bright = b >= BRIGHT
+            if e in (0, 5): at(b, K, 0.55)
+            if e in (2, 6): at(b, brush(), 1.0)
+            if e % 2 == 1: at(b, rim(), 0.6 if bright else 0.4, 0.3)
+            if e in (0, 3, 4): at(b, soft_bass(root - 12, EIGHTH * 1.7), 1.0)
+            if e % 2 == 0: at(b, vibes(MELODY[bar_i][beat_i], 0.06 if bright else 0.045), 1.0, 0.15)
+        b += EIGHTH
+    at(DROP - 1.6, swell(1.6), 0.6)
+    end = [47, 59, 63, 66, 71, 75]   # B major, rolled
+    for k, m in enumerate(end): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
+    at(last - 0.6, pad(end[1:4], 3.8, 0.04), 1.0)
+
+else:
+    # The ChatGPT reel's second half (shorts.py, mood 'thriller', after its switch), heard clear throughout and
+    # built up over the steps: electric piano, pad and bass under the hook; the kick on every beat from Step 1;
+    # from Step 3 claps on two and four, hats, offbeat stabs, the octave-bouncing bass and the plucked hook.
+    # It ends on one held electric-piano chord.
+    sc = scenes
+    STEPS = sc[1]['start']; DROP = sc[3]['start']; FINAL = sc[6]['start']; END = sc[6]['voEnd'] + 0.6
+    EIGHTH = BEAT / 2; SIX = BEAT / 4
+    LOOP = [[62, 65, 69], [58, 62, 65], [60, 65, 69], [60, 64, 67]]   # Dm, Bb, F, C
+    LOOP_ROOTS = [38, 34, 41, 36]
+    def strings(chord, length, gain=0.03):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord + [chord[0] - 12]:
+            for det in (-0.12, 0, 0.12): y += 2 * (x * hz(m) * (1 + det / 100) % 1) - 1
+        return lowpass(y * np.minimum(1, x / 0.5) * np.clip((length - x) / 0.4, 0, 1), 1800) * gain
+    def ep(chord, length, gain=0.05):
+        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+        for m in chord:
+            f = hz(m)
+            y += np.sin(2 * np.pi * f * x) * np.exp(-x * 1.4) + 0.25 * np.sin(2 * np.pi * 2 * f * x) * np.exp(-x * 5)
+        return y * np.minimum(1, x / 0.006) * np.clip((length - x) / 0.25, 0, 1) * gain
+    K, C, H, HO = kick(), clap(), hat(), hat(True)
+    pump = np.ones(n, np.float32)
+    HOOK_STEPS = {0: 2, 3: 1, 6: 2, 8: 0, 10: 2, 13: 1, 14: 0}
+    b = 0.0
+    while b < END - BAR:
+        k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
+        chord = LOOP[bar_i]; root = LOOP_ROOTS[bar_i]
+        if e == 0:
+            at(b, strings(chord, BAR * 1.02, 0.03), 1.0)
+            at(b, ep(chord, BAR * 0.95, 0.045), 1.0)
+        if e % 8 == 6: at(b, ep(chord[1:], BEAT * 1.2, 0.03), 1.0, 0.2)
+        if b < STEPS:
+            if e % 4 == 0: at(b, bass(root, BEAT * 0.8), 0.7)
+        elif b < DROP:
+            if e % 4 == 0:
+                at(b, K, 0.8); at(b, bass(root + (12 if e % 8 == 4 else 0), BEAT * 0.8), 0.8)
+            if e % 4 == 2: at(b, HO, 0.18, 0.3)
+        else:
+            if e % 4 == 0:
+                at(b, K, 1.0)
+                a_ = int(b * SR); Lp = int(0.18 * SR)
+                if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.55 + 0.45 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
+            if e in (4, 12): at(b, C, 0.7)
+            if e % 4 == 2: at(b, HO, 0.25, 0.3)
+            if e % 2 == 1: at(b, H, 0.12, -0.3)
+            if e % 4 == 2: at(b, stab(chord, EIGHTH * 0.8), 0.9)
+            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.75), 0.9)
+            if e in HOOK_STEPS: at(b, pluck(chord[HOOK_STEPS[e]] + 12, 0.15), 1.0, 0.15)
+        b += SIX
+    last = snap(END - BAR, BAR)
+    at(last, ep([53, 60, 65, 69, 72], 3.4, 0.06), 1.0); at(last, strings([65, 69, 72], 3.0, 0.03), 1.0)
+    at(last, bass(41, 2.5) * 0.7, 0.8)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
@@ -249,6 +309,6 @@ def save(path, data):
     data = (np.clip(data, -1, 1) * 32767).astype(np.int16)
     w = wave.open(path, 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes(data.tobytes()); w.close()
-save(BUILD + '/mix.wav', mix)
-save(BUILD + '/music-only.wav', (music * 0.7)[: int(TOTAL * SR)])
+save(OUTDIR + '/mix.wav', mix)
+save(OUTDIR + '/music-only.wav', (music * 0.7)[: int(TOTAL * SR)])
 print('wrote mix')
