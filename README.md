@@ -4986,6 +4986,12 @@ it down as far as they like, line by line, and see what that costs. It was mocke
   chats). Instagram and Messenger have spares; WhatsApp does not, since its three chats are hand-picked and
   there is no next one. The message note's "[t1]…[t10]" became "[t1], [t2] …", since a chat that fills in
   can be t11 or later.
+- **Which ten chats (25 October 2026).** Chats are ranked by eligible messages (the reader's own, after the
+  sampler's filters: no system notices, bursts joined, no pastes or forwards, no filler, no repeats), weighted
+  towards chats kept up over years: × (1 + 0.20 for each extra year with at least 10 eligible messages), at most
+  ×2 (`messageSpanBonus`, `messageSpanCap`, `messageYearFloor`). 200 over three years ranks with 280 in one; 50
+  over five ranks below 300 in one. Ties go to the older chat. It applies wherever the sampler ranks chats:
+  Instagram, Messenger, and WhatsApp's hand-picked three (where it changes only their order).
 - **Which years.** A bar a year, from every dated line the model would read; each bar switches its year
   off on its own, and All / 3 yrs / 1 yr set a range. The last year left cannot be switched off.
 - **Leave out anything mentioning.** Removes the whole post or message, never just the word: "Happy

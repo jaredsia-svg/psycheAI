@@ -9901,6 +9901,25 @@ check('the schema requires evidence on where they align and differ',
   check('trimLines: no choices, no change', Digest.trimLines(untouched, {}) === 0 &&
     JSON.stringify(untouched) === JSON.stringify(make()));
 }
+// Which chats: eligible messages, weighted towards chats kept up over years (25 October 2026).
+{
+  const Y = y => Date.UTC(y, 5, 1) / 1000;
+  // Thread 0: 30 messages, all in 2024. Thread 1: 26, half in 2022 and half in 2024 (×1.2 = 31.2).
+  // Thread 2: 40 over four years but never 10 in one (×1, 40). Thread 3: 60 over six years, 10 a year (×2 cap, 120).
+  const msgs = [];
+  // Words, not numbers, tell them apart: the duplicate check folds repeated characters, so "1" and "11" would match.
+  const W = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'];
+  const add = (thread, year, n) => { for (let i = 0; i < n; i++) msgs.push({ text: 'How are you feeling about ' + W[thread] + ' ' + W[year % 10] + ' ' + W[i % 10] + ' ' + W[Math.floor(i / 10)] + ' today?', ts: Y(year) + i * 86400, thread }); };
+  add(0, 2024, 30); add(1, 2022, 13); add(1, 2024, 13);
+  for (const y of [2020, 2021, 2022, 2023]) add(2, y, 9) ; add(2, 2024, 4);
+  for (const y of [2019, 2020, 2021, 2022, 2023, 2024]) add(3, y, 10);
+  const stats = {};
+  Digest.sampleConversations(msgs, { limit: 400, topThreads: 10, stats, burstSeconds: 0 });
+  check('which chats: ranked by eligible messages × (1 + 0.20 a year with 10 or more), capped at ×2',
+    JSON.stringify(stats.topKeys) === JSON.stringify([3, 2, 1, 0]), JSON.stringify(stats.topKeys));
+  check('which chats: the weighting is the agreed one',
+    Digest.LIMITS.messageSpanBonus === 0.2 && Digest.LIMITS.messageSpanCap === 2 && Digest.LIMITS.messageYearFloor === 10);
+}
 // Spares: switching a chat off fills its room from the chats that stay and the next in line (25 October 2026).
 {
   const sentList = heavyWithDms.directMessages.ownMessageSample;

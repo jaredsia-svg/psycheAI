@@ -70,6 +70,14 @@
     // group somebody was added to once. Those messages are real but they are
     // not evidence about a relationship, and an archive has hundreds of them.
     messageTopThreads: 10,
+    // Which ten: ranked by eligible messages, weighted towards a conversation
+    // that spans years (25 October 2026), since a friendship kept up over
+    // years says more than one busy season. Each extra year with at least
+    // messageYearFloor eligible messages adds messageSpanBonus, to at most
+    // messageSpanCap times: 200 over three years ranks with 280 in one.
+    messageSpanBonus: 0.20,
+    messageSpanCap: 2,
+    messageYearFloor: 10,
     // And no one conversation may take more than a fifth of the sample. Left
     // purely proportional, a reader whose partner accounts for half their
     // messages would get a report about one relationship.
@@ -1451,8 +1459,17 @@
 
     // The conversations, by how many usable messages each holds; ties to the
     // older one, so the order is total.
-    const ranked = [...units.entries()].sort((a, b) => b[1].length - a[1].length ||
-      a[1][0].ts - b[1][0].ts || a[1][0].hash - b[1][0].hash);
+    // Eligible messages, weighted by the years the conversation is really
+    // active in (messageSpanBonus above); ties to the older one, so the order is total.
+    const weight = list => {
+      const perYear = new Map();
+      for (const u of list) if (u.year) perYear.set(u.year, (perYear.get(u.year) || 0) + 1);
+      const years = [...perYear.values()].filter(n => n >= LIMITS.messageYearFloor).length;
+      return list.length * Math.min(LIMITS.messageSpanCap, 1 + LIMITS.messageSpanBonus * Math.max(0, years - 1));
+    };
+    const ranked = [...units.entries()].map(([key, list]) => [key, list, weight(list)])
+      .sort((a, b) => b[2] - a[2] || a[1][0].ts - b[1][0].ts || a[1][0].hash - b[1][0].hash)
+      .map(([key, list]) => [key, list]);
     const top = ranked.slice(0, opts.topThreads || ranked.length);
     stats.threadsAvailable = ranked.length;
     stats.threadsUsed = top.length;
@@ -2007,7 +2024,7 @@
         receivedByUser: messages.received,
         averageSentLength: messages.avgSentLength,
         note: 'Only the user\'s own messages are sampled below, spread across each conversation\'s whole span and across short, ordinary and long messages. '
-          + 'A [t1], [t2] … tag marks which conversation a message belongs to, ranked by how much the user writes in it — t1 is the one they use most. '
+          + 'A [t1], [t2] … tag marks which conversation a message belongs to, ranked by how much the user writes in it, weighted towards conversations kept up over several years — t1 ranks first. '
           + 'The tags identify nobody; they are there so that how the user writes to one person can be told apart from how they write to another. '
           + 'A line may open with «them: …»: the message it replied to, from the other person, shortened and de-identified — context for reading the reply, never the user\'s own words. A " / " joins lines the user sent in one quick burst.',
         // Links stripped before sampling. A shared Grab ride-tracking link or
