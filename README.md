@@ -2065,6 +2065,13 @@ career strengths directly from your Instagram and digital footprint — zero qui
 replaced *The personality analysis you didn't know you needed*. The checks pin the two lines and
 "zero quizzes required", the claim no quiz can make.
 
+**Since 25 October 2026** the headline is **Your personal AI coach** with **that already knows you.** under it in
+the accent gradient, and the lede is *A full personality study from your own Instagram data. No questions asked.*
+The reels, the Instagram bio and the story highlights all say *your personal AI coach*, so someone arriving from
+them now meets the promise they tapped; "already knows you" is the part no other coach can claim, so it carries the
+gradient; and the personality study and "No questions asked" stay in the line beneath. The checks pin both lines and
+that the hero still says no questions are asked.
+
 In the Add your data popout, **Continue** with no Instagram loaded used to close the popout, say
 *Load your Instagram data to get started.* on the page behind it, and open the popout again. Now
 the popout stays open and says it in its own status line (`requireInstagram` in `askDataSources`).

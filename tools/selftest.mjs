@@ -7933,7 +7933,7 @@ check('the schema requires evidence on where they align and differ',
   {
     const bare = index.replace(/<!--[\s\S]*?-->/g, '');
     check('the front page has exactly one <h1>, the hero\'s',
-      (bare.match(/<h1[\s>]/g) || []).length === 1 && /<h1>A full personality study\./.test(bare));
+      (bare.match(/<h1[\s>]/g) || []).length === 1 && /<h1>Your personal AI coach<br>/.test(bare));
     check('and each other view keeps a level-1 heading for screen readers',
       ['scan-title', 'report-title', 'profile-title', 'letterhead-name'].every(id =>
         new RegExp('id="' + id + '" role="heading" aria-level="1"').test(bare)));

@@ -673,10 +673,12 @@ try {
       return svg.getAttribute('stroke') === 'currentColor' &&
         getComputedStyle(svg).color !== 'rgb(0, 0, 0)';
     }));
+  // Since 25 October 2026 the headline is the coach, as the reels and the bio say it; the personality study and
+  // "No questions asked" moved to the lede under it.
   check('the headline is the new one, its second line in the accent',
-    /^A full personality study\.\s+No questions asked\.$/.test(
+    /^Your personal AI coach\s+that already knows you\.$/.test(
       (await page.locator('#view-welcome h1').innerText()).trim()) &&
-      (await page.locator('#view-welcome h1 .accent').innerText()).trim() === 'No questions asked.');
+      (await page.locator('#view-welcome h1 .accent').innerText()).trim() === 'that already knows you.');
   // The tab title is also the search result's headline, so it says what
   // people search for rather than repeating the page's tagline.
   check('the tab title names the app and what people search for',
@@ -2832,12 +2834,12 @@ try {
   // line because a lede that lists everything reads as a specification rather
   // than a claim. "and other insights" is doing that work now, so the check
   // asserts the four that are named rather than every framework that exists.
-  // Since October 2026 the lede pitches the coach: the headline above already says no questions.
-  check('the hero lede is the personal AI coach that already knows you, built from your own data',
+  // Since 25 October 2026 the lede is the personality study, with no questions: the headline above is the coach.
+  check('the hero lede is a full personality study from your own data, with no questions asked',
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
-        'Your personal AI coach that already knows you, built from your Instagram data.';
+        'A full personality study from your own Instagram data. No questions asked.';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
@@ -2846,8 +2848,8 @@ try {
   // competitor can make: nothing was asked, the report comes off behaviour
   // that already happened. Pinned because it is the sentence most likely to be
   // softened by accident in a later rewrite.
-  check('and the headline above it still says no questions are asked, the actual differentiator',
-    /No questions asked\./.test(await page.locator('#view-welcome .hero h1').innerText()),
+  check('and the hero still says no questions are asked, the actual differentiator',
+    /No questions asked\./.test(await page.locator('#view-welcome .hero .lede').innerText()),
     (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim());
   // The privacy badge moved out of the hero and down to the upload card, then
   // further down to sit under the thing that asks for the file — once the two
