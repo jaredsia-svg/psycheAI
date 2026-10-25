@@ -844,72 +844,62 @@ elif R.get('mood') != 'thriller':
     at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
 
 if R.get('mood') == 'thriller':
+    # Rewritten 25 October 2026 ("sounds weird", and "that loud clash" at the switch). While ChatGPT has the data:
+    # dark but musical, D minor under soft strings, a plucked minor arpeggio and a gentle pulse, a soft hit on each
+    # warning. At "Now watch PsycheAI": no crash, a beat of air, then a bright bell run into a bouncy F major groove,
+    # kick on every beat, claps on two and four, offbeat chord stabs, an octave-bouncing bass and a syncopated
+    # plucked hook that repeats, so it sticks.
     sc = scenes
     HOOK = sc[0]['marks'][1]; DROP = sc[REVEAL]['start']; END = sc[-1]['voEnd'] + 0.6
     HITS = [sc[1]['vo'], sc[2]['vo'], sc[2]['marks'][1]]
     EIGHTH = BEAT / 2; SIX = BEAT / 4
-    def lp(x, fc):
-        X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
-        return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
-    def saw(f, x): return 2 * (x * f % 1) - 1
-    def drone(chord, length, fc=700, gain=0.05):
-        L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
-        for m in [chord[0] - 12] + chord:
-            for det in (-0.2, 0.2): y += saw(hz(m) * (1 + det / 100), x)
-        return lp(y * np.minimum(1, x / 0.3) * np.clip((length - x) / 0.2, 0, 1), fc) * gain
-    def sub(m, length):
-        L = int(length * SR); x = np.arange(L) / SR
-        return np.tanh(2.2 * np.sin(2 * np.pi * hz(m) * x)) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.03, 0, 1) * 0.32
-    def tick():
-        L = int(0.03 * SR); x = np.arange(L) / SR; nz = rng.standard_normal(L).astype(np.float32)
-        return (nz - lowpass(nz, 6000)) * np.exp(-x * 160) * 0.25
-    def lead_(m, length):
-        L = int(length * SR); x = np.arange(L) / SR
-        y = saw(hz(m), x) + saw(hz(m) * 1.004, x) + 0.6 * np.sin(2 * np.pi * hz(m) * x)
-        return lp(y * np.exp(-x * 5) * np.minimum(1, x / 0.004), 4200) * 0.06
-    def crash():
-        L = int(1.6 * SR); x = np.arange(L) / SR; nz = rng.standard_normal(L).astype(np.float32)
-        return (nz - lp(nz, 5000)) * np.exp(-x * 2.5) * 0.3
-    K, C, H, HO, T = kick(), clap(), hat(), hat(True), tick()
+    K, C, H, HO = kick(), clap(), hat(), hat(True)
     pump = np.ones(n, np.float32)
+    # The hook: chord-tone steps (index into the bar's chord, an octave up), on these sixteenths.
+    HOOK_STEPS = {0: 2, 3: 1, 6: 2, 8: 3, 10: 2, 13: 1, 14: 0}
     b = 0.0
     while b < END:
         k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
         if b < DROP - BEAT:
-            # Tension: a ticking clock in sixteenths, a heartbeat kick, the sub on the one; louder after the hook.
-            # Everything stops a beat before the drop, so the switch lands out of a breath of silence.
-            tense = b >= HOOK; room = DROP - BEAT - b
-            at(b, T, (0.5 if e % 4 == 0 else 0.25) * (1.0 if tense else 0.6), 0.25 if e % 2 else -0.25)
-            if tense and e in (0, 3, 8, 11): at(b, K, 0.75 if e in (0, 8) else 0.45)
-            if tense and e == 0: at(b, sub(ROOTS[bar_i], min(BAR * 0.95, room)), 0.8)
-            if e == 0: at(b, drone(CHORDS[bar_i], min(BAR * 1.02, room + 0.15), 600 if not tense else 1100), 1.0)
-        elif b < DROP: pass
-        elif b < END - BAR:
-            # The drop: four on the floor, claps on two and four, offbeat open hats, the bass on eighths, a bright lead.
+            chord = CHORDS[bar_i]; root = ROOTS[bar_i]; tense = b >= HOOK
+            if e == 0: at(b, strings(chord, BAR * 1.02, 0.035 if tense else 0.025), 1.0)
+            # The arpeggio: up and down the chord in eighths, soft.
+            if e % 2 == 0:
+                arp = [0, 1, 2, 3, 2, 1, 0, 1][e // 2]
+                notes = chord + [chord[0] + 12]
+                at(b, pluck(notes[arp] + 12, 0.09 if tense else 0.06), 1.0, 0.3 if (e // 2) % 2 else -0.3)
+            if tense:
+                if e in (0, 8): at(b, K, 0.5)
+                if e % 4 == 2: at(b, H, 0.18, 0.25)
+                if e % 4 == 0: at(b, bass(root + 12, EIGHTH * 0.9), 0.55)
+        elif b >= DROP and b < END - BAR:
             L_ = R['lift'][bar_i]; root = R['lift_roots'][bar_i]
             if e % 4 == 0:
                 at(b, K, 1.0)
-                a_ = int(b * SR); Lp = int(0.2 * SR)
-                if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.45 + 0.55 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
-            if e % 4 == 2: at(b, HO, 0.4, 0.3)
-            if e % 2 == 1: at(b, H, 0.2, -0.3)
-            if e in (4, 12): at(b, C, 0.85)
-            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.8), 1.1)
-            if e == 0: at(b, strings(L_, BAR * 1.02, 0.045), 1.0)
-            if e % 4 == 0: at(b, lead_(R['melody'][bar_i][e // 4], BEAT * 0.9), 1.0, -0.1)
-            if e in (6, 14): at(b, pluck(L_[2] + 12, 0.1), 1.0, 0.3)
+                a_ = int(b * SR); Lp = int(0.18 * SR)
+                if a_ < n: pump[a_:a_ + Lp] = np.minimum(pump[a_:a_ + Lp], 0.5 + 0.5 * np.linspace(0, 1, min(Lp, n - a_)) ** 0.6)
+            if e in (4, 12): at(b, C, 0.75)
+            if e % 4 == 2: at(b, HO, 0.3, 0.3)
+            if e % 2 == 1: at(b, H, 0.14, -0.3)
+            # Offbeat stabs: the house "and".
+            if e % 4 == 2: at(b, stab(L_, EIGHTH * 0.8), 1.1)
+            # The bass bounces root, octave.
+            if e % 2 == 0: at(b, bass(root + (12 if e % 4 == 2 else 0), EIGHTH * 0.75), 1.0)
+            if e == 0: at(b, strings(L_, BAR * 1.02, 0.03), 1.0)
+            if e in HOOK_STEPS:
+                step = HOOK_STEPS[e]; m = (L_[step] if step < len(L_) else L_[0] + 12) + 12
+                at(b, pluck(m, 0.16), 1.0, 0.15); at(b, bell(m + 12), 0.35, -0.2)
         b += SIX
-    # The hook lands on a boom; each warning on a hit; the riser into the drop; a bright last chord.
-    at(HOOK, impact(), 1.0); at(HOOK, crash(), 0.6)
-    for h in HITS: at(h, impact(), 0.8); at(h, sub(26, 0.8), 0.9)
-    # Into the switch (25 October 2026: the low boom there "doesn't sound nice"): no boom. A cymbal played backwards
-    # rises through the beat of silence, and the drop opens on a bright F major chord, a clap and a bell run.
-    rev = crash()[::-1].copy(); at(DROP - len(rev) / SR, rev, 1.1)
-    at(DROP, strings([65, 69, 72, 77], BAR, 0.08), 1.0); at(DROP, C, 0.9); at(DROP, crash(), 0.5)
-    for k, m in enumerate([72, 77, 81, 84]): at(DROP + k * 0.06, bell(m + 12), 0.7, 0.3 if k % 2 else -0.3)
+    # The hook lands on a soft hit; each warning on a hit, without the low rumble.
+    at(HOOK, impact(), 0.6)
+    for h in HITS: at(h, impact(), 0.55)
+    # Into the switch: a swell through the beat of air, then a bright run up the F major chord, no crash.
+    at(DROP - BEAT * 1.5, swell(BEAT * 1.5), 0.9)
+    for k, m in enumerate([65, 69, 72, 77, 81, 84]): at(DROP + k * 0.05, bell(m + 12), 0.6, 0.3 if k % 2 else -0.3)
+    at(DROP, strings([65, 69, 72, 77], BAR, 0.05), 1.0)
     last = snap(END - BAR, BAR)
-    at(last, crash(), 0.6); at(last, strings([65, 69, 72, 77], 3.0, 0.07), 1.0); at(last, bass(41, 2.5) * 0.7, 0.8)
-    for k, m in enumerate([77, 81, 84, 89]): at(last + k * 0.07, bell(m), 0.9, 0.3 if k % 2 else -0.3)
+    at(last, strings([65, 69, 72, 77], 3.0, 0.06), 1.0); at(last, bass(41, 2.5) * 0.7, 0.8)
+    for k, m in enumerate([77, 81, 84, 89]): at(last + k * 0.07, bell(m), 0.8, 0.3 if k % 2 else -0.3)
 
 if R.get('mood') == 'character':
     # The slot's ticks: one each time a tile passes, slowing as it does (the stage moves by the same curve).

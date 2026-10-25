@@ -97,10 +97,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #review .lbl { margin: 26px 0 12px; font-size: 26px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; color: #8b7a99; }
 #review .kw { height: 84px; padding: 0 26px; border-radius: 22px; border: 3px solid #e6d6f0; display: flex; align-items: center; font-size: 40px; font-weight: 700; }
 #kwCaret { display: inline-block; width: 4px; height: 46px; margin-left: 3px; background: #8a3fd0; }
-#review .kwrow { display: flex; align-items: center; gap: 18px; height: 76px; }
-#kwChip { flex: none; padding: 8px 22px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 36px; font-weight: 850; white-space: nowrap; }
-#kwChip em { font-style: normal; opacity: .6; }
-#kwGone { font-size: 28px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
+#review .kwrow { display: flex; align-items: center; gap: 14px; height: 72px; margin-top: 6px; }
+.kwChip { flex: none; padding: 8px 22px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 36px; font-weight: 850; white-space: nowrap; }
+.kwChip em { font-style: normal; opacity: .6; }
+#kwGone { height: 36px; font-size: 28px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
 #review .r small { margin-left: 10px; font-size: 30px; font-weight: 850; color: #e0457b; text-decoration: none; }
 #review .go { margin-top: 26px; padding: 28px; border-radius: 999px; text-align: center; color: #fff; font-size: 42px; font-weight: 900;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.35); }
@@ -195,7 +195,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el" id="review"><h3>Review what gets sent</h3>
     <div class="lbl">Leave out anything mentioning</div>
     <div class="kw"><span id="kwTyped"></span><b id="kwCaret"></b></div>
-    <div class="kwrow"><span id="kwChip">work <em>×</em></span><span id="kwGone">8 posts &amp; messages removed</span></div>
+    <div class="kwrow"><span class="kwChip" id="kwChip1">diagnosis <em>×</em></span><span class="kwChip" id="kwChip2">medication <em>×</em></span></div>
+    <div id="kwGone">14 posts &amp; messages removed</div>
     <div class="lbl">Direct messages</div>
     <div class="r"><span>Sarah Kim <small>[t1]</small></span><span class="sw2"><i></i></span></div>
     <div class="r" id="rv2"><span>Jordan Lee <small>[t2]</small></span><span class="sw2"><i></i></span></div>
@@ -334,12 +335,14 @@ function render(t) {
   // sheet shrink and rise into the enterprise AI.
   { const s = REVIEW, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
     show('capR', on ? clamp(c * 2) * (1 - o) : 0);
-    const typeAt = said(s, 'topic', s.marks[1] + 0.5) - 0.35, WORD = 'work';
-    $('kwTyped').textContent = t >= typeAt + 0.6 ? '' : WORD.slice(0, Math.round(WORD.length * prog(t, typeAt, typeAt + 0.45)));
+    // Two sensitive topics, typed one after the other from "leave out any topic", each becoming a chip.
+    const WORDS = ['diagnosis', 'medication'], typeAt = s.marks[1] + 0.05, PER = 0.55;
+    const w = Math.min(WORDS.length - 1, Math.floor(Math.max(0, t - typeAt) / PER)), into = t - typeAt - w * PER;
+    $('kwTyped').textContent = t < typeAt || t >= typeAt + WORDS.length * PER - 0.12 || into > 0.4 ? '' : WORDS[w].slice(0, Math.round(WORDS[w].length * prog(into, 0, 0.32)));
     $('kwCaret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.15 : 1;
-    const chip = back(prog(t, typeAt + 0.6, typeAt + 0.85));
-    $('kwChip').style.opacity = clamp(chip * 2); $('kwChip').style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')';
-    $('kwGone').style.opacity = prog(t, typeAt + 0.8, typeAt + 1.0);
+    WORDS.forEach((_, i) => { const chip = back(prog(t, typeAt + i * PER + 0.4, typeAt + i * PER + 0.6));
+      $('kwChip' + (i + 1)).style.opacity = clamp(chip * 2); $('kwChip' + (i + 1)).style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')'; });
+    $('kwGone').style.opacity = prog(t, typeAt + 2 * PER, typeAt + 2 * PER + 0.2);
     const T1 = said(s, 'off', (s.marks[2] || s.marks[1]) + 0.6), T3 = Math.max(T1 + 0.7, s.voEnd + 0.1);
     [['rv2', T1]].forEach(([id, at]) => { const k = ease(prog(t, at, at + 0.15)), row = $(id);
       row.querySelector('i').style.left = (50 - 44 * k) + 'px';

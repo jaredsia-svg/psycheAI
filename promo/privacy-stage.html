@@ -35,10 +35,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .rvLabel { margin: 4px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .05em; white-space: nowrap; text-transform: uppercase; color: #8b7a99; }
 #rvInput { height: 46px; padding: 0 14px; border-radius: 14px; border: 2px solid #e6d6f0; display: flex; align-items: center; font-size: 21px; font-weight: 650; }
 #rvCaret { display: inline-block; width: 2px; height: 24px; margin-left: 2px; background: #8a3fd0; }
-#rvChipRow { display: flex; align-items: center; gap: 10px; height: 44px; margin-bottom: 8px; }
-#rvChip { flex: none; white-space: nowrap; padding: 5px 12px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 19px; font-weight: 800; }
-#rvChip em { font-style: normal; opacity: .6; }
-#rvGone { font-size: 14px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
+#rvChipRow { display: flex; align-items: center; gap: 8px; height: 40px; margin-top: 4px; }
+.rvChip { flex: none; white-space: nowrap; padding: 4px 11px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 19px; font-weight: 800; }
+.rvChip em { font-style: normal; opacity: .6; }
+#rvGone { height: 22px; margin-bottom: 6px; font-size: 14px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
 .sw small { margin-left: 6px; font-size: 16px; font-weight: 800; color: #e0457b; }
 .sw { justify-content: flex-start; }
 .sw i { margin-left: auto; }
@@ -125,7 +125,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="review"><h5>Review what gets sent</h5>
       <div class="rvLabel">Leave out anything mentioning</div>
       <div id="rvInput"><span id="rvTyped"></span><b id="rvCaret"></b></div>
-      <div id="rvChipRow"><span id="rvChip">work <em>×</em></span><span id="rvGone">8 posts &amp; messages removed</span></div>
+      <div id="rvChipRow"><span class="rvChip" id="rvChip1">diagnosis <em>×</em></span><span class="rvChip" id="rvChip2">medication <em>×</em></span></div>
+      <div id="rvGone">14 posts &amp; messages removed</div>
       <div class="rvLabel">Direct messages</div>
       <div class="sw on">Sarah Kim <small>[t1]</small><i></i></div>
       <div class="sw on" id="swOff">Jordan Lee <small>[t2]</small><i></i></div>
@@ -264,13 +265,14 @@ function render(t) {
   const revIn = back(prog(t, sR.start, sR.start + 0.35)), revOut = prog(t, s3.start + 0.3, s3.start + 0.5);
   set('review', clamp(revIn * 2) * (1 - revOut), 'scale(' + Math.min(1.04, revIn) * (1 - 0.1 * revOut) + ')');
   const said3 = (w, fb) => (sR.words.find(([x]) => x === w) || [0, fb])[1];
-  const typeAt = said3('topic', sR.marks[1] + 0.5) - 0.35, WORD = 'work';
-  const typed = Math.round(WORD.length * prog(t, typeAt, typeAt + 0.45)), entered = t >= typeAt + 0.6;
-  $('rvTyped').textContent = entered ? '' : WORD.slice(0, typed);
+  // Two sensitive topics, typed one after the other from "leave out any topic", each becoming a chip.
+  const WORDS = ['diagnosis', 'medication'], typeAt = sR.marks[1] + 0.05, PER = 0.55;
+  const w = Math.min(WORDS.length - 1, Math.floor(Math.max(0, t - typeAt) / PER)), into = t - typeAt - w * PER;
+  $('rvTyped').textContent = t < typeAt || t >= typeAt + WORDS.length * PER - 0.12 || into > 0.4 ? '' : WORDS[w].slice(0, Math.round(WORDS[w].length * prog(into, 0, 0.32)));
   $('rvCaret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.15 : 1;
-  const chip = back(prog(t, typeAt + 0.6, typeAt + 0.85));
-  $('rvChip').style.opacity = clamp(chip * 2); $('rvChip').style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')';
-  $('rvGone').style.opacity = prog(t, typeAt + 0.8, typeAt + 1.0);
+  WORDS.forEach((_, i) => { const chip = back(prog(t, typeAt + i * PER + 0.4, typeAt + i * PER + 0.6));
+    $('rvChip' + (i + 1)).style.opacity = clamp(chip * 2); $('rvChip' + (i + 1)).style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')'; });
+  $('rvGone').style.opacity = prog(t, typeAt + 2 * PER, typeAt + 2 * PER + 0.2);
   const untick = said3('off', sR.marks[2] || sR.marks[1] + 0.8), off = easeIO(prog(t, untick, untick + 0.3));
   $('swOff').style.setProperty('--k', String(1 - off)); $('swOff').style.color = mixHex('#2a1238', '#b9a8c6', off);
   $('swOff').querySelector('i').style.background = off > 0.5 ? '#e4d8ee' : '';
