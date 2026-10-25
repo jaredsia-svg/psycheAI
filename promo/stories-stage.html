@@ -104,6 +104,13 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
 .qa2[data-name="privacy-2"] .a { padding: 24px 34px; }
 .qa2[data-name="privacy-2"] .a .yes { font-size: 48px; }
 .qa2[data-name="privacy-2"] .a p { font-size: 33px; }
+/* The card, large, its key parts named beside it with a line to each. */
+.callout { position: absolute; left: 710px; right: 36px; transform: translateY(-50%); min-height: 84px; display: flex; align-items: center; gap: 14px; padding: 0 22px 0 18px;
+  border-radius: 26px; background: #fff; box-shadow: 0 18px 44px rgba(90,40,120,.18); color: #2a1238; }
+.callout span { font-size: 36px; }
+.callout b { font-size: 30px; font-weight: 850; line-height: 1.15; padding: 16px 0; }
+.callout i { position: absolute; right: 100%; top: 50%; width: 90px; height: 4px; margin-top: -2px; background: linear-gradient(90deg, #e0457b, #8a3fd0); border-radius: 2px; }
+.callout i::before { content: ''; position: absolute; left: -7px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #e0457b; box-shadow: 0 0 0 5px rgba(224,69,123,.25); }
 </style></head>
 <body>
 
@@ -126,12 +133,14 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
 
 <section class="slide light" data-name="start-2">
   <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in" style="justify-content:center">
-    <div class="kicker">What you get</div>
-    <h2>Your free <span class="grad">Psyche Card</span></h2>
-    <p class="lede" style="font-size:40px;margin-top:20px">The character you're most like, your MBTI, Big Five, values, interests and love languages.</p>
-    <img class="card" src="assets/card-char-mulan.png" style="width:470px">
-  </div>
+  <div class="kicker" style="position:absolute;left:80px;top:255px">What you get</div>
+  <h2 style="position:absolute;left:80px;right:60px;top:290px;margin:0;font-size:84px">Your free <span class="grad">Psyche Card</span></h2>
+  <img src="assets/card-char-mulan.png" style="position:absolute;left:50px;top:420px;width:620px;border-radius:34px;box-shadow:0 0 80px rgba(224,69,123,.3),0 40px 90px rgba(90,40,120,.35)">
+  <div class="callout" style="top:675px"><i></i><span>🎭</span><b>Your character</b></div>
+  <div class="callout" style="top:915px"><i></i><span>🧩</span><b>Patterns &amp; motives</b></div>
+  <div class="callout" style="top:1082px"><i></i><span>🧭</span><b>MBTI &amp; Big Five</b></div>
+  <div class="callout" style="top:1254px"><i></i><span>⚖️</span><b>Values &amp; interests</b></div>
+  <div class="callout" style="top:1401px"><i></i><span>💞</span><b>Love languages &amp; syncs</b></div>
 </section>
 
 <section class="slide" data-name="start-3">
@@ -143,7 +152,7 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
       <div class="step"><div class="num">📖</div><div><b>Psyche Report</b><span>Every part of your card explained with evidence, plus attachment style, ideal partner, career coaching and a development plan.</span></div></div>
       <div class="step"><div class="num">💬</div><div><b>Ask PsycheAI</b><span>Your coach, answering your questions from your own report.</span></div></div>
       <div class="step"><div class="num">🤝</div><div><b>Psyche Sync</b><span>See how in sync you are with a friend, and how to get on better.</span></div></div>
-      <div class="step"><div class="num">🔥</div><div><b>Your roast</b><span>An honest roast with every card, then what an honest friend would tell you.</span></div></div>
+      <div class="step"><div class="num">🔥</div><div><b>Your roast</b><span>An honest roast about you, then what an honest friend would tell you.</span></div></div>
     </div>
   </div>
 </section>

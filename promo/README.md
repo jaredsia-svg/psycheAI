@@ -445,7 +445,8 @@ node promo/stories.mjs   # marketing/stories/start-1..4.png and privacy-1..3.png
 
 Still images for the Instagram highlights *Start here* and *Privacy* (25 October 2026), as few as will hold it, one
 page (`stories-stage.html`) with a `<section data-name>` per slide. *Start here* (4): what PsycheAI is, with the
-four data sources it reads; the free card (Emily Carter's Mulan card); what else there is (report, Ask PsycheAI,
+four data sources it reads; the free card (Emily Carter's Mulan card, large, its key parts named beside it from
+card-char-mulan-parts.json); what else there is (report, Ask PsycheAI,
 Psyche Sync, the roast; "free to start" once, in the heading); the guide as the account's pinned post lays it out
 (every tap, each button a chip). *Privacy* (3): seven questions, two or three to a story, each answered in the FAQ's
 own words, shortened, so every claim stays literally true: the file never leaves the phone, how the summary is
