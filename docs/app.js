@@ -5300,7 +5300,8 @@
     // on every change, and the checkbox itself is never replaced.
     const R = TEXT.review;
     const order = Object.keys(R.rows);
-    const shown = rows.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+    // A kind of data the export has none of is not shown at all.
+    const shown = rows.filter(r => r[2] > 0).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
     // What each row previews: the lists it covers. Messages preview by chat instead.
     const PATHS = {
       'review-topics': ['instagramTopics'],
@@ -5337,7 +5338,7 @@
       return '<div class="review-row" data-row="' + r[0] + '"><div class="review-row-main">' +
         '<button class="review-row-name" type="button" data-peek="' + r[0] + '" aria-expanded="false"' +
           (previews ? ' aria-controls="' + r[0] + '-more"' : ' disabled') + '><b>' + esc(label) + '</b>' +
-          '<span id="' + r[0] + '-n">' + esc(has ? note : R.none) + '</span></button>' +
+          '<span id="' + r[0] + '-n">' + esc(note || '') + '</span></button>' +
         '<label class="review-switch"><input type="checkbox" role="switch" id="' + r[0] + '"' + (has ? ' checked' : ' disabled') +
           ' aria-label="' + esc(label) + '"><span aria-hidden="true"></span></label></div>' +
         (previews ? '<div class="review-more" id="' + r[0] + '-more" hidden></div>' : '') + '</div>';

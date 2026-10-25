@@ -4963,14 +4963,15 @@ it down as far as they like, line by line, and see what that costs. It was mocke
   Messenger and WhatsApp. A scale runs down its left edge. Each row is a name, a live count and a switch; the
   switch is still the real checkbox with the row's old id, so the decision, every flow that unticks one and
   the download table read it as before. Tapping a row's name previews its actual lines, each with a ✕ that
-  leaves that one line out (↺ puts it back). Messages count their chats ("2 chats, yours only") and open
-  into one switch per chat.
+  leaves that one line out (↺ puts it back). Messages count their chats ("2 chats") and open into one switch
+  per chat. A kind of data the export has none of is not listed at all (it was shown struck through, "none
+  found", until a reader's own export showed how much noise that made).
 - **Chats by their real names, on this device only.** The summary tags each chat [t1]…, [c1]… or [m1]…
   by rank; the reader cannot know which is which. `instagram.js` now keeps each thread's title in memory
   (`threadTitles`) and WhatsApp's summary carries its file-name title, and `Digest.build` hangs the names on
   the digest as `chatNames`, a property JSON cannot see (`chatLabels`): never sent, stored or backed up. A
   digest read back from storage has none, and its chats read "Chat 1", "Chat 2". The row says the name
-  stays here and the chat goes as its number. A single chat's messages carry no tag, so that row does not
+  shows only here and each chat is labelled as its number. A single chat's messages carry no tag, so that row does not
   open.
 - **A switched-off chat's room is filled (25 October 2026).** The summary samples a second, larger pool of
   the reader's own messages (`spareMessages` in digest.js: 1.5× the lines, from the top 15 chats rather than 10)

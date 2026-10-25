@@ -4909,8 +4909,8 @@ try {
   // what leaves their device must not be told photographs are part of it.
   check('and the review never mentions photos at all any more',
     !/photo/i.test(reviewText), reviewText.slice(0, 400));
-  check('the messages row counts its chats and says only your own messages go',
-    /^\d+ chats?, yours only$/.test(await page.locator('#review-dms-n').innerText()),
+  check('the messages row counts its chats, and nothing else',
+    /^\d+ chats?$/.test(await page.locator('#review-dms-n').innerText()),
     await page.locator('#review-dms-n').innerText());
 
   // The download link has to sit inside the same scroll region as the seven
@@ -8907,8 +8907,8 @@ try {
   // The two most sensitive rows in the app say plainly what they contain.
   check('the Chrome row promises two numbers and nothing more',
     /Chrome browsing\s*two numbers/.test(supplementedReview), supplementedReview.slice(0, 600));
-  check('the Messenger row says only your own messages go',
-    /Messenger\s*\d+ chats?, yours only/.test(supplementedReview), supplementedReview.slice(0, 600));
+  check('the Messenger row counts its chats',
+    /Messenger\s*\d+ chats?/.test(supplementedReview), supplementedReview.slice(0, 600));
   await shot('1c-review-supplemented');
   await page.click('#review-send');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
