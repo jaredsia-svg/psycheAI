@@ -43,7 +43,6 @@ details.where ul { margin: 4px 0 0; padding-left: 18px; }
 .kwchips:empty { display: none; }
 .kwchip { display: inline-flex; align-items: center; gap: 6px; background: #fde4ef; color: var(--pink); border-radius: 999px; padding: 3px 5px 3px 11px; font-size: .8rem; font-weight: 600; }
 .kwchip button { border: 0; background: rgba(194,64,122,.15); color: var(--pink); width: 18px; height: 18px; border-radius: 50%; cursor: pointer; line-height: 1; padding: 0; }
-.around { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .8rem; color: var(--ink-soft); }
 /* What's included: one list, least personal at the top, a scale down its left edge. */
 .list { position: relative; border: 1.5px solid var(--line); border-radius: 14px; padding-left: 6px; overflow: hidden; }
 .list::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: linear-gradient(#5fbf8a, #c79bec 55%, #e0457b); }
@@ -73,8 +72,9 @@ details.where ul { margin: 4px 0 0; padding-left: 18px; }
 .item.gone q { text-decoration: line-through; }
 .ph { color: var(--pink); font-weight: 700; }
 .chat { display: flex; align-items: center; gap: 10px; padding: 5px 2px; font-size: .84rem; }
-.chat .who { font-weight: 700; color: var(--pink); width: 40px; }
-.chat .n { flex: 1; color: var(--ink-soft); }
+.chat .who2 { flex: 1; min-width: 0; }
+.chat .who2 b { display: block; font-weight: 650; }
+.chat .who2 small { color: var(--ink-soft); font-size: .76rem; }
 .chat .sw { width: 36px; height: 21px; }
 .chat .sw::after { width: 15px; height: 15px; left: 18px; }
 .chat .sw[aria-checked="false"]::after { left: 3px; }
@@ -119,7 +119,6 @@ details.where ul { margin: 4px 0 0; padding-left: 18px; }
       <div class="sec-h"><h3>Leave out anything mentioning</h3><small id="kw-note"></small></div>
       <form class="kw" id="kw-form"><input id="kw-in" placeholder="A name, a place, a topic" aria-label="A word to leave out"><button>Leave out</button></form>
       <div class="kwchips" id="kw-chips"></div>
-      <label class="around"><input type="checkbox" id="around" checked> In chats, also the messages either side of it</label>
     </div>
 
     <div class="sec">
@@ -151,14 +150,14 @@ const TYPES = [
   { id: 'srch', t: 'Your searches', w: 10, by: [0, 0, 1, 2, 3, 6, 8, 5], bytes: 40,
     items: [['marathon training plan', 2025], ['anxiety tips', 2024], ['tokyo cafes', 2026]] },
   { id: 'dm', t: 'Direct messages', c: 'yours only', w: 25, by: [20, 25, 30, 35, 40, 50, 60, 40], bytes: 150,
-    chats: [['[N1]', 120], ['[N2]', 84], ['[N3]', 46], ['[N4]', 30], ['[N5]', 20]],
+    chats: [['[N1]', 120, 'Sarah Kim'], ['[N2]', 84, 'Mum'], ['[N3]', 46, 'Jordan Lee'], ['[N4]', 30, 'Book club (group)'], ['[N5]', 20, 'Alex Tan']],
     items: [['ok but honestly I think I need a break from all of it', 2025], ['[N2] you were right, as usual 😅', 2024], ['can’t wait for saturday!!', 2026]] },
 ];
-const state = { on: Object.fromEntries(TYPES.map(t => [t.id, true])), from: 2019, chats: {}, gone: new Set(), kws: [], open: new Set(), around: true };
+const state = { on: Object.fromEntries(TYPES.map(t => [t.id, true])), from: 2019, chats: {}, gone: new Set(), kws: [], open: new Set() };
 TYPES.find(t => t.id === 'dm').chats.forEach(([n]) => state.chats[n] = true);
 const $ = s => document.querySelector(s);
 const fmt = n => n.toLocaleString('en');
-const kwHits = () => state.kws.length * (state.around ? 7 : 3);   // in the mock-up, each word leaves out a few lines
+const kwHits = () => state.kws.length * 4;   // in the mock-up, each word leaves out a few lines
 
 function count(t) {
   let n = t.by.reduce((a, c, i) => a + (YEARS[i] >= state.from ? c : 0), 0);
@@ -171,9 +170,9 @@ function render() {
     const lines = t.items.map(([q, y], i) => { const key = t.id + ':' + i, gone = state.gone.has(key) || (y && y < state.from);
       return '<div class="item' + (gone ? ' gone' : '') + '"><q>' + q.replace(/\[(P|N)\d\]/g, m => '<span class="ph">' + m + '</span>') + '</q>' +
         (y ? '<span class="when">' + y + '</span>' : '') + '<button class="x" data-x="' + key + '" aria-label="' + (gone ? 'Put back' : 'Leave out') + '">' + (gone ? '↺' : '✕') + '</button></div>'; }).join('');
-    const chats = t.chats ? '<div class="note">Each chat on its own. Only your messages; theirs are never sent.</div>' + t.chats.map(([c, k]) =>
-      '<div class="chat"><span class="who">' + c + '</span><span class="n">' + k + ' messages</span><button class="sw" role="switch" data-chat="' + c +
-      '" aria-checked="' + state.chats[c] + '" aria-label="Chat with ' + c + '"' + (on ? '' : ' disabled') + '></button></div>').join('') : '';
+    const chats = t.chats ? '<div class="note">Names show only on this device. Only your messages are sent, and the name goes as a number.</div>' + t.chats.map(([c, k, real]) =>
+      '<div class="chat"><span class="who2"><b>' + real + '</b><small>' + k + ' messages · sent as <span class="ph">' + c + '</span></small></span><button class="sw" role="switch" data-chat="' + c +
+      '" aria-checked="' + state.chats[c] + '" aria-label="Chat with ' + real + '"' + (on ? '' : ' disabled') + '></button></div>').join('') : '';
     const sub = t.c ? t.c : fmt(n);
     return '<div class="row' + (on ? '' : ' off') + (open ? ' open' : '') + '"><div class="row-main">' +
       '<button class="name" data-peek="' + t.id + '"><b>' + t.t + '</b><span>' + (t.chats && on ? fmt(n) + ', ' : '') + sub + '</span></button>' +
@@ -207,7 +206,6 @@ document.addEventListener('click', e => {
   else return;
   render();
 });
-$('#around').addEventListener('change', e => { state.around = e.target.checked; render(); });
 $('#kw-form').addEventListener('submit', e => { e.preventDefault(); const v = $('#kw-in').value.trim(); if (v && !state.kws.includes(v)) state.kws.push(v); $('#kw-in').value = ''; render(); });
 // ?state=edited: choices made (from 2024, "Sam" left out, chat [N3] off, a line removed, the messages opened).
 if (/state=edited/.test(location.search)) { state.from = 2024; state.kws = ['Sam']; state.chats['[N3]'] = false; state.open.add('dm'); state.gone.add('dm:0'); }
