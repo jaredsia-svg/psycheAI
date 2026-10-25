@@ -73,14 +73,15 @@ details.where ul { margin: 4px 0 0; padding-left: 18px; }
 .item.gone q { text-decoration: line-through; }
 .ph { color: var(--pink); font-weight: 700; }
 .chat { display: flex; align-items: center; gap: 10px; padding: 5px 2px; font-size: .84rem; }
-.chat .who2 { flex: 1; min-width: 0; }
-.chat .who2 b { display: block; font-weight: 650; }
-.chat .who2 small { color: var(--ink-soft); font-size: .76rem; }
+.chat .who2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat .who2 b { font-weight: 650; }
+.chat .who2 small { margin-left: 6px; color: var(--ink-soft); font-size: .76rem; }
 .chat .sw { width: 36px; height: 21px; }
 .chat .sw::after { width: 15px; height: 15px; left: 18px; }
 .chat .sw[aria-checked="false"]::after { left: 3px; }
 .ends { display: flex; justify-content: space-between; font-size: .7rem; color: var(--ink-soft); margin-top: 4px; padding: 0 2px; }
 /* Pinned at the bottom. */
+.sheet.typing .foot { display: none; }
 .foot { flex: none; border-top: 1.5px solid var(--line); padding: 10px 20px 14px; background: #fff; }
 .meter { display: flex; align-items: center; gap: 10px; font-size: .8rem; }
 .meter .lbl { color: var(--ink-soft); white-space: nowrap; }
@@ -106,26 +107,26 @@ details.where ul { margin: 4px 0 0; padding-left: 18px; }
 <div class="sheet" role="dialog" aria-labelledby="t">
   <div class="body">
     <h2 id="t">Review what gets sent</h2>
-    <div class="status"><span class="dot"></span><div><b>Nothing sent yet.</b> Your name, contacts, links and other people’s names are already removed.</div></div>
+    <div class="status"><span class="dot"></span><div><b>Nothing sent yet.</b> Names, contacts and links already removed.</div></div>
     <details class="where"><summary>Where does it go?</summary>
       <ul><li>Google Vertex AI (enterprise), encrypted. It never trains on it.</li><li>PsycheAI keeps no copy; your results come back here only.</li></ul></details>
 
     <div class="sec">
       <div class="sec-h"><h3>Which years</h3><div class="chips" id="range-chips">
-        <button class="chip" data-from="2019">All</button><button class="chip" data-from="2024">3 years</button><button class="chip" data-from="2026">1 year</button></div></div>
+        <button class="chip" data-from="2019">All</button><button class="chip" data-from="2024">3 yrs</button><button class="chip" data-from="2026">1 yr</button></div></div>
       <div class="years" id="years"></div>
       <div class="yr-note" id="yr-note"></div>
     </div>
 
     <div class="sec">
       <div class="sec-h"><h3>Leave out anything mentioning</h3></div>
-      <form class="kw" id="kw-form"><input id="kw-in" placeholder="A name, a place, a topic" aria-label="A word to leave out"><button>Leave out</button></form>
+      <form class="kw" id="kw-form"><input id="kw-in" placeholder="A name, place or topic" aria-label="A word to leave out"><button>Leave out</button></form>
       <div class="kwchips" id="kw-chips"></div>
       <div class="yr-note" id="kw-note"></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><h3>What’s included</h3><small>Tap one to see its lines</small></div>
+      <div class="sec-h"><h3>What’s included</h3><small>Tap to preview</small></div>
       <div class="list" id="list"></div>
       <div class="ends"><span>↑ Least personal</span><span>Most personal ↓</span></div>
     </div>
@@ -173,24 +174,24 @@ function render() {
     const lines = t.items.map(([q, y], i) => { const key = t.id + ':' + i, gone = state.gone.has(key) || (y && state.off.has(y));
       return '<div class="item' + (gone ? ' gone' : '') + '"><q>' + q.replace(/\[(P|N)\d\]/g, m => '<span class="ph">' + m + '</span>') + '</q>' +
         (y ? '<span class="when">' + y + '</span>' : '') + '<button class="x" data-x="' + key + '" aria-label="' + (gone ? 'Put back' : 'Leave out') + '">' + (gone ? '↺' : '✕') + '</button></div>'; }).join('');
-    const chats = t.chats ? '<div class="note">Names show only on this device. Only your messages are sent, and the name goes as a number.</div>' + t.chats.map(([c, k, real]) =>
-      '<div class="chat"><span class="who2"><b>' + real + '</b><small>' + k + ' messages · sent as <span class="ph">' + c + '</span></small></span><button class="sw" role="switch" data-chat="' + c +
+    const chats = t.chats ? '<div class="note">Names show only here; each goes as its number. Only your messages are sent.</div>' + t.chats.map(([c, k, real]) =>
+      '<div class="chat"><span class="who2"><b>' + real + '</b><small>' + k + ' · <span class="ph">' + c + '</span></small></span><button class="sw" role="switch" data-chat="' + c +
       '" aria-checked="' + state.chats[c] + '" aria-label="Chat with ' + real + '"' + (on ? '' : ' disabled') + '></button></div>').join('') : '';
     const sub = t.c ? t.c : fmt(n);
     return '<div class="row' + (on ? '' : ' off') + (open ? ' open' : '') + '"><div class="row-main">' +
       '<button class="name" data-peek="' + t.id + '"><b>' + t.t + '</b><span>' + (t.chats && on ? fmt(n) + ', ' : '') + sub + '</span></button>' +
       (t.req ? '<span class="need">Needed</span>' : '') +
       '<button class="sw" role="switch" data-t="' + t.id + '" aria-checked="' + on + '"' + (t.req ? ' disabled' : '') + ' aria-label="' + t.t + '"></button></div>' +
-      '<div class="items">' + (t.chats ? chats : '<div class="note">Some of what is sent. ✕ leaves a line out.</div>' + lines) + '</div></div>';
+      '<div class="items">' + (t.chats ? chats : '<div class="note">✕ leaves a line out.</div>' + lines) + '</div></div>';
   }).join('');
   const tot = YEARS.map((y, i) => TYPES.reduce((a, t) => a + t.by[i], 0)), max = Math.max(...tot);
   $('#years').innerHTML = YEARS.map((y, i) => '<button class="yr' + (state.off.has(y) ? ' out' : '') + '" data-y="' + y + '" aria-pressed="' + !state.off.has(y) + '" aria-label="' + y + '">' +
     '<i style="height:' + Math.max(6, Math.round(40 * tot[i] / max)) + 'px"></i><small>’' + String(y).slice(2) + '</small></button>').join('');
   const fromOf = f => YEARS.every(y => state.off.has(y) === (y < f));
   document.querySelectorAll('#range-chips .chip').forEach(c => c.setAttribute('aria-pressed', fromOf(+c.dataset.from)));
-  $('#yr-note').textContent = state.off.size ? [...state.off].sort().map(y => '’' + String(y).slice(2)).join(', ') + ' left out' : 'Tap a year to leave it out';
+  $('#yr-note').textContent = state.off.size ? [...state.off].sort().map(y => '’' + String(y).slice(2)).join(', ') + ' left out' : '';
   $('#kw-chips').innerHTML = state.kws.map(k => '<span class="kwchip">' + k + '<button data-kw="' + k + '" aria-label="Remove ' + k + '">×</button></span>').join('');
-  $('#kw-note').textContent = state.kws.length ? kwHits() + ' posts & messages left out, whole' : 'The whole post or message goes, not just the word';
+  $('#kw-note').textContent = state.kws.length ? kwHits() + ' posts & messages removed' : 'Removes the whole post or message';
   let bytes = 6000, q = 0;
   TYPES.forEach(t => { if (!state.on[t.id]) return; const n = count(t), full = t.by.reduce((a, c) => a + c, 0); bytes += n * t.bytes; q += t.w * Math.min(1, n / full); });
   bytes = Math.max(0, bytes - kwHits() * 150); q = Math.round(q);
@@ -211,6 +212,8 @@ document.addEventListener('click', e => {
   else return;
   render();
 });
+$('#kw-in').addEventListener('focus', () => $('.sheet').classList.add('typing'));
+$('#kw-in').addEventListener('blur', () => $('.sheet').classList.remove('typing'));
 $('#kw-form').addEventListener('submit', e => { e.preventDefault(); const v = $('#kw-in').value.trim(); if (v && !state.kws.includes(v)) state.kws.push(v); $('#kw-in').value = ''; render(); });
 // ?state=edited: choices made (from 2024, "Sam" left out, chat [N3] off, a line removed, the messages opened).
 if (/state=edited/.test(location.search)) { state.off = new Set([2019, 2020, 2022]); state.kws = ['Sam']; state.chats['[N3]'] = false; state.open.add('dm'); state.gone.add('dm:0'); }
