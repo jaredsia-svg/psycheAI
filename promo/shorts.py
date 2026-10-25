@@ -260,11 +260,11 @@ REELS['compare-insecure'] = dict(REELS['compare'], lines=[
 REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['Thinking of uploading your Instagram data to Chat G P T?', 'Watch this first.'], 0.85, True, 0.3),
     (['Everything goes up, as it is.', "Your name. Your friends' private messages. Your photos."], 0.85, True, 0.3),
-    (['It may train on it, unless you switch that off.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.3),
+    (['It may train on it.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.3),
     (['Now watch {B}.', 'Your files never leave your phone. Only a small, de-identified summary does.'], 0.85, True, 0.3),
-    (['Zero accounts. Zero exports kept.', 'Your results stay on your device.'], 0.85, True, 0.3),
-    (['Your data stays yours.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
-], hold={0: 0.3, 1: 0.5, 2: 0.6, 3: 0.9, 4: 0.8}, lead={}, punch=(0,),
+    (['Zero accounts. Zero exports kept.', 'Your results stay on your device.', "Even if a hack occurs, there's no data to steal."], 0.85, True, 0.3),
+    (['Your data stays yours.', 'The code is public for you to inspect.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
+], hold={0: 0.3, 1: 0.5, 2: 0.6, 3: 1.2, 4: 1.0}, lead={}, punch=(0,),
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
     mood='thriller', bpm=120, reveal=3,
@@ -866,13 +866,15 @@ if R.get('mood') == 'thriller':
     b = 0.0
     while b < END:
         k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
-        if b < DROP:
+        if b < DROP - BEAT:
             # Tension: a ticking clock in sixteenths, a heartbeat kick, the sub on the one; louder after the hook.
-            tense = b >= HOOK
+            # Everything stops a beat before the drop, so the switch lands out of a breath of silence.
+            tense = b >= HOOK; room = DROP - BEAT - b
             at(b, T, (0.5 if e % 4 == 0 else 0.25) * (1.0 if tense else 0.6), 0.25 if e % 2 else -0.25)
-            if tense and e in (0, 3, 8, 11) and b < DROP - BEAT: at(b, K, 0.75 if e in (0, 8) else 0.45)
-            if tense and e == 0: at(b, sub(ROOTS[bar_i], BAR * 0.95), 0.8)
-            if e == 0: at(b, drone(CHORDS[bar_i], BAR * 1.02, 600 if not tense else 1100), 1.0)
+            if tense and e in (0, 3, 8, 11): at(b, K, 0.75 if e in (0, 8) else 0.45)
+            if tense and e == 0: at(b, sub(ROOTS[bar_i], min(BAR * 0.95, room)), 0.8)
+            if e == 0: at(b, drone(CHORDS[bar_i], min(BAR * 1.02, room + 0.15), 600 if not tense else 1100), 1.0)
+        elif b < DROP: pass
         elif b < END - BAR:
             # The drop: four on the floor, claps on two and four, offbeat open hats, the bass on eighths, a bright lead.
             L_ = R['lift'][bar_i]; root = R['lift_roots'][bar_i]
@@ -891,8 +893,11 @@ if R.get('mood') == 'thriller':
     # The hook lands on a boom; each warning on a hit; the riser into the drop; a bright last chord.
     at(HOOK, impact(), 1.0); at(HOOK, crash(), 0.6)
     for h in HITS: at(h, impact(), 0.8); at(h, sub(26, 0.8), 0.9)
-    at(DROP - 2.0, riser(2.0), 1.0); at(DROP - 1.0, swell(1.0), 0.8)
-    at(DROP, impact(), 1.0); at(DROP, crash(), 0.9)
+    # Into the switch (25 October 2026: the low boom there "doesn't sound nice"): no boom. A cymbal played backwards
+    # rises through the beat of silence, and the drop opens on a bright F major chord, a clap and a bell run.
+    rev = crash()[::-1].copy(); at(DROP - len(rev) / SR, rev, 1.1)
+    at(DROP, strings([65, 69, 72, 77], BAR, 0.08), 1.0); at(DROP, C, 0.9); at(DROP, crash(), 0.5)
+    for k, m in enumerate([72, 77, 81, 84]): at(DROP + k * 0.06, bell(m + 12), 0.7, 0.3 if k % 2 else -0.3)
     last = snap(END - BAR, BAR)
     at(last, crash(), 0.6); at(last, strings([65, 69, 72, 77], 3.0, 0.07), 1.0); at(last, bass(41, 2.5) * 0.7, 0.8)
     for k, m in enumerate([77, 81, 84, 89]): at(last + k * 0.07, bell(m), 0.9, 0.3 if k % 2 else -0.3)

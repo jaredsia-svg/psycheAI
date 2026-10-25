@@ -458,7 +458,7 @@ The guide story is headed *Start here.* Text keeps clear of the top 220px and bo
 ### The ChatGPT reel
 
 ```
-npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 33 s
+npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 39 s
 ```
 
 *Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, and what is kept. It
@@ -469,10 +469,14 @@ comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | Why not just upload my Instagram data to ChatGPT? | the question typed into a box *To ChatGPT* |
-| 1 | Because it all goes up, as it is. / Your name. Your friends' messages. Your photos. | the export, shaking, and its contents flying up into a cloud, *ChatGPT's servers* |
-| 2 | It may train on it, unless you switch that off. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud |
-| 3 | PsycheAI reads it on your phone. / Only a de-identified summary leaves. | the export locked in a phone; a summary (name blacked out, @friend → [P1]) leaving for *Enterprise AI · doesn't train on it* |
-| 4 | And PsycheAI keeps nothing. / No accounts. Your results stay on your device. | *PsycheAI's servers*: 0 accounts, 0 exports kept, 0 reports kept, counting down; then *Your card and report, saved only on your device* |
-| 5 | Your data stays yours. / Try it at psycheai.io. | the line, *Your personal AI coach*, the address |
+| 0 | Thinking of uploading your Instagram data to ChatGPT? / Watch this first. | the question typed into a box *To ChatGPT*, the export attached; a red *✋ WAIT* stamp slams in |
+| 1 | Everything goes up, as it is. / Your name. Your friends' private messages. Your photos. | the Instagram icon (the export) with an upload bar; its contents fly up into one smooth cloud, *ChatGPT's servers* |
+| 2 | It may train on it. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud, each on a hit (25 October 2026: "unless you switch that off" dropped, at the user's ask; "may" keeps it true) |
+| 3 | Now watch PsycheAI. / Your files never leave your phone. Only a small, de-identified summary does. | *Enterprise AI* at the top, the export locked in a phone below it; the summary rises from the phone into the enterprise AI and is gone; then *0 photos · 0 videos · ~150 KB of text* under the phone |
+| 4 | Zero accounts. Zero exports kept. / Your results stay on your device. / Even if a hack occurs, there's no data to steal. | *PsycheAI's servers*: 0 accounts, 0 exports kept, 0 reports kept, each popping in as a 0 (never another number: it counted down from 9 until 25 October); *Your card and report, saved only on your device*; a shield card for the hack line |
+| 5 | Your data stays yours. / The code is public for you to inspect. / Try it at psycheai.io. | the line, a *</> The code is public* card (*for you to inspect, on GitHub*), *Your personal AI coach*, the address |
+
+The music (`mood='thriller'`): a tense D-minor tick and heartbeat with a hit on each warning, then everything stops a
+beat before *Now watch PsycheAI* and a reversed cymbal rises through that silence into a bright F major chord, a clap
+and a bell run, and the four-on-the-floor drop. (25 October 2026: the low boom that was there "didn't sound nice".)
 

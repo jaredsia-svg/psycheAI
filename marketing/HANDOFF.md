@@ -26,7 +26,8 @@ A second version was built on 25 Oct.
 - **Switch:** "Now watch PsycheAI" opens on a white flash and a music drop. A "0 photos · 0 videos · ~150 KB of text" row follows.
 - **Close:** the zeros, then the call to action.
 - **Music:** the new `thriller` mood in shorts.py. It is a tense D-minor tick and heartbeat with hits, then a riser and a drop into F-major four-on-the-floor.
-- **Status:** awaiting the user's feedback. Next ideas, if it's still not punchy enough:
+- **Third cut (25 Oct, from the user's notes):** the Instagram icon instead of the 📦 box; one smooth SVG cloud; "unless you switch that off" removed; no boom into the switch (a beat of silence, a reversed cymbal, a bright F-major hit); the phone scene re-spaced (Enterprise AI first, the summary absorbed into it); only zeros, no countdown; "Even if a hack occurs, there's no data to steal."; "The code is public for you to inspect." at the end.
+- **Status:** awaiting the user's feedback on the third cut. Next ideas, if it's still not punchy enough:
   - faster cuts (lower `hold`);
   - a real-looking ChatGPT upload UI;
   - a bigger visual contrast at the switch.

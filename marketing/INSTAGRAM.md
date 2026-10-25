@@ -159,10 +159,11 @@ Hashtags: swap #wizardofoz for #rapunzel, #mulan, #odyssey or #sherlockholmes.
 Thinking of uploading your Instagram data to ChatGPT? ✋ Watch this first.
 
 With ChatGPT, everything goes up as it is: your name, your friends' private messages, your photos.
-It may be used to train its models unless you switch that off, and it's kept until you delete it, then up to 30 days more.
+It may be used to train its models, and it's kept until you delete it, then up to 30 days more.
 
 With PsycheAI, your files never leave your phone. Only a small de-identified text summary does (no photos, no videos, about 150 KB), to enterprise AI that doesn't train on it.
 And PsycheAI keeps nothing: no accounts, your results stay on your device.
+Even if a hack occurs, there's no data to steal. And the code is public for you to inspect.
 
 Your data stays yours 🔒
 Comment COACH for the link 👇

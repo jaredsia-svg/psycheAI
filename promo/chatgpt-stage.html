@@ -20,42 +20,48 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #ask .who { display: block; margin-bottom: 18px; font-size: 32px; font-weight: 800; color: #6b6b73; letter-spacing: .02em; }
 #ask .caret { display: inline-block; width: 5px; height: 60px; margin-left: 4px; vertical-align: middle; background: #2a1238; }
 /* 1-2: the export into the cloud. */
-#zip { z-index: 20; left: 390px; top: 1290px; width: 300px; height: 300px; border-radius: 48px; display: grid; place-items: center; font-size: 170px;
-  background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.15); }
+#zip { z-index: 20; left: 400px; top: 1300px; width: 280px; height: 280px; }
+.ig { display: block; width: 100%; height: 100%; filter: drop-shadow(0 26px 50px rgba(214,36,159,.32)); }
 #zipLabel { z-index: 20; left: 0; right: 0; top: 1620px; text-align: center; font-size: 40px; font-weight: 800; color: #4b4553; }
-#cloud { z-index: 15; left: 140px; top: 470px; width: 800px; height: 430px; }
-#cloud .puff { position: absolute; border-radius: 50%; background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,.08); }
-#cloud .name { position: absolute; left: 0; right: 0; top: 335px; text-align: center; font-size: 44px; font-weight: 850; color: #4b4553; }
+#cloud { z-index: 15; left: 40px; top: 400px; width: 1000px; height: 560px; }
+#cloud svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 30px 50px rgba(60,50,80,.16)); }
+#cloud .name { position: absolute; left: 0; right: 0; top: 515px; display: flex; justify-content: center; align-items: center; gap: 16px;
+  font-size: 40px; font-weight: 850; color: #5d5866; letter-spacing: .01em; }
+#cloud .name i { display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: #d9625a; box-shadow: 0 0 0 6px rgba(217,98,90,.18); }
 .item { z-index: 22; padding: 18px 30px; border-radius: 999px; font-size: 40px; font-weight: 800; white-space: nowrap; background: #fff; color: #2a1238;
   box-shadow: 0 16px 40px rgba(0,0,0,.14); }
 .warn { z-index: 25; left: 90px; right: 90px; padding: 34px 40px; border-radius: 36px; background: #fff; border: 4px solid #d9625a; color: #a3342b;
   font-size: 46px; font-weight: 850; line-height: 1.2; box-shadow: 0 24px 60px rgba(163,52,43,.18); }
 .warn small { display: block; margin-top: 8px; font-size: 34px; font-weight: 650; color: #6b4a47; }
 /* 3: the phone. */
-#phone { z-index: 20; left: 330px; top: 760px; width: 420px; height: 780px; border-radius: 70px; border: 14px solid #2a1238; background: #fff;
+#phone { z-index: 20; left: 350px; top: 720px; width: 380px; height: 660px; border-radius: 70px; border: 14px solid #2a1238; background: #fff;
   box-shadow: 0 40px 100px rgba(90,40,120,.3); }
 #phone .notch { position: absolute; left: 50%; top: 18px; width: 140px; height: 30px; margin-left: -70px; border-radius: 16px; background: #2a1238; }
-#phone .inside { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font-size: 150px; }
-#phone .lock { position: absolute; left: 0; right: 0; top: 360px; text-align: center; font-size: 36px; font-weight: 850; color: #7b3fa0; }
+#phone .inside { position: absolute; left: 105px; top: 130px; width: 150px; height: 150px; }
+#phone .lock { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-size: 32px; font-weight: 850; color: #7b3fa0; }
 #phone .lock span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; margin-top: 6px; }
 #summary { z-index: 26; left: 380px; width: 320px; padding: 22px 26px; border-radius: 26px; background: #fff; border: 4px solid #c79bff;
   box-shadow: 0 20px 50px rgba(138,63,208,.3); font-size: 28px; font-weight: 700; line-height: 1.45; }
 #summary b { display: block; font-size: 26px; font-weight: 900; letter-spacing: .08em; color: #8a3fd0; margin-bottom: 6px; }
 #summary .bar { display: inline-block; width: 120px; height: 24px; border-radius: 6px; background: #2a1238; vertical-align: middle; }
 #summary .tag { color: #c2407a; font-weight: 850; }
-#ent { z-index: 24; left: 230px; right: 230px; top: 430px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
+#ent { z-index: 24; left: 230px; right: 230px; top: 440px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.4); }
 #ent small { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; opacity: .92; }
 /* 4: nothing kept. */
-#vault { z-index: 20; left: 120px; right: 120px; top: 470px; padding: 36px 40px 30px; border-radius: 44px; background: #fff; text-align: center;
+#vault { z-index: 20; left: 120px; right: 120px; top: 440px; padding: 36px 40px 30px; border-radius: 44px; background: #fff; text-align: center;
   border: 5px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
   box-shadow: 0 30px 80px rgba(138,63,208,.22); }
 #vault b { display: block; font-size: 46px; font-weight: 900; margin-bottom: 18px; }
 #vault .zero { display: flex; align-items: baseline; justify-content: center; gap: 22px; margin-top: 8px; font-size: 44px; font-weight: 750; color: #4a2366; }
 #vault .zero span { font-size: 92px; font-weight: 900; color: #c2407a; min-width: 70px; }
-#mine { z-index: 20; left: 160px; right: 160px; top: 1180px; padding: 34px 40px; border-radius: 40px; background: #fff; text-align: center;
+#mine { z-index: 20; left: 160px; right: 160px; top: 1000px; padding: 34px 40px; border-radius: 40px; background: #fff; text-align: center;
   box-shadow: 0 24px 60px rgba(90,40,120,.18); }
-#mine .ic { display: block; font-size: 110px; }
+#mine .ic { display: block; font-size: 90px; }
+#hack { z-index: 20; left: 120px; right: 120px; top: 1360px; padding: 34px 40px; border-radius: 40px; text-align: center; color: #fff;
+  background: linear-gradient(120deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.35); }
+#hack .ic { display: block; font-size: 80px; }
+#hack b { display: block; margin-top: 8px; font-size: 46px; font-weight: 900; line-height: 1.15; }
 #mine b { display: block; margin-top: 10px; font-size: 46px; font-weight: 900; }
 #mine small { display: block; margin-top: 6px; font-size: 36px; font-weight: 650; color: #6b6076; }
 /* 4 (before): the answers. */
@@ -78,14 +84,18 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #up .lbl { display: flex; justify-content: space-between; font-size: 36px; font-weight: 850; color: #4b4553; margin-bottom: 14px; }
 #up .track { height: 30px; border-radius: 15px; background: rgba(0,0,0,.1); overflow: hidden; }
 #up .fill { height: 100%; width: 0; border-radius: 15px; background: #d9625a; }
-#leaves { z-index: 26; left: 90px; right: 90px; top: 1590px; display: none; gap: 18px; justify-content: center; }
+#leaves { z-index: 26; left: 90px; right: 90px; top: 1460px; display: none; gap: 18px; justify-content: center; }
 #leaves div { padding: 18px 24px; border-radius: 24px; background: #fff; text-align: center; font-size: 30px; font-weight: 750; color: #6b6076;
   box-shadow: 0 16px 40px rgba(90,40,120,.16); }
 #leaves b { display: block; font-size: 56px; font-weight: 950; color: #c2407a; line-height: 1.1; }
 /* 5: the close. */
-#c1 { z-index: 30; left: 60px; right: 60px; top: 640px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.08; }
-#tag { z-index: 30; left: 0; right: 0; top: 1010px; text-align: center; font-size: 56px; font-weight: 850; }
-#site { z-index: 30; left: 50%; top: 1130px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
+#c1 { z-index: 30; left: 60px; right: 60px; top: 520px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.08; }
+#code { z-index: 30; left: 110px; right: 110px; top: 800px; padding: 30px 36px; border-radius: 36px; background: #fff; text-align: center;
+  box-shadow: 0 24px 60px rgba(90,40,120,.18); font-size: 44px; font-weight: 850; line-height: 1.2; }
+#code .ic { display: inline-block; margin-right: 12px; padding: 2px 14px; border-radius: 14px; background: #2a1238; color: #fff; font-size: 38px; font-weight: 900; }
+#code small { display: block; margin-top: 12px; font-size: 30px; font-weight: 700; color: #6b6076; }
+#tag { z-index: 30; left: 0; right: 0; top: 1110px; text-align: center; font-size: 56px; font-weight: 850; }
+#site { z-index: 30; left: 50%; top: 1230px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.4); }
 </style></head>
 <body>
@@ -97,15 +107,15 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 
   <div class="el caption" id="cap1">With <span style="color:#4b4553">ChatGPT</span>,<br>everything goes up.</div>
   <div class="el" id="cloud"></div>
-  <div class="el" id="zip">📦</div>
+  <div class="el" id="zip"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig1" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig1)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div>
   <div class="el" id="zipLabel">Your Instagram export</div>
   <div id="items"></div>
   <div class="el" id="up"><div class="lbl"><span>Uploading…</span><span id="pct">0%</span></div><div class="track"><div class="fill" id="fill"></div></div></div>
-  <div class="el warn" id="w1">May be used to train its models<small>unless you turn that off</small></div>
+  <div class="el warn" id="w1">May be used to train its models</div>
   <div class="el warn" id="w2">Kept on its servers<small>until you delete it, then up to 30 days more</small></div>
 
   <div class="el caption" id="cap3">Now watch<br><span class="grad">PsycheAI.</span></div>
-  <div class="el" id="phone"><div class="notch"></div><div class="inside">📦</div><div class="lock">🔒 Read on your phone<span>Your files never leave it</span></div></div>
+  <div class="el" id="phone"><div class="notch"></div><div class="inside"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig2" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig2)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div><div class="lock">🔒 Read on your phone<span>Your files never leave it</span></div></div>
   <div class="el" id="summary"><b>SUMMARY</b>Name: <span class="bar"></span><br>@friend → <span class="tag">[P1]</span><br>Links: removed</div>
   <div class="el" id="leaves"><div><b>0</b>photos</div><div><b>0</b>videos</div><div><b>~150 KB</b>of text</div></div>
   <div class="el" id="ent">Enterprise AI<small>doesn’t train on it · nothing kept</small></div>
@@ -113,8 +123,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps nothing.</div>
   <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
   <div class="el" id="mine"><span class="ic">📱</span><b>Your card and report</b><small>saved only on your device</small></div>
+  <div class="el" id="hack"><span class="ic">🛡️</span><b>Even if a hack occurs,<br>there’s no data to steal.</b></div>
 
   <div class="el" id="c1">Your data<br><span class="grad">stays yours.</span></div>
+  <div class="el" id="code"><span class="ic">&lt;/&gt;</span>The code is public<small>for you to inspect, on GitHub</small></div>
   <div class="el" id="tag">Your personal AI coach</div>
   <div class="el" id="site">psycheai.io ↗</div>
 <script>
@@ -134,13 +146,15 @@ const live = (s, t) => t >= s.start - 0.05 && t < s.end;
 const out = (s, t) => prog(t, s.end - 0.25, s.end);
 
 const QUESTION = 'Here’s my whole Instagram export. Tell me who I am.';
-// The cloud, from overlapping puffs.
-[[0, 120, 300], [180, 40, 360], [420, 70, 320], [560, 150, 240], [90, 190, 620]].forEach(([x, y, d]) => {
-  const p = mk('puff', '', $('cloud')); Object.assign(p.style, { left: x + 'px', top: y + 'px', width: d + 'px', height: d * 0.72 + 'px' }); });
-mk('name', '☁️ ChatGPT’s servers', $('cloud'));
+// The cloud: one shape (overlapping circles in one fill, shadowed as a whole, so no seams), soft white to cool grey.
+$('cloud').innerHTML = '<svg viewBox="0 0 1000 560"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="490" gradientUnits="userSpaceOnUse">' +
+  '<stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e4e1e9"/></linearGradient></defs><g fill="url(#cg)">' +
+  '<circle cx="250" cy="250" r="170"/><circle cx="480" cy="180" r="180"/><circle cx="720" cy="240" r="160"/><circle cx="860" cy="360" r="110"/>' +
+  '<circle cx="140" cy="380" r="110"/><rect x="140" y="250" width="720" height="240" rx="110"/></g></svg>';
+mk('name', '<i></i>ChatGPT’s servers', $('cloud'));
 const ITEMS = [['👤 Your name', 0], ['💬 Friends’ private messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1], ['🎥 Your videos', 1], ['🔍 Your searches', 1]];
 const items = ITEMS.map(([h]) => mk('item el', h, $('items')));
-const SPOTS = [[300, 530], [760, 530], [300, 615], [760, 615], [300, 700], [760, 700]];   // where each lands in the cloud: two rows, the label under them
+const SPOTS = [[265, 610], [715, 610], [265, 705], [715, 705], [265, 800], [715, 800]];   // where each lands in the cloud: three rows of two, the label under them
 
 // A shake and a flash on every hit: the hook's stamp, each warning, the switch to PsycheAI, the zeros.
 const HITS = () => [[ASK.marks[1], '#e0362c'], [UP.vo, null], [KEPT.vo, '#e0362c'], [KEPT.marks[1], '#e0362c'], [PHONE.start, '#ffffff'], [ANS.vo, null]];
@@ -185,28 +199,35 @@ function render(t) {
   { const s = PHONE, on = live(s, t), o = out(s, t), a = back(prog(t, s.start, s.start + 0.45));
     show('cap3', on ? clamp(a * 2) * (1 - o) : 0);
     show('phone', on ? clamp(a * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, a)) * 200 + 'px)');
-    const leave = easeIO(prog(t, s.marks[1] - 0.1, s.marks[1] + 1.0)), sp = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.1));
-    $('summary').style.top = (1240 - leave * 640) + 'px';
-    show('summary', on && t >= s.marks[1] - 0.2 ? clamp(sp * 2) * (1 - o) : 0, 'scale(' + Math.min(1.05, sp) * (1 - 0.2 * leave) + ')');
-    const e = back(prog(t, s.marks[1] + 0.7, s.marks[1] + 1.0));
-    const lv = back(prog(t, s.marks[1] + 1.3, s.marks[1] + 1.6));
-    show('leaves', on && t >= s.marks[1] + 1.3 ? clamp(lv * 2) * (1 - o) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, lv)) + ')'); if ($('leaves').style.display === 'block') $('leaves').style.display = 'flex';
-    show('ent', on && t >= s.marks[1] + 0.7 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + Math.min(1.05, e) + ')'); }
+    // The enterprise AI is there first; the summary rises from the phone into it and is gone (nothing kept).
+    const e = back(prog(t, s.marks[1] - 0.4, s.marks[1] - 0.1));
+    const leave = easeIO(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.9)), sp = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.1)), gone = prog(t, s.marks[1] + 0.7, s.marks[1] + 0.95);
+    $('summary').style.top = (1000 - leave * 520) + 'px';
+    show('summary', on && t >= s.marks[1] - 0.2 && gone < 1 ? clamp(sp * 2) * (1 - gone) * (1 - o) : 0, 'scale(' + Math.min(1.05, sp) * (1 - 0.45 * leave) + ')');
+    const lv = back(prog(t, s.marks[1] + 1.1, s.marks[1] + 1.4));
+    show('leaves', on && t >= s.marks[1] + 1.1 ? clamp(lv * 2) * (1 - o) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, lv)) + ')'); if ($('leaves').style.display === 'block') $('leaves').style.display = 'flex';
+    const gulp = Math.sin(Math.PI * prog(t, s.marks[1] + 0.7, s.marks[1] + 1.0)) * 0.06;
+    show('ent', on && t >= s.marks[1] - 0.4 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')'); }
 
-  // 4: PsycheAI's servers keep nothing (the zeros counting down onto 0), and the results sit on your phone.
+  // 4: PsycheAI's servers keep nothing (only zeros, never another number), the results sit on your phone, and a hack finds nothing.
   { const s = ANS, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
     show('cap4', on ? clamp(c * 2) * (1 - o) : 0);
     const v = back(prog(t, s.vo, s.vo + 0.4));
     show('vault', on ? clamp(v * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, v)) + ')');
-    [...$('vault').querySelectorAll('.zero span')].forEach((z, i) => { z.textContent = String(Math.round(9 * (1 - prog(t, s.vo + 0.2 + i * 0.15, s.vo + 1.1 + i * 0.15)))); });
+    [...$('vault').querySelectorAll('.zero')].forEach((z, i) => { const p = back(prog(t, s.vo + 0.15 + i * 0.25, s.vo + 0.45 + i * 0.25));
+      z.style.opacity = clamp(p * 2); z.style.transform = 'scale(' + (0.7 + 0.3 * Math.min(1.05, p)) + ')'; });
     const m = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.2));
-    show('mine', on && t >= s.marks[1] - 0.2 ? clamp(m * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, m)) * 60 + 'px)'); }
+    show('mine', on && t >= s.marks[1] - 0.2 ? clamp(m * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, m)) * 60 + 'px)');
+    const h = back(prog(t, s.marks[2] - 0.2, s.marks[2] + 0.2));
+    show('hack', on && t >= s.marks[2] - 0.2 ? clamp(h * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, h)) + ')'); }
 
   // 5: the close.
-  { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
+  { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[2] - 0.1, s.marks[2] + 0.25));
+    const k = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.2));
     show('c1', on ? clamp(a * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
-    show('tag', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0);
-    show('site', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0, 'translateX(-50%) scale(' + Math.min(1.05, d) + ')'); }
+    show('code', on && t >= s.marks[1] - 0.15 ? clamp(k * 2) : 0, 'translateY(' + (1 - Math.min(1, k)) * 50 + 'px)');
+    show('tag', on && t >= s.marks[2] - 0.1 ? clamp(d * 2) : 0);
+    show('site', on && t >= s.marks[2] - 0.1 ? clamp(d * 2) : 0, 'translateX(-50%) scale(' + Math.min(1.05, d) + ')'); }
 }
 window.render = render;
 window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
