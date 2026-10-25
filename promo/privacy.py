@@ -56,8 +56,9 @@ dur = [len(x) / SR for x in lines]
 word_marks = [stored['words'][name] for name in names]
 marks = [stored['lines'][name] for name in names]
 
-# Its own music since 25 October 2026 (it shared the launch video's track): warm lo-fi at 92, see below.
-BPM = 92; BEAT = 60 / BPM; BAR = 4 * BEAT
+# The relationship reel's music since 25 October 2026 (it shared the launch video's track; a lo-fi of its own was
+# tried the same day and dropped): its instruments, key and tempo, laid over these steps. See below.
+BPM = 84; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 minimum = {}
@@ -86,11 +87,10 @@ voice /= max(1e-6, np.abs(voice).max()) / 0.9
 # The instruments, as in audio.py.
 rng = np.random.default_rng(11)
 def hz(m): return 440.0 * 2 ** ((m - 69) / 12)
-# A flat major, jazzy: Abmaj7, Fm7, Dbmaj7, Eb7sus.
-CHORDS = [[56, 60, 63, 67], [53, 56, 60, 63], [49, 53, 56, 60], [51, 56, 58, 61]]
-ROOTS = [44, 41, 37, 39]
-# The melody on the last card: a beat each, None a rest.
-MELODY = [[75, None, 72, 70], [72, None, 68, None], [72, 70, 68, 65], [70, None, None, 67]]
+# The relationship reel's: F sharp minor to A (F#m D A E), its vibraphone tune.
+CHORDS = [[54, 57, 61], [50, 54, 57], [57, 61, 64], [52, 56, 59]]
+ROOTS = [42, 38, 45, 40]
+MELODY = [[73, 69, 66, 69], [74, 69, 66, 69], [76, 73, 69, 73], [71, 68, 64, 68]]
 
 def lowpass(x, cutoff):
     a = np.exp(-2 * np.pi * cutoff / SR); out = np.empty_like(x); prev = 0.0
@@ -160,60 +160,69 @@ def impact():
     return (boom + noise) * 0.55
 
 sc = scenes
-STEPS = sc[1]['start']   # the five steps: the beat comes in
-FINAL = sc[6]['start']   # the last card: the melody joins
-# Warm lo-fi (25 October 2026, in place of the launch video's track): electric piano and vinyl crackle under the
-# hook; a soft boom-bap beat, swung hats and a round bass from Step 1; a gentle electric-piano melody on the last
-# card. No risers, booms or bells; it ends on a held chord.
-SW = BEAT * 0.11   # the swing on every second eighth
-def rhodes(chord, length, gain=0.05):
-    L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
-    for m in chord:
-        f = hz(m)
-        y += np.sin(2 * np.pi * f * x) * np.exp(-x * 1.1) + 0.3 * np.sin(2 * np.pi * 2 * f * x) * np.exp(-x * 4) \
-            + 0.08 * np.sin(2 * np.pi * 7 * f * x) * np.exp(-x * 30)
-    trem = 1 + 0.08 * np.sin(2 * np.pi * 4.5 * x)
-    return y * trem * np.minimum(1, x / 0.008) * np.clip((length - x) / 0.3, 0, 1) * gain
-def round_bass(m, length):
+STEPS = sc[1]['start']   # the steps: a soft low pulse comes in
+DROP = sc[3]['start']    # Step 3 on: the gentle groove and the tune
+BRIGHT = sc[5]['start']  # Step 5 on: the tune a touch brighter
+FINAL = sc[6]['start']   # the last card
+END = sc[6]['voEnd'] + 0.6
+# The relationship reel's music (shorts.py, mood 'relationship'), its instruments copied as they are: an electric
+# piano with a slow tremolo and a soft pad throughout; a low pulse under Steps 1 and 2; from Step 3 a soft groove of
+# brushed snare, rim and bass with a vibraphone tune; a softly rolled A chord to close.
+EIGHTH = BEAT / 2
+def lp(x, fc):
+    X = np.fft.rfft(x); f = np.fft.rfftfreq(len(x), 1 / SR)
+    return np.fft.irfft(X / np.sqrt(1 + (f / fc) ** 4), len(x)).astype(np.float32)
+def rhodes(m, length=2.0, gain=0.07):
+    L = int(length * SR); x = np.arange(L) / SR; f = hz(m)
+    y = np.sin(2 * np.pi * f * x + 1.4 * np.exp(-x * 7) * np.sin(2 * np.pi * f * x)) + 0.25 * np.sin(2 * np.pi * f * 2 * x) * np.exp(-x * 3)
+    y *= np.exp(-x * 1.3) * (1 + 0.18 * np.sin(2 * np.pi * 4.2 * x)) * np.minimum(1, x / 0.004) * np.clip((length - x) / 0.1, 0, 1)
+    return y.astype(np.float32) * gain
+def vibes(m, gain=0.06):
+    L = int(1.6 * SR); x = np.arange(L) / SR; f = hz(m)
+    y = np.sin(2 * np.pi * f * x) + 0.3 * np.sin(2 * np.pi * f * 4 * x) * np.exp(-x * 8)
+    return (y * np.exp(-x * 2.2) * (1 + 0.25 * np.sin(2 * np.pi * 5.5 * x))).astype(np.float32) * gain
+def brush():
+    L = int(0.35 * SR); x = np.arange(L) / SR; noise = rng.standard_normal(L).astype(np.float32)
+    return lp(noise - lp(noise, 1500), 6000) * np.minimum(1, x / 0.03) * np.exp(-x * 9) * 0.3
+def rim():
+    L = int(0.06 * SR); x = np.arange(L) / SR
+    return (np.sin(2 * np.pi * 1800 * x) * np.exp(-x * 120) + np.sin(2 * np.pi * 520 * x) * np.exp(-x * 60) * 0.5) * 0.25
+def soft_bass(m, length):
     L = int(length * SR); x = np.arange(L) / SR
-    return np.sin(2 * np.pi * hz(m) * x) * np.minimum(1, x / 0.01) * np.clip((length - x) / 0.08, 0, 1) * np.exp(-x * 1.2) * 0.32
-def snare():
-    L = int(0.25 * SR); x = np.arange(L) / SR
-    noise = rng.standard_normal(L).astype(np.float32)
-    return (lowpass(noise, 3800) * np.exp(-x * 22) * 0.35 + np.sin(2 * np.pi * 190 * x) * np.exp(-x * 30) * 0.25)
-def soft_kick():
-    L = int(0.35 * SR); x = np.arange(L) / SR
-    f = 45 + 70 * np.exp(-x * 28)
-    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-x * 9) * 0.8
-def crackle(length):
-    L = int(length * SR); y = np.zeros(L, np.float32)
-    pops = rng.integers(0, L, int(length * 9))
-    y[pops] = rng.standard_normal(len(pops)).astype(np.float32) * 0.35
-    return lowpass(y, 3500) + lowpass(rng.standard_normal(L).astype(np.float32), 900) * 0.006
-K, SN, H = soft_kick(), snare(), hat()
+    return (np.sin(2 * np.pi * hz(m) * x) + 0.2 * np.sin(4 * np.pi * hz(m) * x)) * np.minimum(1, x / 0.01) * np.clip((length - x) / 0.08, 0, 1) * 0.3
+def pad(chord, length, gain=0.03):
+    L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
+    for m in chord + [chord[0] + 12]:
+        for det in (-0.12, 0.12): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x) + 0.2 * (2 * (x * hz(m) * (1 + det / 100) % 1) - 1)
+    return lp(y * np.minimum(1, x / 0.6) * np.clip((length - x) / 0.5, 0, 1), 1500) * gain
+K = kick()
 pump = np.ones(n, np.float32)
-at(0, crackle(TOTAL + 1), 1.0)
+last = snap(END - BAR, BAR)
+stop = END - BAR
 b = 0.0
-while b < TOTAL - BAR * 0.5:
-    k8 = int(round(b / (BEAT / 2))); bar_i = k8 // 8 % 4; e = k8 % 8
-    swung = b + (SW if e % 2 else 0)
-    chord = CHORDS[bar_i]
-    beat_on = b >= STEPS - 0.05
-    ending = b >= TOTAL - BAR * 1.5
-    if e == 0: at(b, rhodes(chord, BAR * 1.02), 1.0, -0.1)
-    if e == 5: at(swung, rhodes(chord[1:], BEAT * 1.1, 0.03), 1.0, 0.2)
-    if beat_on and not ending:
-        if e in (0, 5): at(swung, K, 0.75)
-        if e in (2, 6): at(b, SN, 0.6)
-        at(swung, H, 0.5 if e % 2 else 0.3, 0.25)
-        if e in (0, 3, 4, 7): at(swung, round_bass(ROOTS[bar_i] + (7 if e == 3 else 0), BEAT * (1.4 if e == 0 else 0.6)), 1.0 if e == 0 else 0.75)
-    if b >= FINAL - 0.05 and not ending and e % 2 == 0:
-        m = MELODY[bar_i][e // 2]
-        if m: at(b, rhodes([m + 12], BEAT * 1.6, 0.06), 1.0, 0.15)
-    b += BEAT / 2
-# The end: the first chord held, the bass under it, nothing struck after.
-last = snap(TOTAL - BAR * 1.5, BAR)
-at(last, rhodes(CHORDS[0] + [72], BAR * 1.5, 0.06), 1.0); at(last, round_bass(ROOTS[0], BAR), 0.9)
+while b < END:
+    k8 = int(round(b / EIGHTH)); bar_i = k8 // 8 % 4; e = k8 % 8; beat_i = e // 2
+    chord, root = CHORDS[bar_i], ROOTS[bar_i]
+    if b >= stop: b += EIGHTH; continue
+    if e in (0, 3):
+        for m in chord: at(b, rhodes(m + 12, 2.2, 0.05), 1.0, -0.15)
+    if e == 6: at(b, rhodes(chord[2] + 24, 1.2, 0.04), 1.0, 0.2)
+    if e == 0: at(b, pad(chord, BAR * 1.02), 1.0)
+    if STEPS <= b < DROP:
+        if e % 2 == 0: at(b, K, 0.25)
+        if e == 0: at(b, soft_bass(root - 12, BAR * 0.95), 0.8)
+    elif DROP <= b:
+        bright = b >= BRIGHT
+        if e in (0, 5): at(b, K, 0.55)
+        if e in (2, 6): at(b, brush(), 1.0)
+        if e % 2 == 1: at(b, rim(), 0.6 if bright else 0.4, 0.3)
+        if e in (0, 3, 4): at(b, soft_bass(root - 12, EIGHTH * 1.7), 1.0)
+        if e % 2 == 0: at(b, vibes(MELODY[bar_i][beat_i], 0.06 if bright else 0.045), 1.0, 0.15)
+    b += EIGHTH
+at(DROP - 1.6, swell(1.6), 0.6)
+end = [45, 57, 61, 64, 69, 73]
+for k, m in enumerate(end): at(last + k * 0.1, rhodes(m, 3.2, 0.045), 1.0)
+at(last - 0.6, pad(end[1:4], 3.8, 0.04), 1.0)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
@@ -225,9 +234,9 @@ music /= max(1e-6, np.abs(music).max())
 envv = lowpass(np.abs(voice), 8.0); envv /= max(1e-6, envv.max())
 # The main video's ending: the music swells at once on the hit and is ducked less under the last line.
 swell_in = np.ones(n, np.float32)
-f0 = int(FINAL * SR); f1 = min(n, int((FINAL + 0.35) * SR))
-swell_in[f0:f1] = np.linspace(1.0, 1.75, f1 - f0); swell_in[f1:] = 1.75
-depth = np.where(np.arange(n) >= f0, 0.25, 0.5).astype(np.float32)
+f0 = int(DROP * SR); f1 = min(n, int((DROP + 0.35) * SR))
+swell_in[f0:f1] = np.linspace(1.0, 1.35, f1 - f0); swell_in[f1:] = 1.35
+depth = np.where(np.arange(n) >= f0, 0.3, 0.5).astype(np.float32)
 duck = 1 - depth * np.clip(envv * 2.4, 0, 1)
 mix = music * (0.42 * duck * swell_in)[:, None] + voice[:, None] * 0.95
 mix = np.tanh(mix * 1.15) / np.tanh(1.15)
