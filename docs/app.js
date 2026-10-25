@@ -2919,7 +2919,7 @@
         '<li class="insight-part">' +
           '<span class="insight-part-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' +
           '<div><h4>' + esc(S.parts[key].title) + '</h4>' +
-          '<p>' + esc(I.partBlurbs[key]) + '</p>' +
+          '<p class="insight-part-q">' + esc(I.partBlurbs[key]) + '</p>' +
           (sectionsOf[key].length ? '<p class="insight-part-chips">' + sectionsOf[key].map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' : '') +
         '</div></li>').join('') + '</ol>' +
       '<div class="insight-premium-foot">' +

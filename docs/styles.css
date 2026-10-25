@@ -3632,6 +3632,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .insight-part h4 { margin: 0 0 .25rem; font-size: 1rem; }
 .insight-part p { margin: 0; font-size: .86rem; color: var(--ink-soft); line-height: 1.45; }
+.insight-part p.insight-part-q { font-size: .95rem; font-style: italic; font-weight: 600; color: var(--ink); }
 .insight-part-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem !important; }
 .insight-part-chips span {
   font-size: .74rem; font-weight: 600; color: var(--accent); background: var(--accent-soft);

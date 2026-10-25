@@ -4037,7 +4037,11 @@ try {
     (await page.locator('.premium-tier-price').allInnerTexts()).join(' | '));
   check('and Your Psyche Report stands alone in its head, with no "Premium" badge, and its blurb is the five parts alone',
     await page.evaluate(() => document.querySelectorAll('.premium-tier-head .mode-badge').length === 0 &&
-      document.querySelector('.premium-tier .tier-blurb').textContent === 'Every part of your card explained with the evidence behind it, in five parts.'));
+      document.querySelector('.premium-tier .tier-blurb').textContent === 'Your card, explained in five parts. Each answers a question you’ve asked yourself.'));
+  // Each part's line is the question it answers, not its pills said again.
+  check('and each part\'s line is the one question it answers, its sections left to the pills',
+    await page.evaluate(() => [...document.querySelectorAll('.premium-tier .insight-part-q')].map(p => p.textContent).join('|')) ===
+      'Why do I keep doing that?|What actually moves me?|Why do my relationships go the way they do?|Where would I thrive, and what holds me back?|So what do I do next? Your development plan.');
   // ---- "See sample report" closes the premium tier ----
   //
   // It sat beside "What insights will I get?" for a while; it now closes the

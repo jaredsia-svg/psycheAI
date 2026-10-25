@@ -1208,18 +1208,20 @@
       galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
-      premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts.',
+      premiumBlurb: 'Your card, explained in five parts. Each answers a question you’ve asked yourself.',
       // The report carries the card's green "Free" badge (freeBadge): the first
       // one comes free with the first card (PSYCHEAI_FIRST_RUN merged). The price
       // of a re-run is a footnote under what comes with it, in the reader's own
       // currency, the one checkout charges.
       premiumRerun: price => 'Re-runs are ' + price + '.',
+      // Each part's one line: the question it answers (25 October 2026). The pills under it list what is in it,
+      // so the line no longer lists them again.
       partBlurbs: {
-        who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
-        drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
-        connect: 'Your love languages, attachment style, how you handle disagreement and who suits you.',
-        career: 'Your edge, your other strengths, what holds you back, and the careers that suit you and the ones that would drain you.',
-        together: 'A development plan built from everything above.',
+        who: 'Why do I keep doing that?',
+        drives: 'What actually moves me?',
+        connect: 'Why do my relationships go the way they do?',
+        career: 'Where would I thrive, and what holds me back?',
+        together: 'So what do I do next? Your development plan.',
       },
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',

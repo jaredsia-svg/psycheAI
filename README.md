@@ -1144,6 +1144,14 @@ each part's sections as chips from the report's own titles (Part 1 leads with **
 comes with it, closed by **See sample report** (`#insight-sample`) at its bottom right. Under both, a line saying compatibility is free. The words around the names live in
 `Copy.STRUCTURED.insights`.
 
+**One question a part (25 October 2026):** each part's paragraph listed the same sections its pills list
+underneath, so the page said everything twice. Each part now keeps its title and its pills, and one italic line,
+the question it answers (`partBlurbs`): *Why do I keep doing that?*, *What actually moves me?*, *Why do my
+relationships go the way they do?*, *Where would I thrive, and what holds me back?*, *So what do I do next? Your
+development plan.* The line under the title no longer promises "the evidence behind it", which "Evidence behind
+every finding" below already says: *Your card, explained in five parts. Each answers a question you've asked
+yourself.* 1446px tall on a phone became 1228px.
+
 **Compact (late October 2026):** the five parts sit two to a row on a laptop (the fifth across the
 width), each a small gradient numeral, its title and its sections as one plain line with dots, and a small
 lock; one column on a phone. Part 1 no longer lists *Who you are* or *Your signature patterns*: both are the
