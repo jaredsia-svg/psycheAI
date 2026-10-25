@@ -10,10 +10,10 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = HERE + '/build/privacy'
-# --groove: the same reel and voice to the ChatGPT reel's second half instead (25 October 2026, an alternative to
-# compare), built into build/privacy-groove and rendered as `node render.mjs privacy-groove`.
-GROOVE = '--groove' in sys.argv
-OUTDIR = HERE + '/build/privacy-groove' if GROOVE else BUILD
+# The music is the ChatGPT reel's second half, the groove (chosen 25 October 2026). --calm builds the
+# relationship-style version it was compared with instead, into build/privacy-calm (`node render.mjs privacy-calm`).
+GROOVE = '--calm' not in sys.argv
+OUTDIR = BUILD if GROOVE else HERE + '/build/privacy-calm'
 os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(BUILD, exist_ok=True)
 
@@ -243,10 +243,12 @@ else:
     LOOP = [[62, 65, 69], [58, 62, 65], [60, 65, 69], [60, 64, 67]]   # Dm, Bb, F, C
     LOOP_ROOTS = [38, 34, 41, 36]
     def strings(chord, length, gain=0.03):
+        # A soft, warm pad: pure tones, gently detuned, a slow swell and filtered low. (The ChatGPT reel's
+        # sawtooth strings were "a bit too jarring" here, 25 October 2026.)
         L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
         for m in chord + [chord[0] - 12]:
-            for det in (-0.12, 0, 0.12): y += 2 * (x * hz(m) * (1 + det / 100) % 1) - 1
-        return lowpass(y * np.minimum(1, x / 0.5) * np.clip((length - x) / 0.4, 0, 1), 1800) * gain
+            for det in (-0.1, 0.1): y += np.sin(2 * np.pi * hz(m) * (1 + det / 100) * x)
+        return lowpass(y * np.minimum(1, x / 0.9) * np.clip((length - x) / 0.6, 0, 1), 1100) * gain * 1.4
     def ep(chord, length, gain=0.05):
         L = int(length * SR); x = np.arange(L) / SR; y = np.zeros(L, np.float32)
         for m in chord:

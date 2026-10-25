@@ -86,8 +86,8 @@ A second, short reel (about 28 seconds) walks through the privacy page's five st
 ```
 npm run promo:privacy            # after a first npm run promo, which sets up .cache
 npm run promo:privacy -- --vo    # remake its voice too
-.cache/venv/bin/python promo/privacy.py --groove && node promo/render.mjs privacy-groove --video <ffmpeg>
-                                 # the alternative to the ChatGPT reel's second-half music, build/privacy-groove
+.cache/venv/bin/python promo/privacy.py --calm && node promo/render.mjs privacy-calm --video <ffmpeg>
+                                 # the calmer alternative it was compared with, build/privacy-calm
 ```
 
 `out/PsycheAI-privacy.mp4` (post this), `out/PsycheAI-privacy-music-only.mp4` and `out/PsycheAI-privacy-cover.jpg`.
@@ -124,11 +124,12 @@ does your data go?" came out oddly on "data go", and "It's sent encrypted…" so
 starts "The summary is sent…". An ending on "PsycheAI takes your data privacy very seriously" was
 tried and dropped for "See for yourself".
 
-**Since 25 October 2026 it has the relationship reel's music** (the launch video's track first; a lo-fi of its own
-was tried the same day and found "painful"): the relationship reel's instruments, set a little apart from it: its
-progression a whole step up (G sharp minor to B), at 88 rather than 84, with a vibraphone tune of its own that climbs
-where that reel's falls, laid over the steps: electric piano and pad under the hook, a soft low pulse with the bass under Steps 1 and 2, a
-gentle groove of brushes, rim and bass with the vibraphone tune from Step 3 (a touch brighter from Step 5), and a rolled B major chord to close. Step 5 shrinks the phone and rises it, so its three points (*keeps no
+**Since 25 October 2026 its music is the ChatGPT reel's second half, the groove** (chosen over the launch video's
+track, a lo-fi of its own, and the relationship reel's music set a step up, which `privacy.py --calm` still builds
+into build/privacy-calm): D minor, B flat, F, C at 120, built up over the steps: electric piano, a soft pad and bass
+under the hook; the kick from Step 1; from Step 3 claps on two and four, hats, offbeat stabs, the octave-bouncing
+bass and the plucked hook; a held electric-piano chord to close. Its pad is soft pure tones, slowly swelling and
+filtered low, in place of the ChatGPT reel's sawtooth strings, which were "a bit too jarring" here. Step 5 shrinks the phone and rises it, so its three points (*keeps no
 copy*, *No account needed*, *Hacked? No data to steal*) sit clear under it. The opening says "your data", not "your
 Instagram file". What follows describes the first music, kept for the record.
 The music is the main video's own track, so the two sound like one brand: it opens on the privacy
