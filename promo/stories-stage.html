@@ -85,6 +85,14 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
 .qa .a p { font-size: 48px; }
 .qa .a li { font-size: 46px; }
 .qa .kicker { font-size: 38px; }
+/* Two or three Q&As to a story. */
+.qa2 .q { margin-top: 34px; font-size: 44px; padding: 24px 34px; }
+.qa2 .a { margin-top: 22px; padding: 30px 38px; }
+.qa2 .a .yes { font-size: 56px; }
+.qa2 .a p { margin-top: 12px; font-size: 36px; }
+.qa2 .a li { margin-top: 10px; font-size: 34px; }
+.qa2 .a li::before { width: 36px; height: 36px; font-size: 22px; }
+.qa2 h2 { font-size: 70px; }
 </style></head>
 <body>
 
@@ -94,9 +102,15 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
   <div class="in" style="justify-content:center">
     <div class="kicker">Start here 👋</div>
     <h1>Your personal <span class="grad">AI coach</span>, built from your own data.</h1>
-    <p class="lede">PsycheAI reads what you actually do on Instagram, not what you say about yourself. No quiz.</p>
+    <p class="lede">PsycheAI reads what you actually do, not what you say about yourself. No quiz, no account, no password.</p>
+    <div class="apps">
+      <div class="app"><div class="ic ig"></div><div><b>Instagram</b><small>Posts, likes, saves, DMs</small></div></div>
+      <div class="app"><div class="ic wa"></div><div><b>WhatsApp</b><small>A chat or two</small></div></div>
+      <div class="app"><div class="ic gg"></div><div><b>Google</b><small>Searches, YouTube</small></div></div>
+      <div class="app"><div class="ic fb"></div><div><b>Facebook</b><small>Posts, Messenger</small></div></div>
+    </div>
+    <p class="lede" style="font-size:36px;margin-top:30px">Instagram is all you need. Add the others for a deeper read.</p>
   </div>
-  <div class="foot">psycheai.io</div>
 </section>
 
 <section class="slide light" data-name="start-2">
@@ -115,10 +129,10 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
     <div class="kicker">And there's more</div>
     <h2>Go deeper, <span class="grad">free to start</span></h2>
     <div class="steps">
-      <div class="step"><div class="num">📖</div><div><b>Psyche Report</b><span>Every part explained with evidence, plus attachment style, career coaching and a plan. Your first one is free.</span></div></div>
-      <div class="step"><div class="num">💬</div><div><b>Ask PsycheAI</b><span>Your coach answers from your own report. First question free.</span></div></div>
-      <div class="step"><div class="num">🤝</div><div><b>Psyche Sync</b><span>See how in sync you are with a friend. Always free.</span></div></div>
-      <div class="step"><div class="num">🔥</div><div><b>Your roast</b><span>An honest roast, free with every card. If you're brave.</span></div></div>
+      <div class="step"><div class="num">📖</div><div><b>Psyche Report</b><span>Every part of your card explained with evidence, plus attachment style, ideal partner, career coaching and a development plan.</span></div></div>
+      <div class="step"><div class="num">💬</div><div><b>Ask PsycheAI</b><span>Your coach, answering your questions from your own report.</span></div></div>
+      <div class="step"><div class="num">🤝</div><div><b>Psyche Sync</b><span>See how in sync you are with a friend, and how to get on better.</span></div></div>
+      <div class="step"><div class="num">🔥</div><div><b>Your roast</b><span>An honest roast with every card, then what an honest friend would tell you.</span></div></div>
     </div>
   </div>
 </section>
@@ -148,108 +162,49 @@ h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035
   </div>
 </section>
 
-<section class="slide" data-name="start-5">
-  <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in" style="justify-content:center">
-    <div class="kicker">Want a deeper read?</div>
-    <h2>Add more of <span class="grad">your data</span></h2>
-    <p class="lede" style="font-size:40px">Instagram is all you need. Add any of these for more to go on:</p>
-    <div class="apps">
-      <div class="app"><div class="ic ig"></div><div><b>Instagram</b><small>The start</small></div></div>
-      <div class="app"><div class="ic wa"></div><div><b>WhatsApp</b><small>A chat or two</small></div></div>
-      <div class="app"><div class="ic gg"></div><div><b>Google</b><small>Searches, YouTube</small></div></div>
-      <div class="app"><div class="ic fb"></div><div><b>Facebook</b><small>Posts, Messenger</small></div></div>
-    </div>
-  </div>
-</section>
-
-<section class="slide light" data-name="start-6">
-  <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in" style="justify-content:center;align-items:center;text-align:center">
-    <div class="kicker">No quiz · No account · No password</div>
-    <h1 style="font-size:96px">Your first Psyche Card is <span class="grad">free</span>.</h1>
-    <p class="lede" style="margin-top:40px">Request your Instagram data now.<br>Step-by-step guide:</p>
-    <p class="lede" style="font-weight:850;color:#8a3fd0">psycheai.io/download-instagram-data</p>
-    <div style="margin-top:70px"><span class="pill">psycheai.io ↗</span></div>
-    <p class="lede" style="font-size:36px;margin-top:30px">Link in bio</p>
-  </div>
-</section>
-
 <!-- ============ PRIVACY ============ -->
-<section class="slide" data-name="privacy-1">
+<section class="slide qa2" data-name="privacy-1">
   <div class="blob b1"></div><div class="blob b2"></div>
   <div class="in" style="justify-content:center">
-    <div class="big-icon">🔒</div>
-    <div class="kicker" style="margin-top:40px">Privacy</div>
-    <h1>Your files <span class="grad">never leave</span> your phone.</h1>
-    <p class="lede">The questions people ask most, answered. Tap through →</p>
-  </div>
-  <div class="foot">psycheai.io/privacy</div>
-</section>
-
-<section class="slide qa" data-name="privacy-2">
-  <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in">
-    <div class="kicker">Q&amp;A 1 / 6</div>
+    <div class="kicker">🔒 Privacy · 1 / 3</div>
+    <h2>Your files <span class="grad">never leave</span> your phone.</h2>
     <div class="q">Does my Instagram file get uploaded?</div>
     <div class="a"><div class="yes">No.</div>
-      <p>Your zip file, photos and videos are read <b>in your browser</b> and never leave your device.</p>
-      <p>Only a <b>short, de-identified summary</b> of your activity is sent for analysis, and <b>you review it first</b>.</p></div>
-  </div>
-</section>
-
-<section class="slide qa" data-name="privacy-3">
-  <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in">
-    <div class="kicker">Q&amp;A 2 / 6</div>
+      <p>Your zip, photos and videos are read <b>in your browser</b>. Only a <b>short, de-identified summary</b> of your activity is sent for analysis, and <b>you review it first</b>.</p></div>
     <div class="q">Can the summary be traced back to me?</div>
-    <div class="a"><div class="yes">It's de-identified on your phone first.</div>
+    <div class="a"><div class="yes">It's de-identified on your phone.</div>
       <ul><li>Your name and username become a blank</li><li>Emails, phone and card numbers are removed</li>
-        <li>Everyone else's @handles become numbers like [P1]</li><li>Links are dropped; dates are cut to the month</li></ul></div>
+        <li>Other people's @handles become [P1]</li><li>Links dropped; dates cut to the month</li></ul></div>
   </div>
 </section>
 
-<section class="slide qa" data-name="privacy-4">
+<section class="slide qa2" data-name="privacy-2">
   <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in">
-    <div class="kicker">Q&amp;A 3 / 6</div>
+  <div class="in" style="justify-content:center">
+    <div class="kicker">🔒 Privacy · 2 / 3</div>
     <div class="q">Does PsycheAI keep my data?</div>
     <div class="a"><div class="yes">No.</div>
-      <p>PsycheAI keeps <b>no copy</b> of your data, summary or report. They stay in your browser until you press <b>Delete everything</b>.</p>
-      <p>No account, no passwords, so if PsycheAI were ever hacked, <b>there would be none of your data to take</b>.</p></div>
-  </div>
-</section>
-
-<section class="slide qa" data-name="privacy-5">
-  <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in">
-    <div class="kicker">Q&amp;A 4 / 6</div>
+      <p><b>No copy</b> of your data, summary or report. No account, no passwords: if PsycheAI were hacked, <b>there would be none of your data to take</b>.</p></div>
     <div class="q">Is my data used to train AI?</div>
     <div class="a"><div class="yes">No.</div>
-      <p>PsycheAI uses <b>Google Vertex AI on Google Cloud's enterprise tier</b>, where Google does not train its AI on your summary, questions or report.</p>
-      <p>It's used only to answer you.</p></div>
-  </div>
-</section>
-
-<section class="slide qa" data-name="privacy-6">
-  <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in">
-    <div class="kicker">Q&amp;A 5 / 6</div>
+      <p>It runs on <b>Google Vertex AI's enterprise tier</b>, where Google does not train its AI on it. It's used only to answer you.</p></div>
     <div class="q">Do you need my Instagram password?</div>
     <div class="a"><div class="yes">Never.</div>
-      <p>PsycheAI <b>never asks for your password</b> and never logs in to any of your accounts.</p>
       <p>You download your own data from Instagram yourself, and choose the file.</p></div>
   </div>
 </section>
 
-<section class="slide qa" data-name="privacy-7">
+<section class="slide qa2" data-name="privacy-3">
   <div class="blob b1"></div><div class="blob b2"></div>
-  <div class="in">
-    <div class="kicker">Q&amp;A 6 / 6</div>
+  <div class="in" style="justify-content:center">
+    <div class="kicker">🔒 Privacy · 3 / 3</div>
     <div class="q">How do I know it's true?</div>
     <div class="a"><div class="yes">Check it yourself. ✈️</div>
       <p>Turn on <b>airplane mode</b>, then load your file: it's still read and summarised, because that all happens on your phone.</p>
-      <p>And the site is <b>open source</b>: anyone can read exactly what it sends.</p></div>
+      <p>The site is <b>open source</b>: anyone can read exactly what it sends.</p></div>
+    <div class="q">Why not just upload it to ChatGPT?</div>
+    <div class="a"><div class="yes">That sends the raw file.</div>
+      <p>Your whole export goes to their servers, <b>names and messages included</b>. PsycheAI de-identifies it on your phone first, and keeps nothing.</p></div>
   </div>
   <div class="foot">Full details: psycheai.io/privacy</div>
 </section>

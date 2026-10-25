@@ -440,15 +440,14 @@ were made with. A name longer than eleven letters (Sherlock Holmes) is set small
 ### Story highlights
 
 ```
-node promo/stories.mjs   # marketing/stories/start-1..6.png and privacy-1..7.png, 1080x1920
+node promo/stories.mjs   # marketing/stories/start-1..4.png and privacy-1..3.png, 1080x1920
 ```
 
-Still images for the Instagram highlights *Start here* and *Privacy* (25 October 2026), one page
-(`stories-stage.html`) with a `<section data-name>` per slide. *Start here*: what PsycheAI is, the free card (Emily
-Carter's Mulan card), what else there is (report, Ask PsycheAI, Psyche Sync, the roast), the guide as the
-account's pinned post lays it out (every tap, each button a chip), the four data sources, and the free first card.
-*Privacy*: six questions, each answered in the FAQ's own words, shortened, so every claim stays literally true:
-the file never leaves the phone, how the summary is de-identified, PsycheAI keeps no copy, no training on it, no
-password, and the airplane-mode check. Text keeps clear of the top 220px and bottom 300px, where Instagram puts its
-bars.
-
+Still images for the Instagram highlights *Start here* and *Privacy* (25 October 2026), as few as will hold it, one
+page (`stories-stage.html`) with a `<section data-name>` per slide. *Start here* (4): what PsycheAI is, with the
+four data sources it reads; the free card (Emily Carter's Mulan card); what else there is (report, Ask PsycheAI,
+Psyche Sync, the roast; "free to start" once, in the heading); the guide as the account's pinned post lays it out
+(every tap, each button a chip). *Privacy* (3): seven questions, two or three to a story, each answered in the FAQ's
+own words, shortened, so every claim stays literally true: the file never leaves the phone, how the summary is
+de-identified, PsycheAI keeps no copy, no training on it, no password, the airplane-mode check, and why not
+ChatGPT. Text keeps clear of the top 220px and bottom 300px, where Instagram puts its bars.
