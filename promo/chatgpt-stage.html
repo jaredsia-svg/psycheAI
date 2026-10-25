@@ -46,7 +46,19 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #ent { z-index: 24; left: 230px; right: 230px; top: 430px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
   background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.4); }
 #ent small { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; opacity: .92; }
-/* 4: the answers. */
+/* 4: nothing kept. */
+#vault { z-index: 20; left: 120px; right: 120px; top: 470px; padding: 36px 40px 30px; border-radius: 44px; background: #fff; text-align: center;
+  border: 5px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
+  box-shadow: 0 30px 80px rgba(138,63,208,.22); }
+#vault b { display: block; font-size: 46px; font-weight: 900; margin-bottom: 18px; }
+#vault .zero { display: flex; align-items: baseline; justify-content: center; gap: 22px; margin-top: 8px; font-size: 44px; font-weight: 750; color: #4a2366; }
+#vault .zero span { font-size: 92px; font-weight: 900; color: #c2407a; min-width: 70px; }
+#mine { z-index: 20; left: 160px; right: 160px; top: 1180px; padding: 34px 40px; border-radius: 40px; background: #fff; text-align: center;
+  box-shadow: 0 24px 60px rgba(90,40,120,.18); }
+#mine .ic { display: block; font-size: 110px; }
+#mine b { display: block; margin-top: 10px; font-size: 46px; font-weight: 900; }
+#mine small { display: block; margin-top: 6px; font-size: 36px; font-weight: 650; color: #6b6076; }
+/* 4 (before): the answers. */
 .ans { z-index: 20; left: 70px; right: 70px; padding: 36px 42px; border-radius: 40px; font-size: 44px; line-height: 1.3; }
 .ans .who { display: block; margin-bottom: 14px; font-size: 34px; font-weight: 900; font-style: normal; }
 #ansA { top: 520px; background: #fff; border: 3px solid #d6d3da; color: #4b4553; font-style: italic; font-weight: 550; }
@@ -81,13 +93,11 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el" id="summary"><b>SUMMARY</b>Name: <span class="bar"></span><br>@friend → <span class="tag">[P1]</span><br>Links: removed</div>
   <div class="el" id="ent">Enterprise AI<small>doesn’t train on it · nothing kept</small></div>
 
-  <div class="el caption" id="cap4">Same question.<br>Two answers.</div>
-  <div class="el ans" id="ansA"><span class="who">ChatGPT</span>“You might regret the things you kept postponing because you thought you had more time.”</div>
-  <div class="el ans" id="ansB"><span class="who grad">PsycheAI</span>“You quoted <b>The Little Prince</b> in 2023, so you already know this trap, yet you still fall in.”</div>
-  <div class="el stamp" id="stA">Could be anyone</div>
-  <div class="el stamp" id="stB">Only you</div>
+  <div class="el caption" id="cap4"><span class="grad">PsycheAI</span> keeps nothing.</div>
+  <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>exports kept</div><div class="zero"><span>0</span>reports kept</div></div>
+  <div class="el" id="mine"><span class="ic">📱</span><b>Your card and report</b><small>saved only on your device</small></div>
 
-  <div class="el" id="c1">Only one of them<br><span class="grad">actually knows you.</span></div>
+  <div class="el" id="c1">Your data<br><span class="grad">stays yours.</span></div>
   <div class="el" id="tag">Your personal AI coach</div>
   <div class="el" id="site">psycheai.io ↗</div>
 <script>
@@ -154,15 +164,14 @@ function render(t) {
     const e = back(prog(t, s.marks[1] + 0.7, s.marks[1] + 1.0));
     show('ent', on && t >= s.marks[1] + 0.7 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + Math.min(1.05, e) + ')'); }
 
-  // 4: the two answers to the same question.
+  // 4: PsycheAI's servers keep nothing (the zeros counting down onto 0), and the results sit on your phone.
   { const s = ANS, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
     show('cap4', on ? clamp(c * 2) * (1 - o) : 0);
-    const a = back(prog(t, s.vo, s.vo + 0.4)), b = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.2));
-    show('ansA', on ? clamp(a * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, a)) * 40 + 'px)');
-    show('ansB', on && t >= s.marks[1] - 0.2 ? clamp(b * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, b)) * 40 + 'px)');
-    const sa = back(prog(t, s.vo + 0.6, s.vo + 0.9)), sb = back(prog(t, s.voEnd + 0.1, s.voEnd + 0.4));
-    show('stA', on && t >= s.vo + 0.6 ? clamp(sa * 2) * (1 - o) : 0, 'scale(' + (1 + (1 - Math.min(1, sa)) * 1.3) + ') rotate(-6deg)');
-    show('stB', on && t >= s.voEnd + 0.1 ? clamp(sb * 2) * (1 - o) : 0, 'scale(' + (1 + (1 - Math.min(1, sb)) * 1.3) + ') rotate(-4deg)'); }
+    const v = back(prog(t, s.vo, s.vo + 0.4));
+    show('vault', on ? clamp(v * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, v)) + ')');
+    [...$('vault').querySelectorAll('.zero span')].forEach((z, i) => { z.textContent = String(Math.round(9 * (1 - prog(t, s.vo + 0.2 + i * 0.15, s.vo + 1.1 + i * 0.15)))); });
+    const m = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.2));
+    show('mine', on && t >= s.marks[1] - 0.2 ? clamp(m * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, m)) * 60 + 'px)'); }
 
   // 5: the close.
   { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));

@@ -458,10 +458,12 @@ The guide story is headed *Start here.* Text keeps clear of the top 220px and bo
 ### The ChatGPT reel
 
 ```
-npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 35 s
+npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 33 s
 ```
 
-*Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, then what comes back.
+*Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, and what is kept. It
+keeps to that question: the two answers to the regret question, its first cut of scene 4, belong to *why PsycheAI
+stands out*, since someone who has uploaded their data would not get a generic answer.
 Its own stage, `chatgpt-stage.html`, grey while ChatGPT has the data and the brand's colours from PsycheAI on; the
 comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's, about its personal plans.
 
@@ -471,6 +473,6 @@ comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's
 | 1 | Because it all goes up, as it is. / Your name. Your friends' messages. Your photos. | the export, shaking, and its contents flying up into a cloud, *ChatGPT's servers* |
 | 2 | It may train on it, unless you switch that off. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud |
 | 3 | PsycheAI reads it on your phone. / Only a de-identified summary leaves. | the export locked in a phone; a summary (name blacked out, @friend → [P1]) leaving for *Enterprise AI · doesn't train on it* |
-| 4 | And because it actually knows you, / its answers are about you. | the comparison reel's two real answers, *Could be anyone* and *Only you* |
-| 5 | Same question. Only one actually knows you. / Try it at psycheai.io. | the line, *Your personal AI coach*, the address |
+| 4 | And PsycheAI keeps nothing. / No accounts. Your results stay on your device. | *PsycheAI's servers*: 0 accounts, 0 exports kept, 0 reports kept, counting down; then *Your card and report, saved only on your device* |
+| 5 | Your data stays yours. / Try it at psycheai.io. | the line, *Your personal AI coach*, the address |
 

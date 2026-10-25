@@ -162,8 +162,9 @@ With ChatGPT, it all goes up as it is: your name, your friends' messages, your p
 It may be used to train its models unless you switch that off, and it's kept until you delete it, then up to 30 days more.
 
 With PsycheAI, your files stay on your phone. Only a de-identified summary leaves, to enterprise AI that doesn't train on it.
+And PsycheAI keeps nothing: no accounts, your results stay on your device.
 
-Same question. Only one actually knows you.
+Your data stays yours 🔒
 Comment COACH for the link 👇
 
 #chatgpt #privacy #aicoach #dataprivacy #psycheai

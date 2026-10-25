@@ -255,16 +255,16 @@ REELS['compare-insecure'] = dict(REELS['compare'], lines=[
     (['And it found the fear I never say out loud.'], 0.85, None),
 ] + REELS['compare']['lines'][4:], hold={0: 0.6, 1: 2.4, 2: 0.9, 3: 6.0, 4: 0.8},
     voice='en_US-hfc_female-medium')  # a woman's answer, so a woman's voice (the relationship reel's)
-# ChatGPT against PsycheAI (25 October 2026): where your data goes, then what you get back. The comparison reel's
+# ChatGPT against PsycheAI (25 October 2026): where your data goes with each, and what is kept. The comparison reel's
 # music and voice; its own stage, chatgpt-stage.html. Every claim about ChatGPT is the FAQ's (personal plans).
 REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['Why not just upload my Instagram data to Chat G P T?'], 0.92, None),
     (['Because it all goes up, as it is.', "Your name. Your friends' messages. Your photos."], 0.85, True, 0.35),
     (['It may train on it, unless you switch that off.', "And it's kept until you delete it, then thirty days more."], 0.85, True, 0.35),
     (['{B} reads it on your phone.', 'Only a de-identified summary leaves.'], 0.85, True, 0.35),
-    (['And because it actually knows you,', 'its answers are about you.'], 0.85, True, 0.3),
-    (['Same question. Only one actually knows you.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
-], hold={0: 0.5, 1: 0.6, 2: 0.9, 3: 1.0, 4: 2.6}, lead={})
+    (['And {B} keeps nothing.', 'No accounts. Your results stay on your device.'], 0.85, True, 0.3),
+    (['Your data stays yours.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.3),
+], hold={0: 0.5, 1: 0.6, 2: 0.9, 3: 1.0, 4: 1.2}, lead={})
 # The same reel opening on "What do people misunderstand about me?" instead, the gentler first cut, kept to
 # post a few days apart and compare.
 REELS['coach-misunderstood'] = dict(REELS['coach'], lines=[REELS['coach']['lines'][0], (['What do people misunderstand about me?'], 0.92, None)] +

@@ -19,7 +19,7 @@
 .vs-stamp { position: absolute; right: 12px; top: 12px; padding: 2px 10px; border-radius: 999px; font-size: .74rem; font-weight: 800; }
 .vs-them .vs-stamp { color: #6b6b73; border: 1.5px solid #a8a3ae; background: #fff; }
 .vs-us .vs-stamp { color: #fff; background: linear-gradient(90deg, #e0457b, #8a3fd0); }
-.vs-note { margin: 8px 0 18px; font-size: .78rem; color: var(--ink-soft); text-align: center; }
+.vs-note { margin: 10px 0 0; font-size: .78rem; color: var(--ink-soft); text-align: center; }
 .vs-diff { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: .9rem; }
 .vs-row { display: grid; grid-template-columns: 24% 1fr 1fr; border-top: 1px solid var(--line); }
 .vs-row:first-child { border-top: 0; }
