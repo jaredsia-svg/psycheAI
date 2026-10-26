@@ -1903,10 +1903,9 @@ const attachProps = prompts.PREMIUM_SCHEMA.properties.attachment.properties;
   check('the first-upload Instagram row no longer says it, but several files can still be picked',
     !('dataSourcesFirstInstagram' in globalThis.PsycheCopy.TEXT) && !wanted.test(markup.slice(markup.indexOf('id="datasources-dialog"'))) &&
       /id="datasources-input"[^>]*\bmultiple\b/.test(markup) && /id="file-input"[^>]*\bmultiple\b/.test(markup));
-  // Shortened to fit one line on a phone (late October 2026), still saying
-  // that a split export goes in whole.
-  check('and the report page\'s replace row says it too, in short',
-    /pick every part/i.test(rowLine), rowLine.trim());
+  // Gone from the report page's row too (26 October 2026): the one box takes every part at once.
+  check('and the report page\'s Instagram row has no line of its own either',
+    !rowLine.trim(), rowLine.trim());
   // The one place that explains *why* — reached only by a reader whose
   // half-loaded export failed the breadth check, which is exactly when the
   // explanation is worth the words.
@@ -9187,6 +9186,33 @@ check('the schema requires evidence on where they align and differ',
   ].map(f => Supplement.detectSource(f)));
   check('one box: each file is sorted by what is inside it',
     kinds.join() === 'instagram,google,facebook,whatsapp,whatsapp,unknown,unknown', kinds.join());
+  // Meta's two exports share most file names: what only one of them has decides (October 2026). A real
+  // Instagram export, named anything, with its instagram_profile_information.json, is Instagram; a Facebook
+  // export full of the names Instagram uses too is Facebook.
+  const json = '{}';
+  const meta = await Promise.all([
+    new File([makeZip([
+      { name: 'personal_information/personal_information/instagram_profile_information.json', content: json },
+      { name: 'personal_information/personal_information/personal_information.json', content: json },
+      { name: 'your_instagram_activity/comments/post_comments_1.json', content: json },
+      { name: 'your_instagram_activity/likes/liked_posts.json', content: json },
+      { name: 'connections/followers_and_following/followers_1.json', content: json },
+      { name: 'apps_and_websites_off_of_instagram/apps_and_websites/your_activity_off_meta_technologies.json', content: json },
+    ])], 'export.zip'),
+    new File([makeZip([
+      { name: 'personal_information/profile_information/profile_information.json', content: json },
+      { name: 'your_facebook_activity/comments_and_reactions/comments.json', content: json },
+      { name: 'your_facebook_activity/posts/your_posts__check_ins__photos_and_videos_1.json', content: json },
+      { name: 'connections/followers/followers.json', content: json },
+      { name: 'connections/friends/your_friends.json', content: json },
+      { name: 'ads_information/ads_interests.json', content: json },
+      { name: 'logged_information/search/your_search_history.json', content: json },
+      { name: 'your_facebook_activity/messages/inbox/kim_1/message_1.json', content: json },
+    ])], 'download.zip'),
+  ].map(f => Supplement.detectSource(f)));
+  check('one box: Meta\'s two exports are told apart by what only one has, not by the file names they share',
+    meta.join() === 'instagram,facebook' && Supplement.metaProduct(['comments.json', 'followers_1.json'], ['x.zip']) === '',
+    meta.join());
 
   const line = (friend, i, own) => `${1 + Math.floor(i / 27) % 12}/${1 + (i % 27)}/25, 9:0${i % 10} PM - ` +
     (own ? 'Jo Park: honestly I think you should take the job in ' + friend + ' town, ' + i + ' ' + friend.length

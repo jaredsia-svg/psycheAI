@@ -1202,9 +1202,9 @@ try {
       await halfPage.waitForSelector('#profile-body .report-keep-note', { timeout: 30000 }).catch(() => {});
       const keepText = await halfPage.locator('#profile-body .report-keep-note').innerText().catch(() => '');
       check('once the Psyche Report is in, a note says it is saved only on this device, and to download the PDF',
-        /saved only in this browser, and PsycheAI keeps no copy/.test(keepText) && /Download the PDF to keep it/.test(keepText) &&
+        /^Your Psyche Report is only saved in this browser, and not on PsycheAI’s servers\. Download PDF or full backup to keep it\./.test(keepText.trim()) &&
           !/Safari/.test(keepText) &&
-          /Download PDF/.test(keepText), keepText);
+          await halfPage.locator('#profile-body .report-keep-note .report-keep-backup').count() === 1, keepText);
       const [saved] = await Promise.all([
         halfPage.waitForEvent('download', { timeout: 15000 }).catch(() => null),
         halfPage.click('#profile-body .report-keep-save'),
@@ -8621,11 +8621,11 @@ try {
   // the half of the restore this suite is in a position to prove — eight page
   // reloads sit between here and the first report-page use, and a reload
   // restores the markup anyway, so an actual leak cannot be observed.
-  check('and the markup\'s own wording is kept so the report page can have it back',
+  // Since 26 October 2026 the report page's row has no line of its own either, so there is nothing to give back.
+  check('and the markup\'s own wording, now none, is what the report page gets back',
     await page.evaluate(sel => {
       const line = document.querySelector(sel);
-      const kept = line && line.dataset.defaultText;
-      return Boolean(kept) && /replace/i.test(kept) && kept !== line.textContent;
+      return Boolean(line) && !line.textContent.trim() && !(line.dataset.defaultText || '').trim();
     }, igLine),
     await page.evaluate(sel => {
       const line = document.querySelector(sel);
@@ -14588,9 +14588,9 @@ try {
         return Boolean(p && p.premiumAnalysis);
       }, null, { timeout: 60000 });
       await rp.waitForSelector('#profile-body .report-keep-note', { timeout: 15000 });
-      check('once unlocked, the reader lands on My Report, told it is ready in the one note at its head, and My Report joins the nav',
+      check('once unlocked, the reader lands on My Report, told where it is kept in the one note at its head, and My Report joins the nav',
         await rp.evaluate(() => document.querySelectorAll('#profile-body .part-card').length > 0 &&
-          /^Your Psyche Report is ready! It is saved only in this browser/.test(document.querySelector('#profile-body .report-keep-note').textContent) &&
+          /^Your Psyche Report is only saved in this browser/.test(document.querySelector('#profile-body .report-keep-note').textContent) &&
           !document.querySelector('#profile-body .report-ready-note') &&
           !document.querySelector('#nav-full').hidden && document.querySelector('#profile-top').hidden));
       const freeRun = await rp.evaluate(() => window.__freeRun);

@@ -4654,7 +4654,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: var(--accent-soft); border: 1px solid var(--line);
 }
 .report-keep-note p { flex: 1 1 18rem; margin: 0; }
-.report-keep-note .btn { flex: none; }
+.report-keep-btn { display: inline-block; margin: 0 .1rem; padding: .05rem .55rem; border: 1.5px solid var(--accent); border-radius: 999px;
+  background: var(--bg-alt); color: var(--accent); font: inherit; font-weight: 650; line-height: 1.35; cursor: pointer; }
+.report-keep-btn:hover, .report-keep-btn:focus-visible { background: var(--accent); color: #fff; }
 .report-keep-close {
   position: absolute; top: .35rem; right: .35rem; appearance: none; border: 0; background: none; cursor: pointer;
   color: var(--ink-soft); font: inherit; font-size: .95rem; line-height: 1; padding: .3rem .45rem; border-radius: 8px;

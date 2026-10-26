@@ -1498,8 +1498,10 @@
       open: 'See Psyche Report',
       // Until the reader has saved the PDF once: where the report lives, and
       // the one way to keep it.
-      keep: 'Your Psyche Report is ready! It is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.',
-      keepButton: 'Download PDF',
+      // One line since 26 October 2026, its two choices buttons inside the sentence: {pdf} and {backup}.
+      keep: 'Your Psyche Report is only saved in this browser, and not on PsycheAI’s servers. Download {pdf} or {backup} to keep it.',
+      keepPdf: 'PDF',
+      keepBackup: 'full backup',
     },
     cardGuide: {
       title: 'How to read your Psyche Card',

@@ -9131,10 +9131,18 @@
     if (!body || keepNoteClosed || body.querySelector('.report-keep-note') || store.read(KEYS.pdfSaved, false)) return;
     const note = document.createElement('div');
     note.className = 'report-keep-note no-print';
-    note.innerHTML = '<p>' + esc(Copy.STRUCTURED.reportPage.keep) + '</p>' +
-      '<button class="btn btn-sm report-keep-save" type="button">' + esc(Copy.STRUCTURED.reportPage.keepButton) + '</button>' +
+    const P = Copy.STRUCTURED.reportPage;
+    note.innerHTML = '<p>' + esc(P.keep)
+      .replace('{pdf}', '<button class="report-keep-btn report-keep-save" type="button">' + esc(P.keepPdf) + '</button>')
+      .replace('{backup}', '<button class="report-keep-btn report-keep-backup" type="button">' + esc(P.keepBackup) + '</button>') + '</p>' +
       '<button type="button" class="report-keep-close" aria-label="' + esc(TEXT.close) + '">✕</button>';
     note.querySelector('.report-keep-save').addEventListener('click', exportPdf);
+    // A full backup keeps it too (with the card, the syncs and the questions), so it puts the note away the same way.
+    note.querySelector('.report-keep-backup').addEventListener('click', () => {
+      saveBackup();
+      store.write(KEYS.pdfSaved, true);
+      removeHeadNote(note);
+    });
     note.querySelector('.report-keep-close').addEventListener('click', () => {
       keepNoteClosed = true;
       removeHeadNote(note);

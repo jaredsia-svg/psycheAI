@@ -617,9 +617,14 @@
     // The likeliest mistake at this step is picking the same zip twice, so it
     // is worth naming rather than half-accepting. Counted the way
     // instagram.js's own floor counts, and held to the same threshold.
+    // Decided by what only Instagram's export has (metaProduct), and only
+    // when nothing marks it as Facebook's does the count of Instagram's file
+    // names decide: most of those names are in Facebook's export too.
     let instagramRoutes = 0;
     const routed = [];
+    const paths = [];
     const seen = await eachJson(files, (path, data) => {
+      paths.push(String(path).toLowerCase());
       const igRoute = root.PsycheInstagram && root.PsycheInstagram.routeOf(path);
       if (igRoute && igRoute !== 'messages') instagramRoutes++;
       const route = fbRouteOf(path);
@@ -628,7 +633,8 @@
       else routed.push({ route, data });
     }, report);
 
-    if (instagramRoutes >= 4) {
+    const meta = metaProduct(paths, Array.from(files || []).map(f => String((f && f.name) || '')));
+    if (meta === 'instagram' || (!meta && instagramRoutes >= 4)) {
       throw new Error('That looks like your Instagram data, which is already included. ' +
         'Choose the file Facebook sent you instead.');
     }
@@ -678,6 +684,25 @@
   // never does; a zip with no JSON and a .txt in it is a WhatsApp chat.
   // 'unknown' is a zip none of these recognise: a later part of a split
   // Instagram export (photos only) is the likely one, and the caller decides.
+  // Which of Meta's two exports this is (October 2026). They share most of their
+  // file names (comments.json, ads_interests.json, personal_information/…), so
+  // file names alone sorted a real Instagram export as Facebook — its
+  // instagram_profile_information.json matched Facebook's profile file — and
+  // a real Facebook export trips Instagram's routes. What only one of them
+  // has decides: its own activity folder, its "apps and websites off of …"
+  // folder, and how often each name appears in the paths and the zip's name
+  // (Meta names the download instagram-… or facebook-…). '' when neither shows.
+  function metaProduct(paths, names) {
+    const count = re => paths.filter(p => re.test(p)).length;
+    const ig = count(/(^|\/)your_instagram_activity\/|off_of_instagram|instagram/) +
+      (names || []).filter(n => /instagram/i.test(n)).length * 50;
+    const fb = count(/(^|\/)your_facebook_activity\/|off_of_facebook|facebook|(^|\/)(friends_and_followers|comments_and_reactions)\//) +
+      (names || []).filter(n => /facebook/i.test(n)).length * 50;
+    if (ig > fb) return 'instagram';
+    if (fb > ig) return 'facebook';
+    return '';
+  }
+
   async function detectSource(file) {
     const name = String((file && file.name) || '');
     if (/\.txt$/i.test(name)) return 'whatsapp';
@@ -686,7 +711,10 @@
     try { entries = (await root.PsycheZip.open(file)).entries; } catch (error) { return 'unknown'; }
     const paths = entries.map(e => String(e.name || '').toLowerCase());
     if (paths.some(p => /(^|\/)takeout\/|my ?activity\.json$|(^|\/)my activity\//.test(p))) return 'google';
-    if (paths.some(p => /(^|\/)your_facebook_activity\/|profile_information[^/]*\.json$/.test(p))) return 'facebook';
+    // Only for an archive with data files in it: a part of an export that is all photos says nothing.
+    const meta = paths.some(p => p.endsWith('.json')) ? metaProduct(paths, [name]) : '';
+    if (meta) return meta;
+    if (paths.some(p => /(^|\/)profile_information\/profile_information\.json$/.test(p))) return 'facebook';
     const ig = root.PsycheInstagram;
     const routes = ig && ig.routeOf ? new Set(paths.map(p => ig.routeOf(p)).filter(Boolean)) : new Set();
     if (paths.some(p => /(^|\/)your_instagram_activity\//.test(p)) || routes.size >= 2) return 'instagram';
@@ -703,7 +731,7 @@
 
   root.PsycheSupplement = {
     __testing,
-    readGoogle, readFacebook, detectSource, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
+    readGoogle, readFacebook, detectSource, metaProduct, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
     // Exported for the tests, which hold the locale-proofing directly rather
     // than inferring it from a parsed archive.
     hostOf, queryOf, productOf, stripLeadingVerb, searchShape,

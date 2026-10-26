@@ -1399,9 +1399,15 @@ the biggest drop-off left in the funnel.
 
 **One box for every file.** The data popout opens on **Choose your files** (`#datasources-drop`): the
 reader picks or drops any mix of files, and each is sorted by what is inside it before any of it is
-read (`Supplement.detectSource`, from the zip's own list of names: a Takeout folder is Google,
-`your_facebook_activity/` or `profile_information` is Facebook, `your_instagram_activity/` or two
-Instagram file names is Instagram, a `.txt` or a zip with no JSON and a `.txt` is WhatsApp). A zip
+read (`Supplement.detectSource`, from the zip's own list of names: a Takeout folder is Google; Meta's
+two exports by what only one of them has (`metaProduct`: its own activity folder, its *apps and
+websites off of …* folder, and how often "instagram" or "facebook" appears in the paths and the zip's
+name), then `profile_information/profile_information.json` is Facebook and two Instagram file names
+Instagram; a `.txt` or a zip with no JSON and a `.txt` is WhatsApp). Until 26 October 2026 any
+`profile_information….json` meant Facebook, which a real Instagram export matched with its
+`instagram_profile_information.json`: it was read as Facebook and refused as Instagram. Facebook's own
+reader refused real Facebook exports for the same overlap (four of Instagram's file names, most of which
+Facebook's export has too); it now refuses only what `metaProduct` calls Instagram's. A zip
 nothing recognises goes with an Instagram export picked beside it (a later part of a split export), or
 to the row that was tapped, or to Instagram, whose reader says what is wrong with it. The four rows
 below the box are now one checklist rather than four boxes: what is loaded, ticked, and a tap on a row
@@ -1449,9 +1455,9 @@ file types the box now sorts by itself, and kept the help a first-timer needs at
   missing if pressed;
 - Restore from a backup sits under the buttons, out of Continue's way.
 
-The report page's popouts share the rows: no tags, no "Required" pill, the same rings and dots, with
-only Instagram keeping a second line, *A new .zip replaces it – pick every part*, since replacing a
-split export with half of it is the mistake there. Each row is a `.ds-row` (the source's button, then
+The report page's popouts share the rows: no tags, no "Required" pill, the same rings and dots. Only
+Instagram kept a second line, *A new .zip replaces it – pick every part*, until 26 October 2026, when
+it went too: the box takes every part at once anyway. Each row is a `.ds-row` (the source's button, then
 its `.ds-how`), and askDataSources moves rows, not buttons.
 
 **How the conversations pool is shared** (26 October 2026, `waChatChars` in `docs/digest.js`).
@@ -4117,7 +4123,7 @@ The nav shows My Report only once the report is unlocked. The current page is ma
 on every link (My Psyche, My Report, My Syncs, FAQ): `.is-current` with `aria-current="page"`, in
 bold purple and nothing more. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
 gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
-lands on My Report at Part 00. The note at its head says *Your Psyche Report is ready! It is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.* There used to be a second, green *Your Psyche Report is ready.* note above it, with a ✕, fading after ten seconds; it was removed in October 2026 as one note too many, and its words went into the keep note. A classic-layout report stays on
+lands on My Report at Part 00. The note at its head says *Your Psyche Report is only saved in this browser, and not on PsycheAI's servers. Download [PDF] or [full backup] to keep it.*, the two choices buttons inside the sentence (26 October 2026; before, *Your Psyche Report is ready! It is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.* with a Download PDF button). Either puts the note away for good. There used to be a second, green *Your Psyche Report is ready.* note above it, with a ✕, fading after ten seconds; it was removed in October 2026 as one note too many, and its words went into the keep note. A classic-layout report stays on
 one page.
 
 ## Save a backup, and restore it in another browser
