@@ -971,18 +971,19 @@
     // row shows it as dots (October 2026), and says nothing while empty.
     whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded – tap to load a different one'
       : n + ' of ' + max + ' chats loaded',
-    whatsappFirstTitle: 'WhatsApp chats',
+    whatsappFirstTitle: '≥2 WhatsApp chats',
     // A first upload needs Instagram or two WhatsApp chats (three at most; October 2026):
     // the two rows' tags, and the line under the file box saying where the
     // reader stands (askDataSources, showMinimum).
     // The first upload's two groups (October 2026): the rows say the rest.
     // The required group's heading says what is still needed (26 October 2026): IG or 2 chats, then how
     // many more chats, then just "Required" with its tick.
-    dataSourcesNeedOne: 'Required (IG or 2 WhatsApp chats)',
+    dataSourcesNeedOne: 'Required (At least one)',
     dataSourcesNeedMore: n => 'Required (' + n + ' more WhatsApp ' + (n === 1 ? 'chat' : 'chats') + ')',
     dataSourcesNeedOneDone: 'Required',
     dataSourcesNeedOneMet: 'Required: done',
     dataSourcesOptional: 'Optional',
+    dataSourcesMore: 'Optional data',
     startNeedsMinimum: (min = 2) => 'Load your Instagram data, or ' + min + ' WhatsApp chats, to get started.',
     startNeedsMore: n => 'Add ' + n + ' more WhatsApp ' + (n === 1 ? 'chat' : 'chats') + ', or your Instagram data, to get started.',
     // A file the box cannot take, and one for a source this popout does not offer.
@@ -1002,7 +1003,7 @@
     // changes once anything is loaded, because at that point the button is no
     // longer asking for a file — it is the way back into a run that failed,
     // and "Load your data" would read as "do it all again".
-    startLoad: 'Load your data',
+    startLoad: 'Load my data',
     startContinue: 'Continue with your data',
     startLoadedSuffix: ' already loaded – nothing to upload again.',
     rerunNeedsInstagram: 'Your Instagram data is no longer on this device. Load it again to rewrite your report.',
@@ -1276,7 +1277,8 @@
       // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
       askTitle: 'Ask PsycheAI',
       askBlurb: 'Your personal coach that already knows you from your results. Ask it anything about yourself.',
-      askPrice: price => '1 question free, then ' + price + ' for 5',
+      // Short enough to sit beside the name on a phone (27 October 2026).
+      askPrice: price => '1 free, then ' + price + ' for 5',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',

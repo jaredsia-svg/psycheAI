@@ -1453,10 +1453,21 @@ file types the box now sorts by itself, and kept the help a first-timer needs at
   the count in words (*2 of 3 chats loaded*) stays for screen readers;
 - Continue is set back (half strength) until a first upload has what it needs, and still says what is
   missing if pressed;
-- Restore from a backup sits under the buttons, out of Continue's way.
+- **Front page, 27 October 2026:** Start here's button reads **Load my data** (it was *Load your data*;
+  the guide's last button matches it). On a phone the Psyche Report's two extras (*A PDF to keep*,
+  *Evidence behind every finding*) stack on the left with **See sample** beside them, rather than the
+  button on a line of its own. Ask PsycheAI's pill sits beside its name on one line, shortened to
+  *1 free, then … for 5*; at 420px and under the Sync and Ask rows drop their icons to make room.
+- Restore from a backup sits between Back and Continue, under *Optional data* (27 October 2026).
+- **Google and Facebook are folded away on a first upload** (27 October 2026): four rows read as four
+  things to fetch, when Instagram or two chats is all a first read needs. *Optional data ▾*, a quiet grey
+  link between Back and Continue, unfolds them under *Optional*; a Google or Facebook file dropped in the
+  box is still read, and unfolds them so its tick shows. The required heading became *Required (At least
+  one)* and the WhatsApp row *≥2 WhatsApp chats* (first upload only: from the report page one chat beside
+  Instagram is fine), so the minimum is on the row itself.
 - **The required group says what is still needed** (26 October 2026; it read *Need either IG or 2 x
   WhatsApp* whatever was loaded, so after one chat it was not clear what to do): *Required (IG or 2
-  WhatsApp chats)*, then *Required (1 more WhatsApp chat)* once one chat is in, then *Required* with its
+  WhatsApp chats)* (*Required (At least one)* since 27 October), then *Required (1 more WhatsApp chat)* once one chat is in, then *Required* with its
   tick. Continue pressed at one chat says *Add 1 more WhatsApp chat, or your Instagram data, to get
   started.*
 - **One ring on every row** (26 October 2026, chosen from three mock-ups over a tick + count and a status
@@ -1547,7 +1558,8 @@ your Instagram data first* and WhatsApp folded under it:
   (outline), each opening its own way below; *Already have your files? Load here* is a small link under
   them (`#hero-load`, the popout). At 345px and under the two labels shrink a step to stay on one row.
 - The steps card is *Two ways to start*, *Choose to load your WhatsApp chats, your IG data, or both.*:
-  WhatsApp (*⚡ About 2 minutes*, its two steps, **Load my chats**) and Instagram (*🎯 Most complete ·
+  WhatsApp (*⚡ About 2 minutes*, its two steps, ending *then load it below*: no button of its own since 27
+  October, Start here's **Load my data** is the one) and Instagram (*🎯 Most complete ·
   2 hours*, its steps and See illustration), side by side on a laptop, and on a phone two slim tabs,
   *⚡ WhatsApp · now* and *🎯 Instagram · 2hrs*, WhatsApp open first (`chooseWay`). Under both: *💡 Both?
   Request Instagram now, then load it with your chats when it arrives.*, which keeps the free read for
@@ -3519,7 +3531,7 @@ The changes:
 card bought with its report (`adoptBundle`). An unlock of a card the reader already held lands on the
 report, live or picked up after a reload.
 
-**The front page's pills.** Psyche Sync's "Free" and Ask PsycheAI's "1 question free, then … for 5" take
+**The front page's pills.** Psyche Sync's "Free" and Ask PsycheAI's "1 free, then … for 5" (*1 question free…* until 27 October 2026) take
 the card tier's "Free" design: faint green (`--good-soft`) behind green text.
 
 ### Breadth is sustained conversations in every field, not only the ledger (October 2026)

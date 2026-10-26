@@ -1119,7 +1119,6 @@ ol.howto-rows .ui-peek:hover, ol.howto-rows .ui-peek[aria-expanded="true"] { bac
 .way-whatsapp .way-tag { background: var(--good-soft); color: var(--good); }
 .way-instagram .way-tag { background: var(--good-soft); color: var(--good); }
 .way ol:not(.howto-rows) { margin: .2rem 0 .4rem; padding-left: 1.2rem; }
-.way-go { width: 100%; margin: .5rem 0 .4rem; }
 .ways-both { margin: .8rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 @media (max-width: 719px) {
   .ways-tabs { display: flex; gap: .25rem; margin-top: .75rem; padding: .2rem; border-radius: 999px;
@@ -3750,10 +3749,15 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: .86rem; font-weight: 600; color: var(--ink);
 }
 .insight-premium-foot .btn { margin-left: auto; padding: .5rem 1rem; font-size: .9rem; flex: none; }
-/* On a laptop the button shares the last line with what comes with the report. */
-@media (min-width: 760px) {
-  .insight-premium-foot { flex-wrap: nowrap; align-items: flex-end; }
-  .insight-premium-what { flex: 1 1 auto; min-width: 0; }
+/* The button shares the line with what comes with the report, on a phone too (27 October 2026):
+   the two extras stacked on the left, the button on the right. */
+.insight-premium-foot { flex-wrap: nowrap; align-items: flex-end; }
+.insight-premium-what { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 759px) {
+  .insight-premium-foot { align-items: center; gap: .6rem; margin-top: .8rem; }
+  .insight-extras { flex-direction: column; gap: .3rem; font-size: .84rem; }
+  .insight-rerun { margin-top: .3rem; }
+  .insight-premium-foot .btn { padding: .45rem .85rem; font-size: .86rem; }
 }
 /* The price of a re-run, a footnote under what comes with the report. */
 .insight-rerun { margin: .45rem 0 0; font-size: .8rem; color: var(--ink-soft); }
@@ -3766,6 +3770,15 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .insight-compat-icon { font-size: 1.5rem; }
 .insight-compat h3 { margin: 0; font-size: .98rem; }
+/* Ask PsycheAI's price beside its name, on one line (27 October 2026). */
+.insight-ask h3 { display: flex; align-items: center; flex-wrap: nowrap; gap: .4rem; white-space: nowrap; }
+.insight-ask .insight-price { margin-left: 0; min-width: 0; }
+/* On a phone the two rows drop their icons, so the price fits beside the name; at 320px it may wrap. */
+@media (max-width: 420px) {
+  .insight-compat-icon { display: none; }
+  .insight-ask h3 { flex-wrap: wrap; row-gap: .2rem; }
+  .insight-ask .insight-price { font-size: .68rem; padding: .08rem .45rem; letter-spacing: 0; }
+}
 .insight-compat p { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 /* Psyche Sync's "Free" and Ask PsycheAI's price in the card tier's "Free"
    design: faint green behind green text. */
@@ -3982,16 +3995,15 @@ details.more[open] > summary::after { content: ' ▴'; }
 .offline-note[hidden] { display: none; }
 :root[data-theme="dark"] .offline-note { color: #6fd39b; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .offline-note { color: #6fd39b; } }
-/* Restore from a backup: a small quiet link left of Continue, on a first
-   upload only. */
-.datasources-dialog .datasources-restore { font-size: .78rem; margin-right: .2rem; white-space: nowrap; }
-/* On a phone the three stay on one line: the link takes two short lines
-   rather than pushing Continue under Back. */
-@media (max-width: 460px) {
-  .datasources-dialog .supplement-actions { flex-wrap: nowrap; }
-  .datasources-dialog .datasources-restore { white-space: normal; text-align: right; line-height: 1.25; min-width: 0; }
-}
-.datasources-dialog .datasources-restore[hidden] { display: none; }
+/* Between Back and Continue (27 October 2026): "Optional data" over "Restore
+   from a backup", two small quiet links, centred; on a first upload only. */
+.datasources-dialog .supplement-actions { flex-wrap: nowrap; align-items: center; }
+.datasources-dialog .ds-mid { display: flex; flex-direction: column; align-items: center; gap: .3rem; min-width: 0; }
+.datasources-dialog .ds-mid .link-btn { font-size: .78rem; line-height: 1.25; text-align: center; }
+.datasources-dialog .ds-more { color: var(--ink-soft); }
+.datasources-dialog .ds-more::after { content: ' ▾'; }
+.datasources-dialog .ds-more[aria-expanded="true"]::after { content: ' ▴'; }
+.datasources-dialog .ds-mid .link-btn[hidden] { display: none; }
 .datasources-restore-alert { margin: 0 0 .4rem; font-size: .8rem; color: var(--danger); }
 .datasources-dialog > .muted { font-size: .82rem; line-height: 1.38; margin-bottom: .75rem; }
 .datasources-dialog .mode-options {
@@ -4819,9 +4831,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .datasources-dialog .supplement-help-body [data-help].is-other { display: none; }
 /* The illustrated walkthrough is Instagram's: under WhatsApp, Google or Facebook's steps it is not offered. */
 .datasources-dialog .supplement-help:not([data-only=""]):not([data-only="instagram"])[data-only] .help-illustrated { display: none; }
-/* Restore from a backup, under the buttons and out of Continue's way. */
-.ds-restore-row { margin: .45rem 0 0; text-align: center; }
-.ds-restore-row:has(> [hidden]) { display: none; }
 
 /* Instagram stood out here, with a border and a "Required" pill, while it
    was the one source required. The file box stands out now, and the sources

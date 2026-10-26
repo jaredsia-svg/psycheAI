@@ -323,8 +323,8 @@
       <section class="way way-whatsapp" id="way-whatsapp" role="tabpanel" aria-labelledby="ways-tab-whatsapp">
         <h3>2 WhatsApp chats</h3>
         <p class="way-tag">⚡ About 2 minutes</p>
+        <!-- No button of its own since 27 October 2026: the steps end "load it below", at Start here. -->
         <ol data-howto="whatsapp"></ol>
-        <button class="btn way-go" id="way-load-chats" type="button">Load my chats</button>
       </section>
       <section class="way way-instagram is-off" id="way-instagram" role="tabpanel" aria-labelledby="ways-tab-instagram">
         <div class="way-head">
@@ -371,7 +371,7 @@
          genuinely faster than a picker. The card is the drop target now, so
          the box that used to advertise it is not needed. -->
     <div class="upload-actions">
-      <button class="btn btn-lg btn-block" id="open-sources" type="button">Load your data</button>
+      <button class="btn btn-lg btn-block" id="open-sources" type="button">Load my data</button>
       <p class="upload-loaded muted" id="upload-loaded" hidden></p>
     </div>
     <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
@@ -888,7 +888,7 @@
       from a creator’s link. Nothing in them identifies you.</p>
 
     <h3>Can I verify this?</h3>
-    <p>Yes. Open Load your data, turn on airplane mode, then pick your file: it is still read and
+    <p>Yes. Open Load my data, turn on airplane mode, then pick your file: it is still read and
       summarised, because that all happens on your device. Turn your connection back on only to send.</p>
     <p>The site is also open source, so you can
       <a href="https://github.com/jaredsia-svg/psycheAI/tree/claude/instagram-personality-compatibility-oqhpa3" target="_blank" rel="noopener noreferrer">read
@@ -1179,7 +1179,7 @@
            used to say "Start here" and scroll to the upload card, which left
            the reader looking at a button they then had to press themselves.
            It opens the popout directly now. -->
-      <button class="btn btn-lg btn-block" id="guide-start" type="button">Load your data</button>
+      <button class="btn btn-lg btn-block" id="guide-start" type="button">Load my data</button>
     </div>
   </div>
 </dialog>
@@ -1355,9 +1355,10 @@
       <span class="muted ds-drop-hint">or drop them here</span></span>
   </button>
   <div class="mode-options">
-    <!-- On a first upload the rows are two groups (askDataSources): "Required (IG or 2 WhatsApp chats)",
+    <!-- On a first upload the rows are two groups (askDataSources): "Required (At least one)",
          "Required (1 more WhatsApp chat)" after one chat, and "Required" ticked once either is
-         loaded; then "Optional". Placed by askDataSources, which moves rows. -->
+         loaded; then "Optional", folded until "Optional data" between the buttons is tapped
+         (or an optional file is loaded). Placed by askDataSources, which moves rows. -->
     <p class="ds-group" id="datasources-minimum" hidden></p>
     <p class="ds-group" id="datasources-optional" hidden></p>
     <div class="ds-row" data-row="instagram">
@@ -1489,10 +1490,15 @@
   <p class="datasources-restore-alert" id="restore-alert" role="alert" hidden></p>
   <div class="btn-row supplement-actions">
     <button class="btn btn-outline" id="datasources-back" type="button">Back</button>
-    <span class="btn-spacer"></span>
+    <!-- Between the buttons, quiet (27 October 2026): on a first upload,
+         "Optional data" unfolds the Google and Facebook rows, and under it
+         Restore from a backup, in a browser with no card. -->
+    <span class="btn-spacer ds-mid">
+      <button class="link-btn ds-more" id="datasources-more" type="button" aria-expanded="false" hidden>Optional data</button>
+      <button class="link-btn datasources-restore" id="restore-open" type="button" hidden>Restore from a backup</button>
+    </span>
     <button class="btn" id="datasources-continue" type="button">Continue</button>
   </div>
-  <p class="ds-restore-row"><button class="link-btn datasources-restore" id="restore-open" type="button" hidden>Restore from a backup</button></p>
   <input type="file" id="datasources-input" accept=".zip,application/zip,.txt,text/plain" multiple hidden>
   <input type="file" id="restore-input" accept=".json,application/json" hidden>
 </dialog>
@@ -1718,7 +1724,7 @@
   <li>In WhatsApp, open a chat with a close connection → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
       <span class="ui-label">More</span> → <span class="ui-label">Export chat</span>.</li>
   <li>Choose <span class="ui-label">Without media</span> and save the file it makes (a .zip) to your
-      phone or computer, then load it here.</li>
+      phone or computer, then load it <span class="howto-where">here</span>.</li>
 </template>
 
 <!-- The data readers, loaded only once a reader starts loading data, or

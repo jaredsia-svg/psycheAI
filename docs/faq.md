@@ -73,7 +73,7 @@ Only daily totals, such as how many cards, reports and syncs were made, and how 
 
 ### Can I verify this?
 
-Yes. Open Load your data, turn on airplane mode, then pick your file: it is still read and summarised, because that all happens on your device. Turn your connection back on only to send.
+Yes. Open Load my data, turn on airplane mode, then pick your file: it is still read and summarised, because that all happens on your device. Turn your connection back on only to send.
 
 The site is also open source, so you can [read what the browser sends](https://github.com/jaredsia-svg/psycheAI/tree/claude/instagram-personality-compatibility-oqhpa3).
 

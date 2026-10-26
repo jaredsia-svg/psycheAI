@@ -4259,8 +4259,6 @@
     for (const panel of document.querySelectorAll('.way')) panel.classList.toggle('is-off', panel.id !== 'way-' + way);
   }
   document.querySelectorAll('.ways-tab').forEach(tab => tab.addEventListener('click', () => chooseWay(tab.dataset.way)));
-  // "Load my chats": the Add your data popout, as Load my data opens it.
-  $('#way-load-chats').addEventListener('click', () => startFromSources());
   // "See below for instructions" in How it works: to the request steps, as
   // Get my data lands — without the hash the app reads links from.
   document.addEventListener('click', event => {
@@ -4801,6 +4799,8 @@
     // plain text like the others: the purple screenshot labels and the set
     // of three rows were too small there to read or tap.
     if (list.closest('.supplement-help-body')) plainHowto(list);
+    // On the front page the chats are loaded at Start here, below the steps.
+    if (list.closest('#way-whatsapp')) for (const where of list.querySelectorAll('.howto-where')) where.textContent = 'below';
   }
   mountPeeks();
 
@@ -5944,12 +5944,23 @@
       const help = helpBox.querySelector('[data-help="' + source + '"]');
       if (help) helpBox.insertBefore(help, helpTail);
     }
-    // A first upload's two groups (October 2026): "Required (IG or 2 WhatsApp chats)" over Instagram
+    // A first upload's two groups (October 2026): "Required (At least one)" over Instagram
     // and WhatsApp, which either is enough (its tick is showMinimum's), then
     // "Optional" over the rest. Elsewhere the rows are one plain list.
     const needHead = $('#datasources-minimum');
     const optionalHead = $('#datasources-optional');
     needHead.hidden = optionalHead.hidden = !settings.requireMinimum;
+    // The optional rows start folded (27 October 2026): "Optional data", between
+    // the buttons, unfolds them. Only the row wraps are hidden, not the buttons,
+    // so a Google or Facebook file in the box is still read, and unfolds them.
+    const moreButton = $('#datasources-more');
+    let optionalRows = [];
+    moreButton.hidden = true;
+    const foldOptional = folded => {
+      optionalHead.hidden = folded || !optionalRows.length;
+      for (const source of optionalRows) rowWrap(source).hidden = folded;
+      moreButton.setAttribute('aria-expanded', String(!folded));
+    };
     if (settings.requireMinimum) {
       const needs = order.filter(x => x === 'instagram' || x === 'whatsapp');
       const rest = order.filter(x => !needs.includes(x) && offered.includes(x));
@@ -5957,6 +5968,8 @@
       optionalHead.textContent = TEXT.dataSourcesOptional;
       if (rest.length) optionsBox.insertBefore(optionalHead, rowWrap(rest[0]));
       else optionalHead.hidden = true;
+      optionalRows = rest;
+      moreButton.textContent = TEXT.dataSourcesMore;
     }
     // "How?" on a row opens that source's steps alone, below the rows; the
     // same again closes them.
@@ -6011,6 +6024,10 @@
       if (!line) continue;
       if (line.dataset.defaultText === undefined) line.dataset.defaultText = line.textContent;
       line.textContent = sublines[source] !== undefined ? sublines[source] : line.dataset.defaultText;
+    }
+    if (optionalRows.length) {
+      moreButton.hidden = false;
+      foldOptional(true);
     }
     // Every list below is built from the visible rows, so a hidden source can
     // neither be ticked, read, nor resolved.
@@ -6187,6 +6204,8 @@
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
       $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook'));
+      // An optional file loaded through the box unfolds its rows, so its tick shows.
+      if (optionalRows.some(source => Boolean(added[source]) && !isStale(source))) foldOptional(false);
       showWhatsAppCount();
       showMinimum();
     };
@@ -6457,6 +6476,12 @@
       const hows = dialog.querySelectorAll('.ds-how');
       for (const how of hows) how.addEventListener('click', onHow);
       drop.addEventListener('click', choose);
+      const onMore = () => {
+        const unfold = moreButton.getAttribute('aria-expanded') !== 'true';
+        foldOptional(!unfold);
+        if (unfold) optionalHead.scrollIntoView({ block: 'nearest', behavior: scrollBehaviour() });
+      };
+      moreButton.addEventListener('click', onMore);
       dialog.addEventListener('dragover', onDragOver);
       dialog.addEventListener('dragleave', onDragLeave);
       dialog.addEventListener('drop', onDrop);
@@ -6475,6 +6500,7 @@
         }
         input.removeEventListener('change', read);
         drop.removeEventListener('click', choose);
+        moreButton.removeEventListener('click', onMore);
         for (const how of hows) how.removeEventListener('click', onHow);
         drop.disabled = false;
         drop.classList.remove('is-over');

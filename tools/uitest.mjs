@@ -746,9 +746,32 @@ try {
   const groups = await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-options > :not([hidden])')]
     .map(el => el.matches('.ds-group') ? '#' + el.textContent.trim() : el.dataset.row));
   check('a first upload groups its rows: Need one (Instagram, WhatsApp), then Optional (Google, Facebook), each row one line with a How?',
-    JSON.stringify(groups) === JSON.stringify(['#Required (IG or 2 WhatsApp chats)', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook']) &&
-      await page.locator('#datasources-dialog .ds-row:not([hidden]) .ds-how').count() === 4,
+    JSON.stringify(groups) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp']) &&
+      await page.locator('#datasources-dialog .ds-row:not([hidden]) .ds-how').count() === 2,
     JSON.stringify(groups));
+  // The optional rows are folded (27 October 2026): "Optional data", between
+  // Back and Continue over Restore from a backup, unfolds them, and again folds them.
+  {
+    const spot = await page.evaluate(() => {
+      const r = el => document.querySelector(el).getBoundingClientRect();
+      const more = r('#datasources-more'), back = r('#datasources-back'), go = r('#datasources-continue'), restore = r('#restore-open');
+      return { between: more.left >= back.right && more.right <= go.left && restore.left >= back.right && restore.right <= go.left,
+        above: more.bottom <= restore.top, text: document.querySelector('#datasources-more').textContent,
+        expanded: document.querySelector('#datasources-more').getAttribute('aria-expanded') };
+    });
+    await page.click('#datasources-more');
+    const opened = await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-options > :not([hidden])')]
+      .map(el => el.matches('.ds-group') ? '#' + el.textContent.trim() : el.dataset.row));
+    const openCount = await page.locator('#datasources-dialog .ds-row:not([hidden]) .ds-how').count();
+    await page.click('#datasources-more');
+    const refolded = await page.locator('#datasources-dialog .ds-row[data-row="google"]').isHidden();
+    await page.click('#datasources-more');
+    check('Optional data, between Back and Continue and over Restore, unfolds Google and Facebook under Optional, and folds them again',
+      spot.between && spot.above && spot.text === 'Optional data' && spot.expanded === 'false' &&
+        JSON.stringify(opened) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook']) &&
+        openCount === 4 && refolded,
+      JSON.stringify({ spot, opened, openCount, refolded }));
+  }
   {
     const helpState = () => page.evaluate(() => ({
       open: document.querySelector('#datasources-dialog .supplement-help').open,
@@ -773,7 +796,7 @@ try {
         document.querySelector('#datasources-drop').compareDocumentPosition(document.querySelector('#datasources-dialog .mode-options')) === Node.DOCUMENT_POSITION_FOLLOWING),
     await rowLabel('instagram'));
   check('and nor do the others: the groups say what is needed, WhatsApp shows its chats as an empty ring in three parts',
-    (await rowLabel('whatsapp')) === 'WhatsApp chats' &&
+    (await rowLabel('whatsapp')) === '≥2 WhatsApp chats' &&
       (await rowLabel('google')) === 'Google Takeout' && (await rowLabel('facebook')) === 'Facebook' &&
       await page.evaluate(() => document.querySelectorAll('#datasources-dialog .ds-dots i').length === 3 &&
         document.querySelector('#datasources-dialog .ds-dots').dataset.n === '0' &&
@@ -1463,7 +1486,7 @@ try {
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
       check('a new reader is offered Instagram, WhatsApp chats, Google Takeout and Facebook, one line each',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', 'WhatsApp chats', 'Google Takeout', 'Facebook']), JSON.stringify(shown.rows));
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '≥2 WhatsApp chats', 'Google Takeout', 'Facebook']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
         JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
@@ -4039,7 +4062,7 @@ try {
   check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
-        /1 question free, then US\$5 for 5/.test(a.textContent); }));
+        /1 free, then US\$5 for 5/.test(a.textContent); }));
 
   // ---- the premium tier block ----
   //
@@ -8617,8 +8640,11 @@ try {
   // the report page still offers all four from this same dialog — and
   // `display: flex` beats `[hidden]` unless a rule says otherwise, which is
   // precisely how a "hidden" row stays on screen.
-  check('it offers Instagram, WhatsApp, Google and Facebook',
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4 &&
+  // Google and Facebook folded behind Optional data since 27 October 2026.
+  const foldedRows = await page.locator('#datasources-dialog .mode-option:visible').count();
+  await page.click('#datasources-more');
+  check('it offers Instagram and WhatsApp, and Google and Facebook behind Optional data',
+    foldedRows === 2 && (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4 &&
     await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible() &&
     await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible(),
     (await page.locator('#datasources-dialog .mode-option:visible').count()) + ' rows shown');
@@ -8680,7 +8706,7 @@ try {
       '#datasources-dialog .mode-option[data-datasource="instagram"]').className));
   check('and it is still the first-upload popout, not the report page\'s wording',
     (await page.locator('#datasources-dialog-title').innerText()).trim() === 'Add your data' &&
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4,
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2,
     await page.locator('#datasources-dialog-title').innerText());
 
   await page.keyboard.press('Escape');
@@ -11228,10 +11254,11 @@ try {
     const link = document.querySelector('#restore-open').getBoundingClientRect();
     const go = document.querySelector('#datasources-continue').getBoundingClientRect();
     const size = el => parseFloat(getComputedStyle(document.querySelector(el)).fontSize);
-    return { below: link.top >= go.bottom,
+    const back = document.querySelector('#datasources-back').getBoundingClientRect();
+    return { below: link.left >= back.right && link.right <= go.left,
       small: size('#restore-open') < size('#datasources-continue'), text: document.querySelector('#restore-open').textContent };
   });
-  check('a browser with no card is offered Restore from a backup in Add your data, small, under the buttons',
+  check('a browser with no card is offered Restore from a backup in Add your data, small, between the buttons',
     await page.locator('#restore-open').isVisible() && restoreSpot.below && restoreSpot.small &&
       restoreSpot.text === 'Restore from a backup', JSON.stringify(restoreSpot));
   await page.setInputFiles('#restore-input', { name: 'notes.json', mimeType: 'application/json',
@@ -13852,8 +13879,8 @@ try {
       };
       const a = await readChats(first, ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x', look);
       check('one file box: a first upload asks for one of Instagram or the chats, sets Continue back, and holds it until it has one',
-        seen.empty === 'Required (IG or 2 WhatsApp chats)' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
-          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', 'WhatsApp chats', 'Google Takeout', 'Facebook']),
+        seen.empty === 'Required (At least one)' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
+          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '≥2 WhatsApp chats', 'Google Takeout', 'Facebook']),
         JSON.stringify(seen));
       // One chat in: the heading asks for one more, and Continue says so (26 October 2026).
       {
