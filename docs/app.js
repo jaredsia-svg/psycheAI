@@ -6215,6 +6215,9 @@
       const more = Math.max(0, WA_MINIMUM - chatsLoaded());
       const partway = !met && more > 0 && more < WA_MINIMUM;
       head.textContent = met ? TEXT.dataSourcesNeedOneDone : partway ? TEXT.dataSourcesNeedMore(more) : TEXT.dataSourcesNeedOne;
+      // Partway, what is still needed is set apart in amber: "Required (1 more WhatsApp chat)".
+      const need = partway && head.textContent.match(/^(Required )(\(.+\))$/);
+      if (need) head.innerHTML = esc(need[1]) + '<span class="ds-need">' + esc(need[2]) + '</span>';
       head.classList.toggle('is-met', met);
       head.setAttribute('aria-label', met ? TEXT.dataSourcesNeedOneMet : partway ? TEXT.startNeedsMore(more) : TEXT.startNeedsMinimum(WA_MINIMUM));
       go.classList.toggle('is-waiting', !met);

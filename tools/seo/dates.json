@@ -242,16 +242,16 @@
   "privacy": {
     "published": "2026-10-09",
     "modified": "2026-10-26",
-    "hash": "fc88ca3ea46b38cc"
+    "hash": "f1ecc5b1e93a008f"
   },
   "terms": {
     "published": "2026-10-09",
-    "modified": "2026-10-21",
-    "hash": "f317b5523ea0393b"
+    "modified": "2026-10-26",
+    "hash": "4e1dfdb27d77f3bd"
   },
   "refunds": {
     "published": "2026-10-09",
-    "modified": "2026-10-21",
-    "hash": "830ae37e77301d8e"
+    "modified": "2026-10-26",
+    "hash": "de4e258ffc1ea0e5"
   }
 }

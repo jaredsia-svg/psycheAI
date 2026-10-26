@@ -13,6 +13,11 @@ Two rules run through all of it:
 - **Every claim stays literally true.** First Psyche Card free; the roast free with every card; one Ask PsycheAI
   question free; the full report paid. Files never leave the device; only a de-identified summary is analysed,
   and PsycheAI keeps no copy.
+- **MBTI is a trademark** (of The Myers-Briggs Company; 26 October 2026). Organic posts, captions and
+  stories may name it to say what the card shows (*MBTI & Big Five*), as the site does. Paid ads and boosted
+  posts say *16-type*, *MBTI-style* or *your 4-letter type* instead: Meta and Google can reject a trademark in
+  ad text. Never *MBTI test* for PsycheAI itself, and never *official*. Don't boost the `mbti` reel as it is
+  (its hook, "I took the MBTI test three times", names the real test); cut a 16-type version first.
 
 ---
 

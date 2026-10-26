@@ -139,7 +139,7 @@ const FOOTER = `<footer class="footer">
     <a href="/download-instagram-data">Download your Instagram data</a> · <a href="/instagram-data-download-help">Download help</a></p>
   <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> ·
     <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> · <a href="https://www.instagram.com/psycheai.io/" target="_blank" rel="noopener noreferrer">Instagram @psycheai.io</a></p>
-  <p class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google.</p>
+  <p class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google. MBTI and Myers-Briggs are trademarks of The Myers-Briggs Company; PsycheAI is not affiliated with it and is not the official assessment.</p>
 </footer>`;
 
 const section = (h2, inner, cls) => `  <section class="card section-card${cls ? ' ' + cls : ''}">\n    <h2>${esc(h2)}</h2>\n    ${inner}\n  </section>\n`;

@@ -8027,7 +8027,7 @@ check('the schema requires evidence on where they align and differ',
       'download-instagram-data', 'privacy', 'terms', 'refunds', '404'];
     const html = Object.fromEntries(pages.map(n => [n, readFileSync(join(root, 'docs', n + '.html'), 'utf8')]));
     check('every page says PsycheAI is not affiliated with Instagram, Meta or Google',
-      pages.every(n => /class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google\./.test(html[n])),
+      pages.every(n => /class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google\. MBTI and Myers-Briggs are trademarks of The Myers-Briggs Company; PsycheAI is not affiliated with it and is not the official assessment\./.test(html[n])),
       pages.filter(n => !/footer-note/.test(html[n])).join());
     check('and the terms say it too, with MBTI\'s owner named',
       /not affiliated with, endorsed or sponsored by Instagram, Meta, Google, Facebook or WhatsApp/.test(html.terms) &&

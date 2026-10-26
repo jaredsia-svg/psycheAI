@@ -14,6 +14,9 @@ Read this first in a new session, together with `CLAUDE.md` and `marketing/INSTA
 - **Security:** fixes B3 (sync seal), B4 (NUL → 400) and B5 (COOP) are live.
 - **Stories:** `marketing/stories/` holds start-1..5.png and privacy-1..4.png, from `node promo/stories.mjs` and `promo/stories-stage.html`.
 - **Finished reels:** in `marketing/reels/`. Captions are in `marketing/INSTAGRAM.md`.
+- **Ad copy and MBTI:** in ads and boosted posts say *16-type* or *MBTI-style*, never *MBTI test* or
+  *official*; organic posts may name MBTI as the card does. Rule in `marketing/INSTAGRAM.md`. The site footer
+  carries the trademark line on every page (26 Oct).
 
 ## In progress: the ChatGPT reel (`chatgpt`)
 
