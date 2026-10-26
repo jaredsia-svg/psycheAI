@@ -5136,7 +5136,7 @@
     const linesOff = Object.values(l.drop || {}).reduce((n, list) => n + list.length, 0);
     const parts = [
       (l.yearsOff || []).length ? 'everything from ' + l.yearsOff.slice().sort().join(', ') : '',
-      (l.words || []).length ? 'anything mentioning ' + l.words.map(w => '“' + w + '”').join(', ') : '',
+      // Never the words themselves: a topic the reader chose to keep back is not written into the file.
       chatsOff ? chatsOff + (chatsOff === 1 ? ' chat' : ' chats') : '',
       linesOff ? linesOff + (linesOff === 1 ? ' single line' : ' single lines') : '',
     ].filter(Boolean);
@@ -5625,13 +5625,22 @@
         if (word && !lines.words.includes(word)) lines.words.push(word);
         $('#review-kw').value = '';
         refresh();
+        // Pressed with the button, the word is done: the keyboard goes. Enter keeps it for the next word.
+        if (event.submitter) $('#review-kw').blur();
       };
+      // On a phone the first tap on Leave out used to land on nothing: it blurred the box, the keyboard
+      // closed, the foot came back and the button moved out from under the finger. Pressing it no
+      // longer takes the focus, so the tap is the press (October 2026).
+      const keepFocus = event => event.preventDefault();
+      const kwButton = $('#review-kw-form button[type="submit"]');
       // While typing, the foot steps aside so the keyboard has the room.
       const typing = () => dialog.classList.add('is-typing');
       const typed = () => dialog.classList.remove('is-typing');
       dialog.addEventListener('click', onClick);
       list.addEventListener('change', onChange);
       $('#review-kw-form').addEventListener('submit', onWord);
+      kwButton.addEventListener('pointerdown', keepFocus);
+      kwButton.addEventListener('mousedown', keepFocus);
       $('#review-kw').addEventListener('focus', typing);
       $('#review-kw').addEventListener('blur', typed);
 
@@ -5642,6 +5651,8 @@
         dialog.removeEventListener('click', onClick);
         list.removeEventListener('change', onChange);
         $('#review-kw-form').removeEventListener('submit', onWord);
+        kwButton.removeEventListener('pointerdown', keepFocus);
+        kwButton.removeEventListener('mousedown', keepFocus);
         $('#review-kw').removeEventListener('focus', typing);
         $('#review-kw').removeEventListener('blur', typed);
         dialog.classList.remove('is-typing');

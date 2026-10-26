@@ -5233,6 +5233,12 @@ it down as far as they like, line by line, and see what that costs. It was mocke
   [N2] and sam_runs. It does not understand context ("she", "my ex"): that would need a model to read the
   data first. An option to also drop the messages either side of a match was mocked and dropped as
   confusing; switching the chat off does that job.
+  Since 26 October 2026: the words are never written into *Download what's sent* (its "Also left out"
+  line said *anything mentioning "…"*, which put the very topic the reader kept back into the file).
+  And on a phone the first press of *Leave out* counts: it used to blur the box, the keyboard closed,
+  the foot came back and the button moved from under the finger, so only a second press worked.
+  Pressing it no longer takes the focus (pointerdown is cancelled); pressed, the word is added and the
+  keyboard goes, while Enter keeps it up for the next word.
 - **Read quality** is an estimate: the square root of how much of the text is kept, against all of it,
   as Strong, Good, Fair or Thin. It moves as the reader removes things so the trade is visible; the real
   confidence still comes from the model.

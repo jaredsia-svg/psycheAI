@@ -4784,6 +4784,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .datasources-dialog .supplement-help > summary { display: none; }
 .datasources-dialog .supplement-help:not([open]) { display: none; }
 .datasources-dialog .supplement-help-body [data-help].is-other { display: none; }
+/* The illustrated walkthrough is Instagram's: under WhatsApp, Google or Facebook's steps it is not offered. */
+.datasources-dialog .supplement-help:not([data-only=""]):not([data-only="instagram"])[data-only] .help-illustrated { display: none; }
 /* Restore from a backup, under the buttons and out of Continue's way. */
 .ds-restore-row { margin: .45rem 0 0; text-align: center; }
 .ds-restore-row:has(> [hidden]) { display: none; }

@@ -5103,8 +5103,20 @@ try {
   check('a word leaves out every post and message mentioning it, whole, and says how many',
     withWord > 0 && !allLines(byWord.digest).some(l => /\bolder\b/i.test(l)) &&
       (await page.locator('#review-kw-note').innerText()) === withWord + (withWord === 1 ? ' post or message removed' : ' posts & messages removed') &&
-      /anything mentioning “older”/.test(byWord.html),
+      // The words themselves are never written into the file (October 2026).
+      !/anything mentioning|“older”/.test(byWord.html),
     await page.locator('#review-kw-note').innerText());
+  // Leave out pressed while the box still has the focus (a phone with its keyboard up): the first press counts,
+  // and the keyboard goes (October 2026).
+  await page.fill('#review-kw', 'zzqx');
+  await page.dispatchEvent('#review-kw-form button[type="submit"]', 'pointerdown');
+  const kept = await page.evaluate(() => document.activeElement && document.activeElement.id);
+  await page.click('#review-kw-form button[type="submit"]');
+  check('Leave out, pressed while typing, adds the word on the first press and closes the keyboard',
+    kept === 'review-kw' && /zzqx/.test(await page.locator('#review-kw-chips').innerText()) &&
+      await page.evaluate(() => !document.activeElement || document.activeElement.id !== 'review-kw'),
+    kept);
+  await page.click('#review-kw-chips .review-kw-chip:has-text("zzqx") button');
   await page.click('#review-kw-chips button');
   check('and its × puts them back',
     (await page.locator('#review-kw-chips .review-kw-chip').count()) === 0 &&
