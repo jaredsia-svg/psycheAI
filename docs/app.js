@@ -5341,6 +5341,18 @@
           'were only counted, and nobody is named.']);
     }
 
+    // The reader's thumbs on their current report, when there are any: sent
+    // with a paid run so the new report answers them (prompts.marksBlock), and
+    // a row of their own here so they go only as reviewed. The server takes
+    // them on a paid run only.
+    marksForRun = null;
+    const marks = state.profile ? withoutOwnName(marksForAsk()) : [];
+    if (marks.length) {
+      const notes = marks.filter(m => m.note).length;
+      rows.push(['review-marks', 'includeMarks', marks.length, 'Your thumbs on your last report', '',
+        TEXT.review.marksDetail(marks.length, notes)]);
+    }
+
     // The rows, least personal first (TEXT.review.rows sets the order and the
     // short names). Each type's switch is still the real checkbox with the
     // row's id, so currentDecision below reads exactly what it always has; the
@@ -5534,6 +5546,7 @@
         // Offline (an airplane-mode test, say): said here, with the review and its choices still open.
         if (navigator.onLine === false) { offline.textContent = TEXT.reviewOffline; offline.hidden = false; return; }
         answer = currentDecision();
+        marksForRun = answer.includeMarks && marks.length ? marks : null;
         dialog.close();
       };
       // Back, not Cancel: it steps one dialog upstream to the supplement offer
@@ -5556,6 +5569,7 @@
         // Exactly what a model call is sent: the free card and the full premium
         // report both read this same object.
         const preview = Digest.forModel(applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision), { deep: deepRead });
+        if (decision.includeMarks && marks.length) preview.readerMarks = marks;
 
         const html = buildDigestPreviewHtml(rows, decision, preview, deepRead && digest.__rebuilt ? 'rebuilt' : deepRead);
         const blob = new Blob([html], { type: 'text/html' });
@@ -7383,6 +7397,9 @@
     writeMark(key, Object.assign({}, now, note ? { note } : { note: undefined }));
     redrawMark(row, false);
   });
+  // The marks a paid run carries (withAttribution), set by the review that
+  // showed them and left them switched on; null after any other review.
+  let marksForRun = null;
   /** The marks, for Ask PsycheAI: what the reader said of each finding. */
   function marksForAsk() {
     return Object.values(marksNow()).filter(m => m && (m.v === 'yes' || m.v === 'no')).slice(0, 20)
@@ -11069,7 +11086,12 @@
     if (p.premiumAnalysis) body.premiumAnalysis = p.premiumAnalysis;
     const marks = marksForAsk();
     if (marks.length) body.readerMarks = marks;
-    let text = JSON.stringify(body);
+    return withoutOwnName(body);
+  }
+  /** The reader's own name, and their first name, as PsycheUser in anything bound for a model. */
+  function withoutOwnName(value) {
+    const p = state.profile || {};
+    let text = JSON.stringify(value);
     const name = String((p.card && p.card.name) || '').trim();
     for (const part of [name, name.split(/\s+/)[0]].filter(n => n && n.length >= 2)) {
       text = text.replace(new RegExp(part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'PsycheUser');
@@ -13122,6 +13144,8 @@
     // screen is locked onto its job instead (/api/guess).
     const guess = !auth && !state.profile ? guessMade() : null;
     if (guess && !guess.outcome && !guess.job) out.guess = guess.name;
+    // The reader's thumbs on the report a paid run replaces, as reviewed (askReview).
+    if (auth && marksForRun) out.readerMarks = marksForRun;
     return out;
   }
 

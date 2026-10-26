@@ -13897,6 +13897,12 @@ try {
         }
       };
       const hubChips = await fp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-chip')].map(c => c.textContent.trim() + (c.classList.contains('is-add') ? '+' : '')));
+      // A thumb on the current report, with a note: the review of a run that replaces it shows them as a row of their own.
+      await fp.evaluate(() => {
+        const created = (JSON.parse(localStorage.getItem('psycheai_profile')) || {}).createdAt;
+        localStorage.setItem('psycheai_marks', JSON.stringify({ stamp: String(created),
+          items: { 'pattern:p1': { v: 'no', label: 'The quiet organiser', note: 'I plan so I do not worry' } } }));
+      });
       await openAdd();
       const igRowBefore = await fp.locator('#datasources-dialog .mode-option[data-datasource="instagram"] strong').innerText();
       await pickInBox([{ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() }]);
@@ -13910,6 +13916,9 @@ try {
         hubChips[0] === 'Instagram+' && igRowBefore === 'Instagram' && /2 of 3 chats loaded/.test(sameVisit.waRow) && !/WhatsApp/.test(sameVisit.note) &&
           /WhatsApp\s*2 chats/.test(sameReview) && /captions|Activity & timing/i.test(sameReview),
         JSON.stringify({ hubChips, igRowBefore, sameVisit, review: sameReview.slice(0, 300) }));
+      check('the thumbs on the report being replaced show in the review as their own row, notes as written, to switch off',
+        /Your thumbs on your last report\s*as you wrote them/.test(sameReview),
+        sameReview.slice(0, 600));
       await fp.reload({ waitUntil: 'load' });
       await openAdd();
       await pickInBox([{ name: 'WhatsApp Chat with Kai Ng.txt', mimeType: 'text/plain', buffer: Buffer.from(waChat('Kai Ng', 'z')) }]);

@@ -845,7 +845,11 @@
         'review-dms': ['Direct messages'],
         'review-fb-messages': ['Messenger'],
         'review-whatsapp': ['WhatsApp'],
+        'review-marks': ['Your thumbs on your last report', 'as you wrote them'],
       },
+      marksDetail: (n, notes) => n + (n === 1 ? ' finding' : ' findings') + ' you marked' +
+        (notes ? ', with ' + notes + (notes === 1 ? ' note' : ' notes') + ' as you wrote ' + (notes === 1 ? 'it' : 'them') : '') +
+        ', so the new report can answer them. Only with a paid run.',
       allYears: 'All',
       lastYears: n => n === 1 ? '1 yr' : n + ' yrs',
       yearsOff: list => list + ' left out',

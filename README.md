@@ -3629,7 +3629,19 @@ mark back.
   only yes/no marks, labels to 120 characters and notes to 200.
 - **Used:** Ask PsycheAI gets them as `readerMarks` beside the report (`askReport`), and `ASK_SYSTEM`
   takes a "not quite" and its note as the reader's word: build on it, never argue it back. Nothing
-  re-runs on its own. Feeding them into a paid re-run is not built yet.
+  re-runs on its own.
+- **Into the next report:** a paid run that replaces the report (a re-run, an unlock) carries them as
+  `readerMarks`, so the new report answers what was disputed instead of repeating it. They go only as
+  reviewed: the review shows them as a row of their own, *Your thumbs on your last report · as you
+  wrote them*, with a switch (`includeMarks`), and the file from *Download what's sent* includes them.
+  The reader's own name becomes PsycheUser, as for Ask; notes are otherwise sent as written, which
+  the row says. The server takes them on a paid run only (`cleanReaderMarks`: up to 20, findings to
+  120 characters, a note only on a "not quite", to 200, no angle brackets) and holds them on the
+  digest as `__readerMarks`, a device key, so they are never counted or shown as evidence.
+  `marksBlock` tells them to the model after the evidence, in the card, merged, report and premium
+  calls: weigh each "not quite" honestly; write it the reader's way where the evidence allows; where
+  it still clearly shows the original, keep it and say once in the report, never on the card, which
+  evidence points that way; a "fits" never a reason to overstate.
 - Small and quiet: the row's text .7rem; the note box a thin underline drawn at 12px (16px underneath,
   so a phone does not zoom in on focus); a saved note one grey italic line, *You said "…"* · Edit.
   Hidden in print.

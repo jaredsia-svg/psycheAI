@@ -683,6 +683,10 @@ async function handleAnalyse(request, response) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
   }
+  // The reader's thumbs on the report this run replaces, on a paid run only
+  // (prompts.marksBlock): a device key, so never counted or shown as evidence.
+  const marks = paying ? prompts.cleanReaderMarks(body.readerMarks) : [];
+  if (marks.length) sent.__readerMarks = marks;
   // A free first read is the card and its report from the digest alone: a
   // card sent to anchor it is ignored, so a free read cannot be a report
   // written to explain a card chosen by the request.
@@ -1264,6 +1268,9 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
   }
+  // The reader's thumbs on their report, as on /api/analyse (this route is always paid).
+  const marks = prompts.cleanReaderMarks(body.readerMarks);
+  if (marks.length) sent.__readerMarks = marks;
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   if (promoCode) {
     const promoProblem = promoRefusal(promoCode, body.digest);

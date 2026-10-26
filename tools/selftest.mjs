@@ -6621,6 +6621,24 @@ check('and the server rewrites any that still come back',
     /return readerText\(cleaned\)/.test(readFileSync(join(root, 'server.js'), 'utf8')));
 // A refused free read from chats says only that the free card is spent, never which chat was used before
 // (26 October 2026), so it does not tell a reader which chat to swap out.
+// And a paid run that replaces the report carries them, so the new report answers what was disputed (October 2026).
+{
+  const marks = prompts.cleanReaderMarks([{ finding: 'The quiet organiser', fits: false, note: 'I plan <so> I do not worry' },
+    { finding: 'MBTI ENFJ', fits: true, note: 'ignored' }, { finding: '', fits: true }, { finding: 'x' }]);
+  const digest = { coverage: { sources: ['instagram'] }, __readerMarks: marks };
+  const block = prompts.marksBlock(digest);
+  const texts = [prompts.freeBlocks(digest), prompts.mergedBlocks(digest), prompts.premiumBlocks(digest)]
+    .map(blocks => blocks.map(b => b.text).join(''));
+  const server = readFileSync(join(root, 'server.js'), 'utf8');
+  check('the reader\'s marks: cleaned to finding, fits and a note for a "not quite" only, told after the evidence, never as evidence, and taken on a paid run only',
+    marks.length === 2 && marks[0].note === 'I plan so I do not worry' && !('note' in marks[1]) &&
+      /<reader_marks>/.test(block) && /not quite\. What is closer, in their words: "I plan so I do not worry"/.test(block) &&
+      /Weigh each "not quite" honestly against the evidence/.test(block) && /never on the card/.test(block) &&
+      texts.every(t => t.includes('<reader_marks>') && t.indexOf('</evidence>') < t.indexOf('<reader_marks>')) &&
+      !prompts.renderEvidence(digest).includes('quiet organiser') && prompts.marksBlock({}) === '' &&
+      /const marks = paying \? prompts\.cleanReaderMarks\(body\.readerMarks\) : \[\];/.test(server),
+    block.slice(0, 300));
+}
 // The reader's thumbs on findings reach Ask PsycheAI as their word on themselves (October 2026).
 check('Ask PsycheAI takes the reader\'s marks as their word, never arguing a "not quite" back',
   /readerMarks/.test(prompts.ASK_SYSTEM) && /never argue the finding back at them/.test(prompts.ASK_SYSTEM));
