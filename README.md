@@ -1486,8 +1486,8 @@ is bounded by characters, not by its two-fifths share of places. The 179,000 lin
 **The prompts** carry `CHATS_ONLY_RULE` in the card's and the report's digest sections: no captions,
 posts, likes, follows or histograms to mention or read absence from; everything from how the reader
 writes to these few people; and, since the reader chose them, extraversion near the middle and the E/I
-letter slight unless their own words say otherwise. The confidence score starts at 55–72 for chats
-alone (60–76 with Google or Facebook). `sourcePhrase` names WhatsApp. The free prompt's reserve rose to
+letter slight unless their own words say otherwise. The confidence score starts at 55–68 for two chats
+alone and 58–74 for three (see the table under `CONFIDENCE_SCORING`). `sourcePhrase` names WhatsApp. The free prompt's reserve rose to
 14,550 tokens (`FREE_FIXED_INPUT_TOKENS`, 14,493 measured).
 
 **One free read each, without an Instagram account to hold it to.** A chat export does not carry the
@@ -7071,9 +7071,25 @@ chats came out under 70, and a reader who has given everything should not see th
 
 Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merged prompt says it once):
 
-- **Start from the sources loaded:** Instagram alone 65–79; with one more source 70–84; with two or more
-  of Google, Facebook and WhatsApp 75–90. Never above 90. (Lowered in late October 2026 from 68–82, 76–88
-  and 82–92: an Instagram-only reader scored 81, and 80 and over should take a second source.)
+- **Start from the sources loaded:** since 26 October 2026 by strong sources: Instagram, Facebook and
+  WhatsApp chats are strong, Google light, and 80 or more needs two strong sources. Never above 90.
+
+  | Sources | Range |
+  | --- | --- |
+  | Instagram alone | 65–79 |
+  | Instagram + Google | 68–79 |
+  | Instagram + Facebook or WhatsApp | 72–86 |
+  | Instagram + Facebook or WhatsApp + Google | 74–88 |
+  | Instagram + Facebook + WhatsApp (± Google) | 76–90 |
+  | 2 WhatsApp chats | 55–68 |
+  | 3 WhatsApp chats | 58–74 |
+  | 2 / 3 chats + Google | 57–70 / 60–76 |
+  | 2 / 3 chats + Facebook (± Google) | 62–80 / 65–84 |
+
+  (Before: Instagram alone 65–79, one more source 70–84, two or more 75–90, chats alone 55–72 or 60–76
+  with Google or Facebook. Those let Instagram with only Google reach 84, and did not tell two chats from
+  three. Earlier still, late October 2026, lowered from 68–82, 76–88 and 82–92: an Instagram-only reader
+  scored 81.) The prompt reserves rose by 50 tokens for the longer rule.
 - **Always three signature patterns** (late October 2026): a real card came back with two, which the
   prompt then allowed. The schema's description and the report prompt now ask for exactly three, and the
   merged call's strict schema holds it with minItems/maxItems 3.

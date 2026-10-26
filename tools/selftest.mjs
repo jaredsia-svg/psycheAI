@@ -3915,9 +3915,11 @@ check('the sample arrives in chronological order',
   // Since October 2026 the score starts from the sources loaded and is never
   // lowered for the sample, which is PsycheAI's and the same for everyone;
   // the sample still limits what may be claimed.
-  check('the score starts from the sources loaded (Instagram alone 65–79, one more 70–84, two or more 75–90), is never lowered for the sample, and tops out at 90',
+  // Since 26 October 2026 by strong sources (Instagram, Facebook, WhatsApp chats; Google light): 80 needs two.
+  check('the score starts from the sources loaded, 80 or more only with two strong sources, never lowered for the sample, tops out at 90',
     /Start from the sources loaded/.test(sys) && /never\s+lower a score because only a fraction/i.test(sys) &&
-    /Never above 90/.test(sys) && /Instagram alone, 65–79/.test(sys) && /70–84/.test(sys) && /75–90/.test(sys) &&
+    /Never above 90/.test(sys) && /80 or more needs at least two strong\s+sources/.test(sys) &&
+    /Instagram alone, 65–79; with Google, 68–79; with Facebook or WhatsApp chats, 72–86, or 74–88 with\s+Google too; with both Facebook and WhatsApp chats, 76–90/.test(sys) &&
     /do not claim to have read their relationships/.test(sys));
   check('and forbids citing a total as coverage',
     /Never cite a total as though it were coverage/i.test(sys));
@@ -9328,7 +9330,7 @@ check('the schema requires evidence on where they align and differ',
   check('the prompts say what a digest of chats alone is, and score it lower',
     prompts.FREE_SYSTEM.includes(prompts.CHATS_ONLY_RULE) && prompts.FULL_SYSTEM.includes(prompts.CHATS_ONLY_RULE) &&
       /has no `instagram`/.test(prompts.CHATS_ONLY_RULE) && /never how many people the reader seeks out/.test(prompts.CHATS_ONLY_RULE) &&
-      /WhatsApp chats with no Instagram, 55–72/.test(prompts.CONFIDENCE_SCORING) &&
+      /WhatsApp chats with no Instagram: two chats, 55–68; three, 58–74; with Google, 57–70 for two and 60–76 for three; with Facebook, 62–80 for two and 65–84 for three/.test(prompts.CONFIDENCE_SCORING) &&
       !/Instagram is always there/.test(prompts.FULL_SYSTEM));
   const blocks = prompts.profileBlocks ? prompts.profileBlocks(sent) : null;
   check('and the request names WhatsApp as the source, not Instagram',
