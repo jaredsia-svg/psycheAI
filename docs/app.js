@@ -5926,7 +5926,7 @@
       const help = helpBox.querySelector('[data-help="' + source + '"]');
       if (help) helpBox.insertBefore(help, helpTail);
     }
-    // A first upload's two groups (October 2026): "Need either IG or 2 x WhatsApp" over Instagram
+    // A first upload's two groups (October 2026): "Required (IG or 2 WhatsApp chats)" over Instagram
     // and WhatsApp, which either is enough (its tick is showMinimum's), then
     // "Optional" over the rest. Elsewhere the rows are one plain list.
     const needHead = $('#datasources-minimum');
@@ -6193,9 +6193,12 @@
       const go = $('#datasources-continue');
       if (!settings.requireMinimum) { go.classList.remove('is-waiting'); return; }
       const met = minimumMet();
-      head.textContent = TEXT.dataSourcesNeedOne;
+      // What is still needed, in the heading itself: one chat in, it asks for the next.
+      const more = Math.max(0, WA_MINIMUM - chatsLoaded());
+      const partway = !met && more > 0 && more < WA_MINIMUM;
+      head.textContent = met ? TEXT.dataSourcesNeedOneDone : partway ? TEXT.dataSourcesNeedMore(more) : TEXT.dataSourcesNeedOne;
       head.classList.toggle('is-met', met);
-      head.setAttribute('aria-label', met ? TEXT.dataSourcesNeedOneMet : TEXT.startNeedsMinimum(WA_MINIMUM));
+      head.setAttribute('aria-label', met ? TEXT.dataSourcesNeedOneMet : partway ? TEXT.startNeedsMore(more) : TEXT.startNeedsMinimum(WA_MINIMUM));
       go.classList.toggle('is-waiting', !met);
     };
 
@@ -6404,7 +6407,11 @@
       const done = () => {
         if (busy) { doneWhenRead = true; return; }
         doneWhenRead = false;
-        if (needsMinimum() && !minimumMet()) { say(TEXT.startNeedsMinimum(WA_MINIMUM), 'bad'); return; }
+        if (needsMinimum() && !minimumMet()) {
+          const more = Math.max(0, WA_MINIMUM - chatsLoaded());
+          say(more > 0 && more < WA_MINIMUM ? TEXT.startNeedsMore(more) : TEXT.startNeedsMinimum(WA_MINIMUM), 'bad');
+          return;
+        }
         dialog.close();
       };
       const goBack = () => { cancelled = true; dialog.close(); };

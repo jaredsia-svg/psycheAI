@@ -746,7 +746,7 @@ try {
   const groups = await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-options > :not([hidden])')]
     .map(el => el.matches('.ds-group') ? '#' + el.textContent.trim() : el.dataset.row));
   check('a first upload groups its rows: Need one (Instagram, WhatsApp), then Optional (Google, Facebook), each row one line with a How?',
-    JSON.stringify(groups) === JSON.stringify(['#Need either IG or 2 x WhatsApp', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook']) &&
+    JSON.stringify(groups) === JSON.stringify(['#Required (IG or 2 WhatsApp chats)', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook']) &&
       await page.locator('#datasources-dialog .ds-row:not([hidden]) .ds-how').count() === 4,
     JSON.stringify(groups));
   {
@@ -13840,6 +13840,7 @@ try {
             .map(n => n.innerText.replace(/\s+/g, ' ').trim()));
         } else if (step === 'met') {
           seen.met = await pg.evaluate(() => document.querySelector('#datasources-minimum').classList.contains('is-met') &&
+            document.querySelector('#datasources-minimum').textContent === 'Required' &&
             !document.querySelector('#datasources-continue').classList.contains('is-waiting') &&
             document.querySelector('#datasources-dialog .ds-dots').dataset.n === '3');
           seen.waRow = await pg.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText();
@@ -13853,10 +13854,27 @@ try {
       };
       const a = await readChats(first, ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x', look);
       check('one file box: a first upload asks for one of Instagram or the chats, sets Continue back, and holds it until it has one',
-        seen.empty === 'Need either IG or 2 x WhatsApp' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
+        seen.empty === 'Required (IG or 2 WhatsApp chats)' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
           JSON.stringify(seen.rows) === JSON.stringify(['Instagram', 'WhatsApp chats', 'Google Takeout', 'Facebook']),
         JSON.stringify(seen));
-      check('three chats picked at once in the box are sorted to WhatsApp: three dots filled, Need one ticked, Continue back to full strength',
+      // One chat in: the heading asks for one more, and Continue says so (26 October 2026).
+      {
+        const pg = await (await browser.newContext()).newPage();
+        await pg.goto('http://localhost:' + waPort + '/', { waitUntil: 'load' });
+        await pg.click('#open-sources');
+        await pg.waitForSelector('#datasources-dialog[open]');
+        const [pick] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 15000 }), pg.click('#datasources-drop')]);
+        await pick.setFiles(waFiles(['Mia Wong'], 'q'));
+        await pg.waitForFunction(() => /1 more/.test(document.querySelector('#datasources-minimum').textContent), null, { timeout: 15000 }).catch(() => {});
+        const head = await pg.textContent('#datasources-minimum');
+        await pg.click('#datasources-continue');
+        const said = await pg.textContent('#datasources-status');
+        check('one chat in: the heading reads "Required (1 more WhatsApp chat)", and Continue asks for one more chat or Instagram',
+          head === 'Required (1 more WhatsApp chat)' && /^Add 1 more WhatsApp chat, or your Instagram data, to get started\.$/.test(said.trim()),
+          JSON.stringify({ head, said }));
+        await pg.close();
+      }
+      check('three chats picked at once in the box are sorted to WhatsApp: three dots filled, the heading just "Required" and ticked, Continue back to full strength',
         seen.met === true && /3 of 3 chats loaded/.test(seen.waRow), JSON.stringify([seen.met, seen.waRow]));
       check('a thin-data note, if any, speaks of the chats, never of an Instagram account',
         !seen.thin || (/these chats/.test(seen.thin) && !/Instagram account/.test(seen.thin)), seen.thin);

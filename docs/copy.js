@@ -976,10 +976,15 @@
     // the two rows' tags, and the line under the file box saying where the
     // reader stands (askDataSources, showMinimum).
     // The first upload's two groups (October 2026): the rows say the rest.
-    dataSourcesNeedOne: 'Need either IG or 2 x WhatsApp',
-    dataSourcesNeedOneMet: 'Need either IG or 2 x WhatsApp: done',
+    // The required group's heading says what is still needed (26 October 2026): IG or 2 chats, then how
+    // many more chats, then just "Required" with its tick.
+    dataSourcesNeedOne: 'Required (IG or 2 WhatsApp chats)',
+    dataSourcesNeedMore: n => 'Required (' + n + ' more WhatsApp ' + (n === 1 ? 'chat' : 'chats') + ')',
+    dataSourcesNeedOneDone: 'Required',
+    dataSourcesNeedOneMet: 'Required: done',
     dataSourcesOptional: 'Optional',
     startNeedsMinimum: (min = 2) => 'Load your Instagram data, or ' + min + ' WhatsApp chats, to get started.',
+    startNeedsMore: n => 'Add ' + n + ' more WhatsApp ' + (n === 1 ? 'chat' : 'chats') + ', or your Instagram data, to get started.',
     // A file the box cannot take, and one for a source this popout does not offer.
     dataSourcesWrongType: 'Choose a .zip file, or a WhatsApp chat as .zip or .txt.',
     dataSourcesNotHere: (source) => ({ instagram: 'Instagram', whatsapp: 'WhatsApp', google: 'Google Takeout', facebook: 'Facebook' }[source] || 'That data') + ' cannot be added here.',

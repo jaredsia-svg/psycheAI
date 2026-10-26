@@ -1454,6 +1454,11 @@ file types the box now sorts by itself, and kept the help a first-timer needs at
 - Continue is set back (half strength) until a first upload has what it needs, and still says what is
   missing if pressed;
 - Restore from a backup sits under the buttons, out of Continue's way.
+- **The required group says what is still needed** (26 October 2026; it read *Need either IG or 2 x
+  WhatsApp* whatever was loaded, so after one chat it was not clear what to do): *Required (IG or 2
+  WhatsApp chats)*, then *Required (1 more WhatsApp chat)* once one chat is in, then *Required* with its
+  tick. Continue pressed at one chat says *Add 1 more WhatsApp chat, or your Instagram data, to get
+  started.*
 - **One ring on every row** (26 October 2026, chosen from three mock-ups over a tick + count and a status
   pill): an empty grey ring until a source is loaded, then green with a white tick. WhatsApp's ring is in
   three parts, one a chat, amber at one chat and green with the tick from two, the minimum. It replaced a
