@@ -772,7 +772,7 @@ try {
         getComputedStyle(document.querySelector('#datasources-dialog [data-datasource="instagram"]')).borderTopWidth === '0px' &&
         document.querySelector('#datasources-drop').compareDocumentPosition(document.querySelector('#datasources-dialog .mode-options')) === Node.DOCUMENT_POSITION_FOLLOWING),
     await rowLabel('instagram'));
-  check('and nor do the others: the groups say what is needed, WhatsApp shows its chats as three empty dots',
+  check('and nor do the others: the groups say what is needed, WhatsApp shows its chats as an empty ring in three parts',
     (await rowLabel('whatsapp')) === 'WhatsApp chats' &&
       (await rowLabel('google')) === 'Google Takeout' && (await rowLabel('facebook')) === 'Facebook' &&
       await page.evaluate(() => document.querySelectorAll('#datasources-dialog .ds-dots i').length === 3 &&
@@ -832,7 +832,7 @@ try {
       /WhatsApp chats with close connections \(2–3 to start without Instagram\)/.test(optionalCard) && !/Google/.test(optionalCard) &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
   check('and "How it works" no longer calls Google recommended',
-    /Download your data from Instagram, or export 2–3 WhatsApp chats \(Google data is optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
+    /Download your data from Instagram, or export 2–3 WhatsApp chats\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   {
     // "below" goes to the request steps, on this page.
@@ -3215,7 +3215,7 @@ try {
   check('the four steps say what you get, not how it works, and step 2 names Vertex AI alone',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync' &&
-    /summary of your data is analysed by Google Vertex AI, which writes your report/.test(await page.locator('.step-card').nth(1).innerText()) &&
+    /summary of your data is analysed by Google Vertex AI\. No data is stored by PsycheAI\./.test(await page.locator('.step-card').nth(1).innerText()) &&
     !/Claude/.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // Step one points the reader downwards for the how-to. A directional
@@ -4335,8 +4335,9 @@ try {
     /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
-  check('step four is Psyche Sync, between friends, started by sending your link, and free',
-    /^send connections your link and see what clicks between you/i.test(stepFour) && /Free\.$/.test(stepFour) &&
+  // "Free." went on 26 October 2026.
+  check('step four is Psyche Sync, between friends, started by sending your link',
+    /^send connections your link and see what clicks between you/i.test(stepFour) && !/Free\./.test(stepFour) &&
       !/partner|colleague|romantic/i.test(stepFour), stepFour);
 
   // Until a profile exists both of these lead straight back to the upload
@@ -4956,7 +4957,7 @@ try {
     await page.evaluate(() => {
       const meter = document.querySelector('#review-dialog .review-foot .review-meter');
       return Boolean(meter) && meter.contains(document.querySelector('#review-download')) &&
-        /^Download summary \(\d+ KB\)$/.test(document.querySelector('#review-download').textContent) &&
+        /^Download \(\d+KB\)$/.test(document.querySelector('#review-download').textContent) &&
         !document.querySelector('#review-size') && !document.querySelector('.review-ends') &&
         !/Least personal|Most personal/.test(document.querySelector('#review-dialog').textContent);
     }));

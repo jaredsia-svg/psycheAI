@@ -1454,6 +1454,11 @@ file types the box now sorts by itself, and kept the help a first-timer needs at
 - Continue is set back (half strength) until a first upload has what it needs, and still says what is
   missing if pressed;
 - Restore from a backup sits under the buttons, out of Continue's way.
+- **One ring on every row** (26 October 2026, chosen from three mock-ups over a tick + count and a status
+  pill): an empty grey ring until a source is loaded, then green with a white tick. WhatsApp's ring is in
+  three parts, one a chat, amber at one chat and green with the tick from two, the minimum. It replaced a
+  green tick for single files beside three purple dots for the chats. Drawn in CSS on the same markup
+  (`.mode-added`, `.ds-dots[data-n]`), so nothing in app.js changed.
 
 The report page's popouts share the rows: no tags, no "Required" pill, the same rings and dots. Only
 Instagram kept a second line, *A new .zip replaces it – pick every part*, until 26 October 2026, when
@@ -5249,7 +5254,7 @@ it down as far as they like, line by line, and see what that costs. It was mocke
   Pressing it no longer takes the focus (pointerdown is cancelled); pressed, the word is added and the
   keyboard goes, while Enter keeps it up for the next word.
 - **The foot, one row** (26 October 2026): *Quality* (was *Read quality*), its bar and word, then
-  *Download summary (16 KB)*, the size in the link's own words (it was a line of its own, *~16 KB of text*
+  *Download (16KB)*, the size in the link's own words (it was a line of its own, *~16 KB of text*
   beside *Download what's sent*); on a phone under about 360px the link drops to a second line. The file
   is `psycheai-summary.html` (was `psycheai-digest-preview.html`) and says *summary*, the word the reels
   and the privacy page use. The *↑ Least personal / Most personal ↓* labels under the list are gone.

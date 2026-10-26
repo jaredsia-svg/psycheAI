@@ -4755,17 +4755,34 @@ details.more[open] > summary::after { content: ' ▴'; }
 .ds-group.is-met::after { content: ' ✓'; }
 :root[data-theme="dark"] .ds-group.is-met { color: #6fd39b; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ds-group.is-met { color: #6fd39b; } }
-/* Not loaded yet: an empty ring where the tick will be. */
+/* One ring on every row (26 October 2026): empty until loaded, then green with a tick. WhatsApp's ring is
+   in three parts, one a chat, amber until the two it needs are in, then green with the tick. It replaced a
+   tick for single files beside three purple dots for the chats. */
 .datasources-dialog .mode-option:not(.is-added):not([data-datasource="whatsapp"])::after {
-  content: ''; margin-left: auto; flex: none; width: 1rem; height: 1rem; border-radius: 50%;
-  border: 1.5px solid var(--line);
+  content: ''; margin-left: auto; flex: none; box-sizing: border-box; width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  border: 2.5px solid var(--line);
 }
-/* WhatsApp's chats as three dots, filled as they load; the third is a bonus,
-   so its ring is dashed. The count in words stays for screen readers. */
-.ds-dots { display: inline-flex; margin-left: auto; gap: .25rem; flex: none; align-self: center; }
-.ds-dots i { width: .62rem; height: .62rem; border-radius: 50%; border: 1.5px solid var(--accent); }
-.ds-dots i:nth-child(3) { border-style: dashed; }
-.ds-dots[data-n="1"] i:nth-child(1), .ds-dots[data-n="2"] i:nth-child(-n+2), .ds-dots[data-n="3"] i { background: var(--accent); }
+.datasources-dialog .mode-added {
+  display: grid; place-items: center; box-sizing: border-box; width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  border: 2.5px solid var(--good); background: radial-gradient(circle, var(--good) 0 56%, transparent 60%);
+  color: #fff; font-size: .62rem; font-weight: 900;
+}
+.ds-dots { position: relative; display: block; margin-left: auto; flex: none; align-self: center; width: 1.3rem; height: 1.3rem;
+  --s1: var(--line); --s2: var(--line); --s3: var(--line); }
+.ds-dots i { display: none; }
+.ds-dots::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--s1) 0 114deg, transparent 0 120deg, var(--s2) 0 234deg, transparent 0 240deg, var(--s3) 0 354deg, transparent 0);
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(circle closest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+}
+.ds-dots[data-n="1"] { --s1: #e8b44e; }
+.ds-dots[data-n="2"] { --s1: var(--good); --s2: var(--good); }
+.ds-dots[data-n="3"] { --s1: var(--good); --s2: var(--good); --s3: var(--good); }
+.ds-dots[data-n="2"]::after, .ds-dots[data-n="3"]::after {
+  content: '✓'; position: absolute; inset: 4px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--good); color: #fff; font-size: .55rem; font-weight: 900; line-height: 1;
+}
 .datasources-dialog .mode-option[data-datasource="whatsapp"] .mode-added { display: none; }
 .datasources-dialog .mode-option[data-datasource="whatsapp"] .mode-body > .muted {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;

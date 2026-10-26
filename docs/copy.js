@@ -868,7 +868,7 @@
       quality: 'Quality',
       qualities: ['Thin', 'Fair', 'Good', 'Strong'],
       // The download, with the size of what is sent (one row with the read quality, 26 October 2026).
-      download: kb => 'Download summary (' + kb + ' KB)',
+      download: kb => 'Download (' + kb + 'KB)',
       alsoLeftOut: 'Also left out',
     },
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',

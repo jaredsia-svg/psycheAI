@@ -459,8 +459,8 @@ four data sources it reads; the free card (Emily Carter's Mulan card, large, its
 card-char-mulan-parts.json); what else there is (report, Ask PsycheAI,
 Psyche Sync, the roast; "free to start" once, in the heading); the guide as the account's pinned post lays it out
 (every tap, each button a chip). Then, for a reader with no time to wait for Instagram's email (26 October 2026), the same guide for two
-WhatsApp chats instead: export a chat (Android ⋮ → More, iPhone the contact's name) → Export chat → Without media, again for
-one or two more people, then load them all at once. *Privacy* (4): two questions to a story, each answered in the FAQ's own words, shortened, so every claim stays
+WhatsApp chats instead, shortened the same day to two steps: export 2–3 chats (the full taps: Android ⋮ → More,
+iPhone the contact's name then scroll down; Export chat, Without media; save the file), then load them at psycheai.io. *Privacy* (4): two questions to a story, each answered in the FAQ's own words, shortened, so every claim stays
 literally true (the file never leaves the phone; how the summary is de-identified; no one else can get at it, even
 if PsycheAI were hacked; no training on it; a password only in Instagram, no accounts, results only on the device;
 the airplane-mode check), and the last story to itself, why not ChatGPT: consumer AI against PsycheAI, said as the
