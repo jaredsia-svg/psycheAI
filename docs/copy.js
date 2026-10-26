@@ -249,7 +249,7 @@
     // reader's own card would say.
     // By first name only: "Jared", not "Jared Tan".
     inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your connection') + ' Psyche Card',
-    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
+    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram or WhatsApp data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
     inviteStart: 'Get my free Psyche Card',
     // The guessing game on the waiting screen, while a first free read is
@@ -675,12 +675,19 @@
     thinDataText: 'There is not much in your data to read, so your card would be partly a guess, and your free Psyche ' +
       'Card is once per Instagram account. Adding WhatsApp chats with close friends, your Google data or your Facebook ' +
       'data will make it much more accurate.',
+    // The same for WhatsApp chats and no Instagram (October 2026).
+    thinChatsText: 'There is not much of your own writing in these chats, so your card would be partly a guess, and ' +
+      'your free Psyche Card is once only. Chats where you write more, your Instagram data or your Google data will ' +
+      'make it much more accurate.',
     thinDataAdd: 'Add more data',
     // Under the floor of their own writing (October 2026): no run at all.
     tooThinTitle: 'Not enough of your own writing to read',
     tooThinText: (k) => 'Your card is read mostly from what you write yourself: captions, comments and messages. ' +
       'Your data has less than ' + k + ',000 characters of it, too little for a reading worth having. Add WhatsApp chats ' +
       'with close friends, your Google data or your Facebook data, then try again.',
+    tooThinChatsText: (k) => 'Your card is read from what you write yourself, and these chats have less than ' + k +
+      ',000 characters of your own messages, too little for a reading worth having. Choose chats where you write ' +
+      'more, or add your Instagram data, then try again.',
     tooThinBack: 'Back',
     thinDataContinue: 'Continue anyway',
     moreDataTitle: 'Make your report more accurate',
@@ -859,6 +866,8 @@
       alsoLeftOut: 'Also left out',
     },
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',
+    // The same for a read from WhatsApp chats alone (October 2026): these chats, or this browser, had theirs.
+    freeUsedChatsBlurb: 'Your free Psyche Card has already been used. Unlock your Psyche Card and Psyche Report for US$5.',
     // The server makes no free read from data it cannot tie to an Instagram
     // account (server.js, noAccount; October 2026): no username in it, and no
     // dates on any message or post.
@@ -952,17 +961,22 @@
     sourceGoogle: 'Google Takeout',
     sourceFacebook: 'Facebook',
     sourceWhatsApp: 'WhatsApp chats',
-    // The WhatsApp row: up to three chats, each exported on its own.
-    // `max` is 3 from the report page, 1 on a first upload.
-    whatsappRowEmpty: (max = 3) => max === 1 ? 'One chat from WhatsApp (.zip or .txt)'
-      : 'Up to ' + max + ' close-friend chats (.zip or .txt)',
+    // The WhatsApp row's count once a chat is in, for screen readers: the
+    // row shows it as dots (October 2026), and says nothing while empty.
     whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded – tap to load a different one'
-      : n + ' of ' + max + ' chats loaded – tap to ' + (n >= max ? 'start over' : 'add another'),
-    // The first upload's WhatsApp row and the tag on its two optional rows.
+      : n + ' of ' + max + ' chats loaded',
     whatsappFirstTitle: 'WhatsApp chats',
-    sourceOptional: '(Optional)',
-    // Instagram's tag on a first upload, set as a pill.
-    sourceRequired: 'Required',
+    // A first upload needs Instagram or two WhatsApp chats (three at most; October 2026):
+    // the two rows' tags, and the line under the file box saying where the
+    // reader stands (askDataSources, showMinimum).
+    // The first upload's two groups (October 2026): the rows say the rest.
+    dataSourcesNeedOne: 'Need either IG or 2 x WhatsApp',
+    dataSourcesNeedOneMet: 'Need either IG or 2 x WhatsApp: done',
+    dataSourcesOptional: 'Optional',
+    startNeedsMinimum: (min = 2) => 'Load your Instagram data, or ' + min + ' WhatsApp chats, to get started.',
+    // A file the box cannot take, and one for a source this popout does not offer.
+    dataSourcesWrongType: 'Choose a .zip file, or a WhatsApp chat as .zip or .txt.',
+    dataSourcesNotHere: (source) => ({ instagram: 'Instagram', whatsapp: 'WhatsApp', google: 'Google Takeout', facebook: 'Facebook' }[source] || 'That data') + ' cannot be added here.',
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
     // A WhatsApp chat already loaded (same file or same person), not taken twice.
     whatsappRepeat: (names) => (names.length === 1 && names[0]
@@ -980,7 +994,6 @@
     startLoad: 'Load your data',
     startContinue: 'Continue with your data',
     startLoadedSuffix: ' already loaded – nothing to upload again.',
-    startNeedsInstagram: 'Load your Instagram data to get started.',
     rerunNeedsInstagram: 'Your Instagram data is no longer on this device. Load it again to rewrite your report.',
     // The digest failed to save — almost always a full localStorage. Said at
     // the moment it happens rather than left for the reader to discover when
@@ -1011,27 +1024,11 @@
     // was spending the reader's first line of attention on the one part of
     // this screen that needs no explaining. What is left is the part they
     // could not have guessed.
-    dataSourcesFirstBlurb: 'Before anything is sent, you review exactly what it contains and can untick anything.',
+    dataSourcesFirstBlurb: 'You can review the data in the next step before anything is sent for analysis.',
     // Under that line once the readers have loaded (and only then, so it is true when shown): from here
     // to the review, the export is read and summarised with the network off. The privacy page and the
     // FAQ invite the reader to test it in airplane mode.
-    dataSourcesOffline: 'No internet connection needed for this step',
-    // The Instagram row's own line on that same popout. The markup's version
-    // ends "to replace it", which is right on the report page and describes
-    // replacing something that does not exist yet here.
-    //
-    // The parts sentence is here because Instagram splits a large export into
-    // numbered .zip files and hands over several at once — on exactly the
-    // accounts this app most wants, since the split happens when there is a
-    // lot of history. Selecting them together works and always has: readExports
-    // merges every archive it is given. Selecting them one after another does
-    // not, because the second read replaces the first, and it does so silently
-    // — the tick looks identical either way, and a half-loaded export usually
-    // still clears the recognition check and produces a confident report from
-    // half the evidence. Saying it here is the cheap half of the fix.
-    // The "several files" note is gone from the wording; picking several at
-    // once still works (the picker allows it, and readExports merges them).
-    dataSourcesFirstInstagram: 'Load your Instagram data .zip file here.',
+    dataSourcesOffline: 'This step works offline.',
 
     // The Psyche Sync report. It is two renderings of one document for the
     // same reason the profile is — the page and the downloadable PDF — so its
@@ -1290,6 +1287,19 @@
     // The backup file: the card, the report, every Psyche Sync and the
     // personal link, to bring them back in another browser. See backupFile()
     // in app.js. It goes straight to the reader's disk, never to PsycheAI.
+    // Thumbs on each finding of the reader's own report (app.js, markRowHtml).
+    marks: {
+      ask: 'Sounds like you?',
+      yes: 'That’s you · saved on this device',
+      no: 'Not quite',
+      up: 'That’s me',
+      down: 'Not quite',
+      placeholder: 'What’s closer? (optional)',
+      save: 'Save',
+      said: 'You said',
+      edit: 'Edit',
+      addNote: 'Add what’s closer',
+    },
     backup: {
       label: 'Save a backup',
       restore: 'Restore from a backup',

@@ -1387,6 +1387,160 @@ tight, `forModel` rebuilds it field by field on the server (so a client cannot s
 anyone else's messages in), and the review has one switch for the lot — unticked, the whole block
 goes. *Evidence and method* and the data-sources list show it as its own row.
 
+### One file box, and WhatsApp chats alone (October 2026)
+
+Instagram takes one to two hours to email an export, and a reader who arrives from a reel, or from a
+friend's Psyche Sync link, wants a result now. A WhatsApp chat exports in seconds. So a first read now
+needs **Instagram, or two WhatsApp chats** (three at most; the minimum was three until 26 October
+2026), and either is a full free card and report; both together make the fuller read. One chat
+describes one friendship more than the reader; two different people start to show what holds across
+them, and a third is a short export more for a reader still waiting on Instagram. Competitors that read a chat give a result in minutes, and Instagram's wait was
+the biggest drop-off left in the funnel.
+
+**One box for every file.** The data popout opens on **Choose your files** (`#datasources-drop`): the
+reader picks or drops any mix of files, and each is sorted by what is inside it before any of it is
+read (`Supplement.detectSource`, from the zip's own list of names: a Takeout folder is Google,
+`your_facebook_activity/` or `profile_information` is Facebook, `your_instagram_activity/` or two
+Instagram file names is Instagram, a `.txt` or a zip with no JSON and a `.txt` is WhatsApp). A zip
+nothing recognises goes with an Instagram export picked beside it (a later part of a split export), or
+to the row that was tapped, or to Instagram, whose reader says what is wrong with it. The four rows
+below the box are now one checklist rather than four boxes: what is loaded, ticked, and a tap on a row
+still adds that source on its own. Instagram no longer has a border of its own; the box stands out
+instead. Files dropped on the popout, on a computer, go the same way.
+
+**What a first upload needs** is said under the box (`#datasources-minimum`): *To start: your Instagram
+data, or 2 WhatsApp chats.*, then *1 of 2 WhatsApp chats. Add 1 more, or your Instagram data.*, then
+*✓ Ready.* Continue says the same in the status line until one of the two is met. The rows' tags read
+*Instagram (Or 2–3 WhatsApp chats)* and *WhatsApp chats (Or Instagram)*. On the report page's popouts
+Instagram is still *Required*, except for a reader whose card came from chats, for whom it is
+*(Optional)*. Three is the most chats a digest holds.
+
+**The digest** of chats alone is `Digest.buildFromSupplements`: the same object with no Instagram part
+(no counts, rhythm, captions, DMs or lists) and `coverage.sources` without `instagram`, which is how
+everything tells (`Digest.hasInstagram`, and `digestHasInstagram` in the page, which asks before the
+readers load). Google or Facebook may sit beside the chats. The chats fill the conversations pool at
+up to 40,000 characters each (see the next paragraph but two), and the 20,000 of the reader's own
+writing a read needs (`MIN_OWN_WRITING`) still applies.
+The thin-data note (once a session, before the review) uses its own line for chats alone,
+20,000 characters of evidence rather than 50,000 (`THIN_CHATS_CHARS`), since three full chats hold at
+most about 45,000; it and the too-thin refusal have their own words (*not much of your own writing in
+these chats*), never "once per Instagram account".
+`forModel` leaves the Instagram fields out entirely rather than sending them empty, so the model reads
+a digest of chats, not an empty Instagram account. New chats now replace the ones a stored digest
+holds (`addSupplements`); before, they were dropped whenever the digest already had chats.
+
+**The popout, redesigned for fewer words** (26 October 2026). It said the same rule three times (each
+row's tag, then a status sentence), had two green lines competing, gave every row a second line about
+file types the box now sorts by itself, and kept the help a first-timer needs at the very bottom. Now:
+- one line under the title, *This step works offline. You can review the data in the next step before
+  anything is sent for analysis.*, its first sentence shown only once it is true (the data readers
+  loaded);
+- the box reads **Choose files**, with *or drop them here* only where there is a mouse;
+- on a first upload the rows are two groups, **Need either IG or 2 x WhatsApp** (Instagram, WhatsApp chats) and
+  **Optional** (Google Takeout, Facebook), and the first ticks itself once either is in: the group
+  says the rule, so no row has a tag and the status sentence is gone (`#datasources-minimum` is that
+  heading now, its full meaning in its `aria-label`);
+- every row is one line: the name, an empty ring that becomes a tick, and **How?**, which opens that
+  source's steps alone below the rows (pressed again, it closes them); the old "See download
+  instructions" drawer opens only that way now;
+- WhatsApp shows its chats as three dots, filled as they load, the third dashed as the optional one;
+  the count in words (*2 of 3 chats loaded*) stays for screen readers;
+- Continue is set back (half strength) until a first upload has what it needs, and still says what is
+  missing if pressed;
+- Restore from a backup sits under the buttons, out of Continue's way.
+
+The report page's popouts share the rows: no tags, no "Required" pill, the same rings and dots, with
+only Instagram keeping a second line, *A new .zip replaces it – pick every part*, since replacing a
+split export with half of it is the mistake there. Each row is a `.ds-row` (the source's button, then
+its `.ds-how`), and askDataSources moves rows, not buttons.
+
+**How the conversations pool is shared** (26 October 2026, `waChatChars` in `docs/digest.js`).
+WhatsApp chats have first claim on the 95,000-character conversations pool: each may take up to
+25,000 beside Instagram (40,000 with no Instagram), and the Instagram DMs with Messenger keep at least
+30,000 whenever the export has them, the per-chat share rounded down to 5,000:
+
+| | 1 chat | 2 chats | 3 chats |
+|---|---|---|---|
+| Instagram, full DMs | 25k, DMs 70k | 25k each, DMs 45k | 20k each, DMs 35k |
+| Instagram, no DMs | 25k | 25k each | 25k each |
+| WhatsApp alone | – | 40k each | 30k each |
+
+Until then every chat was held to 15,000 wherever it was read. Measured on a heavy synthetic account
+(1,500 captions, 25 long DM threads, chats of 8,000 messages): beside an Instagram with no DMs, three
+chats were 28% of the read while the room the pool left spilled into more captions (103k); now they
+are 69k against 76k of captions. Beside full DMs, three chats went from 42k (DMs 53k over ten
+threads) to 55k (DMs 40k). Two chats alone went from 22,000 characters of the reader's own writing,
+barely over the 20,000 a read needs, to 60,000. When the chats leave the DMs under 50,000 and the DMs
+hold more than that room, their lowest-ranked conversations are dropped first, down to the top six
+(`focusThreads`), so a handful of relationships are read properly rather than ten thinly; DMs that
+fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 25,000-character chat
+is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
+50,000 of the public pool, and the cost caps are unchanged.
+
+**The prompts** carry `CHATS_ONLY_RULE` in the card's and the report's digest sections: no captions,
+posts, likes, follows or histograms to mention or read absence from; everything from how the reader
+writes to these few people; and, since the reader chose them, extraversion near the middle and the E/I
+letter slight unless their own words say otherwise. The confidence score starts at 55–72 for chats
+alone (60–76 with Google or Facebook). `sourcePhrase` names WhatsApp. The free prompt's reserve rose to
+14,550 tokens (`FREE_FIXED_INPUT_TOKENS`, 14,493 measured).
+
+**One free read each, without an Instagram account to hold it to.** A chat export does not carry the
+reader's phone number, and a display name is shared by thousands of people, so the name alone would
+refuse strangers. The code is a one-way SHA-256 of the reader's name as the chats show it, then each
+chat's other side and the day its first message was sent, sorted (`WhatsApp.accountSource`, hashed in
+`accountKeys`). Two people practically never match, and the same three chats in another browser are
+refused. The first such code a browser makes is kept (`psycheai_chats_account`, in `KEYS`) and sent
+for any later chats-only read there, so three new chats on the same device are refused too. It is a
+deliberate, cheap guard, not a proof: three other chats in another browser are a second free read.
+**Each chat counts on its own too** (26 October 2026): the page also sends a one-way code of every chat
+(`WhatsApp.chatSources`: the reader's name, who the chat is with, the day it began; `chatCodes` in
+app.js, kept in `psycheai_chat_codes` for a retry after a reload), with Instagram reads too, and the
+server refuses a free read when any one of them was in a free read before (`chatsUsed`, set
+`free:chats`, keyed like the account codes), saying only *You have already used your free Psyche Card* (since
+26 October 2026; it named the chat as the reason before, which told a reader which chat to swap out). So keeping one chat and swapping the rest is not a second free read; a friend's export
+of the same chat is a different code, since it starts from their own name. The privacy policy's
+"What PsycheAI keeps" names these codes.
+That costs at most a free card and report (about 25 cents) inside the daily free limit, and the
+server counts chats-only free reads (`free_chats_only`) and refusals (`free_refused_chats`) to show
+whether it is being farmed. If it is, the next step is a one-tap WhatsApp confirmation (the reader
+sends a code from WhatsApp to PsycheAI's business number), which was proposed and not built. A
+refusal says *Your free Psyche Card has already been used* rather than naming an Instagram account.
+The card is named from the chats (`ownDisplayName` falls back to `state.chats.owner`, in memory only).
+
+**The front page and the guides say WhatsApp too** (26 October 2026), with the fewest edits: the hero
+line and link previews (*…from your own Instagram or WhatsApp data*), the FAQ's *What is PsycheAI?*,
+*How long does it take?* (*No time to wait? Two WhatsApp chats export in seconds.*) and *What file do I
+need?*, a line under *Request your Instagram data first*, the friend's Sync invite, the Psyche
+personality test's first step, `llms.txt`, and the closing box every generated guide shares (*…or
+straight away with two WhatsApp chats*, button *Get your free Psyche Card*). That box is left out of
+the guides' date hash like the footer, so changing it does not re-date forty pages. The guides written
+for Instagram searches keep their Instagram wording; the reels are unchanged.
+
+**Adding data later keeps the chats** (26 October 2026). A stored digest holds the chats' sampled
+lines, not the files, and the files are rarely to hand again. So:
+- **Instagram added to a card read from chats** (the ordinary paid re-run, US$5): in the same visit,
+  the chats still in memory (`state.chats`) ride along as Instagram's own would and are sampled again at
+  their share beside Instagram; after a reload, `Digest.carryChats` carries the stored lines into the
+  digest rebuilt from Instagram, thinned evenly to that share (25,000 a chat with up to two, 20,000 with
+  three beside full DMs). Nothing new is sent, only part of what the reader already reviewed and sent.
+  Their `[N#]`/`[P#]` numbers move past the new digest's own, so a number never stands for two people.
+  The same applies to the unlock flow and its premium read (`withStoredChats` in `docs/app.js`).
+- **Another chat added**: it joins the ones already loaded rather than starting a new set. In the same
+  visit, from the parsed files kept in memory (`state.waChats`); after a reload, from the stored
+  digest, the new chat marked `addsTo` and numbered after the stored ones (c3 after c1 and c2). The
+  popout's row counts both ("3 of 3 chats loaded"). A chat already stored is known again by a one-way
+  key of who it is with (`__chatKeys`, kept on the device with the digest, never sent; stored as numbers
+  so the phone-number scrub leaves them alone), and refused with the usual *already loaded* line. Past
+  three, the new chats start a fresh set, as before.
+- **Google and Facebook added after**: unchanged, merged into the stored digest, chats and all.
+
+The popout's note on replacing Instagram no longer names WhatsApp (*Your WhatsApp chats are kept*).
+For a card read from chats, the hub's Your Data shows Instagram as one to add, first in the "add more
+to sharpen your read" line. Continue pressed while files are still being read now goes on once they
+are, rather than being dropped. A free upgrade from chats to Instagram was proposed and not built: it
+would give away a US$5 sale for a read the reader was likely to pay for, at up to about 18.5 cents of
+model cost each.
+
 ### Google/Facebook data survives an Instagram replacement, for real
 
 The "Add / change data" popout lets a reader replace their Instagram export in place, and its own
@@ -1657,7 +1811,7 @@ the first.
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to the service-account key file (on Render, a secret file: `/etc/secrets/gcp-key.json`). Or `GOOGLE_APPLICATION_CREDENTIALS_JSON` with the file's contents. |
 | `GOOGLE_CLOUD_PROJECT` / `GOOGLE_CLOUD_LOCATION` | The Google Cloud project (default: the key file's `project_id`) and region (default `global`). |
 | `GEMINI_VERTEX_MODEL` | Only if Vertex names the model differently from `GEMINI_MODEL`. |
-| `PSYCHEAI_MERGED_UNLOCK` | `true` writes the unlock that adds data in one call instead of two (card, then report). Off by default; read on every request, so it switches with no deploy. See [One call for the unlock that adds data](#one-call-for-the-unlock-that-adds-data-october-2026). |
+| `PSYCHEAI_MERGED_UNLOCK` | The card and the report in one call instead of two (card, then report), for the free first read and every unlock. **On by default since 26 October 2026** (off before); `false` goes back to two calls. Read on every request, so it switches with no deploy. See [One call for the unlock that adds data](#one-call-for-the-unlock-that-adds-data-october-2026). |
 | `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set. |
 | `XAI_API_KEY` | Uses Grok for the free report, if neither of the above is set. Fully supported, just not the default. |
 | `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` for the free report when you have more than one key. |
@@ -2031,6 +2185,9 @@ so it is built in rather than left to a plugin.
   here. For a reader with a card it goes to their card and opens the same add-data popout their
   report uses. The hero used to lead with *See sample report*. The sample is still one tap away, at
   the foot of the gallery's premium tier.
+  The lede ends *No questions asked. No sign-up.* since 26 October 2026, for visitors tired of
+  subscriptions. A line of its own under the buttons (*Free Psyche Card and report · No sign-up*) was
+  tried the same day and dropped: it made the hero look busy.
 - **The logo goes to the main page.** For a reader with a card, `data-nav="main"` shows the main page
   (not `home`, which is also where Back lands and so has to stay their card). There the steps card
   and the Start here card are hidden (`#view-welcome.is-returning`): they already have data. Request
@@ -2342,13 +2499,25 @@ prompt.
 - `/instagram-chat-analyzer`: what the digest reads in DMs (how many people, how much of each
   conversation is the reader, message length, a sample of their words) and the privacy difference.
 - `/whatsapp-chat-analysis`: who starts, reply times, hours, question share, why hand-picked chats
-  are not read as sociability, and the export steps. It says Instagram is still required.
+  are not read as sociability, and the export steps. Since the chats-alone path, it says three
+  chats are enough.
 - `/chatgpt-tell-me-about-myself`: what ChatGPT answers from (memory, past chats, files, connected
   apps), the front page's regret question with both answers, and the FAQ's upload facts.
 
 All three say exactly what goes: the reader's own messages, some with a short, de-identified line of
 what they answered (`messageContextShare`), never "only your messages". The shared footer links them,
 and `/best-ai-life-coach-apps` links the ChatGPT page. 49 addresses in the sitemap.
+
+**Three pages for unclaimed searches** (26 October 2026), each linking `/sample-report`:
+- `/mbti-test-from-instagram-chats`: what chats show about each letter, the steps (WhatsApp for
+  those who can't wait), and why "MBTI-style" (the trademark, and a read from behaviour).
+- `/personality-report-from-google-takeout`: what My Activity adds (searches, YouTube), how to
+  export only it, and plainly that Google alone is not enough: it adds to Instagram or 2–3 chats.
+- `/personality-read-from-your-exports`: our own honest version of the "tools compared" guides that
+  leave PsycheAI out. TypeMyVibe, MosaicChats and general chatbots, each with what it is best for
+  and where the file goes, PsycheAI as "ours", and a limits section (an inference, only what was
+  exported, chosen chats are a biased sample, old data, other people in the data, not therapy).
+52 addresses in the sitemap.
 
 **No therapy claims** (25 October 2026). Illinois and Nevada ban AI therapy, Utah requires
 disclosure, and five more states restricted it in 2026. PsycheAI is coaching and insight, and its
@@ -3443,6 +3612,27 @@ were there; the model was not applying them where it wrote the field.
   `docs/supplement.js`). Two integers; unticking Google searches at the review removes them too.
 - `FREE_FIXED_INPUT_TOKENS` 11,600 → 11,900 (11,738 measured), `MERGED_FIXED_INPUT_TOKENS` 43,500 → 45,000
   (44,812 measured), `MERGED_COST_CAP` $0.184 → $0.185.
+
+### Thumbs on each finding (26 Oct 2026)
+
+From Cognius's "that's me / not quite" deck: a reader agreeing or disagreeing with a finding is both a
+reason to read it closely and the start of a running record of themselves. On their own My Report only
+(never the sample), one small row under each signature pattern and one at the foot of each section
+(MBTI, Big Five, What drives you, How you connect, How you work, Under pressure): about nine in a
+report, never one a paragraph, so the report is not a page of buttons. *Sounds like you?* with 👍 and
+👎, grey until used. 👍 says *That's you · saved on this device*; 👎 opens one optional line, *What's
+closer?*, and once saved it stays there as *You said "…"* with Edit. The same thumb again takes the
+mark back.
+
+- **Kept:** `psycheai_marks` (`KEYS.marks`), stamped with the report's `createdAt`, so a re-run
+  starts clean rather than pinning old marks to new findings. In `BACKUP_KEYS`; `readBackup` keeps
+  only yes/no marks, labels to 120 characters and notes to 200.
+- **Used:** Ask PsycheAI gets them as `readerMarks` beside the report (`askReport`), and `ASK_SYSTEM`
+  takes a "not quite" and its note as the reader's word: build on it, never argue it back. Nothing
+  re-runs on its own. Feeding them into a paid re-run is not built yet.
+- Small and quiet: the row's text .7rem; the note box a thin underline drawn at 12px (16px underneath,
+  so a phone does not zoom in on focus); a saved note one grey italic line, *You said "…"* · Edit.
+  Hidden in print.
 
 ### The roast keeps its My Psyche design in My Report (18 Oct 2026)
 
@@ -5818,7 +6008,7 @@ Facebook is not gone, just not offered at the point where a reader has uploaded 
 one screen away, on the report page, which is where somebody who wants it will already be.
 
 **What a new reader is offered.** "Load your data" shows three rows, in this order:
-1. **Instagram (required).**
+1. **Instagram (required).** (Until October 2026: now Instagram or three WhatsApp chats; see "One file box, and WhatsApp chats alone".)
 2. **WhatsApp chat with a close friend (optional).** One chat only (`whatsappMax: 1`): a second
    replaces the first (*One chat is the most here — this one replaces the last.*), and the row reads
    *Chat loaded — tap to load a different one*.
@@ -7025,9 +7215,11 @@ reader's own words or record show it.
 
 The probe answered it: Gemini refuses the merged schema only because of its enums. With every enum a
 plain string, even card + report + roast in one schema is accepted, and the character catalogue can
-stay a real enum. So, behind `PSYCHEAI_MERGED_UNLOCK` (off by default), the unlock that adds data —
-the only path with two calls — runs one (`mergedOrTwoCalls` in server.js, `analyseMerged` in
-lib/gemini.js).
+stay a real enum. So, behind `PSYCHEAI_MERGED_UNLOCK` (off by default until 26 October 2026, on by
+default since, and `false` to turn it off), the unlock that adds data — and the free first read, which
+writes the card and its report together — runs one call (`mergedOrTwoCalls` in server.js,
+`analyseMerged` in lib/gemini.js). At most 18.5 cents a read (`MERGED_COST_CAP`) against 25.9 for the
+two calls; an answer that fails its checks still falls back to them (counted as `merged_fallback`).
 
 - **The prompt** (`MERGED_SYSTEM`) is the full report's, then the free card's own prompt word for word
   from its Big Five section on: the character catalogue and its side rule, the lists, confidence, the

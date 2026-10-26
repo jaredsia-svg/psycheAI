@@ -2,232 +2,247 @@
   "mulan-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "104517d7f0e32e32"
+    "hash": "c1b865494c886468"
   },
   "rapunzel-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "188cfcdc7ffe586e"
+    "hash": "ebfc9bbdeadd29d3"
   },
   "the-tin-man-personality": {
     "published": "2026-10-21",
     "modified": "2026-10-21",
-    "hash": "19b40fa9feb0455b"
+    "hash": "774adf17ee1049fd"
   },
   "odysseus-personality": {
     "published": "2026-10-21",
     "modified": "2026-10-21",
-    "hash": "8d1c5e99f9e3e172"
+    "hash": "55b0a40373724d28"
   },
   "sherlock-holmes-personality": {
     "published": "2026-10-21",
     "modified": "2026-10-21",
-    "hash": "8674a7562aee939f"
+    "hash": "931b41335f1e0a51"
   },
   "characters": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "ef50be3c89451c68"
+    "hash": "a90e96d67d130d69"
   },
   "intj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "d6834d428f255343"
+    "hash": "fec014b42909d4f4"
   },
   "intp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "9c75bf2b0a3e1816"
+    "hash": "4696bec2b79b75fd"
   },
   "entj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "3623c97a117e0aee"
+    "hash": "269a8091aa7afd3f"
   },
   "entp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "b03ea5ef2aa5ec88"
+    "hash": "6f92f15777bfef4c"
   },
   "infj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "f42a10182fbd3650"
+    "hash": "b6e7d593d46a431a"
   },
   "infp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "5f9de14fc78cbab2"
+    "hash": "51bc5cc2639faead"
   },
   "enfj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "35594d1118df65bb"
+    "hash": "e887ad42b8d6eea5"
   },
   "enfp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "f07f0bb8428c0bda"
+    "hash": "825b34732c3f4552"
   },
   "istj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "00698d52f96b8c56"
+    "hash": "84ef77f2363c9bed"
   },
   "isfj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "41936a370eaf9b2a"
+    "hash": "5f2fc6da69ae3c29"
   },
   "estj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "6503ace74d37b459"
+    "hash": "ce3b8303a8bfc48c"
   },
   "esfj-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "39336635d2519c28"
+    "hash": "27b0340d2398b89f"
   },
   "istp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "66248ad4bff7b96a"
+    "hash": "54b0c52d653fe7a6"
   },
   "isfp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "55591e140b0b75dd"
+    "hash": "cf49ea28e9848c12"
   },
   "estp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "7d490b1b5b3eb955"
+    "hash": "51e571e0fbe639a9"
   },
   "esfp-personality": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "8da224f075a2872d"
+    "hash": "0ed751fce6608fda"
   },
   "mbti-types": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "9296c84fc6500458"
+    "hash": "4cc5c384cff00ea0"
   },
   "psyche-personality-test": {
     "published": "2026-10-20",
-    "modified": "2026-10-21",
-    "hash": "d7490cfe099cc220"
+    "modified": "2026-10-26",
+    "hash": "cd1065d30386d178"
   },
   "ai-personality-coach": {
     "published": "2026-10-20",
     "modified": "2026-10-21",
-    "hash": "bd7fc65b90db971e"
+    "hash": "47029baeb845c7ad"
   },
   "love-language-test": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "8172693324b8b6a1"
+    "hash": "0595e77569997220"
   },
   "big-five-personality-test": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "836dadd410414436"
+    "hash": "1d359a033ca089fe"
   },
   "what-instagram-knows-about-you": {
     "published": "2026-10-12",
     "modified": "2026-10-25",
-    "hash": "660479c47a2384f5"
+    "hash": "ad3cf54ac169afad"
   },
   "instagram-data-download-help": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "ae973e1943957835"
+    "hash": "3b2eb15aee9ebba9"
   },
   "best-friend-compatibility-test": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "d0b73aa2bac4f515"
+    "hash": "2c6a9f3ff5f98cb0"
   },
   "best-free-personality-tests": {
     "published": "2026-10-24",
     "modified": "2026-10-24",
-    "hash": "c37c4f2ac6892bfb"
+    "hash": "ba6c7748755349e4"
   },
   "best-ai-life-coach-apps": {
     "published": "2026-10-24",
     "modified": "2026-10-25",
-    "hash": "833e957bd51e8a8f"
+    "hash": "7fd6c956c30e1cca"
   },
   "best-friendship-compatibility-tests": {
     "published": "2026-10-24",
     "modified": "2026-10-24",
-    "hash": "24886024d2d4cce1"
+    "hash": "b8da26b0158a2de5"
   },
   "am-i-in-the-wrong-job": {
     "published": "2026-10-24",
     "modified": "2026-10-24",
-    "hash": "dde0f1517f88bac8"
+    "hash": "5a91b8beb35fbad2"
   },
   "what-will-i-regret-when-im-old": {
     "published": "2026-10-24",
     "modified": "2026-10-24",
-    "hash": "d4d87d2f870c5f1f"
+    "hash": "b5b69356173a124e"
   },
   "why-do-we-fight-over-small-things": {
     "published": "2026-10-24",
     "modified": "2026-10-24",
-    "hash": "86a14ffefb3301e8"
+    "hash": "6cdd8b7891343121"
   },
   "instagram-chat-analyzer": {
     "published": "2026-10-25",
     "modified": "2026-10-25",
-    "hash": "522147e684cbf167"
+    "hash": "bb8aedb0d45188ce"
   },
   "whatsapp-chat-analysis": {
     "published": "2026-10-25",
-    "modified": "2026-10-25",
-    "hash": "ecb295cc19b2661a"
+    "modified": "2026-10-26",
+    "hash": "140bd6b7efa37dab"
+  },
+  "mbti-test-from-instagram-chats": {
+    "published": "2026-10-26",
+    "modified": "2026-10-26",
+    "hash": "40ee3ecf5f65835e"
+  },
+  "personality-report-from-google-takeout": {
+    "published": "2026-10-26",
+    "modified": "2026-10-26",
+    "hash": "3a4dd5649822749e"
+  },
+  "personality-read-from-your-exports": {
+    "published": "2026-10-26",
+    "modified": "2026-10-26",
+    "hash": "0c1444dee078fc56"
   },
   "chatgpt-tell-me-about-myself": {
     "published": "2026-10-25",
     "modified": "2026-10-25",
-    "hash": "d3d9df6483ab43b6"
+    "hash": "0f5b53d27297463b"
   },
   "faq": {
     "published": "2026-10-12",
-    "modified": "2026-10-25",
-    "hash": "ca756c3765957c70"
+    "modified": "2026-10-26",
+    "hash": "13f622d6a4fc4ea1"
   },
   "sample-report": {
     "published": "2026-10-12",
     "modified": "2026-10-21",
-    "hash": "05fe7b258ceb11ea"
+    "hash": "c131299ec3196034"
   },
   "instagram-personality-test": {
     "published": "2026-10-08",
     "modified": "2026-10-25",
-    "hash": "f03bfa7ef0b11444"
+    "hash": "8c10f960a1f0761d"
   },
   "compatibility-test": {
     "published": "2026-10-08",
     "modified": "2026-10-21",
-    "hash": "dcb9fa90aeab1e1e"
+    "hash": "2f5f1445d6375a64"
   },
   "mbti-test-no-questions": {
     "published": "2026-10-08",
     "modified": "2026-10-25",
-    "hash": "148a415b5b8e8424"
+    "hash": "d42904ced37456e9"
   },
   "download-instagram-data": {
     "published": "2026-10-08",
     "modified": "2026-10-21",
-    "hash": "624aa30bd25e5a06"
+    "hash": "566286671970bc4c"
   },
   "privacy": {
     "published": "2026-10-09",
-    "modified": "2026-10-25",
-    "hash": "a49f13cce7df9cf3"
+    "modified": "2026-10-26",
+    "hash": "fc88ca3ea46b38cc"
   },
   "terms": {
     "published": "2026-10-09",

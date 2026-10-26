@@ -24,25 +24,46 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   box-shadow: 0 40px 90px rgba(90,40,120,.3); z-index: 5; }
 #screen { position: absolute; inset: 16px; border-radius: 50px; overflow: hidden; background: linear-gradient(170deg, #fff, #f6ecfd); }
 #notch { position: absolute; left: 50%; top: 30px; width: 110px; height: 28px; margin-left: -55px; border-radius: 14px; background: #2a1238; z-index: 3; }
-#review { position: absolute; left: 26px; right: 26px; top: 100px; padding: 22px 20px; border-radius: 24px; background: #fff; z-index: 2;
+#review { position: absolute; left: 22px; right: 22px; top: 62px; padding: 20px 18px 18px; border-radius: 24px; background: #fff; z-index: 2;
   box-shadow: 0 12px 30px rgba(90,40,120,.18); }
 #review h5 { font-size: 25px; font-weight: 850; margin-bottom: 14px; }
+/* As the app's sheet lays it out (26 October 2026): which years, a bar each; a word to leave out; what's included,
+   a switch a type of data, least personal first, a scale down its left edge. */
+.rvHead { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 6px; }
+.rvHead .rvLabel { margin: 0; }
+.rvC { display: inline-block; margin-left: 4px; padding: 2px 8px; border-radius: 999px; border: 2px solid #eadcf3; font-size: 12px; font-weight: 750; color: #6d5a7c; }
+.rvC.on { border-color: #8a3fd0; color: #8a3fd0; background: #f4ecfb; }
+#rvYears { display: flex; gap: 4px; align-items: flex-end; height: 50px; }
+.rvY { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; }
+.rvY i { display: block; width: 100%; border-radius: 5px 5px 2px 2px; background: linear-gradient(160deg, #e0457b, #8a3fd0); }
+.rvY small { font-size: 11px; font-weight: 750; color: #8b7a99; }
+.rvNote { height: 18px; margin: 3px 0 4px; font-size: 13px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
+#rvList { position: relative; border: 2px solid #f1e6f8; border-radius: 14px; padding-left: 6px; overflow: hidden; }
+#rvList::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: linear-gradient(#3fae74, #b783e0 55%, #e0457b); }
+#rvList .sw { padding: 0 10px; height: 35px; font-size: 17px; border-top: 2px solid #f1e6f8; }
+#rvList .sw:first-child { border-top: 0; }
+.rvMore { margin-left: 6px; font-size: 18px; color: #8b7a99; display: inline-block; }
+#rvChats { height: 0; overflow: hidden; padding: 0 0 0 14px; background: #faf5fd; }
+#rvChats .sw { height: 32px; font-size: 15px; border-top: 1px solid #f1e6f8; }
+#rvChats .sw i { width: 40px; height: 22px; }
+#rvChats .sw i::after { top: 3px; left: 3px; width: 16px; height: 16px; transform: translateX(calc(var(--k, 1) * 18px)); }
+#rvList .sw i { width: 46px; height: 26px; }
+#rvList .sw i::after { top: 3px; left: 3px; width: 20px; height: 20px; transform: translateX(calc(var(--k, 1) * 20px)); }
 .sw { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 0; border-top: 2px solid #f1e6f8;
   font-size: 20px; font-weight: 750; white-space: nowrap; }
 .sw i { position: relative; flex: none; width: 58px; height: 32px; border-radius: 999px; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
 .sw i::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff;
   transform: translateX(calc(var(--k, 1) * 26px)); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
 .rvLabel { margin: 4px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .05em; white-space: nowrap; text-transform: uppercase; color: #8b7a99; }
-#rvInput { height: 46px; padding: 0 14px; border-radius: 14px; border: 2px solid #e6d6f0; display: flex; align-items: center; font-size: 21px; font-weight: 650; }
+#rvInput { height: 42px; padding: 0 14px; border-radius: 14px; border: 2px solid #e6d6f0; display: flex; align-items: center; font-size: 21px; font-weight: 650; }
 #rvCaret { display: inline-block; width: 2px; height: 24px; margin-left: 2px; background: #8a3fd0; }
-#rvChipRow { display: flex; align-items: center; gap: 8px; height: 40px; margin-top: 4px; }
+#rvChipRow { display: flex; align-items: center; gap: 8px; height: 34px; margin-top: 3px; }
 .rvChip { flex: none; white-space: nowrap; padding: 4px 11px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 19px; font-weight: 800; }
 .rvChip em { font-style: normal; opacity: .6; }
-#rvGone { height: 22px; margin-bottom: 6px; font-size: 14px; font-weight: 700; color: #8b7a99; white-space: nowrap; }
 .sw small { margin-left: 6px; font-size: 16px; font-weight: 800; color: #e0457b; }
 .sw { justify-content: flex-start; }
 .sw i { margin-left: auto; }
-#sendBtn { margin-top: 18px; padding: 16px; border-radius: 999px; text-align: center; color: #fff; font-size: 24px; font-weight: 850;
+#sendBtn { margin-top: 14px; padding: 13px; border-radius: 999px; text-align: center; color: #fff; font-size: 24px; font-weight: 850;
   background: linear-gradient(90deg, #8a3fd0, #e0457b); box-shadow: 0 10px 24px rgba(224,69,123,.35); }
 #sent { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font-size: 30px; font-weight: 850; line-height: 1.25; color: #4a2366; }
 #sent svg { display: block; margin: 0 auto 14px; }
@@ -57,10 +78,18 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .file .ext { display: inline-block; font-size: 22px; font-weight: 900; color: #fff; padding: 6px 14px; border-radius: 10px; }
 .file .name { margin-top: 14px; font-size: 34px; font-weight: 850; }
 /* the summary, made on the phone */
-#summary { position: absolute; left: 34px; right: 34px; top: 120px; padding: 24px 22px; border-radius: 24px; background: #fff;
-  box-shadow: 0 12px 30px rgba(90,40,120,.18); font-family: 'DejaVu Sans Mono', monospace; font-size: 20px; line-height: 1.75; white-space: nowrap; z-index: 2; }
-#summary .k { color: #c2407a; }
-#summary h5 { font-family: Inter, sans-serif; font-size: 26px; font-weight: 850; margin-bottom: 8px; color: #2a1238; }
+#summary { position: absolute; left: 22px; right: 22px; top: 120px; padding: 20px 18px 14px; border-radius: 22px; z-index: 2;
+  border: 3px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
+  box-shadow: 0 14px 34px rgba(138,63,208,.22); }
+#summary .ttl { font-size: 15px; font-weight: 900; letter-spacing: .1em; color: #8a3fd0; margin-bottom: 8px; white-space: nowrap; }
+#summary .ttl span { letter-spacing: 0; font-weight: 700; color: #8b8096; margin-left: 6px; }
+#summary .r { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 2px solid #f0eaf4; font-size: 19px; font-weight: 700; color: #2a1238; white-space: nowrap; }
+#summary .k { width: 68px; flex: none; font-size: 14px; font-weight: 750; color: #8b8096; }
+#summary .sx, #summary .raw { position: relative; display: inline-block; white-space: nowrap; }
+#summary .bar { position: absolute; left: -4px; top: 2px; bottom: 2px; width: 0; border-radius: 5px; background: #2a1238; }
+#summary .strike { position: absolute; left: -3px; top: 52%; height: 3px; width: 0; border-radius: 2px; background: #e0457b; }
+#summary .new { position: absolute; left: 0; top: 50%; padding: 2px 9px; border-radius: 8px; background: #fde4ef; color: #c2407a; font-weight: 900; opacity: 0; white-space: nowrap; }
+#summary .gone { margin-left: 4px; padding: 2px 8px; border-radius: 8px; background: #f1eef4; color: #8b8096; font-size: 14px; font-weight: 800; opacity: 0; }
 .swap { display: inline-grid; vertical-align: top; }
 .swap span { grid-area: 1 / 1; white-space: nowrap; }
 #kb { position: absolute; left: 50%; top: 560px; padding: 14px 30px; border-radius: 999px; font-size: 36px; font-weight: 900; color: #fff; white-space: nowrap;
@@ -99,7 +128,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="head" id="h0" style="top:300px;font-size:84px"><div>What happens when you load your <span class="grad">data</span> onto PsycheAI?</div></div>
   <div class="head" id="h1" style="top:230px;font-size:70px"><div><span class="step">Step 1</span></div><div>Your files are loaded<br><span class="grad">on your phone</span>,<br>not uploaded</div></div>
   <div class="head" id="h2" style="top:230px;font-size:60px;left:40px;right:40px"><div><span class="step">Step 2</span></div><div>Only a <span class="grad">short summary</span> is made<span class="later">,</span><br><span class="later">with names and handles removed</span></div></div>
-  <div class="head" id="h3" style="top:230px;font-size:62px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">leave out any <span class="grad">topic</span>,</span><br><span class="later2">and switch off any <span class="grad">chat</span></span></div></div>
+  <div class="head" id="h3" style="top:230px;font-size:62px"><div><span class="step">Step 3</span></div><div>You review it<span class="later">,</span><br><span class="later">leave out any <span class="grad">year</span> or <span class="grad">topic</span>,</span><br><span class="later2">and switch off any <span class="grad">type of data</span></span></div></div>
   <div class="head" id="h4" style="top:230px;font-size:72px"><div><span class="step">Step 4</span></div><div>The summary is sent<br><span class="grad">encrypted</span></div></div>
   <div class="head" id="h5" style="top:230px;font-size:72px"><div><span class="step">Step 5</span></div><div>Your results<br><span class="grad">come back to you</span></div></div>
 
@@ -115,31 +144,39 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div class="row" id="r1" style="top:218px"><i style="background:#25d366"></i>WhatsApp</div>
     <div class="row" id="r2" style="top:326px"><i style="background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335)"></i>Google</div>
     <div class="row" id="r3" style="top:434px"><i style="background:#1877f2"></i>Facebook</div>
-    <div id="summary"><h5>Summary</h5>
-      <div><span class="k">name:</span> <span class="swap" id="sw1"><span>"Alex Tan"</span><span>"[name]"</span></span></div>
-      <div><span class="k">email:</span> <span class="swap" id="sw2"><span>"alex@mail.com"</span><span>"[email]"</span></span></div>
-      <div><span class="k">phone:</span> <span class="swap" id="sw3"><span>"+65 9123 4567"</span><span>"[number]"</span></span></div>
-      <div><span class="k">chat:</span> "w/ <span class="swap" id="sw4"><span>@jamie.k</span><span>[P1]</span></span>"</div>
+    <!-- The summary as the ChatGPT reel draws it (26 October 2026): the name blacked out, people turned into
+         numbers, contacts struck out. -->
+    <div id="summary"><div class="ttl">YOUR SUMMARY<span>· de-identified</span></div>
+      <div class="r"><span class="k">Name</span><span class="raw" data-fx="bar" data-d="0">Alex Tan<i class="bar"></i></span></div>
+      <div class="r"><span class="k">Chat</span><span>with</span><span class="sx" data-fx="swap" data-d="0.25"><span class="raw">Sarah Kim<i class="strike"></i></span><span class="new">[N1]</span></span></div>
+      <div class="r"><span class="k">Comment</span><span class="sx" data-fx="swap" data-d="0.5"><span class="raw">@jamie.k<i class="strike"></i></span><span class="new">[P1]</span></span><span>loved this!</span></div>
+      <div class="r"><span class="k">Email</span><span class="raw" data-fx="cut" data-d="0.75">alex@me.com<i class="strike"></i></span><span class="gone">removed</span></div>
     </div>
-    <!-- the app's review sheet, "Review what gets sent": a switch a kind of data -->
+    <!-- the app's review sheet, "Review what gets sent", as the app lays it out: which years, a word to leave
+         out, and a switch for each type of data -->
     <div id="review"><h5>Review what gets sent</h5>
+      <div class="rvHead"><span class="rvLabel">Which years</span><span><b class="rvC on" id="rvAll">All</b><b class="rvC">3 yrs</b><b class="rvC">1 yr</b></span></div>
+      <div id="rvYears"><span class="rvY"><i style="height:11px"></i><small>’19</small></span><span class="rvY"><i style="height:18px"></i><small>’20</small></span><span class="rvY"><i style="height:24px"></i><small>’21</small></span><span class="rvY"><i style="height:35px"></i><small>’22</small></span><span class="rvY"><i style="height:30px"></i><small>’23</small></span><span class="rvY"><i style="height:40px"></i><small>’24</small></span><span class="rvY"><i style="height:34px"></i><small>’25</small></span><span class="rvY"><i style="height:16px"></i><small>’26</small></span></div>
+      <div class="rvNote" id="rvYearsOff">’19, ’20 left out</div>
       <div class="rvLabel">Leave out anything mentioning</div>
       <div id="rvInput"><span id="rvTyped"></span><b id="rvCaret"></b></div>
       <div id="rvChipRow"><span class="rvChip" id="rvChip1">diagnosis <em>×</em></span><span class="rvChip" id="rvChip2">medication <em>×</em></span></div>
-      <div id="rvGone">14 posts &amp; messages removed</div>
-      <div class="rvLabel">Direct messages</div>
-      <div class="sw on">Sarah Kim <small>[t1]</small><i></i></div>
-      <div class="sw on" id="swOff">Jordan Lee <small>[t2]</small><i></i></div>
-      <div class="sw on">Mum <small>[t3]</small><i></i></div>
+      <div class="rvHead"><span class="rvLabel">What’s included</span></div>
+      <div id="rvList">
+        <div class="sw on" id="swOff">Your searches<i></i></div>
+        <div class="sw on">Your posts &amp; comments<i></i></div>
+        <div class="sw on">Direct messages<b class="rvMore">›</b><i></i></div>
+        <!-- the row opened, as tapping its name does in the app: a switch a chat -->
+        <div id="rvChats"><div class="sw on">Sarah Kim <small>[t1]</small><i></i></div><div class="sw on" id="swChat">Jordan Lee <small>[t2]</small><i></i></div></div>
+      </div>
       <div id="sendBtn">Send this</div>
     </div>
     <div id="sent"><svg viewBox="0 0 48 48" width="96" height="96" fill="none" stroke="#e0457b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="19" stroke="#f0d6e6"/><path d="M15 24.5l6.5 6.5L33 18"/></svg><div>Summary sent,<br>encrypted</div></div>
     <div id="onphone"><span id="noNet">✈️ No internet needed</span></div>
   </div></div>
   <div class="pill" id="kb" style="top:1660px">100–200 KB of text</div>
-  <div class="pill" id="nocopy" style="top:1180px">PsycheAI keeps <em>no copy</em></div>
-  <div class="pill" id="noacct" style="top:1270px"><em>No account</em> needed</div>
-  <div class="pill" id="nohack" style="top:1360px">Hacked? <em>No data</em> to steal</div>
+  <div class="pill" id="nocopy" style="top:1180px;font-size:33px">PsycheAI keeps <em>none of your data</em> on its server</div>
+  <div class="pill" id="nohack" style="top:1270px">Hacked? <em>No data</em> to steal</div>
 
   <div class="file" id="f0"><span class="ext" style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)">ZIP</span><div class="name">Instagram</div></div>
   <div class="file" id="f1"><span class="ext" style="background:#25d366">TXT</span><div class="name">WhatsApp</div></div>
@@ -243,11 +280,24 @@ function render(t) {
   });
   const sumIn = back(prog(t, s2.vo + 0.3, s2.vo + 0.7));
   set('summary', clamp(sumIn * 2), 'scale(' + Math.min(1.05, sumIn) + ')');
-  ['sw1', 'sw2', 'sw3', 'sw4'].forEach((id, i) => {
-    // Blurred into placeholders as the voice says "with names removed".
-    const at = s2.marks[1] - 0.1 + i * 0.22, k = prog(t, at, at + 0.3), [a, b] = $(id).children;
-    a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)';
-    b.style.color = '#e0457b'; a.style.display = k >= 1 ? 'none' : '';
+  // As the voice says "with names and handles removed", each in turn: the name blacked out, a person in a chat
+  // and a handle turned into numbers, the email struck out (the ChatGPT reel's effects, chatgpt-stage.html).
+  $('summary').querySelectorAll('[data-fx]').forEach(el => {
+    const at = s2.marks[1] - 0.1 + (+el.dataset.d || 0), p = easeIO(prog(t, at, at + 0.4)), fx = el.dataset.fx;
+    if (fx === 'bar') el.querySelector('.bar').style.width = 'calc((100% + 8px) * ' + p + ')';
+    if (fx === 'swap') { el.querySelector('.strike').style.width = 'calc((100% + 6px) * ' + clamp(p * 2) + ')';
+      const rw = el.querySelector('.raw'), nw = el.querySelector('.new');
+      rw.style.opacity = 1 - prog(t, at + 0.2, at + 0.4);
+      const n = back(prog(t, at + 0.25, at + 0.5));
+      nw.style.opacity = clamp(n * 2); nw.style.transform = 'translateY(-50%) scale(' + (0.4 + 0.6 * Math.min(1.08, n)) + ')';
+      // The gap closes onto the shorter tag, so the line reads on without a hole.
+      const sh = easeIO(prog(t, at + 0.25, at + 0.55));
+      if (rw.offsetWidth && !rw.dataset.w && !el.style.width) rw.dataset.w = rw.offsetWidth;
+      const w0 = +rw.dataset.w || 0;
+      if (!sh || !w0 || !nw.offsetWidth) el.style.width = ''; else el.style.width = (w0 + (nw.offsetWidth - w0) * sh) + 'px'; }
+    if (fx === 'cut') { el.querySelector('.strike').style.width = 'calc((100% + 6px) * ' + p + ')';
+      el.style.opacity = 1 - 0.65 * prog(t, at + 0.3, at + 0.5);
+      el.nextElementSibling.style.opacity = prog(t, at + 0.3, at + 0.5); }
   });
   $('onphone').style.opacity = prog(t, s1.vo + 0.6, s1.vo + 0.9);
   // Gone as the summary leaves, Step 4 being the only part online.
@@ -263,22 +313,35 @@ function render(t) {
   $('trail').style.top = (CLOUD.y + 100) + 'px'; $('trail').style.height = (PHONE.y - CLOUD.y - 100) * trailK + 'px';
   $('trail').style.opacity = trailK; $('trail').style.display = trailK > 0 ? 'block' : 'none';
   $('summary').style.opacity = clamp(sumIn * 2) * (1 - prog(t, sR.start - 0.05, sR.start + 0.2));
-  // Step 3: the review sheet. A topic is typed in as "topic" is said and becomes a chip, its posts and
-  // messages gone; a chat is switched off on "off"; then "Send this" is pressed and the sheet goes.
+  // Step 3: the review sheet. The two earliest years go grey on "year"; a topic is typed in as "topic" is said
+  // and becomes a chip, its posts and messages gone; a type of data is switched off on "type", then one chat in
+  // the direct messages; then "Send this" is pressed and the sheet goes.
   const revIn = back(prog(t, sR.start, sR.start + 0.35)), revOut = prog(t, s3.start + 0.3, s3.start + 0.5);
   set('review', clamp(revIn * 2) * (1 - revOut), 'scale(' + Math.min(1.04, revIn) * (1 - 0.1 * revOut) + ')');
   const said3 = (w, fb) => (sR.words.find(([x]) => x === w) || [0, fb])[1];
-  // Two sensitive topics, typed one after the other from "leave out any topic", each becoming a chip.
-  const WORDS = ['diagnosis', 'medication'], typeAt = sR.marks[1] + 0.05, PER = 0.55;
+  // The first two years switched off as "year" is said, so "All" no longer applies.
+  const yearAt = said3('year', sR.marks[1] + 0.8);
+  [...$('rvYears').children].forEach((bar, i) => { const k = i < 2 ? easeIO(prog(t, yearAt + i * 0.14, yearAt + i * 0.14 + 0.2)) : 0;
+    bar.querySelector('i').style.opacity = 1 - 0.8 * k; bar.querySelector('i').style.filter = 'grayscale(' + k + ')';
+    bar.querySelector('small').style.textDecoration = k > 0.5 ? 'line-through' : ''; });
+  $('rvAll').classList.toggle('on', t < yearAt + 0.14);
+  $('rvYearsOff').style.opacity = prog(t, yearAt + 0.3, yearAt + 0.5);
+  // Two sensitive topics, typed one after the other from "topic", each becoming a chip.
+  const WORDS = ['diagnosis', 'medication'], typeAt = said3('topic', sR.marks[1] + 1.2), PER = 0.5;
   const w = Math.min(WORDS.length - 1, Math.floor(Math.max(0, t - typeAt) / PER)), into = t - typeAt - w * PER;
   $('rvTyped').textContent = t < typeAt || t >= typeAt + WORDS.length * PER - 0.12 || into > 0.4 ? '' : WORDS[w].slice(0, Math.round(WORDS[w].length * prog(into, 0, 0.32)));
   $('rvCaret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.15 : 1;
   WORDS.forEach((_, i) => { const chip = back(prog(t, typeAt + i * PER + 0.4, typeAt + i * PER + 0.6));
     $('rvChip' + (i + 1)).style.opacity = clamp(chip * 2); $('rvChip' + (i + 1)).style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')'; });
-  $('rvGone').style.opacity = prog(t, typeAt + 2 * PER, typeAt + 2 * PER + 0.2);
-  const untick = said3('off', sR.marks[2] || sR.marks[1] + 0.8), off = easeIO(prog(t, untick, untick + 0.3));
+  const untick = said3('type', (sR.marks[2] || sR.marks[1] + 0.8) + 0.8), off = easeIO(prog(t, untick, untick + 0.3));
   $('swOff').style.setProperty('--k', String(1 - off)); $('swOff').style.color = mixHex('#2a1238', '#b9a8c6', off);
   $('swOff').querySelector('i').style.background = off > 0.5 ? '#e4d8ee' : '';
+  // Then the direct messages open, as tapping the row's name does, and one chat is switched off.
+  const open = easeIO(prog(t, said3('data', untick + 0.4) + 0.1, said3('data', untick + 0.4) + 0.45)), chatAt = said3('data', untick + 0.4) + 0.75;
+  $('rvChats').style.height = 64 * open + 'px'; $('rvList').querySelector('.rvMore').style.transform = 'rotate(' + 90 * open + 'deg)';
+  const chatOff = easeIO(prog(t, chatAt, chatAt + 0.3));
+  $('swChat').style.setProperty('--k', String(1 - chatOff)); $('swChat').style.color = mixHex('#2a1238', '#b9a8c6', chatOff);
+  $('swChat').querySelector('i').style.background = chatOff > 0.5 ? '#e4d8ee' : '';
   const press = prog(t, s3.start - 0.3, s3.start - 0.15) * (1 - prog(t, s3.start - 0.15, s3.start));
   $('sendBtn').style.transform = 'scale(' + (1 - 0.08 * press) + ')';
   const up = easeIO(prog(t, s3.start + 0.4, s3.vo + 1.2)), packetOn = prog(t, s3.start + 0.3, s3.start + 0.5) * (1 - prog(up, 0.9, 1));
@@ -302,8 +365,8 @@ function render(t) {
   set('report', resOn, 'rotate(' + (6 - 2 * down) + 'deg) scale(' + (0.7 + 0.3 * down + pulse * 0.02) * grow + ')');
   const nc = back(prog(t, s4.marks[1] - 0.1, s4.marks[1] + 0.3)), ncOut = prog(t, FINAL - 0.15, FINAL + 0.05);
   set('nocopy', clamp(nc * 2) * (1 - ncOut), 'translateX(-50%) scale(' + Math.min(1.08, nc) + ')');
-  // Then, as the voice says them, no account and nothing for a hack to take.
-  [['noacct', 2], ['nohack', 3]].forEach(([id, k]) => { const m = s4.marks[k] || s4.marks[1] + k, p = back(prog(t, m - 0.1, m + 0.3));
+  // Then, as the voice says it, nothing for a hack to take.
+  [['nohack', 2]].forEach(([id, k]) => { const m = s4.marks[k] || s4.marks[1] + k, p = back(prog(t, m - 0.1, m + 0.3));
     set(id, t >= m - 0.1 ? clamp(p * 2) * (1 - ncOut) : 0, 'translateX(-50%) scale(' + Math.min(1.08, p) + ')'); });
   ['result', 'report'].forEach(id => { $(id).style.opacity = resOn * (1 - ncOut); });
   // The last card: the mark spins in on the hit, the line, the address, the facts.

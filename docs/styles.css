@@ -2854,6 +2854,26 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .pattern-badge { width: 2.1rem; height: 2.1rem; font-size: 1rem; }
 .pattern-dot { width: 1.15rem; height: 1.15rem; font-size: .68rem; margin-right: .35rem; flex: none; }
+/* Thumbs on a finding of the reader's own report: small, quiet until used (app.js, markRowHtml). */
+.mark-row { margin-top: .5rem; }
+.mark-bar { display: flex; align-items: center; gap: .3rem; }
+.mark-q { margin-right: auto; font-size: .7rem; color: var(--ink-soft); }
+.mark-btn { width: 1.75rem; height: 1.6rem; padding: 0; border: 1.5px solid var(--line); border-radius: 999px; background: var(--bg-alt);
+  font-size: .8rem; line-height: 1; cursor: pointer; filter: grayscale(1); opacity: .7; transition: filter .15s, opacity .15s, border-color .15s; }
+.mark-btn:hover, .mark-btn.is-on { filter: none; opacity: 1; }
+.mark-btn.is-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-alt)); }
+.mark-btn.is-down.is-on { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 12%, var(--bg-alt)); }
+.mark-why { display: flex; align-items: center; gap: .3rem; margin-top: .3rem; overflow: hidden; }
+/* 16px so a phone does not zoom in on focus, drawn at 12px: a quiet underline, not a box. */
+.mark-why input { flex: 1; min-width: 0; width: 125%; margin-right: -25%; transform: scale(.75); transform-origin: left center;
+  border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: .15rem 0; font: inherit; font-size: 16px;
+  background: transparent; color: var(--ink); }
+.mark-why input:focus { outline: none; border-bottom-color: var(--accent); }
+.mark-why button, .mark-edit { flex: none; border: 0; background: none; padding: 0 .15rem; font: inherit; font-size: .68rem; font-weight: 600; color: var(--accent); cursor: pointer; }
+/* The note, once saved: one quiet line under the finding. */
+.mark-said { display: flex; gap: .3rem; align-items: baseline; margin: .25rem 0 0; font-size: .68rem; line-height: 1.4; color: var(--ink-soft); }
+.mark-said b { flex: none; font-weight: 600; }
+.mark-said q { flex: 1; min-width: 0; font-style: italic; quotes: '“' '”'; }
 .pattern-where, .origin, .motive-top { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: .4rem 0 0; }
 .connects-label {
   font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
@@ -3990,6 +4010,30 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The download instructions, opened, scroll inside themselves too. */
 .datasources-dialog .supplement-help[open] { flex: 0 1 auto; min-height: 6rem; overflow-y: auto; margin-bottom: .2rem; }
 
+/* The one file box (October 2026): every source goes in here, sorted by
+   what is in each file. Dashed, in the accent, above the rows that say what
+   is loaded; it lights up while files are dragged over the popout. */
+.ds-drop {
+  display: flex; align-items: center; gap: .75rem; width: 100%; text-align: left;
+  font: inherit; color: inherit; cursor: pointer; flex: none;
+  padding: .85rem .9rem; margin-bottom: .5rem; border-radius: 12px;
+  border: 2px dashed var(--accent); background: var(--accent-soft);
+  transition: background .12s ease, border-color .12s ease;
+}
+.ds-drop:hover, .ds-drop:focus-visible, .ds-drop.is-over {
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg)); outline: none; border-style: solid;
+}
+.ds-drop:disabled { cursor: progress; opacity: .7; }
+.ds-drop-icon { font-size: 1.5rem; line-height: 1; flex: none; }
+.ds-drop-body strong { display: block; font-size: 1rem; }
+.ds-drop-body .muted { display: block; font-size: .8rem; line-height: 1.3; margin-top: .1rem; }
+/* Where a first upload stands: Instagram, or three chats. */
+.ds-minimum { margin: 0 0 .6rem; font-size: .82rem; line-height: 1.35; color: var(--ink-soft); }
+.ds-minimum.is-met { color: #2f8a57; font-weight: 650; }
+:root[data-theme="dark"] .ds-minimum.is-met { color: #6fd39b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ds-minimum.is-met { color: #6fd39b; } }
+.ds-minimum[hidden] { display: none; }
+
 /* "Updating your data sources may change your Psyche Card", asked over the
    popout before the first file picker at the unlock. */
 .ds-confirm {
@@ -4676,15 +4720,77 @@ details.more[open] > summary::after { content: ' ▴'; }
   .report-promo-cta::before { content: '✨ '; }
 }
 
-/* Instagram is the one source required, so it stands out, on a first upload
-   and on the report page's popouts alike. */
-.datasources-dialog .mode-option[data-datasource="instagram"] {
-  border: 2px solid var(--accent); background: var(--accent-soft);
+/* Under the file box the sources are one checklist, not four more boxes
+   (October 2026): one bordered list, a hairline between rows, one line a
+   row. Each row is the source's button (which adds that source on its own),
+   then "How?", which opens its steps below. A first upload groups them under
+   "Need one" and "Optional". */
+.datasources-dialog .mode-options {
+  gap: 0; border: 1px solid var(--line); border-radius: 12px; padding-right: 0;
 }
-.datasources-dialog .mode-option[data-datasource="instagram"] .mode-tag-required {
-  display: inline-block; margin-left: .25rem; padding: .05rem .5rem; border-radius: 999px;
-  background: var(--accent); color: #fff; font-size: .72rem; font-weight: 650; vertical-align: middle;
+.datasources-dialog .ds-row { display: flex; align-items: center; }
+.datasources-dialog .ds-row[hidden] { display: none; }
+.datasources-dialog .ds-row:not([hidden]) ~ .ds-row:not([hidden]) { border-top: 1px solid var(--line); }
+.datasources-dialog .ds-group + .ds-row { border-top: 0; }
+.datasources-dialog .ds-row > .mode-option {
+  flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: .55rem .5rem .55rem .75rem;
 }
+.datasources-dialog .ds-row > .mode-option:hover,
+.datasources-dialog .ds-row > .mode-option:focus-visible { background: var(--accent-soft); }
+.datasources-dialog .mode-body > .muted:empty { display: none; }
+.ds-how {
+  flex: none; align-self: stretch; font: inherit; font-size: .78rem; font-weight: 600; color: var(--accent);
+  background: none; border: 0; padding: 0 .8rem 0 .4rem; cursor: pointer; white-space: nowrap;
+}
+.ds-how::after { content: ' ›'; }
+.ds-how[aria-expanded="true"]::after { content: ' ⌄'; }
+.ds-how:hover, .ds-how:focus-visible { text-decoration: underline; outline: none; }
+/* The two groups' headings, small capitals; "Need one" ticks itself. */
+.ds-group {
+  margin: 0; padding: .55rem .75rem .2rem; font-size: .68rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.ds-group[hidden] { display: none; }
+.ds-group:not(:first-child) { border-top: 1px solid var(--line); }
+.ds-group.is-met { color: #2f8a57; }
+.ds-group.is-met::after { content: ' ✓'; }
+:root[data-theme="dark"] .ds-group.is-met { color: #6fd39b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ds-group.is-met { color: #6fd39b; } }
+/* Not loaded yet: an empty ring where the tick will be. */
+.datasources-dialog .mode-option:not(.is-added):not([data-datasource="whatsapp"])::after {
+  content: ''; margin-left: auto; flex: none; width: 1rem; height: 1rem; border-radius: 50%;
+  border: 1.5px solid var(--line);
+}
+/* WhatsApp's chats as three dots, filled as they load; the third is a bonus,
+   so its ring is dashed. The count in words stays for screen readers. */
+.ds-dots { display: inline-flex; margin-left: auto; gap: .25rem; flex: none; align-self: center; }
+.ds-dots i { width: .62rem; height: .62rem; border-radius: 50%; border: 1.5px solid var(--accent); }
+.ds-dots i:nth-child(3) { border-style: dashed; }
+.ds-dots[data-n="1"] i:nth-child(1), .ds-dots[data-n="2"] i:nth-child(-n+2), .ds-dots[data-n="3"] i { background: var(--accent); }
+.datasources-dialog .mode-option[data-datasource="whatsapp"] .mode-added { display: none; }
+.datasources-dialog .mode-option[data-datasource="whatsapp"] .mode-body > .muted {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+/* "or drop them here" only where there is a mouse to drag with. */
+@media (hover: none) { .ds-drop-hint { display: none !important; } }
+/* Continue, set back until a first upload has what it needs; still pressable. */
+#datasources-continue.is-waiting { opacity: .5; }
+/* The note: a green box like the review's, the offline sentence leading it in bold green. */
+#datasources-offline { display: inline; }
+#datasources-offline[hidden], #datasources-offline-icon[hidden] { display: none; }
+#datasources-dialog-blurb { margin: 0 0 .8rem; }
+#datasources-dialog-blurb p { font-size: .82rem; }
+/* The steps open from a row's "How?", one source at a time: no summary line. */
+.datasources-dialog .supplement-help > summary { display: none; }
+.datasources-dialog .supplement-help:not([open]) { display: none; }
+.datasources-dialog .supplement-help-body [data-help].is-other { display: none; }
+/* Restore from a backup, under the buttons and out of Continue's way. */
+.ds-restore-row { margin: .45rem 0 0; text-align: center; }
+.ds-restore-row:has(> [hidden]) { display: none; }
+
+/* Instagram stood out here, with a border and a "Required" pill, while it
+   was the one source required. The file box stands out now, and the sources
+   are one checklist with no tags (October 2026). */
 
 /* The FAQ's foot: who is behind PsycheAI, in small print. */
 .about-founder { margin-top: 2.2rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--ink-soft); }
@@ -5442,3 +5548,4 @@ details.more[open] > summary::after { content: ' ▴'; }
   .vs-row > span { padding: 8px 7px; }
   .vs-k, .vs-headrow { font-size: .74rem; }
 }
+@media print { .mark-row { display: none; } }

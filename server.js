@@ -691,7 +691,9 @@ async function handleAnalyse(request, response) {
   // A report written to explain a card they already have is not held to it.
   if (!anchor && Digest.ownWritingChars(sent) < MIN_OWN_WRITING) {
     stats.count('refused_too_thin');
-    sendJson(response, 422, { error: 'There is not enough of your own writing in this data to read. Add WhatsApp, Google or Facebook data and try again.', tooThin: true });
+    sendJson(response, 422, { error: Digest.hasInstagram(body.digest)
+      ? 'There is not enough of your own writing in this data to read. Add WhatsApp, Google or Facebook data and try again.'
+      : 'There is not enough of your own writing in these chats to read. Choose chats where you write more, or add your Instagram data.', tooThin: true });
     return;
   }
   let kind;
@@ -812,14 +814,27 @@ async function handleAnalyse(request, response) {
     sendJson(response, 402, { error: NO_ACCOUNT_REFUSAL, noAccount: true });
     return;
   }
-  if (!paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account, legacyAccount)) {
-    stats.count('free_refused_account');
+  // Chats with no Instagram (October 2026): the account is a one-way code
+  // of the reader's name and their chats (accountSource in docs/whatsapp.js),
+  // held to the same one free read. Counted apart, to see how often it is used.
+  const chatsOnly = !Digest.hasInstagram(body.digest);
+  // And each chat on its own: one already in a free read, beside Instagram or
+  // not, makes this one paid (lib/referral.js, chatsUsed).
+  const chatCodes = referral.cleanChatCodes(body.chatAccounts);
+  const accountUsed = !paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account, legacyAccount);
+  const chatUsed = !paying && account && ONE_FREE_PER_ACCOUNT && !accountUsed && await referral.chatsUsed(chatCodes);
+  if (accountUsed || chatUsed) {
+    stats.count(chatsOnly || chatUsed ? 'free_refused_chats' : 'free_refused_account');
     sendJson(response, 402, {
-      error: 'This Instagram account has already had its free Psyche Card. A new Psyche Card comes with your Psyche Report: US$5 for both.',
+      // For chats, not which one was used before (26 October 2026): a reader is told only that the free card is spent.
+      error: (chatUsed || chatsOnly ? 'You have already used your free Psyche Card.'
+        : 'This Instagram account has already had its free Psyche Card.') +
+        ' A new Psyche Card comes with your Psyche Report: US$5 for both.',
       freeUsed: true,
     });
     return;
   }
+  if (!paying && chatsOnly) stats.count('free_chats_only');
 
   // Same hold the two premium routes take, for the same check-then-act gap:
   // canUse read a count that recordUse will not write until the model comes
@@ -947,6 +962,7 @@ async function handleAnalyse(request, response) {
       // also closes the job to a guess arriving later.
       const guessed = takeLockedGuess(results.keyFor(kind, key)) || body.guess;
       if (made === 'card' || firstFull || (full && !anchor)) {
+        referral.afterFreeChats(chatCodes);
         referral.afterFreeCard({ account, legacy: legacyAccount, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request),
           guessed: made === 'card' || firstFull ? Boolean(guessed) : false })
           .then(outcome => {
@@ -1065,10 +1081,12 @@ async function judgeFor(body, guessed, result, request) {
  * Two calls, billed as one result: this path is rare, and the alternative
  * is a report that cannot be written at all.
  */
-// The unlock that adds data in one call instead of two (lib/prompts.js,
-// MERGED_SYSTEM), when PSYCHEAI_MERGED_UNLOCK is on and the engine has one.
-// Read on every request, so it is switched with no deploy.
-const MERGED_UNLOCK = () => /^(1|true|yes|on)$/i.test(String(process.env.PSYCHEAI_MERGED_UNLOCK || '').trim());
+// The card and the report in one call instead of two (lib/prompts.js,
+// MERGED_SYSTEM), for the free first read and the unlock alike, when the
+// engine has one. The default since 26 October 2026 (it was off unless
+// PSYCHEAI_MERGED_UNLOCK was set); PSYCHEAI_MERGED_UNLOCK=false goes back to
+// two calls. Read on every request, so it is switched with no deploy.
+const MERGED_UNLOCK = () => !/^(0|false|no|off)$/i.test(String(process.env.PSYCHEAI_MERGED_UNLOCK || '').trim());
 
 /**
  * The card and the report from one call, split back into what cardThenFull

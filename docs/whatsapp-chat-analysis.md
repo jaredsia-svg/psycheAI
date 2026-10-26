@@ -4,12 +4,12 @@ description: "Analyse an exported WhatsApp chat privately: who starts conversati
 canonical: https://psycheai.io/whatsapp-chat-analysis
 author: "Jared, founder of PsycheAI"
 published: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # A WhatsApp chat analysis that is about you
 
-The short answer: export the chat from WhatsApp, without media, and PsycheAI reads it on your own device: who starts the conversations, how quickly each of you replies, when you are active and how you write. It adds that to your Instagram data for a personality reading, and what is sent is the chat’s numbers and a de-identified sample of your side of it.
+The short answer: export the chat from WhatsApp, without media, and PsycheAI reads it on your own device: who starts the conversations, how quickly each of you replies, when you are active and how you write. Two or three chats are enough for a free personality reading, or they add to your Instagram data, and what is sent is the chats’ numbers and a de-identified sample of your side of them.
 
 ## What it reads in a chat
 
@@ -32,13 +32,13 @@ The chat is read on your device and never uploaded, and you are asked which send
 
 1. Open the chat and tap ⋮ (or the contact’s name on iPhone), then More → Export chat.
 2. Choose **Without media** and save the .zip it makes.
-3. Load it in PsycheAI with your Instagram data. You can add up to three chats.
+3. Do the same for one or two more people, and load them in PsycheAI at once. Add your Instagram data too if you have it.
 
 ## Questions
 
 ### Do I need Instagram too?
 
-Yes, for now. Your Psyche Card starts from your Instagram data, and WhatsApp chats are added to it. Requesting the Instagram download takes about 30 seconds, and the file usually arrives within 1–2 hours.
+No. Two or three WhatsApp chats are enough for a free Psyche Card. Your Instagram data makes a fuller read, with your posts and interests beside the chats: requesting it takes about 30 seconds, and the file usually arrives within 1–2 hours.
 
 ### Does it read my friend’s messages?
 

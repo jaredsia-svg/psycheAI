@@ -24,11 +24,14 @@ LINES = [
     (['What happens when you load your data onto {B}?'], 0.92, None),
     (['Your files are loaded on your phone, not uploaded.'], 0.92, None),
     (['Only a short summary is made,', 'with names and handles removed.'], 0.92, None),
-    # Step 3 since 25 October 2026: the review sheet's two strongest choices, a topic and a chat.
-    (['You review it,', 'leave out any topic,', 'and switch off any chat.'], 0.92, None),
+    # Step 3 since 25 October 2026, the review sheet; since 26 October as the sheet is laid out: years, topics, and
+    # a switch for each type of data.
+    (['You review it,', 'leave out any year or topic,', 'and switch off any type of data.'], 0.92, None),
     (['The summary is sent encrypted to Google Vertex AI,', 'which never trains on it.'], 0.92, None),
     # As the ChatGPT reel says it (25 October 2026): no account, and nothing for a hack to take.
-    (['Your results come back to you,', 'and {B} keeps no copy.', 'It needs no account.', "Even if a hack occurs, there's no data to steal."], 0.92, None),
+    # Since 26 October 2026 "none of your data on its server" in place of "no copy", and no account left unsaid: the
+    # server holds one-way codes and counts, never the reader's data (the FAQ's words).
+    (['Your results come back to you,', 'and {B} keeps none of your data on its server.', "Even if a hack occurs, there's no data to steal."], 0.92, None),
     (['See for yourself at {B} dot I O.'], 0.9, None),
 ]
 
@@ -67,7 +70,8 @@ marks = [stored['lines'][name] for name in names]
 BPM = 120 if GROOVE else 94; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
-minimum = {}
+# Step 3 holds a second past its line (26 October 2026), for a chat switched off after the type of data.
+minimum = {3: 6.0}
 EXTRA_LEAD = {6: 0.25}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0

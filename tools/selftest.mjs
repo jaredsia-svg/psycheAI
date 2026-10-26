@@ -1898,10 +1898,11 @@ const attachProps = prompts.PREMIUM_SCHEMA.properties.attachment.properties;
   const wanted = /select multiple files as needed/i;
   // The first upload's row no longer says it, by request; the picker still
   // takes several files at once.
+  // Since the one file box (October 2026) a first upload's rows have no
+  // sub-line at all: the box takes any number of files of any source.
   check('the first-upload Instagram row no longer says it, but several files can still be picked',
-    !wanted.test(globalThis.PsycheCopy.TEXT.dataSourcesFirstInstagram) &&
-      /id="datasources-input"[^>]*\bmultiple\b/.test(markup) && /id="file-input"[^>]*\bmultiple\b/.test(markup),
-    globalThis.PsycheCopy.TEXT.dataSourcesFirstInstagram);
+    !('dataSourcesFirstInstagram' in globalThis.PsycheCopy.TEXT) && !wanted.test(markup.slice(markup.indexOf('id="datasources-dialog"'))) &&
+      /id="datasources-input"[^>]*\bmultiple\b/.test(markup) && /id="file-input"[^>]*\bmultiple\b/.test(markup));
   // Shortened to fit one line on a phone (late October 2026), still saying
   // that a split export goes in whole.
   check('and the report page\'s replace row says it too, in short',
@@ -4283,22 +4284,22 @@ check('the sample arrives in chronological order',
     ownMessages: Array.from({ length: n }, (_, i) => ({ text: name + ' message ' + i + ' with enough words to clear it', ts: t + i * 5000, gap: 4000, prevMine: false })) });
   const build = chats => Digest.build({ ...signals, supplements: { whatsapp: { chats } } }, { includeMessages: false, maxChars: 1e7 }).whatsapp.ownMessageSample;
   const per = (lines, names) => names.map(c => lines.filter(line => line.includes('[' + c + '] ')).length);
-  const three = build([chat('c1', 5000), chat('c2', 300), chat('c3', 200)]);
+  const three = build([chat('c1', 5000), chat('c2', 1000), chat('c3', 800)]);
   const p3 = per(three, ['c1', 'c2', 'c3']);
   const L = Digest.LIMITS.waMessages;
   check('WhatsApp: sampled per chat, tagged by chat, each between a quarter and two fifths of the places',
-    p3.every(n => n >= Math.floor(L * 0.25) && n <= Math.floor(L * 0.4)) && Digest.LIMITS.waMaxShare === 0.4,
+    L === 1200 && p3.every(n => n >= Math.floor(L * 0.25) && n <= Math.floor(L * 0.4)) && Digest.LIMITS.waMaxShare === 0.4,
     JSON.stringify(p3));
   const two = build([chat('c1', 5000), chat('c2', 5000)]);
   const p2 = per(two, ['c1', 'c2']);
   check('WhatsApp: with two chats the ceiling still holds, and the spare places stay empty',
     p2.every(n => n <= Math.floor(L * 0.4)) && two.length <= Math.floor(L * 0.8), JSON.stringify(p2));
   const chars = (lines, c) => lines.filter(line => line.includes('[' + c + '] ')).reduce((sum, line) => sum + line.length, 0);
-  // Each chat's own ceiling: 12,000 characters of lines, 15,000 in the premium read.
+  // Each chat's own ceiling beside Instagram: 25,000 characters of lines
+  // (waChatChars; 15,000 until 26 October 2026).
   const alone = build([chat('c1', 5000)]);
-  check('WhatsApp: one chat is held to its own 15,000-character ceiling, in every read',
-    Digest.LIMITS.waThreadChars === 15000 && Digest.DEEP_LIMITS.waThreadChars === 15000 &&
-      chars(alone, 'c1') <= 15000 && chars(alone, 'c1') > 11000,
+  check('WhatsApp: one chat is held to its own 25,000-character ceiling',
+    Digest.WA_CHAT_CHARS === 25000 && chars(alone, 'c1') <= 25000 && chars(alone, 'c1') > 20000,
     alone.length + ' lines, ' + chars(alone, 'c1') + ' chars');
   // In a real read, three busy chats each reach their ceiling: 36,000 in all,
   // half the conversations pool, and nothing of Instagram's public pool is cut.
@@ -4315,8 +4316,8 @@ check('the sample arrives in chronological order',
   const threeFree = Digest.build({ ...signals, supplements: { whatsapp: { chats: [longChat('c1', 5000), longChat('c2', 5000), longChat('c3', 5000)] } } },
     { includeMessages: false });
   const perChat = ['c1', 'c2', 'c3'].map(c => chars(threeFree.whatsapp.ownMessageSample, c));
-  check('WhatsApp: three chats each reach their own ceiling, inside the conversations pool',
-    perChat.every(n => n > 11000 && n <= 15000) && Digest.poolSizes(threeFree).conversations.whatsapp <= 3 * 15000 + 400 &&
+  check('WhatsApp: beside an Instagram with no DMs, three chats each reach their 25,000, inside the conversations pool',
+    perChat.every(n => n > 20000 && n <= 25000) && Digest.poolSizes(threeFree).conversations.whatsapp <= 3 * 25000 + 400 &&
       Digest.poolSizes(threeFree).conversations.total <= Digest.POOL_CAPS.conversations && Digest.evidenceChars(threeFree) <= Digest.budgetFor(threeFree),
     waOf(threeFree) + ' in all; per chat ' + perChat.join(', '));
   // Unticked at the review, the chats no longer count: what is sent falls
@@ -4332,6 +4333,47 @@ check('the sample arrives in chronological order',
     JSON.stringify(threeFree.samples) === JSON.stringify(igOnly.samples) &&
       Digest.sourceSizes(threeFree).instagram - Digest.evidenceChars(igOnly) < 400,
     Digest.sourceSizes(threeFree).instagram + ' vs ' + Digest.evidenceChars(igOnly));
+  // How the conversations pool is shared (26 October 2026): each chat up to
+  // 25,000 beside Instagram (40,000 with no Instagram), the DMs keeping at
+  // least 30,000 when the export has them, in steps of 5,000.
+  {
+    const dmLines = n => Array.from({ length: n }, (_, i) => '[2025] [t' + (1 + (i % 10)) + '] ' + 'a message of my own '.repeat(4) + i);
+    const fake = (sources, dms) => Object.assign({ coverage: { sources } }, dms ? { directMessages: { ownMessageSample: dmLines(dms) } } : {});
+    const table = [
+      [fake(['instagram'], 600), [25000, 25000, 20000]],
+      [fake(['instagram'], 0), [25000, 25000, 25000]],
+      [fake([], 0), [40000, 40000, 30000]],
+    ].map(([d, want]) => [1, 2, 3].map(n => Digest.waChatChars(d, n)).join() === want.join());
+    check('the conversations pool: 25k, 25k, 20k a chat beside full DMs; 25k beside none; 40k, 40k, 30k for chats alone',
+      table.every(Boolean) && Digest.DM_FLOOR_CHARS === 30000, JSON.stringify(table));
+    const fullDms = { ...signals, messages: { total: 40000, threads: 25, groupThreads: 0, sent: 20000, received: 20000, avgSentLength: 80,
+      ownTexts: Array.from({ length: 20000 }, (_, i) => ({ text: 'A message of my own about the plan and the people in it, number ' + i + ' ' + 'w'.repeat(220), ts: 1500000000 + i * 3600, thread: i % 25 })) } };
+    const withChats = n => Digest.build({ ...fullDms, supplements: { whatsapp: { chats: [longChat('c1', 5000), longChat('c2', 5000), longChat('c3', 5000)].slice(0, n) } } },
+      { includeMessages: true });
+    const threads = d => new Set((d.directMessages.ownMessageSample || []).map(l => (/\[t(\d+)\]/.exec(l) || [])[1]).filter(Boolean)).size;
+    const two = withChats(2);
+    const three = withChats(3);
+    const twoPer = ['c1', 'c2'].map(c => chars(two.whatsapp.ownMessageSample, c));
+    const threePer = ['c1', 'c2', 'c3'].map(c => chars(three.whatsapp.ownMessageSample, c));
+    const dm2 = Digest.poolSizes(two).conversations.instagram;
+    const dm3 = Digest.poolSizes(three).conversations.instagram;
+    const dm0 = Digest.poolSizes(withChats(0)).conversations.instagram;
+    check('beside full DMs: two chats at 25,000 each with the DMs on about 45,000, three at 20,000 each with the DMs on about 35,000, never under 30,000',
+      dm0 > 70000 && twoPer.every(n => n > 20000 && n <= 25000) && threePer.every(n => n > 16000 && n <= 20000) &&
+        dm2 > 40000 && dm3 >= 30000 && Digest.poolSizes(three).conversations.total <= 95000,
+      JSON.stringify({ dm0, twoPer, dm2, threePer, dm3 }));
+    // A smaller inbox that fits beside the chats is not cut to six.
+    const smallDms = Digest.build({ ...fullDms, messages: { ...fullDms.messages, ownTexts: fullDms.messages.ownTexts.slice(0, 90) },
+      supplements: { whatsapp: { chats: [longChat('c1', 5000), longChat('c2', 5000), longChat('c3', 5000)] } } }, { includeMessages: true });
+    const smallAlone = Digest.build({ ...fullDms, messages: { ...fullDms.messages, ownTexts: fullDms.messages.ownTexts.slice(0, 90) } }, { includeMessages: true });
+    check('while DMs that fit in the room the chats leave keep all their conversations',
+      threads(smallDms) === threads(smallAlone) && Digest.poolSizes(smallDms).conversations.instagram > Digest.poolSizes(smallAlone).conversations.instagram - 1500,
+      JSON.stringify([threads(smallDms), threads(smallAlone), Digest.poolSizes(smallDms).conversations.instagram, Digest.poolSizes(smallAlone).conversations.instagram]));
+    check('and squeezed under 50,000, the DMs come from their top six conversations rather than ten',
+      threads(three) === Digest.DM_FOCUS_THREADS && threads(two) === Digest.DM_FOCUS_THREADS && threads(withChats(1)) === 10 &&
+        three.coverage.sampling.ownMessages.fromThreads <= 6,
+      JSON.stringify([threads(withChats(1)), threads(two), threads(three)]));
+  }
   // A chat with less to give leaves its room unspent: no other source grows.
   const small = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 20)] } } }, { includeMessages: false });
   check('a short chat sends what it has, and the room it leaves goes nowhere',
@@ -5414,8 +5456,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const merged = Digest.addSupplements(JSON.parse(JSON.stringify(spilled)), { whatsapp: { chats: [chat(1), chat(2), chat(3)] } });
     const mp = Digest.poolSizes(merged);
     check('and chats added later take that room back: they go in whole, the public pool gives way',
-      mp.conversations.whatsapp > 3 * 11000 && mp.public.total < sp.public.total + 8000 &&
-        mp.public.total <= 40000 + (72000 - mp.conversations.total) && Digest.evidenceChars(merged) <= 126000,
+      mp.conversations.whatsapp > 3 * 20000 && mp.public.total < sp.public.total + 8000 &&
+        mp.public.total <= 50000 + (95000 - mp.conversations.total) && Digest.evidenceChars(merged) <= Digest.budgetFor(merged),
       JSON.stringify({ whatsapp: mp.conversations.whatsapp, public: mp.public.total, total: Digest.evidenceChars(merged) }));
     const heavyDms = Digest.build({ ...fewDms, messages: { ...fewDms.messages, sent: 15000,
       ownTexts: Array.from({ length: 15000 }, (_, i) => ({ text: 'A message of my own, a sentence or two about the plan, number ' + i + ' ' + 'w'.repeat(100), ts: 1500000000 + i * 3600, thread: i % 40 })) } },
@@ -5852,12 +5894,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('Facebook goes into the public pool\'s room above Instagram, which keeps its 50,000',
       after.public.instagram >= 49000 && after.public.instagram <= 50000 + 1000 &&
         added.samples.captions.length >= base.samples.captions.length - 10 && sameList(added.mostLikedAccounts, base.mostLikedAccounts) &&
-        sameList(added.google, base.google) && after.public.facebook > 18000 && after.public.total <= 70000,
+        sameList(added.google, base.google) && after.public.facebook > 18000 &&
+        after.public.total <= 70000 + (95000 - after.conversations.total),
       JSON.stringify(after.public));
-    // Conversations: the chats go first, and the Instagram DMs and Messenger
-    // share what is left of the 95,000.
+    // Conversations: the chats go first, at 20,000 each beside DMs with three
+    // of them, and the Instagram DMs and Messenger share what is left of the
+    // 95,000, never under 30,000 between them.
     check('WhatsApp goes first in the conversations pool, the Instagram DMs and Messenger sharing the rest',
-      after.whatsapp === undefined && after.conversations.whatsapp > 3 * 12000 && after.conversations.whatsapp <= 3 * 15000 + 400 &&
+      after.whatsapp === undefined && after.conversations.whatsapp > 3 * 17000 && after.conversations.whatsapp <= 3 * 20000 + 400 &&
+        after.conversations.instagram + after.conversations.facebook >= 30000 &&
         // The fixture's Messenger is one conversation, so it stops at its 15,000.
         after.conversations.instagram < before.conversations.instagram && after.conversations.facebook > 12000 &&
         after.conversations.facebook <= 15000 + 400 && after.conversations.total <= 95000 && after.conversations.total > 90000,
@@ -6334,7 +6379,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const { tmpdir } = require('node:os');
     const { join } = require('node:path');
     const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
-      env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '${promo}',
+      // Two calls here, the baseline the one-call checks below compare
+      // against (one call is the default since 26 October 2026).
+      env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '${promo}', PSYCHEAI_MERGED_UNLOCK: 'false',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-selftest-budget-${process.pid}.jsonl'),
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-selftest-routes-usage-${process.pid}.jsonl') },
       stdio: 'ignore',
@@ -6491,7 +6538,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     };
     const shape = (o, pre) => Object.entries(o || {}).flatMap(([k, v]) =>
       v && typeof v === 'object' && !Array.isArray(v) ? shape(v, (pre || '') + k + '.') : [(pre || '') + k]).sort().join();
-    const one = oneCall(port + 1, { PSYCHEAI_MERGED_UNLOCK: '1' });
+    // Unset: the default is one call.
+    const one = oneCall(port + 1, {});
     const oneData = data(one);
     // Exactly the two calls' shape, except fields the mock writes that the real
     // schemas never ask for (the old `activity` section, the card's attachment):
@@ -6571,6 +6619,14 @@ check('every prompt that writes for the reader calls their data "your data", nev
 check('and the server rewrites any that still come back',
   /function readerText/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
     /return readerText\(cleaned\)/.test(readFileSync(join(root, 'server.js'), 'utf8')));
+// A refused free read from chats says only that the free card is spent, never which chat was used before
+// (26 October 2026), so it does not tell a reader which chat to swap out.
+// The reader's thumbs on findings reach Ask PsycheAI as their word on themselves (October 2026).
+check('Ask PsycheAI takes the reader\'s marks as their word, never arguing a "not quite" back',
+  /readerMarks/.test(prompts.ASK_SYSTEM) && /never argue the finding back at them/.test(prompts.ASK_SYSTEM));
+check('a refused free read from chats does not name the chat that was used before',
+  readFileSync(join(root, 'server.js'), 'utf8').includes("chatUsed || chatsOnly ? 'You have already used your free Psyche Card.'") &&
+    !/One of these chats|These chats have already/.test(readFileSync(join(root, 'server.js'), 'utf8')));
 
 // Nothing sexual or about infidelity, no accusations, no quoted threats, and
 // harm to others never a joke: in the card and roast, and in the paid report.
@@ -8059,7 +8115,7 @@ check('the schema requires evidence on where they align and differ',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 49 &&
+  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 52 &&
     ['/', '/privacy', '/terms', '/refunds', '/faq', '/sample-report', '/characters', '/mbti-types', '/intj-personality']
       .every(path => paths.includes(path)), JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
@@ -8120,7 +8176,7 @@ check('the schema requires evidence on where they align and differ',
         !md.startsWith('---\n') || !md.includes('canonical: https://psycheai.io' + p + '\n') || !md.includes('updated: ' + d.modified + '\n') || /<[a-z\/]/.test(md);
     }).map(([p]) => p);
     check('every guide and generated page carries its dates, its author and a clean Markdown copy, and the sitemap its last change',
-      dated.length === 45 && undated.length === 0, undated.join());
+      dated.length === 48 && undated.length === 0, undated.join());
     const drafts = TOPICS.filter(t => t.draft).map(t => '/' + t.slug);
     const llmsText = readFileSync(join(root, 'docs', 'llms.txt'), 'utf8');
     check('a draft page is written but kept out of search: noindex, undated, no Markdown copy, not in the sitemap or llms.txt',
@@ -9090,6 +9146,149 @@ check('the schema requires evidence on where they align and differ',
   const declined = Digest.omitWhatsApp(JSON.parse(JSON.stringify(merged)));
   check('WhatsApp: unticked at the review, the whole block goes',
     !declined.whatsapp && !declined.coverage.sources.includes('whatsapp') && !declined.coverage.sampling.whatsappMessages);
+}
+
+// ---------- one file box, and WhatsApp chats alone (October 2026) ----------
+//
+// Every file goes in one box and is sorted by what is inside it
+// (Supplement.detectSource). A first read needs Instagram or three WhatsApp
+// chats: a digest of chats alone (Digest.buildFromSupplements) has no
+// Instagram part, forModel sends none, and the prompts are told what that
+// means. The reader is known by a one-way code of their name and their
+// chats (WhatsApp.accountSource), so the same three chats are one free read.
+{
+  const WA = globalThis.PsycheWhatsApp;
+  const kinds = await Promise.all([
+    new File([buildExportZip()], 'instagram-export.zip'),
+    new File([buildTakeoutZip()], 'takeout.zip'),
+    new File([buildForeignExportZip()], 'facebook.zip'),
+    new File(['8/14/26, 2:03 PM - Jo Park: hi'], 'WhatsApp Chat with Kim.txt'),
+    new File([makeZip([{ name: '_chat.txt', content: '8/14/26, 2:03 PM - Jo Park: hi' }])], 'WhatsApp Chat - Kim.zip'),
+    new File([makeZip([{ name: 'media/photo_1.jpg', content: 'x' }])], 'instagram-part-2.zip'),
+    new File(['not a zip'], 'notes.pdf'),
+  ].map(f => Supplement.detectSource(f)));
+  check('one box: each file is sorted by what is inside it',
+    kinds.join() === 'instagram,google,facebook,whatsapp,whatsapp,unknown,unknown', kinds.join());
+
+  const line = (friend, i, own) => `${1 + Math.floor(i / 27) % 12}/${1 + (i % 27)}/25, 9:0${i % 10} PM - ` +
+    (own ? 'Jo Park: honestly I think you should take the job in ' + friend + ' town, ' + i + ' ' + friend.length
+      : friend + ': tell me more about it ' + i);
+  const chatText = friend => Array.from({ length: 200 }, (_, i) => line(friend, i, i % 2)).join('\n');
+  const files = ['Mia Wong', 'Jun Lee', 'Ava Tan'].map(f => new File([chatText(f)], 'WhatsApp Chat with ' + f + '.txt'));
+  const chats = await WA.readChats(files);
+  const owner = WA.resolveOwner(chats, []).owner;
+  const summary = WA.summarise(chats, owner);
+  const alone = Digest.buildFromSupplements({ whatsapp: summary });
+  const sent = Digest.forModel(alone);
+  const evidence = Digest.renderEvidence(sent);
+  check('WhatsApp alone: a digest of the three chats, with no Instagram part',
+    owner === 'Jo Park' && alone.coverage.sources.join() === 'whatsapp' && alone.whatsapp.chats.length === 3 &&
+      !Digest.hasInstagram(alone) && Digest.hasInstagram({ coverage: { sources: ['instagram', 'whatsapp'] } }) &&
+      Digest.hasInstagram({}) && Digest.ownWritingChars(alone) > 5000,
+    JSON.stringify([owner, alone.coverage.sources, Digest.ownWritingChars(alone)]));
+  check('and none is sent: no empty caption lists, counts or Instagram coverage for the model to read as an empty account',
+    !('samples' in sent) && !('instagramTopics' in sent) && !('counts' in sent) && !('filesRead' in sent.coverage) &&
+      !/samples\.captions|instagramTopics/.test(evidence) && /whatsapp\.ownMessageSample/.test(evidence),
+    Object.keys(sent).join());
+  check('and the reader\'s own name is blanked in it, as with Instagram',
+    sent.profile.name === 'PsycheUser' && !/Jo Park/.test(evidence));
+  check('the review\'s switches work on it: switching off captions or liked posts does not throw',
+    (() => { try { Digest.omitCaptionsAndComments(JSON.parse(JSON.stringify(alone))); Digest.omitLikedCaptions(JSON.parse(JSON.stringify(alone))); return true; } catch (e) { return false; } })());
+  // New chats replace the ones a stored digest holds, rather than being
+  // dropped because it already has some.
+  const other = WA.summarise(await WA.readChats([new File([chatText('Zoe Lim')], 'WhatsApp Chat with Zoe Lim.txt')]), 'Jo Park');
+  const replaced = Digest.addSupplements(JSON.parse(JSON.stringify(alone)), { whatsapp: other });
+  check('new WhatsApp chats replace the ones in a stored digest',
+    replaced.whatsapp.chats.length === 1 && replaced.coverage.sources.filter(x => x === 'whatsapp').length === 1,
+    JSON.stringify([replaced.whatsapp.chats.length, replaced.coverage.sources]));
+
+  // Chats kept across a re-run (Digest.carryChats): the stored lines join a
+  // digest rebuilt from Instagram, or a chat added after a reload.
+  {
+    const twoStored = Digest.buildFromSupplements({ whatsapp: WA.summarise(chats.slice(0, 2), owner) });
+    const ig = Digest.build({ ...signals, supplements: {} }, { includeMessages: true });
+    const igTop = Math.max(0, ...[...Digest.renderEvidence(ig).matchAll(/\[N(\d+)\]/g)].map(m => Number(m[1])));
+    const storedWithName = JSON.parse(JSON.stringify(twoStored));
+    storedWithName.whatsapp.ownMessageSample.unshift('[2025] [c1] dinner with [N1] on friday');
+    const carried = Digest.carryChats(JSON.parse(JSON.stringify(ig)), storedWithName);
+    const perChat = c => carried.whatsapp.ownMessageSample.filter(l => String(l).includes('[' + c + ']')).reduce((n, l) => n + String(l).length, 0);
+    const carriedNs = carried.whatsapp.ownMessageSample.flatMap(l => [...String(l).matchAll(/\[N(\d+)\]/g)].map(m => Number(m[1])));
+    check('adding Instagram to a card read from chats keeps the chats: their stored lines are carried in, at the share chats have beside Instagram',
+      Digest.hasInstagram(carried) && carried.coverage.sources.join() === 'instagram,whatsapp' && carried.whatsapp.chats.length === 2 &&
+        ['c1', 'c2'].every(c => perChat(c) > 0 && perChat(c) <= 25000) && Object.keys(carried.__chatKeys).join() === 'c1,c2' &&
+        carriedNs.length === 1 && carriedNs.every(n => n > igTop) && Digest.forModel(carried).whatsapp.ownMessageSample.length === carried.whatsapp.ownMessageSample.length,
+      JSON.stringify({ sources: carried.coverage.sources, c1: perChat('c1'), c2: perChat('c2'), igTop, carriedNs: carriedNs.slice(0, 3) }));
+    const third = WA.summarise(chats.slice(2, 3), owner);
+    Object.defineProperty(third, 'addsTo', { value: 2, enumerable: false });
+    const joined = Digest.addSupplements(JSON.parse(JSON.stringify(twoStored)), { whatsapp: third });
+    check('and a chat added after a reload joins the stored two as the third, rather than replacing them',
+      joined.whatsapp.chats.map(c => c.chat).join() === 'c1,c2,c3' && Object.keys(joined.__chatKeys).length === 3 &&
+        ['c1', 'c2', 'c3'].every(c => joined.whatsapp.ownMessageSample.some(l => String(l).includes('[' + c + ']'))) &&
+        joined.coverage.sources.filter(x => x === 'whatsapp').length === 1,
+      JSON.stringify(joined.whatsapp.chats.map(c => c.chat)));
+    const replacedNotAdded = Digest.addSupplements(JSON.parse(JSON.stringify(twoStored)), { whatsapp: WA.summarise(chats.slice(2, 3), owner) });
+    check('while chats picked as a new set still replace the stored ones',
+      replacedNotAdded.whatsapp.chats.length === 1);
+    // Review fixes (26 October 2026).
+    {
+      // Switched off at the review, a chat goes whole: lines, counts, timings.
+      const off = JSON.parse(JSON.stringify(twoStored));
+      Digest.trimLines(off, { chatsOff: { 'whatsapp.ownMessageSample': ['c2'] } });
+      const sentOff = Digest.forModel(off);
+      check('a WhatsApp chat switched off at the review goes whole: its lines and its counts and timings',
+        sentOff.whatsapp.chats.map(c => c.chat).join() === 'c1' && !sentOff.whatsapp.ownMessageSample.some(l => String(l).includes('[c2]')) &&
+          !('c2' in off.__chatKeys) && off.coverage.sampling.whatsappMessages.shown === off.whatsapp.ownMessageSample.length,
+        JSON.stringify(sentOff.whatsapp.chats.map(c => c.chat)));
+      const allOff = JSON.parse(JSON.stringify(twoStored));
+      Digest.trimLines(allOff, { chatsOff: { 'whatsapp.ownMessageSample': ['c1', 'c2'] } });
+      check('and with every chat switched off, nothing of WhatsApp is left to send',
+        !allOff.whatsapp && !allOff.coverage.sources.includes('whatsapp'));
+      // Numbers carried through the names kept on the device: a person both
+      // digests know keeps the new number; anyone else takes a free one that
+      // a name numbered later cannot reuse.
+      const into = JSON.parse(JSON.stringify(ig));
+      into.__names = { 'jo park': 1, 'mia wong': 3 };
+      const from = JSON.parse(JSON.stringify(twoStored));
+      from.__names = { 'mia wong': 1, 'ben ode': 2 };
+      from.whatsapp.ownMessageSample.unshift('[2025] [c1] dinner with [N1] and [N2] on friday');
+      const mapped = Digest.carryChats(into, from);
+      const line = mapped.whatsapp.ownMessageSample.find(l => /dinner with/.test(String(l)));
+      const benN = mapped.__names['ben ode'];
+      check('carried chats keep each person\'s number in the new digest (the same person, the same number), and record anyone new',
+        /dinner with \[N3\] and \[N(\d+)\]/.test(line) && Number(/and \[N(\d+)\]/.exec(line)[1]) === benN && benN > 3,
+        String(line) + ' ' + JSON.stringify(mapped.__names));
+      // The review's chat names: the new chats move to their new numbers.
+      const named = Digest.buildFromSupplements({ whatsapp: WA.summarise(chats.slice(2, 3), owner) });
+      const third2 = WA.summarise(chats.slice(2, 3), owner);
+      Object.defineProperty(third2, 'addsTo', { value: 2, enumerable: false });
+      const joined2 = Digest.addSupplements(JSON.parse(JSON.stringify(twoStored)), { whatsapp: third2 });
+      check('a chat added to the stored two is named in the review as the third, and the numbers in the one digest stay as they were',
+        joined2.chatNames && joined2.chatNames.c3 === 'Ava Tan' && !joined2.chatNames.c1 &&
+          JSON.stringify(joined2.whatsapp.ownMessageSample.filter(l => /\[c[12]\]/.test(String(l))).slice(0, 3)) ===
+            JSON.stringify(twoStored.whatsapp.ownMessageSample.slice(0, 3)),
+        JSON.stringify(joined2.chatNames) + ' ' + Boolean(named));
+      check('the paid report\'s and Ask PsycheAI\'s prompts are told about chats alone too',
+        prompts.PREMIUM_SYSTEM.includes(prompts.CHATS_ONLY_RULE) && /has no `instagram`, it is a few WhatsApp chats/.test(prompts.ASK_SYSTEM));
+    }
+    check('a stored chat is known again by a one-way key of who it is with, never by the name',
+      Digest.chatKey('Mia Wong') === Digest.chatKey('mia wong!') && Digest.chatKey('Mia Wong') !== Digest.chatKey('Jun Lee') &&
+        !JSON.stringify(twoStored.__chatKeys).includes('Mia') && !('__chatKeys' in Digest.forModel(twoStored)));
+  }
+
+  const code = WA.accountSource(summary);
+  const reordered = WA.accountSource(WA.summarise(chats.slice().reverse(), owner));
+  check('the free-read code: the reader\'s name and each chat\'s other side and first day, in any order',
+    /^jo park\|/.test(code) && code === reordered && code.split('|').length === 4 &&
+      code !== WA.accountSource(other) && WA.accountSource({ owner: '', chats: [] }) === '', code);
+
+  check('the prompts say what a digest of chats alone is, and score it lower',
+    prompts.FREE_SYSTEM.includes(prompts.CHATS_ONLY_RULE) && prompts.FULL_SYSTEM.includes(prompts.CHATS_ONLY_RULE) &&
+      /has no `instagram`/.test(prompts.CHATS_ONLY_RULE) && /never how many people the reader seeks out/.test(prompts.CHATS_ONLY_RULE) &&
+      /WhatsApp chats with no Instagram, 55–72/.test(prompts.CONFIDENCE_SCORING) &&
+      !/Instagram is always there/.test(prompts.FULL_SYSTEM));
+  const blocks = prompts.profileBlocks ? prompts.profileBlocks(sent) : null;
+  check('and the request names WhatsApp as the source, not Instagram',
+    !blocks || /built from their WhatsApp data/.test(blocks[0].text), blocks && blocks[0].text.slice(0, 120));
 }
 
 // ---------- one payment, one generation at a time ----------

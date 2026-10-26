@@ -4,7 +4,7 @@ description: "The Psyche personality test reads your MBTI, Big Five, love langua
 canonical: https://psycheai.io/psyche-personality-test
 author: "Jared, founder of PsycheAI"
 published: 2026-10-20
-updated: 2026-10-21
+updated: 2026-10-26
 ---
 
 # The Psyche personality test
@@ -22,7 +22,7 @@ Most personality tests ask you questions about yourself. The Psyche personality 
 
 ## How it works
 
-1. Request your data from Instagram. It takes about 30 seconds, and the file usually arrives within 1–2 hours. [Step-by-step guide](https://psycheai.io/download-instagram-data).
+1. Request your data from Instagram. It takes about 30 seconds, and the file usually arrives within 1–2 hours. [Step-by-step guide](https://psycheai.io/download-instagram-data). Or export two or three WhatsApp chats, which takes seconds.
 2. Load the file in PsycheAI. It is read in your own browser and reduced to a short, de-identified digest of your own activity, which you can review.
 3. Your Psyche Card is written from that digest, with a signal strength score saying how much evidence there was.
 

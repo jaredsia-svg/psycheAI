@@ -336,5 +336,40 @@
     return { kept, repeated };
   }
 
-  root.PsycheWhatsApp = { readChats, resolveOwner, summarise, parseLines, settleDates, titleFromFileName, sameChat, dropRepeats, LIMITS };
+  /**
+   * What a reader who loads WhatsApp chats and no Instagram is known by, for
+   * the one free read each (October 2026): their own name as the chats show
+   * it, then each chat's other side (its title) and the day its first message
+   * was sent, sorted so the order the chats were picked in does not matter.
+   * The page turns this into a one-way code and sends only that (accountKeys
+   * in app.js). A display name alone is shared by thousands of people; with
+   * the chats beside it two people practically never match. It stops the
+   * same three chats being loaded again, not a new three: a deliberate,
+   * cheap guard, said as much in README.md ("WhatsApp chats alone").
+   * '' when the summary has no owner or no chats.
+   */
+  function accountSource(summary) {
+    const s = summary || {};
+    const chats = Array.isArray(s.chats) ? s.chats : [];
+    if (!s.owner || !chats.length) return '';
+    const parts = chats.map(c => norm(c.title || '') + '@' + String((c.span && c.span.first) || '')).sort();
+    return norm(s.owner) + '|' + parts.join('|');
+  }
+
+  /**
+   * The same, one string a chat (October 2026): the reader's name, who the
+   * chat is with and the day it began. The page hashes each and the server
+   * refuses a free read when any one has been in a free read before, so
+   * keeping one chat and swapping the rest is not a second free read. The
+   * reader's own name first, so a friend's export of the same chat is a
+   * different code. [] when there is no owner.
+   */
+  function chatSources(summary) {
+    const s = summary || {};
+    const chats = Array.isArray(s.chats) ? s.chats : [];
+    if (!s.owner) return [];
+    return chats.map(c => norm(s.owner) + '|' + norm(c.title || '') + '@' + String((c.span && c.span.first) || ''));
+  }
+
+  root.PsycheWhatsApp = { readChats, resolveOwner, summarise, accountSource, chatSources, parseLines, settleDates, titleFromFileName, sameChat, dropRepeats, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

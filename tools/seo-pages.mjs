@@ -117,8 +117,8 @@ ${draft ? '' : '    ' + BYLINE + '\n'}    <p class="btn-row"><a class="btn" href
 ${body}
   <section class="guide-cta">
     <h2>Your first Psyche Card is free</h2>
-    <p>No questionnaire, no account. About a minute once your Instagram data is ready.</p>
-    <p><a class="btn" href="/">Start with your Instagram data</a></p>
+    <p>No questionnaire, no account. About a minute once your Instagram data is ready, or straight away with two WhatsApp chats.</p>
+    <p><a class="btn" href="/">Get your free Psyche Card</a></p>
   </section>
 </main>
 ${FOOTER}
@@ -333,9 +333,11 @@ for (const slug of LEGAL) {
 }
 
 // ---------- dates ----------
-// Every page but the drafts is dated: hashed with its dates and the shared
-// footer left out, and given today's date as "modified" when that hash
-// moves. A link added to the footer is not a change to every page's words.
+// Every page but the drafts is dated: hashed with its dates, the shared
+// footer and the shared closing call to action (.guide-cta) left out, and
+// given today's date as "modified" when that hash moves. A link added to the
+// footer, or a line changed in the closing box, is not a change to every
+// page's words.
 const DRAFTS = new Set(TOPICS.filter(t => t.draft).map(t => t.slug));
 const datesFile = join(root, 'tools', 'seo', 'dates.json');
 const known = existsSync(datesFile) ? JSON.parse(readFileSync(datesFile, 'utf8')) : {};
@@ -350,7 +352,8 @@ const longDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB',
 const dates = {};
 for (const [slug, html] of pages) {
   if (DRAFTS.has(slug)) continue;
-  const hash = createHash('sha256').update(html.replace(FOOTER, '')).digest('hex').slice(0, 16);
+  const hash = createHash('sha256').update(html.replace(FOOTER, '').replace(/<section class="guide-cta">[\s\S]*?<\/section>/, ''))
+    .digest('hex').slice(0, 16);
   const was = known[slug];
   if (was && was.hash === hash) dates[slug] = was;
   else if (was) dates[slug] = { published: was.published, modified: today, hash };
@@ -438,7 +441,7 @@ ${LEGAL.map(s => url(s, 'yearly', '0.3')).join('\n')}
 `;
 const llms = `# PsycheAI
 
-> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram data or two or three WhatsApp chats, with no questionnaire. Your browser reads your Instagram data download or chat exports, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 Every page below is also plain Markdown at the same address with .md on the end.
 

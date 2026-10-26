@@ -4,7 +4,7 @@ description: "Answers about PsycheAI: what it is, what file you need, what happe
 canonical: https://psycheai.io/faq
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Frequently asked questions
@@ -15,15 +15,15 @@ What PsycheAI is, what happens to your data, and what it costs.
 
 ### What is PsycheAI?
 
-A reading of yourself already sitting in your Instagram data (and, if you like, WhatsApp, Google or Facebook). Your free summary card names the character you are most like, your signature patterns, what motivates you, your MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part of it with evidence from your data. It is not a test and not a diagnosis.
+A reading of yourself already sitting in your Instagram data or WhatsApp chats (and, if you like, Google or Facebook). Your free summary card names the character you are most like, your signature patterns, what motivates you, your MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part of it with evidence from your data. It is not a test and not a diagnosis.
 
 ### How long does it take?
 
-Instagram usually takes 1–2 hours to prepare the data zip file. The analysis takes a few minutes. Request your data first and come back when the email arrives.
+Instagram usually takes 1–2 hours to prepare the data zip file. The analysis takes a few minutes. Request your data first and come back when the email arrives. No time to wait? Two WhatsApp chats export in seconds.
 
 ### What file do I need?
 
-Your Instagram data as a .zip, in JSON format (not HTML). [See the illustration](https://psycheai.io/download-instagram-data) for every step.
+Your Instagram data as a .zip, in JSON format (not HTML), or 2–3 WhatsApp chats, each exported from the chat itself (Without media). [See the illustration](https://psycheai.io/download-instagram-data) for every step.
 
 ## Your data
 

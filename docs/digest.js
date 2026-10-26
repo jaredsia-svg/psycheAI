@@ -252,13 +252,12 @@
     fbMessages: 600,
     // The reader's own messages from up to three WhatsApp chats, sampled per
     // chat like any other conversation and tagged [c1]–[c3]. Each chat is
-    // guaranteed a quarter of the places when it has that many.
-    waMessages: 450,
-    // No one WhatsApp chat's lines may run past this many characters: about
-    // sixty lines with their context. Three of
-    // them at their ceiling are half of the conversations pool, so no one
-    // chat sets the tone of the report. See POOLS.
-    waThreadChars: 15000,
+    // guaranteed a quarter of the places when it has that many. 1,200 since
+    // a chat may take 25,000 characters or more (waChatChars), about 300
+    // lines: at 450, two fifths of the places held a chat near 15,000.
+    waMessages: 1200,
+    // Each WhatsApp chat's character ceiling is waChatChars (October 2026);
+    // it was a flat 15,000 here, `waThreadChars`.
     waMinShare: 0.25,
     // And at most two fifths of them, as a hard ceiling: when two or three
     // chats are loaded, places a chat cannot use are left empty rather than
@@ -831,7 +830,7 @@
   }
   const DEEP_LIMITS = {
     totalChars: DEEP_DIGEST_CHARS, poolCaps: DEEP_POOL_CAPS, maxListItems: 1500,
-    igThreadChars: 15000, messageThreadChars: 15000, waThreadChars: 15000, waMessages: 450,
+    igThreadChars: 15000, messageThreadChars: 15000, waMessages: 1200,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
   function withDepth(deep, fn) {
@@ -995,8 +994,9 @@
   // 13,750 once the MBTI rubric became a guide the model weighs (13,710).
   // 14,100 once J/P was read by area and an uncounted note counted as weak
   // (14,074 measured). 14,250 with the shared-words rows on N/S and T/F
-  // (14,216 measured).
-  const FREE_FIXED_INPUT_TOKENS = 14250;
+  // (14,216 measured). 14,550 with the rule for a digest of WhatsApp chats
+  // alone (CHATS_ONLY_RULE, 14,493 measured).
+  const FREE_FIXED_INPUT_TOKENS = 14550;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -2076,6 +2076,164 @@
     return digest;
   }
 
+  // ---------- chats kept across a re-run (26 October 2026) ----------
+  //
+  // A stored digest keeps only the sampled lines of the reader's chats, not
+  // the files. When Instagram is added later, or another chat after a
+  // reload, those lines are carried into the new digest rather than lost:
+  // nothing new is sent, only a part of what the reader already reviewed and
+  // sent, trimmed evenly to the share each chat now has (waChatChars). Their
+  // [N#]/[P#] numbers move past the new digest's own, so a number never
+  // stands for two people. Chats the new digest already holds (picked to add
+  // to the stored ones) are numbered after them, c3 after c1 and c2. Three
+  // chats at most: more, and the new ones stand alone.
+  // A number, not a string: the contact scrub reads every string in the
+  // digest, and a string of digits is a phone number to it.
+  function chatKey(title) {
+    const t = String(title || '').toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N} ]/gu, '').trim();
+    return t ? stableHash(t) : 0;
+  }
+  function dropChats(digest) {
+    delete digest.whatsapp;
+    delete digest.__chatKeys;
+    if (digest.coverage) {
+      if (Array.isArray(digest.coverage.sources)) digest.coverage.sources = digest.coverage.sources.filter(x => x !== 'whatsapp');
+      if (digest.coverage.sampling) delete digest.coverage.sampling.whatsappMessages;
+    }
+  }
+  const CHAT_TAG = /\[c(\d)\]/;
+  function carryChats(digest, stored, options) {
+    const old = stored && stored.whatsapp;
+    if (!digest || !old || !Array.isArray(old.chats) || !old.chats.length) return digest;
+    const fresh = digest.whatsapp;
+    const freshChats = fresh && Array.isArray(fresh.chats) ? fresh.chats : [];
+    if (old.chats.length + freshChats.length > 3) return digest;
+    const text = line => (typeof line === 'string' ? line : String((line && line.text) || ''));
+    // The stored lines' [N#]/[P#] numbers, in the new digest's numbering:
+    // a person both digests know keeps the new digest's number; anyone else
+    // gets the next free one, recorded in its own list (__names, __people) so
+    // a name numbered later cannot take it. A number the stored digest kept
+    // no name for moves past every number in use.
+    const rendered = renderEvidence(digest);
+    const inText = mark => Math.max(0, ...[...rendered.matchAll(new RegExp('\\[' + mark + '(\\d+)\\]', 'g'))].map(m => Number(m[1])));
+    const lists = { N: '__names', P: '__people' };
+    const maps = {};
+    for (const [mark, key] of Object.entries(lists)) {
+      const known = digest[key] || {};
+      let next = Math.max(inText(mark), ...Object.values(known)) + 1;
+      const map = new Map();
+      for (const [who, n] of Object.entries(stored[key] || {})) {
+        if (!known[who]) known[who] = next++;
+        map.set(Number(n), known[who]);
+      }
+      if (Object.keys(known).length) digest[key] = known;
+      maps[mark] = { map, next: () => next++ };
+    }
+    const renumber = line => options && options.sameNumbering ? text(line) : text(line).replace(/\[(N|P)(\d+)\]/g, (m, mark, n) => {
+      const { map, next } = maps[mark];
+      if (!map.has(Number(n))) map.set(Number(n), next());
+      return '[' + mark + map.get(Number(n)) + ']';
+    });
+    // The stored chats keep their labels; any already here follow them.
+    const k = old.chats.length;
+    const relabel = (line, from) => text(line).replace(CHAT_TAG, (m, n) => '[c' + (Number(n) + from) + ']');
+    const chats = old.chats.map(c => Object.assign({}, c))
+      .concat(freshChats.map(c => Object.assign({}, c, { chat: 'c' + (Number(String(c.chat).slice(1)) + k) })));
+    const lines = (old.ownMessageSample || []).map(renumber)
+      .concat(((fresh && fresh.ownMessageSample) || []).map(line => relabel(line, k)));
+    const keys = Object.assign({}, stored.__chatKeys || {});
+    for (const [chat, key] of Object.entries(digest.__chatKeys || {})) keys['c' + (Number(chat.slice(1)) + k)] = key;
+    // The review's chat names (on this device only): the chats already here
+    // move to their new numbers; the stored ones have none after a reload.
+    const names = Object.getOwnPropertyDescriptor(digest, 'chatNames');
+    if (names && names.value) {
+      const moved = {};
+      for (const [tag, name] of Object.entries(names.value)) {
+        if (/^c\d$/.test(tag)) moved['c' + (Number(tag.slice(1)) + k)] = name;
+        else moved[tag] = name;
+      }
+      names.value = moved;
+      Object.defineProperty(digest, 'chatNames', names);
+    }
+    const freshSampling = digest.coverage && digest.coverage.sampling && digest.coverage.sampling.whatsappMessages;
+    const oldSampling = stored.coverage && stored.coverage.sampling && stored.coverage.sampling.whatsappMessages;
+    dropChats(digest);
+    // Each chat's share in this digest, its lines thinned evenly to fit.
+    const each = (options && options.chatChars) || waChatChars(digest, chats.length);
+    const kept = [];
+    for (const chat of chats) {
+      let mine = lines.filter(line => (CHAT_TAG.exec(line) || [])[1] === chat.chat.slice(1));
+      while (mine.length > 1 && listChars(mine) > each) {
+        const per = listChars(mine) / mine.length + 1;
+        mine = dropEvenly(mine, Math.min(mine.length - 1, Math.max(1, Math.ceil((listChars(mine) - each) / per))));
+      }
+      kept.push(...mine);
+    }
+    digest.whatsapp = { note: old.note || (fresh && fresh.note) || '', chats, ownMessageSample: kept };
+    digest.__chatKeys = keys;
+    if (!digest.coverage) digest.coverage = { sources: [], sampling: {} };
+    if (!Array.isArray(digest.coverage.sources)) digest.coverage.sources = [];
+    digest.coverage.sources.push('whatsapp');
+    if (!digest.coverage.sampling) digest.coverage.sampling = {};
+    digest.coverage.sampling.whatsappMessages = {
+      shown: kept.length,
+      available: chats.reduce((sum, c) => sum + ((c.counts && c.counts.sentByUser) || 0), 0),
+      withContext: ((oldSampling && oldSampling.withContext) || 0) + ((freshSampling && freshSampling.withContext) || 0),
+    };
+    const caps = poolCapsFor(digest);
+    if (digest.directMessages && caps.conversations !== Infinity) {
+      const sizes = poolSizes(digest).conversations;
+      const room = caps.conversations - (sizes.total - (sizes.instagram || 0));
+      if (room < DM_FOCUS_BELOW) focusThreads(digest, DM_FOCUS_THREADS, room);
+    }
+    trimToBudget(digest, budgetFor(digest));
+    return digest;
+  }
+
+  // ---------- WhatsApp chats alone ----------
+  //
+  // A reader may start from three WhatsApp chats instead of Instagram
+  // (October 2026), with Google or Facebook beside them if they like. The
+  // digest is the same object with no Instagram part: no counts, rhythm,
+  // captions or DMs, and `coverage.sources` without 'instagram', which is
+  // how every reader of a digest (forModel, the prompts, the page) tells. The
+  // chats fill the conversations pool as they do beside Instagram, at
+  // up to 40,000 a chat (waChatChars). The empty `samples` keep the shape the trim and the
+  // review expect; forModel leaves them out of what is sent.
+  function buildFromSupplements(supplements, options) {
+    if (options && options.deep) {
+      return withDepth(true, () => buildFromSupplements(supplements, Object.assign({}, options, { deep: false })));
+    }
+    const opts = options || {};
+    const s = Object.assign({}, supplements || {});
+    const owner = String((s.whatsapp && s.whatsapp.owner) || (s.facebook && s.facebook.owner) || '').trim();
+    const digest = {
+      schema: 'psycheai-digest/1',
+      generatedAt: new Date().toISOString(),
+      profile: { name: owner, username: '', bio: '' },
+      samples: { captions: [], comments: [], likedPostCaptions: [], likedPostHashtags: [] },
+      coverage: {
+        samplingNote: 'No Instagram data was loaded: this digest is built from the sources in coverage.sources alone. ' +
+          '"sampling" says how much of each text source you are seeing: where shown equals available you are ' +
+          'reading everything that source had, and where it is lower you are reading a subset.',
+        sources: [],
+        sampling: {},
+      },
+    };
+    applySupplements(digest, s);
+    redactOwnHandle(digest, '', owner);
+    pseudonymiseHandles(digest);
+    pseudonymiseNames(digest, supplementNames(s), [owner].concat(supplementOwners(s)));
+    trimToBudget(digest, opts.maxChars || budgetFor(digest));
+    return digest;
+  }
+
+  /** Whether a digest was built with Instagram in it: every digest before October 2026 was. */
+  function hasInstagram(digest) {
+    const sources = digest && digest.coverage && digest.coverage.sources;
+    return !Array.isArray(sources) || !sources.length || sources.includes('instagram');
+  }
+
   // ---------- the reader's own handle ----------
   //
   // What the model is told the reader is called, instead of what they are
@@ -2580,20 +2738,100 @@
         ownMessageSample: sampleConversations(chats.flatMap(c => (c.ownMessages || []).map(m =>
           Object.assign({}, m && typeof m === 'object' ? m : { text: m }, { thread: c.chat }))), {
           limit: LIMITS.waMessages, minShare: LIMITS.waMinShare, maxShare: LIMITS.waMaxShare,
-          threadChars: LIMITS.waThreadChars, label: key => key, alwaysTag: true, stats: waStats,
+          threadChars: waChatChars(digest, chats.length), label: key => key, alwaysTag: true, stats: waStats,
         }),
       };
       chatLabels(digest, chats.map(c => c.chat), (rank, key) => key, key => {
         const c = chats.find(x => x.chat === key);
         return (c && c.title) || '';
       });
+      // A one-way key of each chat's title (who it is with), kept on the
+      // device with the digest and never sent (forModel copies no `__` key):
+      // after a reload it is all that says a chat added later is one already
+      // in (sameStoredChat in app.js).
+      digest.__chatKeys = Object.fromEntries(chats.map(c => [c.chat, chatKey(c.title)]));
       digest.coverage.sampling.whatsappMessages = {
         shown: digest.whatsapp.ownMessageSample.length,
         available: chats.reduce((sum, c) => sum + ((c.counts && c.counts.sentByUser) || 0), 0),
         withContext: waStats.withContext || 0,
       };
+      // What the chats leave the Instagram DMs: under 50,000, the DMs are
+      // read from their top six conversations rather than ten thin ones.
+      const caps = poolCapsFor(digest);
+      if (digest.directMessages && caps.conversations !== Infinity) {
+        const sizes = poolSizes(digest).conversations;
+        const room = caps.conversations - (sizes.total - (sizes.instagram || 0));
+        if (room < DM_FOCUS_BELOW) focusThreads(digest, DM_FOCUS_THREADS, room);
+      }
     }
     return digest;
+  }
+
+  // ---------- how the conversations pool is shared (26 October 2026) ----------
+  //
+  // WhatsApp chats have first claim on the conversations pool: they are the
+  // ones the reader picked, usually their closest people. Each may take up
+  // to 25,000 characters, and the Instagram DMs (with Messenger) keep at
+  // least 30,000 of the 95,000 whenever the export has them. In steps of
+  // 5,000, so the shares are round:
+  //
+  //                       1 chat         2 chats              3 chats
+  //   Instagram, full DMs 25k, DMs 70k   25k each, DMs 45k    20k each, DMs 35k
+  //   Instagram, no DMs   25k            25k each             25k each
+  //   WhatsApp alone      –              40k each             30k each
+  //
+  // Until then every chat was held to 15,000 wherever it was read: three
+  // chats beside an account with no DMs were 28% of the read while room the
+  // pool left spilled into more captions. Room the chats leave unused still
+  // goes to the DMs, then to the public pool (conversationsSpare).
+  const WA_CHAT_CHARS = 25000;
+  const WA_ALONE_CHAT_CHARS = 40000;
+  const DM_FLOOR_CHARS = 30000;
+  const WA_CHAT_STEP = 5000;
+  // The DMs' room below which they keep only their top conversations.
+  const DM_FOCUS_BELOW = 50000;
+  const DM_FOCUS_THREADS = 6;
+  /** Each WhatsApp chat's ceiling, in characters, in this digest with `n` chats. */
+  function waChatChars(digest, n) {
+    const conversations = poolCapsFor(digest).conversations;
+    const sources = (digest.coverage && digest.coverage.sources) || [];
+    const alone = !sources.includes('instagram');
+    const most = alone ? WA_ALONE_CHAT_CHARS : WA_CHAT_CHARS;
+    if (conversations === Infinity || !n) return most;
+    // What else is in the pool before the chats: Instagram DMs and Messenger.
+    const others = poolSizes(digest).conversations.total;
+    const reserve = alone ? 0 : Math.min(others, DM_FLOOR_CHARS);
+    const each = Math.floor((conversations - reserve) / n / WA_CHAT_STEP) * WA_CHAT_STEP;
+    return Math.max(WA_CHAT_STEP, Math.min(most, each));
+  }
+  /**
+   * The Instagram DMs down to as few as their top `keep` conversations
+   * ([t1]…) when the chats leave them less room than they hold: a handful of
+   * real relationships read properly say more than ten read thinly (about
+   * 3,000 characters each at 30,000). The lowest-ranked conversation goes
+   * first, and only while what is left still overflows `room`, so DMs that
+   * fit are never cut; the pool's trim then shares the room among the rest.
+   */
+  function focusThreads(digest, keep, room) {
+    const dm = digest.directMessages;
+    if (!dm || !Array.isArray(dm.ownMessageSample)) return;
+    const rank = line => {
+      const m = /\[t(\d{1,2})\]/.exec(typeof line === 'string' ? line : String((line && line.text) || ''));
+      return m ? Number(m[1]) : 0;
+    };
+    const path = 'directMessages.ownMessageSample';
+    let top = Math.max(0, ...dm.ownMessageSample.map(rank));
+    while (top > keep) {
+      const fewer = dm.ownMessageSample.filter(line => rank(line) < top);
+      if (sectionChars(path, fewer) < room) break;
+      dm.ownMessageSample = fewer;
+      top--;
+    }
+    const sampling = digest.coverage && digest.coverage.sampling && digest.coverage.sampling.ownMessages;
+    if (sampling) {
+      sampling.shown = dm.ownMessageSample.length;
+      if (sampling.fromThreads) sampling.fromThreads = Math.min(sampling.fromThreads, top);
+    }
   }
 
   /**
@@ -2617,7 +2855,22 @@
       return withDepth(true, () => addSupplements(digest, supplements, Object.assign({}, options, { deep: false })));
     }
     const opts = options || {};
+    // New WhatsApp chats replace the ones the digest holds, as they do in the
+    // popout ("these start a fresh set"). Until October 2026 they were
+    // dropped without a word whenever the digest already had chats, since
+    // applySupplements adds a source only once; with WhatsApp a reader's
+    // whole digest, that dropped every change to it.
+    // Chats picked to add to the ones already in (`addsTo`, set by the data
+    // popout when the stored chats' files are not in memory) join them
+    // instead (carryChats).
+    const adding = supplements && supplements.whatsapp && digest.whatsapp && supplements.whatsapp.addsTo
+      ? { whatsapp: digest.whatsapp, coverage: digest.coverage, __chatKeys: digest.__chatKeys } : null;
+    if (supplements && supplements.whatsapp && digest.whatsapp) {
+      dropChats(digest);
+    }
     applySupplements(digest, supplements || {});
+    // One digest, one numbering: nothing to renumber.
+    if (adding) carryChats(digest, JSON.parse(JSON.stringify(adding)), { sameNumbering: true });
     // The handle is not recoverable from the digest by this point — that is the
     // whole idea — so the caller supplies it when it still has the archive in
     // memory. When it does not (a reader merging a Google export into a stored
@@ -2790,16 +3043,16 @@
       // whichever list is largest, not whichever is earliest.
       ['ownMessages', () => digest.directMessages && digest.directMessages.ownMessageSample,
         v => { digest.directMessages.ownMessageSample = v; }],
-      ['captions', () => digest.samples.captions, v => { digest.samples.captions = v; }],
+      ['captions', () => digest.samples && digest.samples.captions, v => { digest.samples.captions = v; }],
       // Trimmed before the reader's own captions and comments would be, by
       // sitting in the same table: the loop shrinks whichever list is largest,
       // and on an account where this one is, other people's words are the
       // right thing to lose first.
-      ['likedPostCaptions', () => digest.samples.likedPostCaptions,
+      ['likedPostCaptions', () => digest.samples && digest.samples.likedPostCaptions,
         v => { digest.samples.likedPostCaptions = v; }],
-      ['likedPostHashtags', () => digest.samples.likedPostHashtags,
+      ['likedPostHashtags', () => digest.samples && digest.samples.likedPostHashtags,
         v => { digest.samples.likedPostHashtags = v; }],
-      ['comments', () => digest.samples.comments, v => { digest.samples.comments = v; }],
+      ['comments', () => digest.samples && digest.samples.comments, v => { digest.samples.comments = v; }],
       ['mostLikedAccounts', () => digest.mostLikedAccounts, v => { digest.mostLikedAccounts = v; }],
       ['mostSavedAccounts', () => digest.mostSavedAccounts, v => { digest.mostSavedAccounts = v; }],
       ['instagramTopics', () => digest.instagramTopics, v => { digest.instagramTopics = v; }],
@@ -2909,7 +3162,7 @@
     }
 
     // WhatsApp needs no rule of its own here: each chat is held to its
-    // ceiling where it is sampled (waThreadChars), and the chats go first in
+    // ceiling where it is sampled (waChatChars), and the chats go first in
     // their pool (trimToPools).
     restateShown(digest);
     // Measured after the restatement, not before it: a "shown" that went from
@@ -3087,6 +3340,14 @@
         sampling: plain(coverage.sampling) || {},
       },
     };
+    // No Instagram loaded (WhatsApp chats alone, October 2026): none of its
+    // fields are written, rather than written empty, so the model reads a
+    // digest of chats and not an Instagram account with nothing in it.
+    if (!out.coverage.sources.includes('instagram') && out.coverage.sources.length) {
+      for (const key of ['samples', 'instagramTopics', 'mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith',
+        'storyLikedAccounts', 'instagramSearches']) delete out[key];
+      for (const key of ['filesRead', 'filesSeen', 'directMessagesIncluded', 'stillsInArchive']) delete out.coverage[key];
+    }
     // Absent stays absent. A reader who unticked "Activity & timing" sent no
     // counts and no rhythm, and an empty object in their place would read to
     // the model as an account with nothing in it rather than as an opt-out.
@@ -3205,12 +3466,13 @@
   // nothing left over for a bug to accidentally still send.
 
   function omitCaptionsAndComments(digest) {
+    if (!digest.samples) return digest;
     digest.samples.captions = [];
     digest.samples.comments = [];
-    if (digest.coverage && digest.coverage.sampling) {
-      digest.coverage.sampling.captions.shown = 0;
-      digest.coverage.sampling.comments.shown = 0;
-    }
+    // A digest of WhatsApp chats alone has no caption counts to zero.
+    const sampling = digest.coverage && digest.coverage.sampling;
+    if (sampling && sampling.captions) sampling.captions.shown = 0;
+    if (sampling && sampling.comments) sampling.comments.shown = 0;
     return digest;
   }
 
@@ -3419,6 +3681,18 @@
       removed += before - parent[last].length;
       const spare = freed && digest.__spareMessages && digest.__spareMessages[path];
       if (Array.isArray(spare)) parent[last] = refill(parent[last], spare.filter(item => !gone(item)), freed);
+      // A WhatsApp chat switched off goes whole: its counts and timings too,
+      // not only its lines (October 2026), so "switch off any chat" is true.
+      if (path === 'whatsapp.ownMessageSample' && chats.size && digest.whatsapp && Array.isArray(digest.whatsapp.chats)) {
+        digest.whatsapp.chats = digest.whatsapp.chats.filter(chat => !chats.has(chat.chat));
+        if (digest.__chatKeys) for (const tag of chats) delete digest.__chatKeys[tag];
+        if (!digest.whatsapp.chats.length) dropChats(digest);
+        else if (digest.coverage && digest.coverage.sampling && digest.coverage.sampling.whatsappMessages) {
+          digest.coverage.sampling.whatsappMessages.shown = digest.whatsapp.ownMessageSample.length;
+          digest.coverage.sampling.whatsappMessages.available = digest.whatsapp.chats
+            .reduce((sum, chat) => sum + ((chat.counts && chat.counts.sentByUser) || 0), 0);
+        }
+      }
     }
     return removed;
   }
@@ -3450,9 +3724,10 @@
   }
 
   root.PsycheDigest = {
+    buildFromSupplements, hasInstagram, carryChats, chatKey,
     build, addSupplements, forModel, renderEvidence, evidenceChars, ownWritingChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
     MERGED_FIXED_INPUT_TOKENS, MERGED_MAX_OUTPUT_TOKENS, MERGED_COST_CAP,
-    EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize,
+    EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize, waChatChars, WA_CHAT_CHARS, WA_ALONE_CHAT_CHARS, DM_FLOOR_CHARS, DM_FOCUS_THREADS,
     POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes, SHORT_MESSAGE_FLOORS,
     SOLO_POOL_CAPS, SOLO_FIXED_CHARS, SOLO_DIGEST_CHARS, SOLO_FREE_COST_CAP, SOLO_COST_CAP, carriesSecondSource, poolCapsFor,
     sourceSizes, sampleConversations, EVIDENCE_LISTS, trimLines, lineYear, lineChat, reviewText,

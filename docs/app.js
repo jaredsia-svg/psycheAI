@@ -161,6 +161,15 @@
     // so the server can keep the free card to one per account without ever
     // seeing the username. Kept so a re-run after a reload still carries it.
     account: 'psycheai_account',
+    // The same code for a reader who started from WhatsApp chats with no
+    // Instagram (accountKeys): the first one this browser made, sent for any
+    // later chats-only read here too, so new chats on the same device are not
+    // a second free read. A cheap guard, not a proof (README "WhatsApp chats
+    // alone"); Delete everything takes it with the rest.
+    chatsAccount: 'psycheai_chats_account',
+    // The one-way code of each WhatsApp chat in the last read made here
+    // (chatCodes), so a retry after a reload still sends them.
+    chatCodes: 'psycheai_chat_codes',
     // Which journey steps this browser has already reported today.
     steps: 'psycheai_steps',
     // The short personal link (lib/links.js): its lock key — which travels
@@ -196,6 +205,10 @@
     // server keeps none), newest last; and a payment for questions that was
     // made but not yet credited, to credit on the next open (openAsk).
     ask: 'psycheai_ask',
+    // Thumbs up or down on each finding of the reader's own report, with an
+    // optional line of what is closer (October 2026): kept here only, for the
+    // report they were made on (its createdAt), and passed to Ask PsycheAI.
+    marks: 'psycheai_marks',
     askPending: 'psycheai_ask_pending',
     // The digest the latest Psyche Report was written from, exactly as it was
     // sent (Digest.forModel: no numbering, no names), so the report's own
@@ -304,6 +317,15 @@
     // privacy story says never touches a disk. A reload loses it, and the
     // re-run then asks for the archive back — see rerunWithAdditionalData.
     signals: null,
+    // The WhatsApp chats a digest was built from when there was no Instagram
+    // (Digest.buildFromSupplements), in memory only like `signals`: the
+    // reader's name as the chats show it, and each chat's title, for their
+    // own name on the card and the one-way code of a chats-only read.
+    chats: null,
+    // The parsed chat files themselves, in memory only (October 2026): the
+    // last set the data popout summarised, so a chat added later in the same
+    // visit joins them rather than starting a new set.
+    waChats: null,
     server: { ready: false, mock: false, model: null },
   };
 
@@ -1423,10 +1445,18 @@
     return (state.signals && state.signals.profile && state.signals.profile.username) || '';
   }
 
+  // Whether a stored digest has Instagram in it: Digest.hasInstagram, here
+  // because the page asks before the data readers have loaded. A digest from
+  // WhatsApp chats alone (October 2026) has none.
+  function digestHasInstagram(digest) {
+    const sources = digest && digest.coverage && digest.coverage.sources;
+    return !Array.isArray(sources) || !sources.length || sources.includes('instagram');
+  }
+
   /** What to call the reader on their own card, from the archive rather than the digest. */
   function ownDisplayName() {
     const profile = (state.signals && state.signals.profile) || {};
-    return String(profile.name || profile.username || '').trim();
+    return String(profile.name || profile.username || (!state.signals && state.chats && state.chats.owner) || '').trim();
   }
 
   // The reader's name and handle reach the model as this placeholder and never
@@ -2253,7 +2283,8 @@
   // not yet added. Gone once tapped or closed, until the next reading.
   function dataNudgeHtml(score, sources, flow) {
     const H = Copy.STRUCTURED.hub;
-    const missing = sources.filter(([key, , loaded]) => key !== 'instagram' && !loaded).map(([key]) => H.sourceNames[key]);
+    // Instagram too, first, for a card read from chats alone.
+    const missing = sources.filter(([, , loaded]) => !loaded).map(([key]) => H.sourceNames[key]);
     const made = state.profile && String(state.profile.premiumAt || state.profile.createdAt || '');
     // The bar at the top of the page says it once the report is in hand.
     if (score >= 80 || !missing.length || store.read(KEYS.dataNudge, '') === made || signalBarOffered()) return '';
@@ -2298,7 +2329,8 @@
     const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
     const short = H.sourceNames;
     const sources = [
-      ['instagram', short.instagram, Boolean(digest)],
+      // A card read from WhatsApp chats alone has no Instagram to show loaded.
+      ['instagram', short.instagram, Boolean(digest && digestHasInstagram(digest))],
       ['whatsapp', short.whatsapp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
       ['google', short.google, Boolean(digest && digest.google)],
       ['facebook', short.facebook, Boolean(digest && digest.facebook)],
@@ -3975,7 +4007,7 @@
     const digest = state.digest;
     const supplements = (state.signals && state.signals.supplements) || {};
     const loaded = [];
-    if (state.signals || digest) loaded.push('Instagram');
+    if (state.signals || (digest && digestHasInstagram(digest))) loaded.push('Instagram');
     if ((digest && digest.google) || supplements.google) loaded.push('Google');
     if ((digest && digest.facebook) || supplements.facebook) loaded.push('Facebook');
     if ((digest && digest.whatsapp) || supplements.whatsapp) loaded.push('WhatsApp');
@@ -4035,11 +4067,12 @@
           // it was offered only from the report page before).
           sources: ['instagram', 'whatsapp', 'google', 'facebook'],
           first: true,
-          requireInstagram: true,
-          sublines: { instagram: TEXT.dataSourcesFirstInstagram },
-          // Up to three chats with close connections, and Google, both optional.
+          // Instagram, or two or three WhatsApp chats (October 2026): either is a
+          // first read, and the popout says where the reader stands.
+          requireMinimum: true,
+          // One line a row: no sub-lines and no tags, the groups say it.
+          sublines: { instagram: '' },
           titles: { whatsapp: TEXT.whatsappFirstTitle },
-          tags: { instagram: TEXT.sourceRequired, whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional, facebook: TEXT.sourceOptional },
           // Up to three chats, as on the report page.
           whatsappMax: 3,
         });
@@ -4061,18 +4094,32 @@
       // a fresh Instagram read replaces `state.signals` wholesale and carries
       // no `.supplements` of its own, so anything loaded earlier this session
       // has to be read off the old object before it is replaced.
-      const priorSupplements = state.signals && state.signals.supplements;
+      // Chats read alone on an earlier attempt (state.chats) ride along when
+      // Instagram is added on this one, as in addDataAndRerun.
+      const priorSupplements = (state.signals && state.signals.supplements) ||
+        (state.chats ? { whatsapp: state.chats } : undefined);
       if (typeof collected.instagram === 'object') state.signals = collected.instagram;
       repairOwnName().catch(() => {});
       if (state.signals) {
+        state.chats = null;
         state.signals.supplements = Object.assign({}, priorSupplements,
           typeof collected.google === 'object' ? { google: collected.google } : null,
           typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null,
           typeof collected.whatsapp === 'object' ? { whatsapp: collected.whatsapp } : null);
+      } else if (typeof collected.whatsapp === 'object') {
+        // No Instagram: the chats are the read, and the reader is known by
+        // them (accountKeys) and called by their name in them (ownDisplayName).
+        state.chats = collected.whatsapp;
       }
 
       if (state.signals) {
-        digest = Digest.build(state.signals, { includeMessages: true });
+        digest = withStoredChats(Digest.build(state.signals, { includeMessages: true }), state.signals);
+      } else if (typeof collected.whatsapp === 'object' && !state.digest) {
+        // WhatsApp chats and no Instagram (October 2026), with Google or
+        // Facebook beside them if loaded: a digest of those alone.
+        digest = Digest.buildFromSupplements(Object.assign({ whatsapp: collected.whatsapp },
+          typeof collected.google === 'object' ? { google: collected.google } : null,
+          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null));
       } else if (state.digest) {
         // The retry path after a reload: the archive is gone but the digest
         // it produced is not, and the digest is the only thing the server was
@@ -4089,16 +4136,16 @@
         // Instagram picker for.
         if (Object.keys(extra).length) digest = Digest.addSupplements(digest, extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
       } else {
-        // Google or Facebook loaded with no Instagram behind them. The popout
-        // is reopened rather than the run abandoned, because the reader is one
-        // row away from being able to continue.
-        flash('#upload-error', TEXT.startNeedsInstagram);
+        // Google or Facebook loaded with neither Instagram nor chats behind
+        // them. The popout is reopened rather than the run abandoned, because
+        // the reader is one row away from being able to continue.
+        flash('#upload-error', TEXT.startNeedsMinimum(2));
         continue;
       }
 
       // Too little of their own writing: no run, only the way back to add data.
       if (tooThin(digest)) {
-        if (await sayTooThin()) continue;
+        if (await sayTooThin(digest)) continue;
         abandonUpload(scrollBefore);
         return;
       }
@@ -4106,7 +4153,7 @@
       if (!thinWarned && !thinSaid() && thinDigest(digest)) {
         thinWarned = true;
         markThinSaid();
-        if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
+        if (await sayThin(digest)) continue;
       }
       }
 
@@ -5178,7 +5225,8 @@
         'Your captions & comments', 'Your captions & comments – none found',
         n(captionsCount, 'caption', 'captions') + ', ' + n(commentsCount, 'comment', 'comments') +
         ' – a sample of your own words. Needed for any read at all.'],
-      ['review-activity', 'includeActivity', 1,
+      // Always there with Instagram; a digest of WhatsApp chats alone has none.
+      ['review-activity', 'includeActivity', digest.counts || digest.rhythm ? 1 : 0,
         'Activity & timing', 'Activity & timing',
         'Post counts, likes, saves, whether your account is private, and when you tend to be active. None of your words.'],
       // The raw follow list is no longer sent — hundreds of opaque handles
@@ -5665,7 +5713,7 @@
 
         // Too little of their own writing: no run, only the way back to add data.
         if (tooThin(digest)) {
-          if (await sayTooThin()) continue;
+          if (await sayTooThin(digest)) continue;
           abandonUpload(scrollBeforeUpload);
           return;
         }
@@ -5673,7 +5721,7 @@
         if (!thinWarned && !thinSaid() && thinDigest(digest)) {
           thinWarned = true;
           markThinSaid();
-          if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
+          if (await sayThin(digest)) continue;
         }
         }
 
@@ -5766,8 +5814,9 @@
     // needed from the network until the review, and the popout says so.
     const offlineNote = $('#datasources-offline');
     offlineNote.lastElementChild.textContent = TEXT.dataSourcesOffline;
-    offlineNote.hidden = true;
-    loadReaders().then(() => { offlineNote.hidden = false; }).catch(() => {});
+    const offlineIcon = $('#datasources-offline-icon');
+    offlineNote.hidden = offlineIcon.hidden = true;
+    loadReaders().then(() => { offlineNote.hidden = offlineIcon.hidden = false; }).catch(() => {});
     const settings = options || {};
     const dialog = $('#datasources-dialog');
     // Loading data in an app's own browser: said in the popout too, where the
@@ -5796,12 +5845,39 @@
     const optionsBox = dialog.querySelector('.mode-options');
     const helpBox = dialog.querySelector('.supplement-help-body');
     const helpTail = helpBox.querySelector('.help-illustrated');
+    // Each row is a .ds-row: the source's button and its "How?" (October 2026).
+    const rowWrap = source => optionsBox.querySelector('.ds-row[data-row="' + source + '"]');
     for (const source of order) {
-      const row = optionsBox.querySelector('.mode-option[data-datasource="' + source + '"]');
+      const row = rowWrap(source);
       if (row) optionsBox.appendChild(row);
       const help = helpBox.querySelector('[data-help="' + source + '"]');
       if (help) helpBox.insertBefore(help, helpTail);
     }
+    // A first upload's two groups (October 2026): "Need either IG or 2 x WhatsApp" over Instagram
+    // and WhatsApp, which either is enough (its tick is showMinimum's), then
+    // "Optional" over the rest. Elsewhere the rows are one plain list.
+    const needHead = $('#datasources-minimum');
+    const optionalHead = $('#datasources-optional');
+    needHead.hidden = optionalHead.hidden = !settings.requireMinimum;
+    if (settings.requireMinimum) {
+      const needs = order.filter(x => x === 'instagram' || x === 'whatsapp');
+      const rest = order.filter(x => !needs.includes(x) && offered.includes(x));
+      if (needs.length) optionsBox.insertBefore(needHead, rowWrap(needs[0]));
+      optionalHead.textContent = TEXT.dataSourcesOptional;
+      if (rest.length) optionsBox.insertBefore(optionalHead, rowWrap(rest[0]));
+      else optionalHead.hidden = true;
+    }
+    // "How?" on a row opens that source's steps alone, below the rows; the
+    // same again closes them.
+    const helpDrawer = dialog.querySelector('.supplement-help');
+    const showHow = source => {
+      const open = !(helpDrawer.open && helpDrawer.dataset.only === source);
+      helpDrawer.dataset.only = open ? source : '';
+      for (const help of helpBox.querySelectorAll('[data-help]')) help.classList.toggle('is-other', open && help.dataset.help !== source);
+      for (const how of dialog.querySelectorAll('.ds-how')) how.setAttribute('aria-expanded', String(open && how.dataset.how === source));
+      helpDrawer.open = open;
+      if (open) helpDrawer.scrollIntoView({ block: 'nearest', behavior: scrollBehaviour() });
+    };
     // How many WhatsApp chats this entry point takes: three, wherever it is.
     const waMax = settings.whatsappMax || 3;
     // The download instructions follow the rows. A reader on the welcome page
@@ -5826,20 +5902,24 @@
     // the same reason ("WhatsApp chats (up to 3)" on the report page, "WhatsApp
     // chat with a close friend (optional)" on a first upload).
     const titles = settings.titles || {};
+    // No tags by default since the redesign (October 2026): one line a row.
     const tags = settings.tags || {};
     for (const row of dialog.querySelectorAll('.mode-option')) {
       const source = row.dataset.datasource;
       row.hidden = !offered.includes(source);
+      if (row.closest('.ds-row')) row.closest('.ds-row').hidden = row.hidden;
       for (const [selector, wanted] of [['.mode-title', titles[source]], ['.mode-tag', tags[source]]]) {
         const node = row.querySelector(selector);
         if (!node) continue;
         if (node.dataset.defaultText === undefined) node.dataset.defaultText = node.textContent;
-        node.textContent = wanted || node.dataset.defaultText;
+        // An empty string is an override too: a first upload's rows carry no
+        // tag, their group says it.
+        node.textContent = wanted !== undefined ? wanted : node.dataset.defaultText;
       }
       const line = row.querySelector('.mode-body > .muted');
       if (!line) continue;
       if (line.dataset.defaultText === undefined) line.dataset.defaultText = line.textContent;
-      line.textContent = sublines[source] || line.dataset.defaultText;
+      line.textContent = sublines[source] !== undefined ? sublines[source] : line.dataset.defaultText;
     }
     // Every list below is built from the visible rows, so a hidden source can
     // neither be ticked, read, nor resolved.
@@ -5853,7 +5933,7 @@
     $('#restore-open').hidden = !(settings.first && !state.profile);
     sayRestore('');
     $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
-    $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
+    $('#datasources-blurb-text').textContent = settings.blurb || TEXT.dataSourcesBlurb;
     const digest = state.digest;
     const added = {
       // Seeded from the digest *and* from the archive held in memory. The
@@ -5869,17 +5949,25 @@
       // and a tick would then promise an archive the popout does not have;
       // with neither, the row is left unticked and reads as the one thing
       // still to do, which is what it is.
-      instagram: pendingDataSourceReads.instagram || Boolean(digest || state.signals) || undefined,
+      // A digest of WhatsApp chats alone has no Instagram to tick.
+      instagram: pendingDataSourceReads.instagram || Boolean((digest && digestHasInstagram(digest)) || state.signals) || undefined,
       google: pendingDataSourceReads.google || Boolean(digest && digest.google) || undefined,
       facebook: pendingDataSourceReads.facebook || Boolean(digest && digest.facebook) || undefined,
       whatsapp: pendingDataSourceReads.whatsapp || Boolean(digest && digest.whatsapp) || undefined,
     };
-    // The WhatsApp row says how many of its three chats are loaded.
-    const waCount = () => (pendingDataSourceReads.whatsappChats || []).length ||
+    // The WhatsApp row says how many of its three chats are loaded: those
+    // picked, plus the stored ones they were added to.
+    const waCount = () => ((pendingDataSourceReads.whatsappChats || []).length +
+        ((pendingDataSourceReads.whatsapp && pendingDataSourceReads.whatsapp.addsTo) || 0)) ||
       (digest && digest.whatsapp && (digest.whatsapp.chats || []).length) || 0;
     const showWhatsAppCount = () => {
-      const line = rowOf('whatsapp') && rowOf('whatsapp').querySelector('.mode-body > .muted');
-      if (line) line.textContent = waCount() ? TEXT.whatsappRowSome(waCount(), waMax) : TEXT.whatsappRowEmpty(waMax);
+      const row = rowOf('whatsapp');
+      const line = row && row.querySelector('.mode-body > .muted');
+      const n = chatsLoaded();
+      if (line) line.textContent = n ? TEXT.whatsappRowSome(n, waMax) : '';
+      // The chats as dots, one a chat, filled as they load.
+      const dots = row && row.querySelector('.ds-dots');
+      if (dots) dots.dataset.n = String(Math.min(n, 3));
     };
     // Asked only when the chats do not say which sender is the reader:
     // resolves the name picked, or null if the popout closes first.
@@ -5913,9 +6001,12 @@
       status.className = 'supplement-status' + (tone ? ' is-' + tone : '');
     };
 
+    // The one box every file can go in, above the rows (October 2026).
+    const drop = $('#datasources-drop');
     const setBusy = state => {
       busy = state;
       for (const button of buttons) button.disabled = state;
+      drop.disabled = state;
     };
 
     const rowOf = source => dialog.querySelector('.mode-option[data-datasource="' + source + '"]');
@@ -5974,8 +6065,10 @@
       Boolean(pendingDataSourceReads[source]) ||
       typeof added[source] === 'object';
 
+    // WhatsApp is never stale: its chats are carried onto a new Instagram
+    // export, from memory or from the stored digest (October 2026).
     const isStale = source =>
-      replacedInstagram && Boolean(added[source]) && !carriedInMemory(source);
+      source !== 'whatsapp' && replacedInstagram && Boolean(added[source]) && !carriedInMemory(source);
 
     const markAdded = () => {
       for (const button of buttons) {
@@ -6002,19 +6095,50 @@
       // Recomputed on every call rather than fixed the moment Instagram is
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
-      $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook') || isStale('whatsapp'));
+      $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook'));
       showWhatsAppCount();
+      showMinimum();
+    };
+
+    // Instagram, or at least two WhatsApp chats (three at most): what a first
+    // read needs (October 2026; three until the 26th). One chat describes one
+    // friendship more than the reader; two different people start to show
+    // what holds across them. Either is enough; both make the fuller read.
+    const WA_MINIMUM = 2;
+    const hasInstagramLoaded = () => Boolean(added.instagram) && !isStale('instagram');
+    const chatsLoaded = () => (added.whatsapp && !isStale('whatsapp') ? waCount() : 0);
+    const minimumMet = () => hasInstagramLoaded() || chatsLoaded() >= WA_MINIMUM;
+    // A reader whose card came from chats alone is held to the same minimum
+    // when they change their data, though the groups are a first upload's.
+    const needsMinimum = () => settings.requireMinimum ||
+      (Boolean(state.digest) && !digestHasInstagram(state.digest) && !state.signals);
+    // The first group's heading, ticked once either is in, and
+    // Continue, set back until then (still pressable: it says what is
+    // missing). No sentence: the group and the dots say it.
+    const showMinimum = () => {
+      const head = $('#datasources-minimum');
+      const go = $('#datasources-continue');
+      if (!settings.requireMinimum) { go.classList.remove('is-waiting'); return; }
+      const met = minimumMet();
+      head.textContent = TEXT.dataSourcesNeedOne;
+      head.classList.toggle('is-met', met);
+      head.setAttribute('aria-label', met ? TEXT.dataSourcesNeedOneMet : TEXT.startNeedsMinimum(WA_MINIMUM));
+      go.classList.toggle('is-waiting', !met);
     };
 
     return new Promise(resolve => {
+      // `source` is the row tapped, or 'any' for the box. Either way each file
+      // is sorted by what is inside it (readFiles): the row is only a hint for
+      // a file nothing recognises.
       const pick = source => {
-        pending = source;
+        pending = source || 'any';
         input.value = '';
         input.click();
       };
       // Over an existing card, the first tap says the card may change, and
-      // "Choose file" opens the picker from its own click.
-      const confirmFirst = source => {
+      // "Choose file" opens the picker from its own click. A drop goes on
+      // with its files instead (`then`).
+      const confirmFirst = (source, then) => {
         const box = $('#datasources-confirm');
         const close = () => {
           box.hidden = true;
@@ -6022,7 +6146,7 @@
           dialog.removeEventListener('close', close);
         };
         const onEscape = event => { event.preventDefault(); close(); };
-        $('#datasources-confirm-go').onclick = () => { warned = true; close(); pick(source); };
+        $('#datasources-confirm-go').onclick = () => { warned = true; close(); if (then) then(); else pick(source); };
         $('#datasources-confirm-cancel').onclick = close;
         box.onclick = event => { if (event.target === box) close(); };
         dialog.addEventListener('cancel', onEscape);
@@ -6031,25 +6155,17 @@
         $('#datasources-confirm-go').focus();
       };
       const choose = event => {
-        const source = event.currentTarget.dataset.datasource;
+        const source = event.currentTarget.dataset.datasource || 'any';
         if (busy) return;
         if (!warned) { confirmFirst(source); return; }
         pick(source);
       };
 
-      const read = async () => {
-        // A WhatsApp chat may arrive as the .txt on its own; everything else is a .zip.
-        const files = Array.from(input.files || []).filter(f =>
-          (pending === 'whatsapp' ? /\.(zip|txt)$/i : /\.zip$/i).test(f.name));
-        input.value = '';
-        if (!pending || !files.length) return;
-        const source = pending;
-        pending = '';
-        setBusy(true);
-        say('');
+      // One source's files, read by its own reader. Resolves what to say
+      // afterwards, if anything: `{ message, tone }`.
+      const readSource = async (source, files) => {
         setSourceProgress(source, 0, 'Opening the archive…');
         try {
-          await loadReaders();
           if (source === 'instagram') {
             added.instagram = await IG.readExports(files, {
               includeMessages: true,
@@ -6070,37 +6186,48 @@
             });
             // Up to waMax chats, added to what is loaded; one more starts a
             // fresh set (with a limit of one, a new chat replaces the old).
-            const held = pendingDataSourceReads.whatsappChats || [];
+            // The chats already loaded: picked in this opening, or the last
+            // set read in this visit (state.waChats). After a reload only the
+            // stored digest has them, as sampled lines: a new chat is added
+            // to those (`addsTo`, carried by Digest.carryChats) rather than
+            // starting a new set, while three still fit.
+            const held = pendingDataSourceReads.whatsappChats || state.waChats || [];
+            // Already adding to the stored chats in this opening: the ones
+            // picked so far are added to them too.
+            const prevAdds = (pendingDataSourceReads.whatsapp && pendingDataSourceReads.whatsapp.addsTo) || 0;
+            const storedChats = prevAdds || (!held.length && !pendingDataSourceReads.whatsapp && digest && digest.whatsapp
+              ? (digest.whatsapp.chats || []).length : 0);
             // A chat already loaded (the same file, or the same person) is
-            // not taken twice: each slot is a different conversation.
-            const { kept, repeated } = window.PsycheWhatsApp.dropRepeats(held, readChats);
+            // not taken twice: each slot is a different conversation. Against
+            // the stored chats, by the one-way key of who each is with.
+            const storedKeys = Object.values((digest && digest.__chatKeys) || {}).filter(Boolean);
+            const { kept: notHeld, repeated: heldAgain } = window.PsycheWhatsApp.dropRepeats(held, readChats);
+            const repeated = heldAgain.concat(storedChats ? notHeld.filter(c => storedKeys.includes(Digest.chatKey(c.title))) : []);
+            const kept = notHeld.filter(c => !repeated.includes(c));
             const repeatNote = repeated.length ? TEXT.whatsappRepeat(repeated.map(c => c.title).filter(Boolean)) : '';
-            if (!kept.length) {
-              setBusy(false);
-              setSourceProgress(source, null, '');
-              say(repeatNote, 'bad');
-              markAdded();
-              return;
-            }
+            setSourceProgress(source, null, '');
+            if (!kept.length) return { message: repeatNote, tone: 'bad' };
             const fresh = kept;
-            const startOver = held.length + fresh.length > waMax && held.length >= waMax;
-            const chats = (startOver ? fresh : held.concat(fresh)).slice(0, waMax);
+            const already = storedChats + held.length;
+            // Past three: a fresh set. With chats in memory, from three already
+            // (the extra ones beyond three are left out, as before); with the
+            // stored chats, from any overflow, since lines cannot be unpicked.
+            const startOver = already + fresh.length > waMax && (already >= waMax || storedChats > 0);
+            const addsTo = storedChats && !startOver ? storedChats : 0;
+            const chats = (startOver ? fresh : held.concat(fresh)).slice(0, waMax - addsTo);
             const hints = [ownDisplayName(), state.profile && state.profile.card && state.profile.card.name].filter(Boolean);
             let owner = window.PsycheWhatsApp.resolveOwner(chats, hints).owner;
             if (!owner) {
-              setSourceProgress(source, null, '');
               owner = await askWho(window.PsycheWhatsApp.resolveOwner(chats, hints).candidates);
-              if (!owner) { setBusy(false); return; }
+              if (!owner) return null;
             }
             added.whatsapp = window.PsycheWhatsApp.summarise(chats, owner);
+            if (addsTo) Object.defineProperty(added.whatsapp, 'addsTo', { value: addsTo, enumerable: false });
             pendingDataSourceReads.whatsapp = added.whatsapp;
             pendingDataSourceReads.whatsappChats = chats;
+            state.waChats = addsTo ? null : chats;
             if (startOver || repeatNote) {
-              setBusy(false);
-              setSourceProgress(source, null, '');
-              say([startOver ? TEXT.whatsappFull(waMax) : '', repeatNote].filter(Boolean).join(' '), '');
-              markAdded();
-              return;
+              return { message: [startOver ? TEXT.whatsappFull(waMax) : '', repeatNote].filter(Boolean).join(' '), tone: '' };
             }
           } else {
             const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
@@ -6117,25 +6244,94 @@
             // pendingDataSourceReads' own declaration.
             pendingDataSourceReads[source] = added[source];
           }
-          setBusy(false);
           setSourceProgress(source, null, '');
-          say('');
-          markAdded();
+          return null;
         } catch (error) {
-          setBusy(false);
           setSourceProgress(source, null, '');
           // A failed replacement must not cost the reader the source they
           // already had — the dialog stays open, on the tick it started
           // with, and they can try another file or move on.
-          say((error && error.message) || 'That archive could not be read.', 'bad');
-          markAdded();
+          return { message: (error && error.message) || 'That archive could not be read.', tone: 'bad' };
         }
       };
 
-      // A first upload cannot go on without Instagram: said here, in the
+      // Any mix of files, picked or dropped: each sorted by what is inside it
+      // (Supplement.detectSource), then each source read in the rows' order.
+      // A zip nothing recognises goes with an Instagram export picked beside
+      // it (a later part of a split export), else to the row that was tapped,
+      // else to Instagram, whose reader says plainly what is wrong with it.
+      const readFiles = async (picked, hint) => {
+        const files = Array.from(picked || []).filter(f => /\.(zip|txt)$/i.test(f.name));
+        if (!files.length) {
+          if (Array.from(picked || []).length) say(TEXT.dataSourcesWrongType, 'bad');
+          return;
+        }
+        setBusy(true);
+        say('');
+        const notes = [];
+        try {
+          await loadReaders();
+          const groups = {};
+          const unknown = [];
+          for (const file of files) {
+            const kind = await Supplement.detectSource(file);
+            if (kind === 'unknown') { unknown.push(file); continue; }
+            (groups[kind] = groups[kind] || []).push(file);
+          }
+          if (unknown.length) {
+            const home = groups.instagram ? 'instagram' : (hint && hint !== 'any' ? hint : 'instagram');
+            groups[home] = (groups[home] || []).concat(unknown);
+          }
+          for (const source of order) {
+            if (!groups[source]) continue;
+            if (!offered.includes(source)) { notes.push({ message: TEXT.dataSourcesNotHere(source), tone: 'bad' }); continue; }
+            const outcome = await readSource(source, groups[source]);
+            if (outcome && outcome.message) notes.push(outcome);
+          }
+        } catch (error) {
+          notes.push({ message: (error && error.message) || 'That file could not be read.', tone: 'bad' });
+        }
+        setBusy(false);
+        say(notes.map(n => n.message).join(' '), notes.some(n => n.tone === 'bad') ? 'bad' : '');
+        markAdded();
+        if (doneWhenRead && dialog.open) done();
+      };
+
+      const read = () => {
+        const hint = pending;
+        pending = '';
+        const files = Array.from(input.files || []);
+        input.value = '';
+        if (!hint || !files.length) return;
+        readFiles(files, hint);
+      };
+
+      // Files dropped on the popout, on a computer: the same as picking them
+      // in the box.
+      const onDragOver = event => {
+        if (!event.dataTransfer || ![...(event.dataTransfer.types || [])].includes('Files')) return;
+        event.preventDefault();
+        drop.classList.add('is-over');
+      };
+      const onDragLeave = event => { if (!dialog.contains(event.relatedTarget)) drop.classList.remove('is-over'); };
+      const onDrop = event => {
+        if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) return;
+        event.preventDefault();
+        drop.classList.remove('is-over');
+        if (busy) return;
+        const files = Array.from(event.dataTransfer.files);
+        if (!warned) { confirmFirst('any', () => readFiles(files, 'any')); return; }
+        readFiles(files, 'any');
+      };
+
+      // A first upload needs Instagram or two chats: said here, in the
       // popout, rather than closing it and saying so on the page behind.
+      // Pressed while files are still being read: goes on once they are.
+      let doneWhenRead = false;
       const done = () => {
-        if (settings.requireInstagram && !added.instagram) { say(TEXT.startNeedsInstagram, 'bad'); return; }
+        if (busy) { doneWhenRead = true; return; }
+        doneWhenRead = false;
+        if (needsMinimum() && !minimumMet()) { say(TEXT.startNeedsMinimum(WA_MINIMUM), 'bad'); return; }
         dialog.close();
       };
       const goBack = () => { cancelled = true; dialog.close(); };
@@ -6156,6 +6352,13 @@
       const onNativeCancel = event => { if (event.target === dialog) cancelled = true; };
 
       for (const button of buttons) button.addEventListener('click', choose);
+      const onHow = event => showHow(event.currentTarget.dataset.how);
+      const hows = dialog.querySelectorAll('.ds-how');
+      for (const how of hows) how.addEventListener('click', onHow);
+      drop.addEventListener('click', choose);
+      dialog.addEventListener('dragover', onDragOver);
+      dialog.addEventListener('dragleave', onDragLeave);
+      dialog.addEventListener('drop', onDrop);
       input.addEventListener('change', read);
       $('#datasources-continue').addEventListener('click', done);
       $('#datasources-back').addEventListener('click', goBack);
@@ -6170,6 +6373,13 @@
           if (tick) tick.remove();
         }
         input.removeEventListener('change', read);
+        drop.removeEventListener('click', choose);
+        for (const how of hows) how.removeEventListener('click', onHow);
+        drop.disabled = false;
+        drop.classList.remove('is-over');
+        dialog.removeEventListener('dragover', onDragOver);
+        dialog.removeEventListener('dragleave', onDragLeave);
+        dialog.removeEventListener('drop', onDrop);
         $('#datasources-continue').removeEventListener('click', done);
         $('#datasources-back').removeEventListener('click', goBack);
         dialog.removeEventListener('cancel', onNativeCancel);
@@ -6188,6 +6398,9 @@
       replacedInstagram = Boolean(pendingDataSourceReads.instagram);
       $('#datasources-instagram-note').hidden = true;
       dialog.querySelector('.supplement-help').open = false;
+      helpDrawer.dataset.only = '';
+      for (const help of helpBox.querySelectorAll('[data-help]')) help.classList.remove('is-other');
+      for (const how of dialog.querySelectorAll('.ds-how')) how.setAttribute('aria-expanded', 'false');
       for (const button of buttons) setSourceProgress(button.dataset.datasource, null, '');
       setBusy(false);
       markAdded();
@@ -6245,9 +6458,15 @@
       // goes Back and returns keeps whatever they had loaded (pendingDataSourceReads
       // re-seeds the popout's ticks, and a replaced Instagram is already in
       // state.signals), so a second pass is idempotent rather than additive.
-      const priorSupplements = state.signals && state.signals.supplements;
+      // A reader whose card came from chats alone, adding Instagram in the
+      // same visit: their chats (still in memory, state.chats) ride along as
+      // Instagram's own would. After a reload they come from the stored
+      // digest instead (withStoredChats, below).
+      const priorSupplements = (state.signals && state.signals.supplements) ||
+        (state.chats ? { whatsapp: state.chats } : undefined);
       if (typeof collected.instagram === 'object') state.signals = collected.instagram;
       repairOwnName().catch(() => {});
+      keepChatsCurrent(collected);
 
       if (state.signals) {
         state.signals.supplements = Object.assign({}, priorSupplements,
@@ -6297,7 +6516,7 @@
     let digest;
 
     if (signals) {
-      digest = Digest.build(signals, { includeMessages: true });
+      digest = withStoredChats(Digest.build(signals, { includeMessages: true }), signals);
     } else if (state.digest) {
       digest = JSON.parse(JSON.stringify(state.digest));
       if (extraSupplements) digest = Digest.addSupplements(digest, extraSupplements, { ownHandle: ownHandle(), ownName: ownDisplayName() });
@@ -6327,14 +6546,14 @@
       const adding = Object.values(extraSupplements || {}).some(Boolean);
       let base = state.digest || digest;
       if (freshInstagram && signals) {
-        base = adding ? Digest.build(Object.assign({}, signals, { supplements: Object.assign({}, freshInstagram) }), { includeMessages: true }) : digest;
+        base = adding ? withStoredChats(Digest.build(Object.assign({}, signals, { supplements: Object.assign({}, freshInstagram) }), { includeMessages: true }), signals) : digest;
       }
       premium = premiumDigestFrom(base, extraSupplements, signals);
       if (!premium || !premium.__deep) premium = null;
     }
 
     // A re-run is held to the same floor, before any payment.
-    if (tooThin(digest)) return (await sayTooThin()) ? REVIEW_BACK : undefined;
+    if (tooThin(digest)) return (await sayTooThin(digest)) ? REVIEW_BACK : undefined;
 
     let decision;
     try {
@@ -6475,7 +6694,7 @@
         if (runCount() < freeAnalyses) store.write(RUNS_KEY, freeAnalyses);
         stopElapsed();
         guardUnload(false);
-        analysisNote = TEXT.freeUsedBlurb;
+        analysisNote = digestHasInstagram(digest) ? TEXT.freeUsedBlurb : TEXT.freeUsedChatsBlurb;
         const paid = await authoriseAnalysis();
         analysisNote = '';
         // Back has no review to return to here (it was agreed before the
@@ -7092,8 +7311,88 @@
       (num ? '<span class="part-nav-num">' + num + '</span>' : '') + '<span class="part-nav-label">' + esc(title) + '</span></button>').join('') + '</nav>';
   }
 
-  function patternsCardHtml(patterns) {
+  /*
+   * Thumbs on a finding (October 2026): 👍 that's me, 👎 not quite, with an
+   * optional line of what is closer, shown where it was written. One row a
+   * pattern and one a section, never one a paragraph. Kept on this device
+   * for the report they were made on (marksNow), in the backup, and handed to
+   * Ask PsycheAI (askReport) so its answers take them as the reader's word.
+   */
+  const MARK_NOTE_MAX = 200;
+  function marksNow() {
+    const kept = store.read(KEYS.marks, null);
+    const stamp = String((state.profile && state.profile.createdAt) || '');
+    return kept && typeof kept === 'object' && kept.stamp === stamp && kept.items && typeof kept.items === 'object' ? kept.items : {};
+  }
+  function writeMark(key, value) {
+    const items = Object.assign({}, marksNow());
+    if (value) items[key] = value; else delete items[key];
+    store.write(KEYS.marks, { stamp: String((state.profile && state.profile.createdAt) || ''), items });
+  }
+  function markInnerHtml(key, editing) {
+    const M = Copy.STRUCTURED.marks;
+    const m = marksNow()[key] || null;
+    const v = m && m.v;
+    const label = v === 'yes' ? M.yes : v === 'no' ? M.no : M.ask;
+    let html = '<div class="mark-bar"><span class="mark-q">' + esc(label) + '</span>' +
+      '<button class="mark-btn' + (v === 'yes' ? ' is-on' : '') + '" type="button" data-mark-v="yes" aria-pressed="' + (v === 'yes') +
+        '" aria-label="' + esc(M.up) + '">👍</button>' +
+      '<button class="mark-btn is-down' + (v === 'no' ? ' is-on' : '') + '" type="button" data-mark-v="no" aria-pressed="' + (v === 'no') +
+        '" aria-label="' + esc(M.down) + '">👎</button></div>';
+    if (v === 'no' && editing) {
+      html += '<form class="mark-why"><input type="text" maxlength="' + MARK_NOTE_MAX + '" autocomplete="off" enterkeyhint="done" placeholder="' +
+        esc(M.placeholder) + '" aria-label="' + esc(M.placeholder) + '" value="' + esc(m.note || '') + '"><button type="submit">' + esc(M.save) + '</button></form>';
+    } else if (v === 'no' && m.note) {
+      html += '<p class="mark-said"><b>' + esc(M.said) + '</b><q>' + esc(m.note) + '</q><button type="button" class="mark-edit">' + esc(M.edit) + '</button></p>';
+    } else if (v === 'no') {
+      html += '<p class="mark-said is-empty"><button type="button" class="mark-edit">' + esc(M.addNote) + '</button></p>';
+    }
+    return html;
+  }
+  function markRowHtml(key, label) {
+    return '<div class="mark-row" data-mark="' + esc(key) + '" data-mark-label="' + esc(String(label || '').slice(0, 120)) + '">' +
+      markInnerHtml(key, false) + '</div>';
+  }
+  function redrawMark(row, editing) {
+    row.innerHTML = markInnerHtml(row.getAttribute('data-mark'), editing);
+    const input = editing && row.querySelector('.mark-why input');
+    if (input) input.focus();
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest && event.target.closest('.mark-row button');
+    if (!button || button.type === 'submit') return;
+    const row = button.closest('.mark-row');
+    const key = row.getAttribute('data-mark');
+    const now = marksNow()[key] || null;
+    if (button.classList.contains('mark-edit')) { redrawMark(row, true); return; }
+    const v = button.getAttribute('data-mark-v');
+    // The same thumb again takes the mark back.
+    if (now && now.v === v) { writeMark(key, null); redrawMark(row, false); return; }
+    writeMark(key, { v, label: row.getAttribute('data-mark-label') || '' });
+    redrawMark(row, v === 'no');
+  });
+  document.addEventListener('submit', event => {
+    const form = event.target.closest && event.target.closest('.mark-why');
+    if (!form) return;
+    event.preventDefault();
+    const row = form.closest('.mark-row');
+    const key = row.getAttribute('data-mark');
+    const now = marksNow()[key];
+    if (!now) return;
+    const note = form.querySelector('input').value.replace(/\s+/g, ' ').trim().slice(0, MARK_NOTE_MAX);
+    writeMark(key, Object.assign({}, now, note ? { note } : { note: undefined }));
+    redrawMark(row, false);
+  });
+  /** The marks, for Ask PsycheAI: what the reader said of each finding. */
+  function marksForAsk() {
+    return Object.values(marksNow()).filter(m => m && (m.v === 'yes' || m.v === 'no')).slice(0, 20)
+      .map(m => Object.assign({ finding: String(m.label || '').slice(0, 120), fits: m.v === 'yes' },
+        m.note ? { note: String(m.note).slice(0, MARK_NOTE_MAX) } : {}));
+  }
+
+  function patternsCardHtml(patterns, mark) {
     const S = Copy.STRUCTURED;
+    const markRow = mark || (() => '');
     return '<div class="card section-card patterns-card">' +
       sectionHead('🧵', esc(S.titles.patterns), esc(S.definitions.patterns), false, '') +
       '<div class="pattern-list">' + patterns.map(p =>
@@ -7103,7 +7402,7 @@
         ((p.showsUpIn || []).length
           ? '<p class="pattern-where"><span class="connects-label">' + esc(S.showsUpIn) + '</span>' +
             sectionNameChips(p.showsUpIn) + '</p>' : '') +
-        '</div></div>').join('') + '</div></div>';
+        markRow('pattern:' + p.id, p.name) + '</div></div>').join('') + '</div></div>';
   }
 
   /**
@@ -7725,7 +8024,7 @@
     const by = countedBySource(digest);
     const rows = [
       // WhatsApp second, after Instagram, as in Load your data.
-      { key: 'instagram', icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
+      { key: 'instagram', icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest && digestHasInstagram(digest)) },
       { key: 'whatsapp', icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp),
         hint: S.sourceWhatsAppHint },
       { key: 'google', icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
@@ -7796,6 +8095,8 @@
     // under it (or down the left) carries no title of its own.
     let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(ownPage, hasAppendix(report, ownPage));
     const askable = ownPage && askReady();
+    // Thumbs on each finding, on the reader's own report only (never the sample).
+    const mark = ownPage ? markRowHtml : () => '';
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -7804,7 +8105,7 @@
     let part = '<div class="card section-card summary-card">' +
       head('👤', esc(S.titles.summary), 'summary') +
       essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
-    if (patterns.length) part += patternsCardHtml(patterns);
+    if (patterns.length) part += patternsCardHtml(patterns, mark);
     html += partCardHtml('overview', part, askable);
 
     // Part 1: who you are. MBTI first: the type is what most readers know and
@@ -7817,9 +8118,9 @@
     part = '<div class="card section-card mbti-card">' +
       head('🧭', 'MBTI', 'mbti') +
       '<div class="type-hero"><span class="type-code">' + esc(mbti.type) + '</span></div>' +
-      mbtiSlidersHtml(mbti) + '</div>';
+      mbtiSlidersHtml(mbti) + mark('mbti', 'MBTI ' + String(mbti.type || '')) + '</div>';
     part += '<div class="card section-card">' + head('📊', esc(TEXT.bigFive), 'bigFive') +
-      bigFiveStructuredHtml(report.bigFive) + '</div>';
+      bigFiveStructuredHtml(report.bigFive) + mark('bigFive', TEXT.bigFive) + '</div>';
     part += paidCard(paid('wellness'), unlocked, { sample, flat: true, title: S.titles.wellness, sub: S.definitions.wellness,
       body: wellnessStructuredBody });
     html += partCardHtml('who', part, askable);
@@ -7830,7 +8131,7 @@
       head('🧲', esc(S.titles.motivators), 'motivators') + motivatorsHtml(report.motivators) +
       drivesLinesHtml(S.drivesValues, standForItems(report).map(item => [item.title, item.detail])) +
       drivesLinesHtml(S.drivesInterests, (report.interests || []).filter(item => item && item.name)
-        .map(item => [item.name, Copy.leadSentence(item.detail || '')[0]])) + '</div>';
+        .map(item => [item.name, Copy.leadSentence(item.detail || '')[0]])) + mark('drives', S.titles.motivators) + '</div>';
     html += partCardHtml('drives', part, askable);
 
     // Part 3: how you connect.
@@ -7841,7 +8142,7 @@
     part = '<div class="card section-card relationships-card' +
       (closeness ? ' paid-card attachment-card" data-paid="attachment' : '') + '">' +
       head('💞', esc(TEXT.relationships), 'relationships') +
-      relationshipsStructuredBody(relationship, attachment, idealPartner) + '</div>';
+      relationshipsStructuredBody(relationship, attachment, idealPartner) + mark('connect', TEXT.relationships) + '</div>';
     // Locked (the sample), the two premium halves keep their own covers.
     if (!attachment) part += paidCard(paid('attachment'), unlocked, { sample, flat: true });
     if (!idealPartner) part += paidCard(paid('idealPartner'), unlocked, { sample, flat: true });
@@ -7853,7 +8154,7 @@
     const career = report.career || {};
     const coaching = unlocked.careerAssessment;
     part = '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
-      workStructuredBody(career, coaching) + '</div>';
+      workStructuredBody(career, coaching) + mark('career', S.titles.work) + '</div>';
     if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
     html += partCardHtml('career', part, askable);
 
@@ -7870,7 +8171,7 @@
     }
     if ((report.pressurePoints || []).some(item => item && item.strength)) {
       part += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints') +
-        pressurePointsHtml(report.pressurePoints) + '</div>';
+        pressurePointsHtml(report.pressurePoints) + mark('pressurePoints', S.titles.pressurePoints) + '</div>';
     }
     // Evidence and method lives on My Psyche, beside the card it rates; the
     // sample, which has no My Psyche, keeps it at the end of Part 05.
@@ -7973,7 +8274,7 @@
     let part = '<div class="card section-card summary-card">' +
       sectionHead('👤', esc(S.titles.summary), esc(S.definitions.summary), false, '') +
       paragraphs(summary) + '</div>';
-    if (patterns.length) part += patternsCardHtml(patterns);
+    if (patterns.length) part += patternsCardHtml(patterns, markRowHtml);
     return partCardHtml('overview', part, askReady()).replace('class="card section-card part-card"',
       'class="card section-card part-card free-overview"');
   }
@@ -8760,7 +9061,7 @@
         const b = state.server && state.server.build;
         return b && b.version ? 'v' + b.version : '';
       })(),
-      sources: [TEXT.sourceInstagram]
+      sources: (!state.digest || digestHasInstagram(state.digest) ? [TEXT.sourceInstagram] : [])
         .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
         .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : [])
         .concat(state.digest && state.digest.whatsapp ? [TEXT.sourceWhatsApp] : []),
@@ -9451,6 +9752,10 @@
   // until then only fewer than 10 captions and 50 messages, with no second
   // source, counted).
   const THIN_DIGEST_CHARS = 50000;
+  // Three WhatsApp chats and no Instagram hold at most about 45,000, so for a
+  // digest of chats alone the line is lower (October 2026): chats with little
+  // of the reader's writing in them, not two or three chats as such.
+  const THIN_CHATS_CHARS = 20000;
   // Below this much of their own writing a run is not made at all (October
   // 2026): the card would be mostly guesswork, and the server refuses it too.
   // The server's number, from /api/status; this until it lands.
@@ -9458,12 +9763,19 @@
   const ownWritingChars = digest => Digest.ownWritingChars(digest);
   function tooThin(digest) { return ownWritingChars(digest) < minWriting(); }
   // Said every time, with only the way back to add data.
-  function sayTooThin() {
-    return noteDialog(TEXT.tooThinTitle, TEXT.tooThinText(Math.round(minWriting() / 1000)), TEXT.thinDataAdd, TEXT.tooThinBack);
+  function sayTooThin(digest) {
+    const chats = digest && !digestHasInstagram(digest);
+    return noteDialog(TEXT.tooThinTitle, (chats ? TEXT.tooThinChatsText : TEXT.tooThinText)(Math.round(minWriting() / 1000)),
+      TEXT.thinDataAdd, TEXT.tooThinBack);
   }
   // Over the floor but a small digest in all: warned, not stopped.
   function thinDigest(digest) {
-    return Digest.evidenceChars(digest || {}) < THIN_DIGEST_CHARS;
+    return Digest.evidenceChars(digest || {}) < (digestHasInstagram(digest) ? THIN_DIGEST_CHARS : THIN_CHATS_CHARS);
+  }
+  // The warning, in the words for what was loaded.
+  function sayThin(digest) {
+    return noteDialog(TEXT.thinDataTitle, digestHasInstagram(digest) ? TEXT.thinDataText : TEXT.thinChatsText,
+      TEXT.thinDataAdd, TEXT.thinDataContinue);
   }
   // Said once a browser session, not on every attempt: a reader who has been
   // told and carried on is not told again until they come back another day.
@@ -9501,10 +9813,12 @@
       }
       // The same merge addDataAndRerun makes: a fresh Instagram read replaces
       // the signals wholesale, so supplements from this session are read off
-      // the old object first.
-      const priorSupplements = state.signals && state.signals.supplements;
+      // the old object first, and chats alone in memory ride along too.
+      const priorSupplements = (state.signals && state.signals.supplements) ||
+        (state.chats ? { whatsapp: state.chats } : undefined);
       if (fresh('instagram')) state.signals = collected.instagram;
       repairOwnName().catch(() => {});
+      keepChatsCurrent(collected);
       const extra = {
         google: fresh('google') ? collected.google : undefined,
         facebook: fresh('facebook') ? collected.facebook : undefined,
@@ -9524,7 +9838,7 @@
             state.signals.supplements = Object.assign({}, priorSupplements,
               extra.google ? { google: extra.google } : null, extra.facebook ? { facebook: extra.facebook } : null,
               extra.whatsapp ? { whatsapp: extra.whatsapp } : null);
-            digest = Digest.build(state.signals, { includeMessages: true });
+            digest = withStoredChats(Digest.build(state.signals, { includeMessages: true }), state.signals);
           } else if (state.digest) {
             digest = Digest.addSupplements(JSON.parse(JSON.stringify(state.digest)), extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
           } else {
@@ -9537,8 +9851,8 @@
         // already had, before anything added here.
         let base = state.digest;
         if (fresh('instagram')) {
-          base = adding.length ? Digest.build(Object.assign({}, state.signals, { supplements: Object.assign({}, priorSupplements) }),
-            { includeMessages: true }) : digest;
+          base = adding.length ? withStoredChats(Digest.build(Object.assign({}, state.signals, { supplements: Object.assign({}, priorSupplements) }),
+            { includeMessages: true }), { supplements: priorSupplements || {} }) : digest;
         }
         premium = premiumDigestFrom(base, extra, state.signals);
       } catch (error) {
@@ -9591,6 +9905,25 @@
    * its older copy and counts as added. With nothing to add, `base` itself
    * comes back, unchanged.
    */
+  // New chats picked by a reader with no Instagram in memory: the chats a
+  // later Instagram rides with (state.chats) are these now, or, when they
+  // were added to the stored ones (`addsTo`), the stored digest's, carried.
+  function keepChatsCurrent(collected) {
+    if (state.signals || !collected || typeof collected.whatsapp !== 'object') return;
+    state.chats = collected.whatsapp.addsTo ? null : collected.whatsapp;
+  }
+
+  // A digest rebuilt from an Instagram export, with the chats the stored
+  // digest holds when the export brought none of its own or the ones picked
+  // were added to them (`addsTo`): the reader's chats are kept across a
+  // re-run whose files are gone (Digest.carryChats, October 2026).
+  function withStoredChats(digest, signals) {
+    const stored = state.digest && state.digest.whatsapp ? state.digest : null;
+    const fresh = signals && signals.supplements && signals.supplements.whatsapp;
+    if (!stored || !digest || (fresh && !fresh.addsTo)) return digest;
+    return Digest.carryChats(digest, JSON.parse(JSON.stringify(stored)));
+  }
+
   function premiumDigestFrom(base, extra, signals) {
     if (!base) return null;
     const adding = {};
@@ -9604,6 +9937,8 @@
     if (!Object.keys(adding).length) return base;
     const copy = JSON.parse(JSON.stringify(base));
     for (const key of Object.keys(adding)) {
+      // Chats added to the stored ones are joined to them by addSupplements.
+      if (key === 'whatsapp' && adding.whatsapp.addsTo) continue;
       delete copy[key];
       if (copy.coverage && Array.isArray(copy.coverage.sources)) copy.coverage.sources = copy.coverage.sources.filter(s => s !== key);
     }
@@ -9619,7 +9954,7 @@
   function deepDigestFrom(signals, base, adding) {
     const supplements = Object.assign({}, signals.supplements, adding);
     if (['google', 'facebook', 'whatsapp'].some(key => base[key] && !supplements[key])) return null;
-    const out = Digest.build(Object.assign({}, signals, { supplements }), { includeMessages: true, deep: true });
+    const out = withStoredChats(Digest.build(Object.assign({}, signals, { supplements }), { includeMessages: true, deep: true }), { supplements });
     out.__deep = true;
     out.__rebuilt = true;
     return out;
@@ -10556,7 +10891,7 @@
   // What it leaves out: anything mid-purchase or mid-run (unlock, pending,
   // job), other people's invites, banners, and the runs count (see below).
   const BACKUP_KIND = 'psycheai-backup';
-  const BACKUP_KEYS = ['profile', 'digest', 'reportDigest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account', 'ask'];
+  const BACKUP_KEYS = ['profile', 'digest', 'reportDigest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account', 'ask', 'marks'];
 
   function backupFile() {
     const data = {};
@@ -10633,6 +10968,16 @@
       out.ask = data.ask.filter(item => isRecord(item) && typeof item.q === 'string' && typeof item.a === 'string').slice(-ASK_KEEP);
     }
     if (data.pdfSaved === true) out.pdfSaved = true;
+    if (isRecord(data.marks) && typeof data.marks.stamp === 'string' && isRecord(data.marks.items)) {
+      const items = {};
+      for (const [key, m] of Object.entries(data.marks.items).slice(0, 40)) {
+        if (/^[\w:.-]{1,80}$/.test(key) && isRecord(m) && (m.v === 'yes' || m.v === 'no')) {
+          items[key] = Object.assign({ v: m.v, label: String(m.label || '').slice(0, 120) },
+            typeof m.note === 'string' && m.note.trim() ? { note: m.note.trim().slice(0, MARK_NOTE_MAX) } : {});
+        }
+      }
+      out.marks = { stamp: data.marks.stamp.slice(0, 40), items };
+    }
     if (isRecord(data.referral) && /^[0-9a-f]{64}$/.test(data.referral.secret || '')) {
       out.referral = { secret: data.referral.secret, code: (await sha256Hex(data.referral.secret)).slice(0, 12) };
       // The link is locked with its key and saved under this invite code, so
@@ -10722,6 +11067,8 @@
     const p = state.profile;
     const body = { card: p.card, report: p.report };
     if (p.premiumAnalysis) body.premiumAnalysis = p.premiumAnalysis;
+    const marks = marksForAsk();
+    if (marks.length) body.readerMarks = marks;
     let text = JSON.stringify(body);
     const name = String((p.card && p.card.name) || '').trim();
     for (const part of [name, name.split(/\s+/)[0]].filter(n => n && n.length >= 2)) {
@@ -12652,9 +12999,37 @@
           ? await sha256Hex('psycheai:' + handle) : '';
         return { account, legacy };
       }
+      // WhatsApp chats and no Instagram: the reader's name and their chats
+      // (accountSource), or the first such code this browser made.
+      const source = !state.signals && state.chats ? window.PsycheWhatsApp.accountSource(state.chats) : '';
+      if (source) {
+        const kept = store.read(KEYS.chatsAccount, null);
+        const account = typeof kept === 'string' && /^[0-9a-f]{64}$/.test(kept) ? kept : await sha256Hex('psycheai:chats:v1:' + source);
+        store.write(KEYS.chatsAccount, account);
+        store.write(KEYS.account, account);
+        return { account, legacy: '' };
+      }
     } catch (error) { /* no crypto: the code kept from last time, if any */ }
     const saved = store.read(KEYS.account, null);
     return { account: typeof saved === 'string' && /^[0-9a-f]{64}$/.test(saved) ? saved : '', legacy: '' };
+  }
+  /**
+   * A one-way code of each WhatsApp chat in this read, from the chats in
+   * memory (beside Instagram or alone), or the ones kept from the last read
+   * made here when the page was reloaded since.
+   */
+  async function chatCodes() {
+    try {
+      const summary = (state.signals && state.signals.supplements && state.signals.supplements.whatsapp) || state.chats;
+      const sources = summary && window.PsycheWhatsApp ? window.PsycheWhatsApp.chatSources(summary) : [];
+      if (sources.length) {
+        const codes = await Promise.all(sources.map(source => sha256Hex('psycheai:chat:v1:' + source)));
+        store.write(KEYS.chatCodes, codes);
+        return codes;
+      }
+      const kept = store.read(KEYS.chatCodes, null);
+      return state.digest && state.digest.whatsapp && Array.isArray(kept) ? kept.filter(c => /^[0-9a-f]{64}$/.test(c)).slice(0, 3) : [];
+    } catch (error) { return []; }
   }
   /** A one-way code of this reader's Instagram account, or '' when there is none to make it from. */
   async function accountKey() {
@@ -12734,6 +13109,10 @@
     const { account, legacy } = await accountKeys();
     if (account) out.account = account;
     if (legacy) out.legacyAccount = legacy;
+    // One code a WhatsApp chat: any one used in a free read before makes
+    // this one paid (lib/referral.js, chatsUsed).
+    const chatAccounts = await chatCodes();
+    if (chatAccounts.length) out.chatAccounts = chatAccounts;
     const mine = await ensureReferral();
     if (mine && mine.code) out.myRef = mine.code;
     const by = referredBy();

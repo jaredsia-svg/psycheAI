@@ -723,9 +723,9 @@ try {
   await page.click('#open-sources');
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
   const askBlurb = await page.locator('#datasources-dialog-blurb').innerText();
+  // One line since the redesign (October 2026): read here, reviewed first.
   check('the popout explains that a review comes before anything is sent',
-    /review/i.test(askBlurb) && /before anything is sent/i.test(askBlurb) &&
-    /untick/i.test(askBlurb), askBlurb);
+    /You can review the data in the next step before anything is sent for analysis\./.test(askBlurb), askBlurb);
   check('and it is titled for a reader who has nothing to change yet',
     (await page.locator('#datasources-dialog-title').innerText()) === 'Add your data',
     await page.locator('#datasources-dialog-title').innerText());
@@ -739,14 +739,45 @@ try {
   // tag that is present but styled out of existence still fails.
   const rowLabel = async source => (await page.locator(
     '#datasources-dialog [data-datasource="' + source + '"] strong').innerText()).replace(/\s+/g, ' ').trim();
-  check('the Instagram row says it is required, and stands out',
-    (await rowLabel('instagram')) === 'Instagram Required' &&
-      await page.evaluate(() => getComputedStyle(document.querySelector('#datasources-dialog [data-datasource="instagram"]')).borderTopWidth === '2px'),
+  // Since October 2026 Instagram or two chats is a first read, and the
+  // file box above the rows is what stands out; the rows are a checklist.
+  // Since the redesign (October 2026) the rows are one line each, in two
+  // groups: "Need one" over Instagram and WhatsApp, "Optional" over the rest.
+  const groups = await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-options > :not([hidden])')]
+    .map(el => el.matches('.ds-group') ? '#' + el.textContent.trim() : el.dataset.row));
+  check('a first upload groups its rows: Need one (Instagram, WhatsApp), then Optional (Google, Facebook), each row one line with a How?',
+    JSON.stringify(groups) === JSON.stringify(['#Need either IG or 2 x WhatsApp', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook']) &&
+      await page.locator('#datasources-dialog .ds-row:not([hidden]) .ds-how').count() === 4,
+    JSON.stringify(groups));
+  {
+    const helpState = () => page.evaluate(() => ({
+      open: document.querySelector('#datasources-dialog .supplement-help').open,
+      shown: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]')]
+        .filter(el => getComputedStyle(el).display !== 'none' && !el.hidden).map(el => el.dataset.help),
+      expanded: document.querySelector('#datasources-dialog .ds-how[data-how="google"]').getAttribute('aria-expanded'),
+    }));
+    const before = await helpState();
+    await page.click('#datasources-dialog .ds-how[data-how="google"]');
+    const opened = await helpState();
+    await page.click('#datasources-dialog .ds-how[data-how="google"]');
+    const closed = await helpState();
+    check('How? on a row opens that source\'s steps alone, and again closes them',
+      !before.open && opened.open && JSON.stringify(opened.shown) === '["google"]' && opened.expanded === 'true' &&
+        !closed.open && closed.expanded === 'false',
+      JSON.stringify({ before, opened, closed }));
+  }
+  check('the Instagram row carries no tag, and the file box stands out above the rows',
+    (await rowLabel('instagram')) === 'Instagram' &&
+      await page.evaluate(() => getComputedStyle(document.querySelector('#datasources-drop')).borderTopStyle === 'dashed' &&
+        getComputedStyle(document.querySelector('#datasources-dialog [data-datasource="instagram"]')).borderTopWidth === '0px' &&
+        document.querySelector('#datasources-drop').compareDocumentPosition(document.querySelector('#datasources-dialog .mode-options')) === Node.DOCUMENT_POSITION_FOLLOWING),
     await rowLabel('instagram'));
-  check('and the WhatsApp, Google and Facebook rows say they are optional, WhatsApp\'s line naming close friends',
-    (await rowLabel('whatsapp')) === 'WhatsApp chats (Optional)' &&
-      (await rowLabel('google')) === 'Google Takeout (Optional)' && (await rowLabel('facebook')) === 'Facebook (Optional)' &&
-      /Up to 3 close-friend chats \(\.zip or \.txt\)/.test(await page.locator('#datasources-dialog [data-datasource="whatsapp"]').innerText()),
+  check('and nor do the others: the groups say what is needed, WhatsApp shows its chats as three empty dots',
+    (await rowLabel('whatsapp')) === 'WhatsApp chats' &&
+      (await rowLabel('google')) === 'Google Takeout' && (await rowLabel('facebook')) === 'Facebook' &&
+      await page.evaluate(() => document.querySelectorAll('#datasources-dialog .ds-dots i').length === 3 &&
+        document.querySelector('#datasources-dialog .ds-dots').dataset.n === '0' &&
+        getComputedStyle(document.querySelector('#datasources-dialog .ds-dots')).display !== 'none'),
     await rowLabel('whatsapp') + ' / ' + await rowLabel('google') + ' / ' + await rowLabel('facebook'));
   // Each source two lines at most: the tag beside the name, then what to load.
   check('each source is two lines at most, the tag beside its name',
@@ -795,12 +826,12 @@ try {
   check('the optional-sources card is collapsed until the reader opens it',
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
-  check('its summary offers a WhatsApp chat and Google as optional, WhatsApp first as in "Load your data"',
-    /Optional: Also add WhatsApp chats or Google data for a fuller analysis/.test(optionalCard) &&
-      optionalCard.indexOf('WhatsApp chats with close connections (up to 3)') < optionalCard.indexOf('Google Takeout') &&
+  check('its summary offers two or three WhatsApp chats as a way in without Instagram, and Google, WhatsApp first as in "Load your data"',
+    /No Instagram data yet\? Start with 2–3 WhatsApp chats, or add Google data/.test(optionalCard) &&
+      optionalCard.indexOf('WhatsApp chats with close connections (2–3 to start without Instagram)') < optionalCard.indexOf('Google Takeout') &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
   check('and "How it works" no longer calls Google recommended',
-    /Download your data from Instagram \(WhatsApp and Google data are optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
+    /Download your data from Instagram, or export 2–3 WhatsApp chats \(Google data is optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   {
     // "below" goes to the request steps, on this page.
@@ -1335,8 +1366,8 @@ try {
       await off.click('#open-sources');
       await off.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       await off.waitForSelector('#datasources-offline:not([hidden])', { timeout: 15000 });
-      check('"Add your data" says no internet connection is needed, once the readers are in',
-        (await off.locator('#datasources-offline').innerText()).includes('No internet connection needed for this step'));
+      check('"Add your data" says this step works offline, once the readers are in',
+        (await off.locator('#datasources-offline').innerText()).includes('This step works offline'));
       const sent = [];
       off.on('request', request => { if (request.method() === 'POST' && !/\/api\/event$/.test(request.url())) sent.push(request.url()); });
       await offContext.setOffline(true);
@@ -1433,9 +1464,8 @@ try {
         help: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]:not([hidden]) h3')].map(h => h.textContent),
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
-      check('a new reader is offered Instagram (Required), WhatsApp chats, Google Takeout and Facebook (each Optional)',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram Required', 'WhatsApp chats (Optional)',
-          'Google Takeout (Optional)', 'Facebook (Optional)']), JSON.stringify(shown.rows));
+      check('a new reader is offered Instagram, WhatsApp chats, Google Takeout and Facebook, one line each',
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', 'WhatsApp chats', 'Google Takeout', 'Facebook']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
         JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
@@ -2866,7 +2896,7 @@ try {
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
-        'A full personality study from your own Instagram data. No questions asked.';
+        'A full personality study from your own Instagram or WhatsApp data. No questions asked. No sign-up.';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
@@ -6189,9 +6219,9 @@ try {
   check('MBTI has no closing write-up', (await page.locator('.portrait').count()) === 0);
   check('MBTI is the type and its axes and nothing else', await page.evaluate(() => {
     const card = document.querySelector('#profile-body .mbti-card');
-    // Head, the type, the four axes — no loose prose between, no caveat line.
+    // Head, the type, the four axes — no loose prose between, no caveat line; then the thumbs row (October 2026).
     return Boolean(card) && card.querySelectorAll(':scope > p').length === 0 &&
-      [...card.children].map(c => c.className.split(' ')[0]).join() === 'card-head,type-hero,mbti-sliders';
+      [...card.children].map(c => c.className.split(' ')[0]).join() === 'card-head,type-hero,mbti-sliders,mark-row';
   }));
   check('values and beliefs are one list, not two',
     (await page.locator('#profile-body h2, #profile-body h3').allInnerTexts())
@@ -9576,9 +9606,10 @@ try {
         '9/5/26, 7:52 AM - Sam Rivera: always. 10?',
       ].join('\n');
       await openDataSourcesPopout(waPage);
+      // Up to three, shown as three dots since the redesign (October 2026).
       check('the data popout offers WhatsApp chats, up to three',
         await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').isVisible() &&
-          /up to 3/i.test(await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText()));
+          await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"] .ds-dots i').count() === 3);
       const [first] = await Promise.all([
         waPage.waitForEvent('filechooser', { timeout: 15000 }),
         clickSource(waPage, '#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
@@ -11167,18 +11198,18 @@ try {
   const needsIg = await page.evaluate(() => ({ open: document.querySelector('#datasources-dialog').open,
     said: document.querySelector('#datasources-status').textContent,
     page: (document.querySelector('#upload-error') || {}).textContent || '' }));
-  check('Continue with no Instagram says so inside the popout, which stays open, not on the page behind',
-    needsIg.open && needsIg.said === 'Load your Instagram data to get started.' && !/Load your Instagram/.test(needsIg.page),
+  check('Continue with nothing loaded says what is needed inside the popout, which stays open, not on the page behind',
+    needsIg.open && needsIg.said === 'Load your Instagram data, or 2 WhatsApp chats, to get started.' && !/Load your Instagram/.test(needsIg.page),
     JSON.stringify(needsIg));
   const restoreSpot = await page.evaluate(() => {
     const link = document.querySelector('#restore-open').getBoundingClientRect();
     const go = document.querySelector('#datasources-continue').getBoundingClientRect();
     const size = el => parseFloat(getComputedStyle(document.querySelector(el)).fontSize);
-    return { left: link.right <= go.left + 1, level: Math.abs((link.top + link.bottom) / 2 - (go.top + go.bottom) / 2) < 12,
+    return { below: link.top >= go.bottom,
       small: size('#restore-open') < size('#datasources-continue'), text: document.querySelector('#restore-open').textContent };
   });
-  check('a browser with no card is offered Restore from a backup in Add your data, small, left of Continue',
-    await page.locator('#restore-open').isVisible() && restoreSpot.left && restoreSpot.level && restoreSpot.small &&
+  check('a browser with no card is offered Restore from a backup in Add your data, small, under the buttons',
+    await page.locator('#restore-open').isVisible() && restoreSpot.below && restoreSpot.small &&
       restoreSpot.text === 'Restore from a backup', JSON.stringify(restoreSpot));
   await page.setInputFiles('#restore-input', { name: 'notes.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ kind: 'something-else', data: {} })) });
@@ -12303,6 +12334,31 @@ try {
       check('structured: three signature patterns, each with where it shows up',
         (await sp.locator('#profile-body .pattern').count()) === 3 &&
         (await sp.locator('#profile-body .pattern .pattern-where').count()) === 3);
+      // Thumbs on each finding (October 2026): one row a pattern and one a section, kept on the device with an
+      // optional note shown where it was written; the same thumb again takes the mark back.
+      {
+        const rows = await sp.locator('#profile-body .mark-row').count();
+        const inPatterns = await sp.locator('#profile-body .pattern .mark-row').count();
+        const first = sp.locator('#profile-body .pattern .mark-row').nth(0), second = sp.locator('#profile-body .pattern .mark-row').nth(1);
+        const before = (await first.textContent()).trim();
+        await first.locator('[data-mark-v="yes"]').click();
+        const upOn = await first.locator('.mark-btn.is-on').count() === 1 && /That’s you/.test(await first.textContent());
+        await second.locator('[data-mark-v="no"]').click();
+        const formOpen = await second.locator('.mark-why input').count() === 1;
+        await second.locator('.mark-why input').fill('I plan so I do not have to worry');
+        await second.locator('.mark-why button[type="submit"]').click();
+        const said = (await second.locator('.mark-said q').textContent().catch(() => '')).trim();
+        const kept = await sp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_marks') || 'null'));
+        const items = kept && kept.items ? Object.values(kept.items) : [];
+        await first.locator('[data-mark-v="yes"]').click();
+        const undone = await first.locator('.mark-btn.is-on').count() === 0;
+        check('structured: thumbs on each pattern and section, quiet until used, kept on this device with the note shown where it was written',
+          inPatterns === 3 && rows >= 8 && rows <= 10 && /Sounds like you\?/.test(before) && upOn && formOpen &&
+            said === 'I plan so I do not have to worry' && items.length === 2 &&
+            items.some(m => m.v === 'no' && m.note === 'I plan so I do not have to worry') && undone,
+          JSON.stringify({ rows, inPatterns, before, upOn, formOpen, said, items, undone }));
+        await second.locator('[data-mark-v="no"]').click();
+      }
       check('structured: no Connects to rows in the parts, only where each pattern shows up in the overview',
         (await sp.locator('#profile-body .connects').count()) === 0 &&
         !/Connects to/i.test(await sp.locator('#profile-body').textContent()));
@@ -13680,6 +13736,197 @@ try {
     } finally {
       await up.close();
       structuredServer.kill();
+    }
+  }
+
+  // ---- WhatsApp chats alone, through the one file box (October 2026) ----
+  //
+  // A first read from three WhatsApp chats and no Instagram, picked in one go
+  // in the file box. Its own server with the one-free-read rule on: the same
+  // three chats in another browser are refused, and so are new chats in the
+  // same browser (the code it made first is sent again).
+  {
+    const waPort = PORT + 3;
+    const waServer = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(waPort), PSYCHEAI_MOCK: '1',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-wa-budget.jsonl'),
+        PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-wa-usage.jsonl'),
+        PSYCHEAI_DAILY_FREE_LIMIT: '100000', PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_NONCE: '100000',
+        PSYCHEAI_FIRST_RUN: 'card',
+      },
+      stdio: 'ignore',
+    });
+    const waChat = (friend, salt) => Array.from({ length: 160 }, (_, i) =>
+      `${1 + Math.floor(i / 27) % 12}/${1 + (i % 27)}/25, 9:0${i % 10} PM - ` +
+      (i % 2 ? 'Sam Rivera: honestly I think you should go for the move, ' + salt + ' ' + friend.charCodeAt(0) * 13 + ' ' + i : friend + ': tell me more ' + i)).join('\n');
+    const waFiles = (friends, salt) => friends.map(f => ({ name: 'WhatsApp Chat with ' + f + '.txt', mimeType: 'text/plain', buffer: Buffer.from(waChat(f, salt)) }));
+    // One read: the box, the files, Continue, the review, Send. Resolves the
+    // page and what came back.
+    const readChats = async (context, friends, salt, look) => {
+      const pg = await context.newPage();
+      const errors = [];
+      pg.on('pageerror', error => errors.push(error.message));
+      const bodies = [];
+      pg.on('request', request => {
+        if (request.method() === 'POST' && /\/api\/analyse$/.test(request.url())) bodies.push(request.postDataJSON());
+      });
+      await pg.goto('http://localhost:' + waPort + '/', { waitUntil: 'load' });
+      await pg.click('#open-sources');
+      await pg.waitForSelector('#datasources-dialog[open]');
+      if (look) await look(pg, 'empty');
+      const [pick] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 15000 }), pg.click('#datasources-drop')]);
+      await pick.setFiles(waFiles(friends, salt));
+      await pg.waitForFunction(() => document.querySelector('#datasources-minimum').classList.contains('is-met'), null, { timeout: 15000 });
+      if (look) await look(pg, 'met');
+      await continueFromDataSources(pg);
+      // The thin-data note may come first (a small digest): its "carry on".
+      for (let i = 0; i < 3; i++) {
+        await pg.waitForSelector('#review-dialog[open], #more-data-dialog[open]', { timeout: 30000 });
+        if (!(await pg.locator('#more-data-dialog[open]').count())) break;
+        if (look) await look(pg, 'thin');
+        await pg.click('#more-data-back');
+        await pg.waitForFunction(() => !document.querySelector('#more-data-dialog').open, null, { timeout: 10000 });
+      }
+      if (look) await look(pg, 'review');
+      await answerReview(pg);
+      await Promise.race([
+        pg.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 }),
+        pg.waitForSelector('#premium-dialog[open]', { timeout: 30000 }),
+      ]).catch(() => {});
+      return { pg, errors, body: bodies[bodies.length - 1] || {} };
+    };
+    try {
+      await waitForServer(waPort);
+      const first = await browser.newContext();
+      const seen = {};
+      const look = async (pg, step) => {
+        if (step === 'empty') {
+          seen.empty = await pg.textContent('#datasources-minimum');
+          seen.waiting = await pg.evaluate(() => document.querySelector('#datasources-continue').classList.contains('is-waiting'));
+          await pg.click('#datasources-continue');
+          seen.refused = await pg.textContent('#datasources-status');
+          seen.rows = await pg.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden]) strong')]
+            .map(n => n.innerText.replace(/\s+/g, ' ').trim()));
+        } else if (step === 'met') {
+          seen.met = await pg.evaluate(() => document.querySelector('#datasources-minimum').classList.contains('is-met') &&
+            !document.querySelector('#datasources-continue').classList.contains('is-waiting') &&
+            document.querySelector('#datasources-dialog .ds-dots').dataset.n === '3');
+          seen.waRow = await pg.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText();
+        } else if (step === 'thin') {
+          seen.thin = await pg.locator('#more-data-dialog').innerText();
+        } else {
+          await pg.waitForSelector('#review-whatsapp', { state: 'attached', timeout: 15000 }).catch(() => {});
+          await settle(pg, '#review-dialog');
+          seen.review = await pg.locator('#review-dialog').innerText();
+        }
+      };
+      const a = await readChats(first, ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x', look);
+      check('one file box: a first upload asks for one of Instagram or the chats, sets Continue back, and holds it until it has one',
+        seen.empty === 'Need either IG or 2 x WhatsApp' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
+          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', 'WhatsApp chats', 'Google Takeout', 'Facebook']),
+        JSON.stringify(seen));
+      check('three chats picked at once in the box are sorted to WhatsApp: three dots filled, Need one ticked, Continue back to full strength',
+        seen.met === true && /3 of 3 chats loaded/.test(seen.waRow), JSON.stringify([seen.met, seen.waRow]));
+      check('a thin-data note, if any, speaks of the chats, never of an Instagram account',
+        !seen.thin || (/these chats/.test(seen.thin) && !/Instagram account/.test(seen.thin)), seen.thin);
+      check('the review shows the three chats and nothing from Instagram',
+        /WhatsApp\s*3 chats/.test(seen.review) && !/Activity & timing|captions|Instagram searches/i.test(seen.review), seen.review.slice(0, 400));
+      const cardName = await a.pg.evaluate(() => (JSON.parse(localStorage.getItem('psycheai_profile') || 'null') || {}).card);
+      check('and the free card is made from the chats, named as the chats name the reader, with a one-way code and no name sent',
+        Boolean(cardName) && cardName.name === 'Sam Rivera' && /^[0-9a-f]{64}$/.test(a.body.account || '') &&
+          !JSON.stringify(a.body).includes('Sam Rivera') && !JSON.stringify(a.body).includes('Mia Wong') &&
+          a.body.digest && a.body.digest.coverage.sources.join() === 'whatsapp' && a.errors.length === 0,
+        JSON.stringify([cardName && cardName.name, a.errors]));
+      await a.pg.close();
+      const again = await readChats(await browser.newContext(), ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x');
+      const againText = await again.pg.locator('#premium-dialog').innerText().catch(() => '');
+      check('the same three chats in another browser are not a second free read',
+        again.body.account === a.body.account && /Your free Psyche Card has already been used/.test(againText) &&
+          !(await again.pg.evaluate(() => localStorage.getItem('psycheai_profile'))), againText.slice(0, 200));
+      await again.pg.close();
+      // Keeping one chat and swapping the rest is not a second free read
+      // either: each chat carries its own one-way code (October 2026).
+      const mixed = await readChats(await browser.newContext(), ['Mia Wong', 'Zed Kim'], 'x');
+      const mixedText = await mixed.pg.locator('#premium-dialog').innerText().catch(() => '');
+      check('nor is one of those chats beside a new one, in a third browser: each chat counts on its own',
+        mixed.body.account !== a.body.account && Array.isArray(mixed.body.chatAccounts) && mixed.body.chatAccounts.length === 2 &&
+          mixed.body.chatAccounts.some(code => a.body.chatAccounts.includes(code)) && /Your free Psyche Card has already been used/.test(mixedText) &&
+          !/these chats|One of/.test(mixedText) &&
+          !(await mixed.pg.evaluate(() => localStorage.getItem('psycheai_profile'))),
+        JSON.stringify({ codes: mixed.body.chatAccounts && mixed.body.chatAccounts.length, text: mixedText.slice(0, 120) }));
+      await mixed.pg.close();
+      const wipe = await first.newPage();
+      await wipe.goto('http://localhost:' + waPort + '/');
+      await wipe.evaluate(() => { for (const key of Object.keys(localStorage)) if (key !== 'psycheai_chats_account') localStorage.removeItem(key); });
+      await wipe.close();
+      const sameBrowser = await readChats(first, ['Zoe Lim', 'Kai Ng', 'Ben Ode'], 'y');
+      check('nor are three new chats in the same browser: the first code it made is sent again',
+        sameBrowser.body.account === a.body.account && await sameBrowser.pg.locator('#premium-dialog[open]').count() === 1);
+      await sameBrowser.pg.close();
+      // Two chats are enough (the minimum since 26 October 2026).
+      const fresh = await readChats(await browser.newContext(), ['Zoe Lim', 'Kai Ng'], 'z');
+      check('while someone else\'s chats in their own browser are their own free read, and two chats are enough for one',
+        fresh.body.account !== a.body.account && await fresh.pg.locator('#view-profile:not([hidden])').count() === 1);
+      // Adding data later keeps the chats (October 2026): Instagram in the
+      // same visit, from memory; after a reload, a third chat joins the two
+      // stored ones, and Instagram again, from the stored digest.
+      const fp = fresh.pg;
+      const reviewText = async () => {
+        await fp.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+        await fp.waitForSelector('#review-whatsapp', { state: 'attached', timeout: 15000 }).catch(() => {});
+        await settle(fp, '#review-dialog');
+        const text = await fp.locator('#review-dialog').innerText();
+        await fp.keyboard.press('Escape');
+        await fp.waitForFunction(() => !document.querySelector('#review-dialog').open, null, { timeout: 10000 }).catch(() => {});
+        return text;
+      };
+      const pickInBox = async files => {
+        const [pick] = await Promise.all([fp.waitForEvent('filechooser', { timeout: 15000 }), clickSource(fp, '#datasources-drop')]);
+        await pick.setFiles(files);
+        await fp.waitForFunction(() => !document.querySelector('#datasources-drop').disabled, null, { timeout: 30000 });
+        await settle(fp, '#datasources-dialog');
+      };
+      // With the report still to unlock, Add data offers more data first.
+      const openAdd = async () => {
+        await clickClear(fp, CHANGE_DATA);
+        await fp.waitForSelector('#datasources-dialog[open], #more-data-dialog[open]', { timeout: 15000 });
+        if (await fp.locator('#more-data-dialog[open]').count()) {
+          await fp.click('#more-data-continue');
+          await fp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+        }
+      };
+      const hubChips = await fp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-chip')].map(c => c.textContent.trim() + (c.classList.contains('is-add') ? '+' : '')));
+      await openAdd();
+      const igRowBefore = await fp.locator('#datasources-dialog .mode-option[data-datasource="instagram"] strong').innerText();
+      await pickInBox([{ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() }]);
+      const sameVisit = {
+        note: await fp.evaluate(() => document.querySelector('#datasources-instagram-note').hidden ? '' : document.querySelector('#datasources-instagram-note').textContent),
+        waRow: await fp.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText(),
+      };
+      await continueFromDataSources(fp);
+      const sameReview = await reviewText();
+      check('a card read from two chats, adding Instagram in the same visit: Instagram shows as one to add, the chats stay ticked, and the review sends both',
+        hubChips[0] === 'Instagram+' && igRowBefore === 'Instagram' && /2 of 3 chats loaded/.test(sameVisit.waRow) && !/WhatsApp/.test(sameVisit.note) &&
+          /WhatsApp\s*2 chats/.test(sameReview) && /captions|Activity & timing/i.test(sameReview),
+        JSON.stringify({ hubChips, igRowBefore, sameVisit, review: sameReview.slice(0, 300) }));
+      await fp.reload({ waitUntil: 'load' });
+      await openAdd();
+      await pickInBox([{ name: 'WhatsApp Chat with Kai Ng.txt', mimeType: 'text/plain', buffer: Buffer.from(waChat('Kai Ng', 'z')) }]);
+      const againSaid = await fp.locator('#datasources-status').innerText();
+      await pickInBox(waFiles(['Lea Yeo'], 'w'));
+      const afterAdd = await fp.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText();
+      await pickInBox([{ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() }]);
+      await continueFromDataSources(fp);
+      const laterReview = await reviewText();
+      check('after a reload: a chat already in is known again, a new one joins the stored two as the third, and with Instagram the review sends all three',
+        /already loaded/.test(againSaid) && /3 of 3 chats loaded/.test(afterAdd) &&
+          /WhatsApp\s*3 chats/.test(laterReview) && /captions|Activity & timing/i.test(laterReview) && fresh.errors.length === 0,
+        JSON.stringify({ againSaid, afterAdd, review: laterReview.slice(0, 300), errors: fresh.errors }));
+      await fresh.pg.close();
+    } finally {
+      waServer.kill();
+      await new Promise(resolve => waServer.once('exit', resolve)).catch(() => {});
     }
   }
 

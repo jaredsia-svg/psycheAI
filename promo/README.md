@@ -101,10 +101,10 @@ when it is run itself), lays them out and writes the music and mix. `privacy-sta
 | --- | --- |
 | What happens when you load your Instagram file onto PsycheAI? | the Instagram file lands large in the middle, the WhatsApp, Google and Facebook files smaller around it |
 | Your files are loaded on your phone, not uploaded. | Step 1: they land in a phone |
-| Only a short summary is made, with names and handles removed. | Step 2: the same words; they fold into a summary, *100–200 KB of text* comes in on "short summary", and on "with names and handles removed" (which appears then) its name, email, phone number and handle blur into placeholders |
-| You review it, leave out any topic, and switch off any chat. | Step 3 (25 October 2026, for the review sheet's new choices): the sheet in miniature; from "leave out any topic" two sensitive topics are typed into *Leave out anything mentioning*, *diagnosis* then *medication*, each becoming a chip, then *14 posts & messages removed*; on "off" *Jordan Lee [t2]* switches off among three named chats; then *Send this* is pressed. The heading's third part (`.later2`) comes in with the third phrase |
+| Only a short summary is made, with names and handles removed. | Step 2: the same words; they fold into a summary, drawn as the ChatGPT reel's (26 October 2026: *YOUR SUMMARY · de-identified*, a gradient border, four rows), *100–200 KB of text* comes in on "short summary", and on "with names and handles removed" (which appears then) the name is blacked out, *Sarah Kim* becomes *[N1]* and *@jamie.k* *[P1]*, and the email is struck out, *removed* |
+| You review it, leave out any year or topic, and switch off any type of data. | Step 3, the sheet in miniature as the app lays it out (26 October 2026; before, a topic and a chat): *Which years*, a bar a year with *All · 3 yrs · 1 yr*, where '19 and '20 go grey on "year" (*'19, '20 left out*); from "topic" *diagnosis* then *medication* are typed into *Leave out anything mentioning*, each becoming a chip; *What's included*, three types of data least personal first, a scale down its left edge, where *Your searches* switches off on "type"; then *Direct messages* opens and *Jordan Lee [t2]* switches off (the step held a second past its line for it); then *Send this* is pressed. The heading's third part (`.later2`) comes in with the third phrase |
 | The summary is sent encrypted to Google Vertex AI, which never trains on it. | Step 4: *The summary is sent encrypted*; it flies up locked to *Google Vertex AI enterprise*; *Never used to train AI* |
-| Your results come back to you, and PsycheAI keeps no copy. | Step 5: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps no copy* |
+| Your results come back to you, and PsycheAI keeps none of your data on its server. Even if a hack occurs, there's no data to steal. | Step 5: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps none of your data on its server*, then *Hacked? No data to steal* (26 October 2026: "no copy" became "none of your data on its server", and "It needs no account" went from the voice and the screen. Not "nothing on its server": it keeps one-way codes and counts, never the reader's data) |
 | See for yourself at PsycheAI dot io. | the mark, *See for yourself*, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
 
 Through Steps 1 to 3 the phone's own screen says *No internet needed* (light green; it no longer
@@ -450,15 +450,17 @@ were made with. A name longer than eleven letters (Sherlock Holmes) is set small
 ### Story highlights
 
 ```
-node promo/stories.mjs   # marketing/stories/start-1..4.png and privacy-1..3.png, 1080x1920
+node promo/stories.mjs   # marketing/stories/start-1..5.png and privacy-1..4.png, 1080x1920
 ```
 
 Still images for the Instagram highlights *Start here* and *Privacy* (25 October 2026), as few as will hold it, one
-page (`stories-stage.html`) with a `<section data-name>` per slide. *Start here* (4): what PsycheAI is, with the
+page (`stories-stage.html`) with a `<section data-name>` per slide. *Start here* (5): what PsycheAI is, with the
 four data sources it reads; the free card (Emily Carter's Mulan card, large, its key parts named beside it from
 card-char-mulan-parts.json); what else there is (report, Ask PsycheAI,
 Psyche Sync, the roast; "free to start" once, in the heading); the guide as the account's pinned post lays it out
-(every tap, each button a chip). *Privacy* (4): two questions to a story, each answered in the FAQ's own words, shortened, so every claim stays
+(every tap, each button a chip). Then, for a reader with no time to wait for Instagram's email (26 October 2026), the same guide for two
+WhatsApp chats instead: export a chat (Android ⋮ → More, iPhone the contact's name) → Export chat → Without media, again for
+one or two more people, then load them all at once. *Privacy* (4): two questions to a story, each answered in the FAQ's own words, shortened, so every claim stays
 literally true (the file never leaves the phone; how the summary is de-identified; no one else can get at it, even
 if PsycheAI were hacked; no training on it; a password only in Instagram, no accounts, results only on the device;
 the airplane-mode check), and the last story to itself, why not ChatGPT: consumer AI against PsycheAI, said as the
@@ -487,7 +489,7 @@ comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's
 | 2 | It may train on it. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud, each on a hit (25 October 2026: "unless you switch that off" dropped, at the user's ask; "may" keeps it true) |
 | 3 | Now watch PsycheAI. / Your files are read locally on your phone. | the export in a phone (*Read locally, on your phone*), a lock badge slamming onto it, then the privacy video's *✈️ No internet needed* (25 October 2026: worded as the privacy video is) |
 | 3b | On your phone, a summary is made, / your name blanked out, / friends turned into numbers, / contacts and links removed. | *A summary, made on your phone*: a *Your summary* card whose rows write in on "is made", then each cleaned on its own phrase (the FAQ's list): the name under a black bar; *Sarah Kim* → [N1] and *@tom.r* → [P1]; the email, phone and link struck out, *removed*; then, under the card for the rest of the beat, a pill *~150 KB of text · no photos or videos* (moved here from after the send, where it showed for a moment, 25 October 2026) |
-| 3c | You review it before it's sent for analysis, / leave out any topic, / and switch off any chat. | *Leave out any topic or chat.*: the review sheet's two strongest choices (25 October 2026); *diagnosis* then *medication* are typed in, each becoming a chip, then *14 posts & messages removed*; a finger switches *Jordan Lee [t2]* off on "off" and presses *Send this* as the voice ends; the sheet shrinks into *Google Vertex AI · enterprise · never trains on it*. ("Untick", the privacy video's word, was said "untake" by this voice, so "switch off".) |
+| 3c | You review it before it's sent for analysis, / leave out any year or topic, / and switch off any type of data. (Held 0.8 s longer, 26 October 2026, for a chat switched off.) | *Leave out any year, topic or type of data.*: the review sheet as the app lays it out (26 October 2026; before, a topic and a chat): a finger taps '19 and '20 off on "year" (*All* lets go, *'19, '20 left out*); *diagnosis* then *medication* are typed in, each becoming a chip; the finger switches *Your searches* off on "type" among three types of data, least personal first, then *Direct messages* opens and it switches *Jordan Lee [t2]* off, and presses *Send this* as the voice ends; the sheet shrinks into *Google Vertex AI · enterprise · never trains on it*. |
 | 4 | PsycheAI keeps no copy, and needs no account. / Even if a hack occurs, there's no data to steal. | *PsycheAI's servers*: 0 accounts, 0 reports kept ("0 exports kept" dropped on 25 October 2026), each popping in as a 0 (never another number: it counted down from 9 until 25 October); *Your card and report, saved only on your device*; a shield card for the hack line |
 | 5 | Your data stays yours. / Try it at psycheai.io (`{PsycheAIdotIO}`, the seven even syllables made for Ryan; the quick form sounded off, 25 October 2026). | the line; in the pause after it a *</> The code is public* card (*for you to inspect, on GitHub*), on screen only, not said (25 October 2026); *Your personal AI coach*, the address |
 

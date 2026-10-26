@@ -267,13 +267,14 @@ REELS['chatgpt'] = dict(REELS['compare'], lines=[
     (['On your phone, a summary is made,', 'your name blanked out,', 'friends turned into numbers,', 'contacts and links removed.'], 0.8, True, 0.15),
     # The review sheet: the reader switches off what they would rather keep back (the app's own rows).
     # "Untick" was said "untake", and once "can't untake" (25 October 2026); the sheet's rows are switches anyway.
-    # The review's two strongest choices, as the privacy reel's Step 3 (25 October 2026): a topic and a chat.
-    (["You review it before it's sent for analysis,", 'leave out any topic,', 'and switch off any chat.'], 0.8, True, 0.15),
+    # The review's choices as the privacy reel's Step 3 says them (26 October 2026): a year, a topic, a type of data,
+    # then one chat in the direct messages, on screen only (held 0.8 s longer for it).
+    (["You review it before it's sent for analysis,", 'leave out any year or topic,', 'and switch off any type of data.'], 0.8, True, 0.15),
     (['{B} keeps no copy, and needs no account.', "Even if a hack occurs, there's no data to steal."], 0.8, True, 0.3),
     # "The code is public" is on screen, not said (25 October 2026).
     # The address in seven even syllables, the form made for Ryan (the quick one sounded off here, 25 October 2026).
     (['Your data stays yours.', 'Try it at {PsycheAIdotIO}.'], 0.8, True, 0.1),
-], hold={0: 0.1, 1: 0.1, 2: 0.2, 3: 0.2, 4: 0.8, 5: 1.2, 6: 0.4}, lead={}, punch=(0,),  # quick cuts; spoken at 0.8 (25 October 2026, "shorten it more")  # quick cuts (25 October 2026)
+], hold={0: 0.1, 1: 0.1, 2: 0.2, 3: 0.2, 4: 0.8, 5: 2.0, 6: 0.4}, lead={}, punch=(0,),  # quick cuts; spoken at 0.8 (25 October 2026, "shorten it more")  # quick cuts (25 October 2026)
     # Its own music (25 October 2026, "not high impact enough"): a tense pulse in D minor while ChatGPT has the data, a
     # hit on each warning, then a riser and a drop into a bright four-on-the-floor in F major from "Now watch PsycheAI".
     mood='thriller', bpm=120, reveal=3,

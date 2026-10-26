@@ -15,14 +15,14 @@
 <meta property="og:site_name" content="PsycheAI">
 <meta property="og:url" content="https://psycheai.io/">
 <meta property="og:title" content="PsycheAI – Your personal AI coach that already knows you">
-<meta property="og:description" content="A full personality study from your own Instagram data. No questions asked: MBTI, attachment style, career strengths and blind spots. Your first Psyche Card is free.">
+<meta property="og:description" content="A full personality study from your own Instagram or WhatsApp data. No questions asked: MBTI, attachment style, career strengths and blind spots. Your first Psyche Card is free.">
 <meta property="og:image" content="https://psycheai.io/media/og-card.jpg?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Your personal AI coach that already knows you. A sample Psyche Card: most like Mulan, with MBTI, Big Five, values, interests and love languages">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="PsycheAI – Your personal AI coach that already knows you">
-<meta name="twitter:description" content="Your personal AI coach that already knows you, built from your Instagram data. Your first Psyche Card is free.">
+<meta name="twitter:description" content="Your personal AI coach that already knows you, built from your Instagram or WhatsApp data. Your first Psyche Card is free.">
 <meta name="twitter:image" content="https://psycheai.io/media/og-card.jpg?v=4">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
@@ -186,7 +186,7 @@
            role="heading" aria-level="1" (class .h1): one <h1> in the document for
            search engines, and still a level-1 heading per view for screen readers. -->
       <h1>Your personal AI coach<br><span class="accent">that already knows you.</span></h1>
-      <p class="lede">A full personality study from your own Instagram data. No questions asked.</p>
+      <p class="lede">A full personality study from your own Instagram or WhatsApp data. No questions asked. No sign-up.</p>
       <!-- What the reading covers, as four pills on one line above the buttons. -->
       <ul class="hero-pills" aria-label="What you get">
         <li>MBTI</li><li>Attachment Style</li><li>Career Strengths</li><li>Blind Spots</li>
@@ -237,7 +237,7 @@
   <h2 class="row-head">How it works</h2>
   <div class="steps-row">
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
-      <p>Download your data from Instagram (WhatsApp and Google data are optional). See <a href="#request-data" class="step-below">below</a> for instructions.</p></div>
+      <p>Download your data from Instagram, or export 2–3 WhatsApp chats (Google data is optional). See <a href="#request-data" class="step-below">below</a> for instructions.</p></div>
     <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
       <p>A short, de-identified summary of your data is analysed by Google Vertex AI, which writes your report. No data is stored by PsycheAI.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
@@ -305,7 +305,8 @@
     <div class="help-head">
       <div>
         <h2>Request your Instagram data first</h2>
-        <p class="help-lede">It takes 30 seconds. Instagram then emails you the file, usually within 1–2 hours.</p>
+        <p class="help-lede">It takes 30 seconds. Instagram then emails you the file, usually within 1–2 hours.
+          No time to wait? Export 2 WhatsApp chats instead (steps below).</p>
       </div>
       <!-- The steps below stay: they are short, scannable, and enough for
            somebody who has done this before. This opens the same journey in
@@ -344,14 +345,16 @@
          gate, where the only thing worth hiding here is the length. <details>
          gets keyboard support, Find-in-page and a working control with no
          script at all. -->
-    <!-- The two optional sources, in the order "Load your data" offers them:
-         up to three WhatsApp chats with close connections, then Google. -->
+    <!-- The two other sources, in the order "Load your data" offers them:
+         up to three WhatsApp chats with close connections, then Google.
+         Since October 2026 two or three chats are also a way in without Instagram,
+         for a reader still waiting for Instagram's email. -->
     <details class="optional-card">
       <summary>
-        <span class="optional-title">Optional: Also add WhatsApp chats or Google data for a fuller analysis</span>
+        <span class="optional-title">No Instagram data yet? Start with 2–3 WhatsApp chats, or add Google data</span>
       </summary>
 
-      <h3>WhatsApp chats with close connections (up to 3)</h3>
+      <h3>WhatsApp chats with close connections (2–3 to start without Instagram)</h3>
       <ol data-howto="whatsapp"></ol>
       <h3>Google Takeout</h3>
       <ol data-howto="google"></ol>
@@ -817,7 +820,7 @@
     </div></div>
 
     <h3>What is PsycheAI?</h3>
-    <p>A reading of yourself already sitting in your Instagram data (and, if you like, WhatsApp, Google or Facebook). Your free summary
+    <p>A reading of yourself already sitting in your Instagram data or WhatsApp chats (and, if you like, Google or Facebook). Your free summary
       card names the character you are most like, your signature patterns, what motivates you, your
       MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part
       of it with evidence from your data. It is not a test
@@ -825,10 +828,12 @@
 
     <h3>How long does it take?</h3>
     <p>Instagram usually takes 1–2 hours to prepare the data zip file. The analysis takes a few
-      minutes. Request your data first and come back when the email arrives.</p>
+      minutes. Request your data first and come back when the email arrives. No time to wait? Two
+      WhatsApp chats export in seconds.</p>
 
     <h3>What file do I need?</h3>
-    <p>Your Instagram data as a .zip, in JSON format (not HTML).
+    <p>Your Instagram data as a .zip, in JSON format (not HTML), or 2–3 WhatsApp chats, each exported
+      from the chat itself (Without media).
       <a href="#" id="faq-guide-open">See the illustration</a> for every step.</p>
   </div>
 
@@ -1345,15 +1350,35 @@
 <dialog id="datasources-dialog" class="mode-dialog datasources-dialog" aria-labelledby="datasources-dialog-title">
   <h2 id="datasources-dialog-title">Add or change your data</h2>
   <p class="alert" id="datasources-inapp" hidden></p>
-  <p class="muted" id="datasources-dialog-blurb">Load newer data to replace a source, or add one
-    you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
-  <!-- Shown once the data readers have loaded: reading and summarising needs no network from then on.
-       Words from copy.js (dataSourcesOffline), set by askDataSources. -->
-  <p class="offline-note" id="datasources-offline" hidden><span aria-hidden="true">✈️</span><span></span></p>
+  <!-- One line (October 2026): the offline sentence leads it, shown only once
+       the data readers have loaded (reading and summarising needs no network
+       from then on), then what happens next. Words from copy.js
+       (dataSourcesOffline, and the blurb each entry point passes), set by
+       askDataSources. In a green box with ✈️ like the review's own note
+       (26 October 2026); the plane comes in with the offline sentence. -->
+  <div class="deid-note ds-note" id="datasources-dialog-blurb"><span class="deid-icon" id="datasources-offline-icon" aria-hidden="true" hidden>✈️</span>
+    <p><strong id="datasources-offline" hidden><span></span> </strong><span
+    id="datasources-blurb-text">Load newer data to replace a source, or add one you have not used yet. Nothing is sent anywhere until you review it on the next screen.</span></p></div>
+  <!-- One box for every file (October 2026): each is sorted by what is inside
+       it (Supplement.detectSource), so the reader never has to know which row
+       a file belongs to. Picking several at once, or dropping them on the
+       popout, works the same. The rows below are the checklist: what is
+       loaded, and a way to add one source on its own. -->
+  <button class="ds-drop" id="datasources-drop" type="button">
+    <span class="ds-drop-icon" aria-hidden="true">📂</span>
+    <span class="ds-drop-body"><strong>Choose files</strong>
+      <span class="muted ds-drop-hint">or drop them here</span></span>
+  </button>
   <div class="mode-options">
+    <!-- On a first upload the rows are two groups (askDataSources): "Need either IG or 2 x WhatsApp"
+         (Instagram, or two or three WhatsApp chats), ticked once either is
+         loaded, then "Optional". Placed by askDataSources, which moves rows. -->
+    <p class="ds-group" id="datasources-minimum" hidden></p>
+    <p class="ds-group" id="datasources-optional" hidden></p>
+    <div class="ds-row" data-row="instagram">
     <button class="mode-option" data-datasource="instagram" type="button">
       <span class="mode-icon">📷</span>
-      <span class="mode-body"><strong>Instagram <span class="mode-tag mode-tag-required">Required</span></strong>
+      <span class="mode-body"><strong>Instagram <span class="mode-tag"></span></strong>
         <!-- The parts clause matters as much here as on a first upload: a
              re-run replaces Instagram wholesale, so a reader who picks only
              part 1 of a split export replaces a complete archive with half of
@@ -1365,38 +1390,50 @@
         </span>
       </span>
     </button>
+    <button class="ds-how" data-how="instagram" type="button" aria-expanded="false">How?</button>
+    </div>
+    <div class="ds-row" data-row="google">
     <button class="mode-option" data-datasource="google" type="button">
       <span class="mode-icon">🔍</span>
-      <span class="mode-body"><strong><span class="mode-title">Google Takeout</span> <span class="mode-tag">(Optional)</span></strong>
-        <span class="muted">Your “My Activity” Takeout .zip</span>
+      <span class="mode-body"><strong><span class="mode-title">Google Takeout</span> <span class="mode-tag"></span></strong>
+        <span class="muted"></span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
         </span>
       </span>
     </button>
+    <button class="ds-how" data-how="google" type="button" aria-expanded="false">How?</button>
+    </div>
+    <div class="ds-row" data-row="facebook">
     <button class="mode-option" data-datasource="facebook" type="button">
       <span class="mode-icon">📘</span>
-      <span class="mode-body"><strong><span class="mode-title">Facebook</span> <span class="mode-tag">(Optional)</span></strong>
-        <span class="muted">Your Facebook data .zip</span>
+      <span class="mode-body"><strong><span class="mode-title">Facebook</span> <span class="mode-tag"></span></strong>
+        <span class="muted"></span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
         </span>
       </span>
     </button>
+    <button class="ds-how" data-how="facebook" type="button" aria-expanded="false">How?</button>
+    </div>
     <!-- Up to three chats, each from WhatsApp's own Export chat. Only the
          reader's messages are read; see docs/whatsapp.js. -->
+    <div class="ds-row" data-row="whatsapp">
     <button class="mode-option" data-datasource="whatsapp" type="button">
       <span class="mode-icon">💬</span>
-      <span class="mode-body"><strong><span class="mode-title">WhatsApp chats</span> <span class="mode-tag">(Optional)</span></strong>
-        <span class="muted">Load up to 3 chats (.zip or .txt), one or several at a time</span>
+      <span class="mode-body"><strong><span class="mode-title">WhatsApp chats</span> <span class="mode-tag"></span></strong>
+        <span class="muted"></span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
         </span>
       </span>
+      <span class="ds-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     </button>
+    <button class="ds-how" data-how="whatsapp" type="button" aria-expanded="false">How?</button>
+    </div>
   </div>
   <p class="supplement-status" id="datasources-status" hidden></p>
   <!-- Asked only when the chats do not say which sender is the reader. -->
@@ -1408,8 +1445,10 @@
        reasoning at the call site in app.js for why previously loaded Google
        or Facebook data cannot always be carried forward automatically onto a
        replaced Instagram export. -->
-  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google,
-    Facebook and WhatsApp data fresh too – reload them here as well if you want them included in this run.</p>
+  <!-- WhatsApp is not in it since October 2026: the chats are carried onto
+       the new export (Digest.carryChats). -->
+  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google
+    and Facebook data fresh too – reload them here as well if you want them included in this run. Your WhatsApp chats are kept.</p>
   <!-- At the unlock, over an existing card: the first tap on a source asks
        this before the file picker opens, once per opening. "Choose file" is a
        click of its own, so it can open the picker directly (a picker opened
@@ -1468,9 +1507,9 @@
   <div class="btn-row supplement-actions">
     <button class="btn btn-outline" id="datasources-back" type="button">Back</button>
     <span class="btn-spacer"></span>
-    <button class="link-btn datasources-restore" id="restore-open" type="button" hidden>Restore from a backup</button>
     <button class="btn" id="datasources-continue" type="button">Continue</button>
   </div>
+  <p class="ds-restore-row"><button class="link-btn datasources-restore" id="restore-open" type="button" hidden>Restore from a backup</button></p>
   <input type="file" id="datasources-input" accept=".zip,application/zip,.txt,text/plain" multiple hidden>
   <input type="file" id="restore-input" accept=".json,application/json" hidden>
 </dialog>

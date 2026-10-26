@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-PsycheAI (psycheai.io): a reader loads their own Instagram export (plus, optionally, one or more WhatsApp chats, Google Takeout or Facebook). The browser reduces it to a de-identified **digest**, the reader reviews it, and the server relays it to Gemini, Claude or Grok. The model writes:
+PsycheAI (psycheai.io): a reader loads their own Instagram export, or two or three WhatsApp chats instead (plus, optionally, Google Takeout or Facebook), through one file box that sorts each file by its contents. The browser reduces it to a de-identified **digest**, the reader reviews it, and the server relays it to Gemini, Claude or Grok. The model writes:
 - a free **Psyche Card**: a 1080×1920 shareable story card;
 - a paid **full premium report** (US$5);
 - free **Psyche Sync** friendship-compatibility reads between two people's cards, via each reader's personal link.
@@ -61,8 +61,8 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 **Client (`docs/`).** No framework. Scripts are plain `<script>` tags that communicate through `window.*` globals. Load order is in `docs/index.html`, and `app.js` is last.
 - **Reading exports:** `zip.js` → `instagram.js` / `supplement.js` (Google, Facebook) / `whatsapp.js` read the exports in the browser.
 - **The digest:** `digest.js` builds it.
-  - Budgets: three pools by kind of evidence, spare room shared only inside a pool (`POOL_CAPS` / `DEEP_POOL_CAPS`, `POOLS`, `trimToPools`): public (Instagram up to 40k, Facebook the rest) 40k / 70k premium; conversations (WhatsApp first, then Instagram DMs and Messenger) 72k / 95k, 12k / 15k a conversation; Google 8k; ~6k fixed. `DIGEST_CHARS` 126k, `DEEP_DIGEST_CHARS` 179k; `budgetFor(digest, deep)`.
-  - Two free tiers: those 126k pools only when the digest carries a second source (`carriesSecondSource`); Instagram alone gets `SOLO_POOL_CAPS` (public 32k, conversations 46k, 4k fixed: 82k). `poolCapsFor(digest)` picks. Spare room flows one way: what conversations leave unused goes to the public pool (`conversationsSpare`), never the reverse. Extra Instagram lists (searches, liked captions and hashtags, liked/saved/story-liked accounts, topics) fill the public pool's spare room, each to its own ceiling (`EXTRA_CAPS`), trimmed first except a guaranteed 3k (`EXTRAS_GUARANTEED`).
+  - Budgets: one line for every read, free or paid, `DIGEST_CHARS` 179k: three pools by kind of evidence plus ~6k fixed (`POOL_CAPS`, `POOLS`, `trimToPools`). Public 70k (Instagram's own share 50k, `INSTAGRAM_PUBLIC_CHARS`; Facebook above it); conversations 95k; Google 8k. Spare room flows one way: what conversations leave unused goes to the public pool (`conversationsSpare`), never the reverse. Extra Instagram lists fill the public pool's spare room, each to its own ceiling (`EXTRA_CAPS`), trimmed first except a guaranteed 3k (`EXTRAS_GUARANTEED`).
+  - Conversations: WhatsApp chats go first, up to 25k a chat beside Instagram (40k with no Instagram), and Instagram DMs with Messenger keep at least 30k when present, in 5k steps (`waChatChars`); squeezed under 50k, the DMs drop to their top six threads (`focusThreads`). A digest of chats alone is `buildFromSupplements`, with no Instagram part (`hasInstagram`).
   - The premium read is rebuilt at the premium pools from the export when it is still open in the tab (reviewed before payment), otherwise it is the card's digest with any added source merged in. Costs are priced by `FREE_COST_CAP`, `COST_CAP` and the `DEEP_*` caps.
   - `trimToBudget` enforces all of it.
   - `forModel` whitelists exactly what the server will pass on; the server re-applies it.
@@ -72,7 +72,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - Views are `<section id="view-*">`, switched by `show()`/`go()`.
   - `#view-profile` has two modes: `profilePage` `'hub'` (My Psyche) and `'report'` (My Report).
   - State lives in `localStorage` under the `KEYS` table; "Delete everything" clears every key in it.
-  - "Save a backup" writes the `BACKUP_KEYS` subset (card, report, digest, the latest report's own digest, syncs, Ask PsycheAI history, link and invite secret) to a .json file, and "Restore from a backup" in the Add your data popout validates each part (`readBackup`) before writing it back. A new stored key that a reader would miss on a new device belongs in `BACKUP_KEYS`.
+  - "Save a backup" writes the `BACKUP_KEYS` subset (card, report, digest, the latest report's own digest, syncs, Ask PsycheAI history, the thumbs on findings, link and invite secret) to a .json file, and "Restore from a backup" in the Add your data popout validates each part (`readBackup`) before writing it back. A new stored key that a reader would miss on a new device belongs in `BACKUP_KEYS`.
 - **Words:** `copy.js` (`window.PsycheCopy`, used as `TEXT`/`Copy`) holds nearly all user-facing strings; edit wording there, not inline.
 - **PDFs:** `pdf.js` builds them in the browser.
 - **Character art:** `character-art.js`.

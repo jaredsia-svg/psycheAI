@@ -12,7 +12,7 @@ Read this first in a new session, together with `CLAUDE.md` and `marketing/INSTA
   - The link-preview tags, og-card v=4, the manifest and the README tagline match it.
   - The source-code links point to the deploy-branch tree.
 - **Security:** fixes B3 (sync seal), B4 (NUL → 400) and B5 (COOP) are live.
-- **Stories:** `marketing/stories/` holds start-1..4.png and privacy-1..4.png, from `node promo/stories.mjs` and `promo/stories-stage.html`.
+- **Stories:** `marketing/stories/` holds start-1..5.png and privacy-1..4.png, from `node promo/stories.mjs` and `promo/stories-stage.html`.
 - **Finished reels:** in `marketing/reels/`. Captions are in `marketing/INSTAGRAM.md`.
 
 ## In progress: the ChatGPT reel (`chatgpt`)
@@ -34,6 +34,7 @@ A second version was built on 25 Oct.
 - **Eighth cut (25 Oct):** shorter scene 1 line ("Everything goes up: your name, friends' messages, photos."); "Your results stay on your device" and its card dropped; "~150 KB of text · no photos or videos" as a pill under the summary card; the address as `{PsycheAIdotIO}`; about 43 s.
 - **Ninth cut (25 Oct):** the review beat shows the new review sheet's two strongest choices: "leave out any topic, and switch off any chat" (*work* typed into the words box; a named chat switched off). The privacy reel's Step 3 says and shows the same; its site copy in `docs/media/` is rebuilt.
 - **Tenth cut (25 Oct):** "diagnosis" and "medication" typed in; music rewritten (no saw drone or crash; a build into the PsycheAI groove; softer, lower bells); faster voice from the PsycheAI half and shorter holds, about 42 s. Privacy reel: "load your data" (not Instagram); Step 5 adds "It needs no account. Even if a hack occurs, there's no data to steal."
+- **Eleventh cut (26 Oct):** the review beat shows the sheet as the app lays it out: two years switched off, topics typed in, *Your searches* switched off, then *Direct messages* opened and one chat switched off ("leave out any year or topic, and switch off any type of data"; held 0.8 s longer). The privacy reel's Step 3 says and shows the same, and its Step 5 now says "PsycheAI keeps none of your data on its server" with no account line; its site copy in `docs/media/` is rebuilt.
 - **Status:** awaiting the user's feedback. Next ideas, if it's still not punchy enough:
   - faster cuts (lower `hold`);
   - a real-looking ChatGPT upload UI;

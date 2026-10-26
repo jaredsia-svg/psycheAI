@@ -667,6 +667,35 @@
     return out;
   }
 
+  // ---------- which export a file is ----------
+  //
+  // The data popout has one box for every source (October 2026): the reader
+  // picks or drops any mix of files and each is sorted by what is inside it,
+  // from the zip's own list of names, before any of it is read. Only the
+  // central directory is opened here, so sorting a 2 GB export costs a few
+  // kilobytes. Google and Facebook are asked first, since a Facebook export
+  // shares some Instagram file names (followers, comments) and a Takeout
+  // never does; a zip with no JSON and a .txt in it is a WhatsApp chat.
+  // 'unknown' is a zip none of these recognise: a later part of a split
+  // Instagram export (photos only) is the likely one, and the caller decides.
+  async function detectSource(file) {
+    const name = String((file && file.name) || '');
+    if (/\.txt$/i.test(name)) return 'whatsapp';
+    if (!/\.zip$/i.test(name)) return 'unknown';
+    let entries;
+    try { entries = (await root.PsycheZip.open(file)).entries; } catch (error) { return 'unknown'; }
+    const paths = entries.map(e => String(e.name || '').toLowerCase());
+    if (paths.some(p => /(^|\/)takeout\/|my ?activity\.json$|(^|\/)my activity\//.test(p))) return 'google';
+    if (paths.some(p => /(^|\/)your_facebook_activity\/|profile_information[^/]*\.json$/.test(p))) return 'facebook';
+    const ig = root.PsycheInstagram;
+    const routes = ig && ig.routeOf ? new Set(paths.map(p => ig.routeOf(p)).filter(Boolean)) : new Set();
+    if (paths.some(p => /(^|\/)your_instagram_activity\//.test(p)) || routes.size >= 2) return 'instagram';
+    const json = paths.some(p => p.endsWith('.json'));
+    if (!json && paths.some(p => p.endsWith('.txt'))) return 'whatsapp';
+    if (!json && /whatsapp/i.test(name)) return 'whatsapp';
+    return 'unknown';
+  }
+
   // Seams for tools/selftest.mjs. Both of these are pure string decisions with
   // no archive behind them, and both had bugs that were invisible in the
   // digest — a deleted first word reads as a title that was always like that.
@@ -674,7 +703,7 @@
 
   root.PsycheSupplement = {
     __testing,
-    readGoogle, readFacebook, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
+    readGoogle, readFacebook, detectSource, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
     // Exported for the tests, which hold the locale-proofing directly rather
     // than inferring it from a parsed archive.
     hostOf, queryOf, productOf, stripLeadingVerb, searchShape,
