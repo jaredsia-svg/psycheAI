@@ -996,7 +996,7 @@
   // (14,074 measured). 14,250 with the shared-words rows on N/S and T/F
   // (14,216 measured). 14,550 with the rule for a digest of WhatsApp chats
   // alone (CHATS_ONLY_RULE, 14,493 measured).
-  const FREE_FIXED_INPUT_TOKENS = 14600;
+  const FREE_FIXED_INPUT_TOKENS = 14650;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -1033,7 +1033,7 @@
   //
   // against $0.259 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 40550;
+  const MERGED_FIXED_INPUT_TOKENS = 40600;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
   const MERGED_COST_CAP = 0.185;
 

@@ -3066,6 +3066,23 @@ one-tint, an alternating and two purple-to-pink versions, and chose "B2", the wi
 - **Phone line:** on a phone the gradient line was drawn by the box around the card and its title
   (`.profile-top::before`), not by the card's own section. It is gone too.
 
+### Keeping the Psyche, and no studios (26 Oct 2026)
+
+- **The browser is asked to keep the data** (`keepStorage`, on every write of the profile and at start-up
+  with one): `navigator.storage.persist()`, so a phone low on space does not clear it. Chrome and Safari
+  answer quietly, in a tab or an installed app alike; Firefox would ask out loud, so it is not asked. It
+  does not survive the reader clearing site data: only a backup does, which the FAQ now says as a callout
+  (*Clearing website data or removing the app deletes your Psyche. Save a backup first.*; coloured, not
+  bold, as the FAQ keeps bold for its questions) and the hub's Save Your Profile tip too (*If you ever
+  clear this site's data, your backup file brings your profile back.*). No separate phone app: the owner
+  decided against one.
+- **No studio beside a character, anywhere.** The card and the report already left it out; the card
+  guide's *Yours* line still read *Iron Man (Marvel)*. It is the name alone now, and the character rule
+  in the prompts says never to name the studio, company or franchise in anything written (reserves +50).
+- **Hub tips:** Ask PsycheAI's no longer explains *2/5* (its number says its own words) and mentions
+  History only once its button is there; the credit rule's tooltip was drawn transparent, because the
+  pill's styling reached every span in it, and is the black box now.
+
 ### Every part of the hub explains itself (26 Oct 2026)
 
 A line under the hub's title says how: *Tap any name, number or icon to see what it means* on a phone,

@@ -5139,7 +5139,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-linknote { order: 1; display: flex; margin: 0; }
 .hub-linkstats { order: 2; align-self: center; }
 .hub-linkrow .referral-ready-row, .hub-linkrow .referral-status, .hub-linkrow .referral-gifts { order: 3; }
-.hub-linknote span { padding: .16rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3;
+.hub-linknote .hub-notebtn span { padding: .16rem .6rem; border-radius: 999px; font-size: .62rem; font-weight: 600; line-height: 1.3;
   color: color-mix(in srgb, var(--accent) 80%, var(--ink-soft)); background: transparent;
   border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--bg-alt)); }
 .hub-linkrow .referral-ready-row:not([hidden]) { flex-basis: 100%; display: flex; align-items: center; gap: .6rem; margin: 0;
@@ -5254,7 +5254,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   .hub-del, .hub-copy { width: 40px; height: 40px; }
   .hub-chip { font-size: .84rem; padding: .45rem .5rem; }
   .hub-linkstat { font-size: .8rem; padding: .32rem .65rem; }
-  .hub-linknote span { font-size: .72rem; }
+  .hub-linknote .hub-notebtn span { font-size: .72rem; }
   .hub-ring { width: 42px; height: 42px; } .hub-ring b { width: 33px; height: 33px; font-size: .84rem; }
 }
 
@@ -5587,3 +5587,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   .vs-k, .vs-headrow { font-size: .74rem; }
 }
 @media print { .mark-row { display: none; } }
+/* The FAQ's one warning, set apart by colour, not weight (only the questions are bold there). */
+.faq-warn { padding: .55rem .8rem; border-left: 3px solid var(--warn, #b4572a); border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--warn, #b4572a) 9%, var(--bg-alt)); color: var(--ink); }

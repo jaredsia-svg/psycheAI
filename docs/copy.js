@@ -1463,10 +1463,12 @@
         reportBuy: 'Your full Psyche Report: every result explained, with the evidence behind it.',
         link: 'Your personal link to share. Every connection who makes a card from it earns you 1 credit, for 5 questions or a report to gift.',
         data: 'How well your data supports your reading. Tap the score for what was read; Add / change data to add a source and re-run.',
-        keep: 'Your profile lives only in this browser. Save a backup to bring it back, take your AI Personal Context, or delete it all.',
+        keep: 'Your profile lives only in this browser. If you ever clear this site’s data, your backup file brings your profile back. You can also take your AI Personal Context, or delete it all.',
         card: 'Your Psyche Card: who you are at a glance. Read it full size or download it to share.',
         syncs: 'Compare your card with a friend\'s to see what clicks between you. The number is how many syncs you have.',
-        ask: 'Ask PsycheAI anything about your report. 2/5 means you have asked 2 of your 5 questions; History shows past answers.',
+        // The count explains itself (numTips.ask); History is said only once its button is there (askHistory).
+        ask: 'Ask PsycheAI anything about your report.',
+        askHistory: ' History shows your past answers.',
       },
       // The two popouts that come before a download.
       confirm: {
@@ -1540,7 +1542,8 @@
       items: [
         { key: 'character', icon: '🦸', title: 'Who you are most like', when: f => f.character,
           about: 'Your behaviour – what you post, how you talk, what you return to – is matched to the well-known character who moves through the world most like you. A quick way to hold your whole profile in mind, and to explain yourself to others.',
-          yours: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') + '. The two lines under the name say why.' },
+          // The character by name alone: never the studio (26 October 2026; it read "Iron Man (Marvel)").
+          yours: f => f.character + '. The two lines under the name say why.' },
         { key: 'confidence', icon: '🎯', title: 'Signal strength', when: f => f.score,
           about: 'How much evidence stands behind the card: which sources you added, how much of it is in your own words, and how consistently it agreed. High is a confident reading, low a first draft – adding Google, Facebook or a WhatsApp chat usually raises it.',
           yours: f => f.score + ' out of 100' + (f.level ? ' – ' + f.level + '.' : '.') },

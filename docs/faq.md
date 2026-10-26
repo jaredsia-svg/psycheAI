@@ -101,6 +101,8 @@ Your link carries only your card’s short summary, never your data, messages or
 
 Your card, report and syncs are saved only in this browser. Press Save a backup on My Psyche (or Backup on My Report) to keep a copy as a file, and restore it in another browser from Load my data, then Restore from a backup. Keep the file private: it holds your link’s key.
 
+⚠️ Clearing website data or removing the app deletes your Psyche. Save a backup first.
+
 ### How do I contact PsycheAI?
 
 Email [admin@psycheai.io](mailto:admin@psycheai.io) – for questions, payment problems or anything about your data. A re-run is refunded in full if you ask within 24 hours; question packs are non-refundable. The [privacy policy](https://psycheai.io/privacy), [terms](https://psycheai.io/terms) and [refund policy](https://psycheai.io/refunds) are each a page.

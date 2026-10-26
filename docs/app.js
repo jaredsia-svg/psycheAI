@@ -238,11 +238,30 @@
       } catch (error) { return fallback; }
     },
     write(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (error) { return false; }
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { return false; }
+      if (key === KEYS.profile) keepStorage();
+      return true;
     },
     remove(key) { try { localStorage.removeItem(key); } catch (error) { /* nothing to drop */ } },
     clearAll() { for (const key of Object.values(KEYS)) { try { localStorage.removeItem(key); } catch (error) { /* blocked */ } } },
   };
+  // Once there is a card to lose, the browser is asked to keep this site's
+  // storage through a phone running low on space (26 October 2026). Chrome and
+  // Safari answer quietly, granting it to a site the reader uses or has
+  // installed; Firefox would ask out loud, so it is not asked there. It does
+  // not survive the reader clearing site data, which only a backup does.
+  let storageKept = false;
+  function keepStorage() {
+    if (storageKept) return;
+    storageKept = true;
+    try {
+      const s = navigator.storage;
+      if (!s || typeof s.persist !== 'function' || /Firefox\//.test(navigator.userAgent)) return;
+      Promise.resolve(typeof s.persisted === 'function' ? s.persisted() : false)
+        .then(kept => kept || s.persist()).catch(() => {});
+    } catch (error) { /* not offered here */ }
+  }
+  if (store.read(KEYS.profile, null)) keepStorage();
   store.remove(KEYS.deepDigest);
 
   // ---------- how many analyses this browser has already had ----------
@@ -2323,6 +2342,7 @@
       hubTile('syncs', { icon: 'sync', mark: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
         badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync'], ['share', H.share, 'share']] }),
       hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
+        made: explained && asked ? esc(H.tips.askHistory) : '',
         // With answers to look back on: History the wide button, a small "?" to
         // ask a new one. Before any: Ask, the whole width.
         buttons: explained && asked ? [['asked', H.askHistory, 'history'], ['ask', H.askGo, 'ask', ' is-icon']] : [['ask', H.askGo, 'ask']] }),

@@ -6640,6 +6640,12 @@ check('and the server rewrites any that still come back',
       /const marks = paying \? prompts\.cleanReaderMarks\(body\.readerMarks\) : \[\];/.test(server),
     block.slice(0, 300));
 }
+// A character is named alone, never with its studio (26 October 2026): not by the card guide, not by the model.
+check('no studio beside a character: the card guide says the name alone, and the prompts forbid naming the studio',
+  globalThis.PsycheCopy.STRUCTURED.cardGuide.items[0].yours({ character: 'Iron Man', franchise: 'Marvel' }) ===
+    'Iron Man. The two lines under the name say why.' &&
+    /Name the character by name alone, never with the studio, company or franchise behind them/.test(prompts.CHARACTER_SIDE_RULE),
+  globalThis.PsycheCopy.STRUCTURED.cardGuide.items[0].yours({ character: 'Iron Man', franchise: 'Marvel' }));
 // The reader's thumbs on findings reach Ask PsycheAI as their word on themselves (October 2026).
 check('Ask PsycheAI takes the reader\'s marks as their word, never arguing a "not quite" back',
   /readerMarks/.test(prompts.ASK_SYSTEM) && /never argue the finding back at them/.test(prompts.ASK_SYSTEM));
