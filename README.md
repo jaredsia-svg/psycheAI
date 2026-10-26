@@ -1548,7 +1548,7 @@ your Instagram data first* and WhatsApp folded under it:
   them (`#hero-load`, the popout). At 345px and under the two labels shrink a step to stay on one row.
 - The steps card is *Two ways to start*, *Choose to load your WhatsApp chats, your IG data, or both.*:
   WhatsApp (*⚡ About 2 minutes*, its two steps, **Load my chats**) and Instagram (*🎯 Most complete ·
-  1–2 hours*, its steps and See illustration), side by side on a laptop, and on a phone two slim tabs,
+  2 hours*, its steps and See illustration), side by side on a laptop, and on a phone two slim tabs,
   *⚡ WhatsApp · now* and *🎯 Instagram · 2hrs*, WhatsApp open first (`chooseWay`). Under both: *💡 Both?
   Request Instagram now, then load it with your chats when it arrives.*, which keeps the free read for
   both together. WhatsApp is equal, not the default path: a card from chats alone reads less, and adding

@@ -828,7 +828,7 @@ try {
   });
   check('Two ways to start: WhatsApp and Instagram side by side on a laptop, each with its time, no tabs, nothing about Google',
     ways.head === 'Two ways to start' && ways.lede === 'Choose to load your WhatsApp chats, your IG data, or both.' && ways.both &&
-      ways.tabs === 'none' && ways.tags.join('|') === '⚡ About 2 minutes|🎯 Most complete · 1–2 hours' &&
+      ways.tabs === 'none' && ways.tags.join('|') === '⚡ About 2 minutes|🎯 Most complete · 2 hours' &&
       ways.note === '💡 Both? Request Instagram now, then load it with your chats when it arrives.' && !ways.google &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), JSON.stringify(ways));
   check('and "How it works" no longer calls Google recommended',
