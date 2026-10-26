@@ -826,9 +826,10 @@ try {
   check('the optional-sources card is collapsed until the reader opens it',
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
-  check('its summary offers two or three WhatsApp chats as a way in without Instagram, and Google, WhatsApp first as in "Load your data"',
-    /No Instagram data yet\? Start with 2–3 WhatsApp chats, or add Google data/.test(optionalCard) &&
-      optionalCard.indexOf('WhatsApp chats with close connections (2–3 to start without Instagram)') < optionalCard.indexOf('Google Takeout') &&
+  // Only Instagram and WhatsApp on the front page since 26 October 2026: Google's steps are in the popout.
+  check('its summary offers two or three WhatsApp chats as a way in without Instagram, and nothing about Google',
+    /No Instagram data yet\? Start with 2–3 WhatsApp chats$/.test((await page.locator('.optional-title').textContent()).trim()) &&
+      /WhatsApp chats with close connections \(2–3 to start without Instagram\)/.test(optionalCard) && !/Google/.test(optionalCard) &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
   check('and "How it works" no longer calls Google recommended',
     /Download your data from Instagram, or export 2–3 WhatsApp chats \(Google data is optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
@@ -875,7 +876,7 @@ try {
       JSON.stringify(vs.rows));
   }
   check('the instructions stay in the document while collapsed, so they can still be found',
-    /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
+    /Export chat/.test(optionalCard) && /Without media/.test(optionalCard));
 
   // Opening it is the only way the instructions become visible, and the
   // summary is a real control rather than a styled div — clicking it is what
@@ -2789,8 +2790,10 @@ try {
   // HTML by default, so a reader who follows the happy path lands on an
   // archive the parser refuses.
   const optionalOpen = await page.locator('.optional-card').innerText();
+  // Google's steps, now only in the Load your data popout (read with textContent: the popout is closed).
+  const googleSteps = await page.evaluate(() => document.querySelector('#datasources-dialog [data-help="google"]').textContent.replace(/\s+/g, ' '));
   check('it tells the reader to deselect everything but My Activity',
-    /Deselect all/.test(optionalOpen) && /My Activity/.test(optionalOpen));
+    /Deselect all/.test(googleSteps) && /My Activity/.test(googleSteps));
   // The instruction still has to name both menus and both formats — that is
   // the load-bearing part — but it says it once now rather than stating the
   // fix and then explaining the default in a second sentence. The check
@@ -2798,12 +2801,12 @@ try {
   // everything "Takeout ships HTML by default, and an HTML export cannot be
   // read at all" did, in a line a reader will actually finish.
   check('it names the JSON fix Takeout hides two menus deep, and warns off HTML',
-    /Multiple formats/.test(optionalOpen) && /JSON \(not HTML\)/i.test(optionalOpen),
-    optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
+    /Multiple formats/.test(googleSteps) && /JSON \(not HTML\)/i.test(googleSteps),
+    googleSteps.replace(/\s+/g, ' ').slice(0, 200));
   check('and no longer explains the rationale twice over',
-    !/ships HTML by default/i.test(optionalOpen) &&
-    !/skips deselecting/i.test(optionalOpen),
-    optionalOpen.replace(/\s+/g, ' ').slice(0, 260));
+    !/ships HTML by default/i.test(googleSteps) &&
+    !/skips deselecting/i.test(googleSteps),
+    googleSteps.replace(/\s+/g, ' ').slice(0, 260));
 
   // ---- the format warning, said in one line rather than drawn ----
   //
@@ -2828,13 +2831,13 @@ try {
   // way through.
   check('the Takeout deep link pre-selects My Activity',
     await page.evaluate(() => {
-      const a = [...document.querySelectorAll('.optional-card a')]
+      const a = [...document.querySelectorAll('#datasources-dialog [data-help="google"] a')]
         .find(x => /custom\/my_activity/.test(x.href));
       return Boolean(a) && a.target === '_blank' && /noopener/.test(a.rel);
     }));
   check('and the manual route survives underneath it, for when that URL moves',
     await page.evaluate(() => {
-      const note = document.querySelector('.optional-card .step-fallback');
+      const note = document.querySelector('#datasources-dialog [data-help="google"] .step-fallback');
       const text = note ? note.textContent.replace(/\s+/g, ' ') : '';
       return /Deselect all/.test(text) && /My Activity/.test(text);
     }));
@@ -2842,8 +2845,8 @@ try {
   // only Google, and Facebook is still reachable later through the supplement
   // dialog's own "See download instructions" disclosure. A stray mention here
   // would mean the two had drifted back out of sync.
-  check('Facebook is not covered here any more — the main page only offers Google',
-    !/Facebook/.test(optionalOpen));
+  check('neither Facebook nor Google is covered here any more — the main page offers Instagram and WhatsApp',
+    !/Facebook|Google/.test(optionalOpen));
   // Closed again so the rest of the suite meets the page as a reader first
   // does, and so the screenshots below are of the default state.
   await page.click('.optional-card > summary');
@@ -3351,8 +3354,7 @@ try {
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['⋮', 'More', 'Export chat', 'Without media', 'Deselect all', 'My Activity', 'Multiple formats', 'Next step',
-      'Export once', 'Create export'].join(' | '),
+    ['⋮', 'More', 'Export chat', 'Without media'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole
@@ -3360,7 +3362,8 @@ try {
   // than only reading it as a hint to type in another tab.
   check('takeout.google.com is a real link to the actual site, opened in a new tab',
     await page.evaluate(() => {
-      const link = [...document.querySelectorAll('.optional-card a')]
+      // In the Load your data popout's Google steps since 26 October 2026; the front page has none.
+      const link = [...document.querySelectorAll('#datasources-dialog [data-help="google"] a')]
         .find(a => a.textContent.trim() === 'takeout.google.com');
       return Boolean(link) && link.href === 'https://takeout.google.com/' &&
         link.target === '_blank' && /noopener/.test(link.rel);
@@ -3825,7 +3828,6 @@ try {
       const links = [...document.querySelectorAll('.help-card a')];
       return labels.length > 0 && labels.every(l => getComputedStyle(l).textDecorationLine === 'underline') &&
         labels.every(l => getComputedStyle(l).color !== linkColour) &&
-        links.length > 0 &&
         links.every(a => /^https:\/\//.test(a.getAttribute('href') || '')) &&
         links.every(a => !a.classList.contains('ui-label'));
     }));
@@ -3835,7 +3837,7 @@ try {
   // "this is a button in someone else's UI", just not shouted.
   check('the fallback\'s menu labels keep the underline but drop the bold weight',
     await page.evaluate(() => {
-      const labels = [...document.querySelectorAll('.help-card .step-fallback .ui-label')];
+      const labels = [...document.querySelectorAll('#datasources-dialog [data-help="google"] .step-fallback .ui-label')];
       return labels.length > 0 &&
         labels.every(l => getComputedStyle(l).fontWeight === '400') &&
         labels.every(l => getComputedStyle(l).textDecorationLine === 'underline');

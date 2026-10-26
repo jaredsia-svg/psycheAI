@@ -1521,6 +1521,9 @@ personality test's first step, `llms.txt`, and the closing box every generated g
 straight away with two WhatsApp chats*, button *Get your free Psyche Card*). That box is left out of
 the guides' date hash like the footer, so changing it does not re-date forty pages. The guides written
 for Instagram searches keep their Instagram wording; the reels are unchanged.
+Later the same day the front page's optional card lost Google: it is *No Instagram data yet? Start with
+2–3 WhatsApp chats*, with WhatsApp's steps alone. Google's steps (the Takeout deep link and its manual
+fallback) are in the Load your data popout under Google's *How?*, where the suite now checks them.
 
 **Adding data later keeps the chats** (26 October 2026). A stored digest holds the chats' sampled
 lines, not the files, and the files are rarely to hand again. So:
@@ -7072,12 +7075,12 @@ chats came out under 70, and a reader who has given everything should not see th
 Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merged prompt says it once):
 
 - **Start from the sources loaded:** since 26 October 2026 by strong sources: Instagram, Facebook and
-  WhatsApp chats are strong, Google light, and 80 or more needs two strong sources. Never above 90.
+  WhatsApp chats are strong, Google light, and above 80 needs two strong sources. Never above 90.
 
   | Sources | Range |
   | --- | --- |
   | Instagram alone | 65–79 |
-  | Instagram + Google | 68–79 |
+  | Instagram + Google | 68–80 |
   | Instagram + Facebook or WhatsApp | 72–86 |
   | Instagram + Facebook or WhatsApp + Google | 74–88 |
   | Instagram + Facebook + WhatsApp (± Google) | 76–90 |
