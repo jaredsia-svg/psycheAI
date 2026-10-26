@@ -697,10 +697,10 @@
     moreDataContinue: 'Continue',
     moreDataBack: 'Back',
     // The review's downloadable copy only, at the unlock: what this file is.
-    deepReviewNote: 'This is what the Psyche Report is written from: everything your card was read from, with the data you just added on top.',
+    deepReviewNote: 'This summary is what the Psyche Report is written from: everything your card was read from, with the data you just added on top.',
     // The premium read rebuilt from the export still open in the tab: the
     // same sources, more of each.
-    deepRebuiltNote: 'This is what the Psyche Report is written from: the data your card was read from, with anything you just added.',
+    deepRebuiltNote: 'This summary is what the Psyche Report is written from: the data your card was read from, with anything you just added.',
     premiumSourcesBlurb: 'More data, a fuller report: add or replace a source, or carry on. You review what is sent first.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
     // The free card's unlock offer leads with sharing: one connection making
@@ -864,9 +864,11 @@
       fillsIn: 'filling in',
       lineOut: 'Leave this line out',
       lineBack: 'Put this line back',
-      quality: 'Read quality',
+      // Short, to share one row with the download on a phone (26 October 2026; was Read quality).
+      quality: 'Quality',
       qualities: ['Thin', 'Fair', 'Good', 'Strong'],
-      size: kb => '~' + kb + ' KB of text',
+      // The download, with the size of what is sent (one row with the read quality, 26 October 2026).
+      download: kb => 'Download summary (' + kb + ' KB)',
       alsoLeftOut: 'Also left out',
     },
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Unlock your Psyche Card and Psyche Report for US$5.',

@@ -2311,17 +2311,14 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .review-chat-switch::after { width: 15px; height: 15px; }
 .review-chat-switch[aria-checked="true"]::after { left: 18px; }
 .review-chat-switch:disabled { opacity: .45; cursor: not-allowed; }
-.review-ends { display: flex; justify-content: space-between; margin-top: .25rem; font-size: .68rem; color: var(--ink-soft); }
 /* The foot. */
-.review-meter { display: flex; align-items: center; gap: .6rem; font-size: .78rem; }
+.review-meter { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .5rem; font-size: .76rem; }
 .review-meter-label { color: var(--ink-soft); white-space: nowrap; }
-.review-meter-bar { display: block; flex: 1; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--line) 70%, var(--bg-alt)); overflow: hidden; }
+.review-meter-bar { display: block; flex: 1; min-width: 2.5rem; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--line) 70%, var(--bg-alt)); overflow: hidden; }
 .review-meter-fill { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width .25s; }
-.review-meter strong { min-width: 3.2rem; text-align: right; color: var(--accent); }
+.review-meter strong { color: var(--accent); white-space: nowrap; }
+.review-meter .link-btn { margin-left: auto; font-size: .74rem; white-space: nowrap; }
 .review-meter.is-low strong { color: var(--warn, #b4572a); }
-.review-facts { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; margin-top: .15rem; font-size: .76rem; color: var(--ink-soft); }
-.review-facts .link-btn { font-size: .76rem; white-space: nowrap; }
-.review-facts span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .review-foot .review-legal { margin-top: .3rem; font-size: .68rem; line-height: 1.35; }
 .review-foot .btn-row { display: flex; gap: .5rem; margin-top: .5rem; }
 .review-foot .btn-row .btn { flex: 1; }

@@ -5248,6 +5248,11 @@ it down as far as they like, line by line, and see what that costs. It was mocke
   the foot came back and the button moved from under the finger, so only a second press worked.
   Pressing it no longer takes the focus (pointerdown is cancelled); pressed, the word is added and the
   keyboard goes, while Enter keeps it up for the next word.
+- **The foot, one row** (26 October 2026): *Quality* (was *Read quality*), its bar and word, then
+  *Download summary (16 KB)*, the size in the link's own words (it was a line of its own, *~16 KB of text*
+  beside *Download what's sent*); on a phone under about 360px the link drops to a second line. The file
+  is `psycheai-summary.html` (was `psycheai-digest-preview.html`) and says *summary*, the word the reels
+  and the privacy page use. The *↑ Least personal / Most personal ↓* labels under the list are gone.
 - **Read quality** is an estimate: the square root of how much of the text is kept, against all of it,
   as Strong, Good, Fair or Thin. It moves as the reader removes things so the trade is visible; the real
   confidence still comes from the model.

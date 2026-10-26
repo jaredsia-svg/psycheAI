@@ -4950,11 +4950,15 @@ try {
   // always be visible regardless of scroll position, and not in the
   // subtitle's spot where it used to live before this moved.
   // Since 25 October 2026 it sits in the foot beside the size, so it is always in reach.
-  check('the download link sits in the foot, beside the size of what is sent',
+  // Since 26 October 2026 one row with the read quality, the size in the link's own words, and no
+  // "Least personal / Most personal" labels under the list.
+  check('the download sits in the foot on the read-quality row, saying the size of what is sent',
     await page.evaluate(() => {
-      const foot = document.querySelector('#review-dialog .review-foot');
-      return foot.contains(document.querySelector('#review-download')) &&
-        /^~\d+ KB of text$/.test(document.querySelector('#review-size').textContent);
+      const meter = document.querySelector('#review-dialog .review-foot .review-meter');
+      return Boolean(meter) && meter.contains(document.querySelector('#review-download')) &&
+        /^Download summary \(\d+ KB\)$/.test(document.querySelector('#review-download').textContent) &&
+        !document.querySelector('#review-size') && !document.querySelector('.review-ends') &&
+        !/Least personal|Most personal/.test(document.querySelector('#review-dialog').textContent);
     }));
 
   // ---- downloading what's actually being sent ----
@@ -4984,7 +4988,7 @@ try {
     page.click('#review-download'),
   ]).then(([event]) => event);
   check('the download is offered as a named HTML file',
-    download1.suggestedFilename() === 'psycheai-digest-preview.html', download1.suggestedFilename());
+    download1.suggestedFilename() === 'psycheai-summary.html', download1.suggestedFilename());
   check('downloading does not send anything or close the dialog',
     analyseBodies.length === beforeDownload &&
     (await page.evaluate(() => document.querySelector('#review-dialog').open)));
@@ -5025,7 +5029,7 @@ try {
   // either, so their absence is what proves the file is the sent object.
   await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   check('the file is the one digest both calls read, and says so',
-    /About \d+ KB\. This same digest is what both your free summary card and the Psyche Report are read from\./
+    /About \d+ KB\. This same summary is what both your free Psyche Card and the Psyche Report are read from\./
       .test(html1) &&
     JSON.stringify(preview1).length <= await page.evaluate(() => window.PsycheDigest.LIMITS.totalChars) &&
     preview1.generatedAt === undefined && preview1.coverage.sections === undefined,

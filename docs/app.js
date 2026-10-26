@@ -5122,7 +5122,7 @@
     // The text the model is actually sent, the same measure the budget counts.
     const sentKb = Math.max(1, Math.round(Digest.evidenceChars(preview) / 1000));
     const sizeNote = 'About ' + sentKb + ' KB. ' + (deepRead === 'rebuilt' ? TEXT.deepRebuiltNote : deepRead ? TEXT.deepReviewNote
-      : 'This same digest is what both your free summary card and the Psyche Report are read from.');
+      : 'This same summary is what both your free Psyche Card and the Psyche Report are read from.');
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
       return '<tr><td>' + esc(r[3]) + '</td>' +
@@ -5158,7 +5158,7 @@
       '. This file was written directly to your device and was never uploaded anywhere.</p>' +
       '<table><thead><tr><th>Category</th><th>Status</th><th>Detail</th></tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table>' + linesNote +
-      '<h2>Full digest</h2>' +
+      '<h2>Full summary</h2>' +
       '<p class="muted">The exact object that is sent. Nothing accompanies it – no photographs, no ' +
       'files, nothing from your archive that is not written out below.</p>' +
       '<p class="muted digest-size">' + esc(sizeNote) + '</p>' +
@@ -5530,7 +5530,7 @@
       $('#review-quality').textContent = R.qualities[q];
       $('#review-quality-fill').style.width = Math.round(level * 100) + '%';
       dialog.querySelector('.review-meter').classList.toggle('is-low', q < 2);
-      $('#review-size').textContent = R.size(Math.max(1, Math.round(size / 1000)));
+      $('#review-download').textContent = R.download(Math.max(1, Math.round(size / 1000)));
     };
     $('#review-kw').value = '';
     dialog.classList.remove('is-typing');
@@ -5575,7 +5575,8 @@
         const blob = new Blob([html], { type: 'text/html' });
         const href = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = 'psycheai-digest-preview.html';
+        // Called the summary, as the reels and the privacy page call it (26 October 2026; was psycheai-digest-preview).
+        link.download = 'psycheai-summary.html';
         link.href = href;
         document.body.appendChild(link);
         link.click();
