@@ -1529,6 +1529,12 @@ for Instagram searches keep their Instagram wording; the reels are unchanged.
 Later the same day the front page's optional card lost Google: it is *No Instagram data yet? Start with
 2–3 WhatsApp chats*, with WhatsApp's steps alone. Google's steps (the Takeout deep link and its manual
 fallback) are in the Load your data popout under Google's *How?*, where the suite now checks them.
+Then *What insights will I get?* was tightened: the card's line is *One card that sums you up, ready to
+share.*; the report's says what it holds beyond the card, *Every part of your card explained, with the
+evidence from your own data behind each finding. Plus deeper insights the card has no room for: your
+attachment style, career strengths, wellbeing and a plan to grow.*; and only the plan keeps its question
+line (the other four parts are their pills). *Gain insights* reads *Learn more about your personality,
+relationships, and career. Ask PsycheAI anything about yourself.*
 
 **Adding data later keeps the chats** (26 October 2026). A stored digest holds the chats' sampled
 lines, not the files, and the files are rarely to hand again. So:

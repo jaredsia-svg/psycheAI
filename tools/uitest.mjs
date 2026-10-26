@@ -4067,13 +4067,14 @@ try {
         .every(node => node.textContent.trim() === label) && /US\$5/.test(label);
     }),
     (await page.locator('.premium-tier-price').allInnerTexts()).join(' | '));
-  check('and Your Psyche Report stands alone in its head, with no "Premium" badge, and its blurb is the five parts alone',
+  check('and Your Psyche Report stands alone in its head, with no "Premium" badge, and its blurb says what it holds beyond the card',
     await page.evaluate(() => document.querySelectorAll('.premium-tier-head .mode-badge').length === 0 &&
-      document.querySelector('.premium-tier .tier-blurb').textContent === 'Your card, explained in five parts. Each answers a question you’ve asked yourself.'));
-  // Each part's line is the question it answers, not its pills said again.
-  check('and each part\'s line is the one question it answers, its sections left to the pills',
+      document.querySelector('.premium-tier .tier-blurb').textContent === 'Every part of your card explained, with the evidence from your own data behind each finding. Plus deeper insights the card has no room for: your attachment style, career strengths, wellbeing and a plan to grow.'));
+  // Since 26 October 2026 only the plan keeps a line of its own; the other parts are their pills.
+  check('and only the last part keeps its line, the others left to their pills',
     await page.evaluate(() => [...document.querySelectorAll('.premium-tier .insight-part-q')].map(p => p.textContent).join('|')) ===
-      'Why do I keep doing that?|What actually moves me?|Why do my relationships go the way they do?|Where would I thrive, and what holds me back?|So what do I do next? Your development plan.');
+      'So what do I do next? Your development plan.' &&
+      await page.evaluate(() => document.querySelectorAll('.premium-tier .insight-part').length === 5));
   // ---- "See sample report" closes the premium tier ----
   //
   // It sat beside "What insights will I get?" for a while; it now closes the
@@ -4330,9 +4331,10 @@ try {
   check('the filled button does not get darker at the pink end in the light theme',
     buttonLight.start >= 4.5 && buttonLight.end >= 4.25, JSON.stringify(buttonLight));
 
-  check('step three promises insight and states the privacy',
-    /personality, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
-    /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
+  // Its privacy line went on 26 October 2026 (step 2 and the review say it); it offers Ask PsycheAI instead.
+  check('step three promises insight and offers Ask PsycheAI',
+    (await page.locator('.step-card').nth(2).locator('p').innerText()).trim() ===
+      'Learn more about your personality, relationships, and career. Ask PsycheAI anything about yourself.');
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
   // "Free." went on 26 October 2026.

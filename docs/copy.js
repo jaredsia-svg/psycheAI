@@ -1231,7 +1231,7 @@
     insights: {
       freeBadge: 'Free',
       freeTitle: 'Your Psyche Card',
-      freeBlurb: 'One card that sums you up, ready to share – read from your own data in a few minutes.',
+      freeBlurb: 'One card that sums you up, ready to share.',
       cardItems: [
         ['🦸', 'Your character / superhero'],
         ['🧵', 'Your signature patterns'],
@@ -1251,19 +1251,16 @@
       galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
-      premiumBlurb: 'Your card, explained in five parts. Each answers a question you’ve asked yourself.',
+      // 26 October 2026: what the report holds beyond the card, not a promise of questions answered.
+      premiumBlurb: 'Every part of your card explained, with the evidence from your own data behind each finding. Plus deeper insights the card has no room for: your attachment style, career strengths, wellbeing and a plan to grow.',
       // The report carries the card's green "Free" badge (freeBadge): the first
       // one comes free with the first card (PSYCHEAI_FIRST_RUN merged). The price
       // of a re-run is a footnote under what comes with it, in the reader's own
       // currency, the one checkout charges.
       premiumRerun: price => 'Re-runs are ' + price + '.',
-      // Each part's one line: the question it answers (25 October 2026). The pills under it list what is in it,
-      // so the line no longer lists them again.
+      // A part's one line, only where it says something its pills do not (26 October 2026: the other four
+      // questions went; the plan's stays).
       partBlurbs: {
-        who: 'Why do I keep doing that?',
-        drives: 'What actually moves me?',
-        connect: 'Why do my relationships go the way they do?',
-        career: 'Where would I thrive, and what holds me back?',
         together: 'So what do I do next? Your development plan.',
       },
       // Part 1's first section tag, for the character comparison.
