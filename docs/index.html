@@ -196,10 +196,14 @@
            first useful thing to do), and one who has the file already, who
            used to scroll about five screens to find where to load it. The
            sample report is one tap away in the gallery below. -->
+      <!-- Since 26 October 2026 WhatsApp first: two chats read in minutes, where Instagram's export
+           takes its email. Each button opens its own way in Two ways to start; a reader who already
+           has a file goes straight to Load my data, under them. -->
       <div class="btn-row hero-actions">
-        <button class="btn" id="hero-start" type="button">Request my IG data</button>
-        <button class="btn btn-outline" id="hero-load" type="button">Load my data</button>
+        <button class="btn" id="hero-wa" type="button">Start with WhatsApp</button>
+        <button class="btn btn-outline" id="hero-start" type="button">Request my IG data</button>
       </div>
+      <p class="hero-have">Already have your files? <button class="link-btn" id="hero-load" type="button">Load here</button></p>
     </div>
 
     <!-- The promo video, built by promo/ (npm run promo). Muted, so it may play
@@ -301,62 +305,43 @@
     </div>
   </div>
 
+  <!-- Two ways in, side by side on a laptop and as two tabs on a phone (26 October 2026): two WhatsApp
+       chats, ready in minutes, or the Instagram export, which takes Instagram's email but reads more.
+       It was "Request your Instagram data first", with WhatsApp folded away under it. -->
   <div class="card help help-card" id="request-data">
     <div class="help-head">
       <div>
-        <h2>Request your Instagram data first</h2>
-        <p class="help-lede">It takes 30 seconds. Instagram then emails you the file, usually within 1–2 hours.
-          No time to wait? Export 2 WhatsApp chats instead (steps below).</p>
+        <h2>Two ways to start</h2>
+        <p class="help-lede">Choose to load your WhatsApp chats, your IG data, or both.</p>
       </div>
-      <!-- The steps below stay: they are short, scannable, and enough for
-           somebody who has done this before. This opens the same journey in
-           pictures — every screen captured, every tap ringed on it — for the
-           reader who wants to see what they are about to be looking at rather
-           than read a description of it. A button rather than a second
-           disclosure because the guide is a place you go and come back from,
-           not more of this card. -->
-      <button class="btn btn-outline help-guide-open" id="guide-open" type="button">
-        See illustration
-      </button>
     </div>
-    <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
-    <p class="howto-hint"><span class="hint-touch">Tap a purple label to see that screen.</span><span class="hint-mouse">Hover over a purple label to see that screen.</span></p>
-    <ol class="howto-rows" data-howto="instagram"></ol>
-    <!-- On a phone the button above is gone and this link takes its place,
-         after the steps (styles.css, .help-steps-guide). -->
-    <p class="help-steps-guide"><button type="button" class="link-btn" id="steps-guide-open">See the illustrated walkthrough</button></p>
-
-    <!-- Inside the Instagram card rather than beside it, because the two are
-         one job — "get your data" — and a second card of the same weight read
-         as a second required step. Secondary on purpose: Instagram is needed
-         and this is not, so it sits after those steps, collapsed, and a reader
-         who stops at the numbered list above has everything they need. The
-         offer to add these comes later anyway, once their Instagram export has
-         already been read.
-
-         The JSON line is the load-bearing one. Takeout ships My Activity as
-         HTML unless you go into "Multiple formats" and change it, so the
-         default path produces an archive PsycheAI refuses — and the deselect
-         line is what stops somebody downloading fifty gigabytes of Photos and
-         Gmail they were never going to be asked for.
-
-         A native <details> rather than the JS disclosure the bonus section
-         uses: that one keeps its text out of the DOM because it is a consent
-         gate, where the only thing worth hiding here is the length. <details>
-         gets keyboard support, Find-in-page and a working control with no
-         script at all. -->
-    <!-- The other way in: two or three WhatsApp chats with close connections,
-         for a reader still waiting for Instagram's email (October 2026). Only
-         Instagram and WhatsApp here since 26 October 2026: Google's steps are
-         in the Load your data popout, under its How?. -->
-    <details class="optional-card">
-      <summary>
-        <span class="optional-title">No Instagram data yet? Start with 2–3 WhatsApp chats</span>
-      </summary>
-
-      <h3>WhatsApp chats with close connections (2–3 to start without Instagram)</h3>
-      <ol data-howto="whatsapp"></ol>
-    </details>
+    <div class="ways-tabs" role="tablist" aria-label="Two ways to start">
+      <button type="button" role="tab" class="ways-tab" id="ways-tab-whatsapp" data-way="whatsapp" aria-selected="true" aria-controls="way-whatsapp">⚡ WhatsApp · now</button>
+      <button type="button" role="tab" class="ways-tab" id="ways-tab-instagram" data-way="instagram" aria-selected="false" aria-controls="way-instagram">🎯 Instagram · 2hrs</button>
+    </div>
+    <div class="ways">
+      <section class="way way-whatsapp" id="way-whatsapp" role="tabpanel" aria-labelledby="ways-tab-whatsapp">
+        <h3>2 WhatsApp chats</h3>
+        <p class="way-tag">⚡ About 2 minutes</p>
+        <ol data-howto="whatsapp"></ol>
+        <button class="btn way-go" id="way-load-chats" type="button">Load my chats</button>
+      </section>
+      <section class="way way-instagram is-off" id="way-instagram" role="tabpanel" aria-labelledby="ways-tab-instagram">
+        <div class="way-head">
+          <div><h3>Your Instagram data</h3>
+            <p class="way-tag">🎯 Most complete · 1–2 hours</p></div>
+          <!-- The same journey in pictures, every tap ringed: a place to go and come back from. -->
+          <button class="btn btn-outline help-guide-open" id="guide-open" type="button">See illustration</button>
+        </div>
+        <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
+        <p class="howto-hint"><span class="hint-touch">Tap a purple label to see that screen.</span><span class="hint-mouse">Hover over a purple label to see that screen.</span></p>
+        <ol class="howto-rows" data-howto="instagram"></ol>
+        <!-- On a phone the button above is gone and this link takes its place,
+             after the steps (styles.css, .help-steps-guide). -->
+        <p class="help-steps-guide"><button type="button" class="link-btn" id="steps-guide-open">See the illustrated walkthrough</button></p>
+      </section>
+    </div>
+    <p class="ways-both">💡 Both? Request Instagram now, then load it with your chats when it arrives.</p>
   </div>
 
   <div class="card upload-card">

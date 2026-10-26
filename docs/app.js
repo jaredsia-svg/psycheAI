@@ -4240,9 +4240,27 @@
     // Already here (the hero is on this page): show() would only jump to the
     // top and redraw the sample card first, for nothing.
     if ($('#view-welcome').hidden) show('welcome');
-    // The request steps.
+    // The request steps, Instagram's way chosen (on a phone, its tab).
+    chooseWay('instagram');
     $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
+  // "Start with WhatsApp": the chats' way in Two ways to start. A reader with a
+  // card already adds chats to it from their report instead.
+  $('#hero-wa').addEventListener('click', () => {
+    if (state.profile) { go('profile'); startRerun(); return; }
+    if ($('#view-welcome').hidden) show('welcome');
+    chooseWay('whatsapp');
+    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+  // Two ways to start: on a phone, the tabs show one way at a time (on a
+  // laptop both are open side by side, and the tabs are not drawn).
+  function chooseWay(way) {
+    for (const tab of document.querySelectorAll('.ways-tab')) tab.setAttribute('aria-selected', String(tab.dataset.way === way));
+    for (const panel of document.querySelectorAll('.way')) panel.classList.toggle('is-off', panel.id !== 'way-' + way);
+  }
+  document.querySelectorAll('.ways-tab').forEach(tab => tab.addEventListener('click', () => chooseWay(tab.dataset.way)));
+  // "Load my chats": the Add your data popout, as Load my data opens it.
+  $('#way-load-chats').addEventListener('click', () => startFromSources());
   // "See below for instructions" in How it works: to the request steps, as
   // Get my data lands — without the hash the app reads links from.
   document.addEventListener('click', event => {

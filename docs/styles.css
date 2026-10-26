@@ -355,6 +355,10 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    .btn-row's own `margin: .8rem 0`, which is defined further down this file at
    the same specificity and would otherwise win on order alone. */
 .hero .hero-actions { margin-bottom: 0; }
+.hero-have { margin: .5rem 0 0; font-size: .76rem; color: var(--ink-soft); }
+/* "Start with WhatsApp" beside "Request my IG data" still fits one row on the narrowest phones. */
+@media (max-width: 345px) { .hero-actions .btn { font-size: .78rem !important; padding-left: .3rem !important; padding-right: .3rem !important; } }
+.hero-have .link-btn { font-size: inherit; font-weight: 650; }
 /* A reader who already has a card, back on the main page from the logo: the
    steps for getting data and the upload card are for someone starting out. */
 #view-welcome.is-returning .help-card, #view-welcome.is-returning .upload-card, #view-welcome.is-returning .vs-card { display: none; }
@@ -1101,39 +1105,32 @@ ol.howto-rows .ui-peek:hover, ol.howto-rows .ui-peek[aria-expanded="true"] { bac
 .help-card h2 { margin-top: 0; }
 .help-card p:last-child { margin-bottom: 0; }
 
-/* The optional sources, collapsed, inside the Instagram instructions card
-   rather than beside it — the two are one job, and a second card of the same
-   weight read as a second required step.
-   A hairline above it is what carries "same section, lesser thing": enough
-   separation that the numbered list above clearly ends, without the gap and
-   shadow of a card of its own.
-   `list-item` display with `list-style: none` rather than the shorthand: that
-   is what removes the UA triangle in Chrome and Safari while leaving the
-   element a real summary. ::-webkit-details-marker covers older WebKit, which
-   ignores the first rule. The chevron is drawn instead so it can rotate and
-   follow the theme. */
-.optional-card { border-top: 1px solid var(--line); margin-top: 1.2rem; }
-.optional-card > summary {
-  display: list-item; list-style: none; cursor: pointer;
-  padding: 1rem 2rem 0 0; margin: 0; position: relative;
+/* Two ways to start (26 October 2026): WhatsApp, ready in minutes, and Instagram, the fuller read, as
+   two equal panels side by side; on a phone, two slim tabs over one panel at a time (app.js shows the
+   chosen one). */
+.ways-tabs { display: none; }
+.ways { display: grid; gap: .9rem; margin-top: .9rem; }
+@media (min-width: 720px) { .ways { grid-template-columns: 1fr 1fr; align-items: start; } }
+.way { border: 1.5px solid var(--line); border-radius: 16px; padding: .9rem 1rem .6rem; background: var(--bg-alt); min-width: 0; }
+.way-whatsapp { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.way h3 { margin: 0; font-size: 1.08rem; }
+.way-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .2rem .6rem; }
+.way-tag { display: inline-block; margin: .35rem 0 .45rem; padding: .12rem .6rem; border-radius: 999px; font-size: .74rem; font-weight: 800; white-space: nowrap; }
+.way-whatsapp .way-tag { background: var(--good-soft); color: var(--good); }
+.way-instagram .way-tag { background: var(--accent-soft); color: var(--accent); }
+.way ol:not(.howto-rows) { margin: .2rem 0 .4rem; padding-left: 1.2rem; }
+.way-go { width: 100%; margin: .5rem 0 .4rem; }
+.ways-both { margin: .8rem 0 0; font-size: .86rem; color: var(--ink-soft); }
+@media (max-width: 719px) {
+  .ways-tabs { display: flex; gap: .25rem; margin-top: .75rem; padding: .2rem; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-alt)); }
+  .ways-tab { flex: 1; min-width: 0; border: 0; border-radius: 999px; padding: .32rem .4rem; font: inherit; font-size: .8rem;
+    font-weight: 700; line-height: 1.2; white-space: nowrap; background: none; color: var(--ink-soft); cursor: pointer; }
+  .ways-tab[aria-selected="true"] { background: var(--bg-alt); color: var(--accent); box-shadow: 0 1px 4px rgba(123, 63, 160, .18); }
+  .ways { margin-top: .7rem; }
+  .way.is-off { display: none; }
 }
-.optional-card > summary::-webkit-details-marker { display: none; }
-.optional-card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
-/* A step down from the card's own h2, because it is subordinate to it — but
-   still heavier than the body text, so the row reads as a control. */
-.optional-title { display: block; font-size: 1rem; font-weight: 650; letter-spacing: -.01em; }
-/* Drawn rather than a glyph, so it inherits the accent and rotates cleanly.
-   Pinned to the title's own line rather than centred on the whole box, so it
-   stays put if the title ever wraps to two lines on a narrow phone. */
-.optional-card > summary::after {
-  content: ''; position: absolute; right: .2rem; top: 1.4rem;
-  width: .5rem; height: .5rem; border-right: 2px solid var(--accent);
-  border-bottom: 2px solid var(--accent); transform: rotate(45deg);
-  transition: transform .15s ease;
-}
-.optional-card[open] > summary::after { transform: rotate(-135deg); }
-.optional-card h3:first-of-type { margin-top: 1.3rem; }
-.optional-card > :last-child { margin-bottom: 0; }
+
 
 /* ---------- progress ---------- */
 

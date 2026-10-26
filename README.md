@@ -1540,6 +1540,22 @@ evidence from your own data behind each finding. Plus deeper insights the card h
 attachment style, career strengths, wellbeing and a plan to grow.*; and only the plan keeps its question
 line (the other four parts are their pills). *Gain insights* reads *Learn more about your personality,
 relationships, and career. Ask PsycheAI anything about yourself.*
+**Two ways to start** (26 October 2026). Instagram's export takes its email, usually 1–2 hours, and was
+the biggest drop-off; two WhatsApp chats take minutes. So the front page no longer leads with *Request
+your Instagram data first* and WhatsApp folded under it:
+- The hero's buttons are **Start with WhatsApp** (filled, `#hero-wa`) and **Request my IG data**
+  (outline), each opening its own way below; *Already have your files? Load here* is a small link under
+  them (`#hero-load`, the popout). At 345px and under the two labels shrink a step to stay on one row.
+- The steps card is *Two ways to start*, *Choose to load your WhatsApp chats, your IG data, or both.*:
+  WhatsApp (*⚡ About 2 minutes*, its two steps, **Load my chats**) and Instagram (*🎯 Most complete ·
+  1–2 hours*, its steps and See illustration), side by side on a laptop, and on a phone two slim tabs,
+  *⚡ WhatsApp · now* and *🎯 Instagram · 2hrs*, WhatsApp open first (`chooseWay`). Under both: *💡 Both?
+  Request Instagram now, then load it with your chats when it arrives.*, which keeps the free read for
+  both together. WhatsApp is equal, not the default path: a card from chats alone reads less, and adding
+  Instagram after it is the paid re-run (a free first add was offered and set aside).
+- *How it works* step 1 is *Load your data*; the app's install description names WhatsApp; the card's
+  intro says *sync with friends in Psyche Sync*.
+
 The green *Free* badge on the card and the report now sits on the title's own line, just to its right,
 instead of a line of its own above it (`.tier-head`), so on a phone it no longer costs a row.
 

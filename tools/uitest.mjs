@@ -815,22 +815,22 @@ try {
   await page.click('#datasources-back');
   await page.waitForSelector('#datasources-dialog', { state: 'hidden', timeout: 15000 });
 
-  // The optional-sources card. Collapsed by default, because it is a page of
-  // instructions for a step most readers will skip — but read with
-  // textContent rather than innerText, deliberately: a native <details> keeps
-  // its contents in the DOM when closed, which is what makes them findable
-  // with Find-in-page and readable by a screen reader that navigates by
-  // heading. innerText would report the empty string here and prove nothing.
-  const optionalCard = await page.evaluate(() =>
-    document.querySelector('.optional-card').textContent.replace(/\s+/g, ' '));
-  check('the optional-sources card is collapsed until the reader opens it',
-    await page.evaluate(() => !document.querySelector('.optional-card').open) &&
-    !(await page.locator('.optional-card ol').first().isVisible()));
-  // Only Instagram and WhatsApp on the front page since 26 October 2026: Google's steps are in the popout.
-  check('its summary offers two or three WhatsApp chats as a way in without Instagram, and nothing about Google',
-    /No Instagram data yet\? Start with 2–3 WhatsApp chats$/.test((await page.locator('.optional-title').textContent()).trim()) &&
-      /WhatsApp chats with close connections \(2–3 to start without Instagram\)/.test(optionalCard) && !/Google/.test(optionalCard) &&
-      /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
+  // Two ways to start (26 October 2026): WhatsApp and Instagram, side by side on a laptop, each with how
+  // long it takes; it replaced "Request your Instagram data first" with WhatsApp folded under it.
+  const optionalCard = await page.evaluate(() => document.querySelector('#way-whatsapp').textContent.replace(/\s+/g, ' '));
+  const ways = await page.evaluate(() => {
+    const card = document.querySelector('#request-data');
+    const shown = id => getComputedStyle(document.querySelector(id)).display !== 'none';
+    return { head: card.querySelector('h2').textContent, lede: card.querySelector('.help-lede').textContent,
+      both: shown('#way-whatsapp') && shown('#way-instagram'), tabs: getComputedStyle(card.querySelector('.ways-tabs')).display,
+      tags: [...card.querySelectorAll('.way-tag')].map(t => t.textContent), note: card.querySelector('.ways-both').textContent,
+      google: /Google/.test(card.textContent) };
+  });
+  check('Two ways to start: WhatsApp and Instagram side by side on a laptop, each with its time, no tabs, nothing about Google',
+    ways.head === 'Two ways to start' && ways.lede === 'Choose to load your WhatsApp chats, your IG data, or both.' && ways.both &&
+      ways.tabs === 'none' && ways.tags.join('|') === '⚡ About 2 minutes|🎯 Most complete · 1–2 hours' &&
+      ways.note === '💡 Both? Request Instagram now, then load it with your chats when it arrives.' && !ways.google &&
+      /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), JSON.stringify(ways));
   check('and "How it works" no longer calls Google recommended',
     /Download your data from Instagram, or export 2–3 WhatsApp chats\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
@@ -878,10 +878,7 @@ try {
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Export chat/.test(optionalCard) && /Without media/.test(optionalCard));
 
-  // Opening it is the only way the instructions become visible, and the
-  // summary is a real control rather than a styled div — clicking it is what
-  // a reader and a keyboard both do.
-  await page.click('.optional-card > summary');
+
   // ---- a popout opens at its own top, every time ----
   //
   // Both dialogs reset their scrolling body on open, and both resets were
@@ -2501,11 +2498,11 @@ try {
         !drawnCard.name && drawnCard.title === '⭐ This is Ava’s Psyche Card', drawnCard.title);
       await invitePage.click('#invite-guide');
       await scrollSettled(invitePage);
-      check('"Get my free Psyche Card" scrolls to "Request your Instagram data first", and opens nothing over it',
+      check('"Get my free Psyche Card" scrolls to "Two ways to start", and opens nothing over it',
         await invitePage.evaluate(() => {
           const top = document.querySelector('.help-card').getBoundingClientRect().top;
           return top >= -2 && top < window.innerHeight / 2 && !document.querySelector('#guide-dialog').open &&
-            /Request your Instagram data first/.test(document.querySelector('.help-card h2').textContent);
+            /Two ways to start/.test(document.querySelector('.help-card h2').textContent);
         }));
       await invitePage.evaluate(() => window.scrollTo(0, 0));
       await invitePage.click('#invite-card-open');
@@ -2715,9 +2712,12 @@ try {
       // the hero's second button says so, and the steps card is titled for it.
       check('a new reader sees the guide links at the foot of the main page',
         await guidePage.locator('.footer-guides').isVisible());
-      check('the hero\'s buttons are "Request my IG data" and "Load my data", and there is no separate "New here?" line',
-        (await guidePage.locator('#hero-start').innerText()).trim() === 'Request my IG data' &&
-          (await guidePage.locator('#hero-load').innerText()).trim() === 'Load my data' &&
+      // Since 26 October 2026: WhatsApp first, then Instagram's request; Load my data a link under them.
+      check('the hero\'s buttons are "Start with WhatsApp" and "Request my IG data", "Load here" a link under them, and no "New here?" line',
+        (await guidePage.locator('#hero-wa').innerText()).trim() === 'Start with WhatsApp' &&
+          (await guidePage.locator('#hero-start').innerText()).trim() === 'Request my IG data' &&
+          (await guidePage.locator('.hero-have #hero-load').innerText()).trim() === 'Load here' &&
+          /^Already have your files\?/.test((await guidePage.locator('.hero-have').innerText()).trim()) &&
           (await guidePage.locator('.hero-request, #hero-request').count()) === 0);
       check('above the buttons, four pills on one line: MBTI, Attachment Style, Career Strengths, Blind Spots',
         await guidePage.evaluate(() => { const lis = [...document.querySelectorAll('.hero-pills li')];
@@ -2725,9 +2725,9 @@ try {
             new Set(lis.map(l => Math.round(l.getBoundingClientRect().top))).size === 1 &&
             lis.at(-1).getBoundingClientRect().right <= innerWidth &&
             (document.querySelector('.hero-pills').compareDocumentPosition(document.querySelector('#hero-start')) & Node.DOCUMENT_POSITION_FOLLOWING) > 0; }));
-      check('the steps card is titled "Request your Instagram data first" and says it takes 30 seconds',
-        (await guidePage.locator('.help-card h2').innerText()).trim() === 'Request your Instagram data first' &&
-          /It takes 30 seconds/.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
+      check('the steps card is titled "Two ways to start" and offers the chats, IG data or both',
+        (await guidePage.locator('.help-card h2').innerText()).trim() === 'Two ways to start' &&
+          /Choose to load your WhatsApp chats, your IG data, or both\./.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
           !/How do I get my Instagram data/.test(await guidePage.locator('#view-welcome').innerText()));
       // Load my data: the Add your data popout, without scrolling to Start here.
       await guidePage.click('#hero-load');
@@ -2782,14 +2782,13 @@ try {
     await frames(page);
   }
 
-  check('clicking the summary opens it',
-    await page.evaluate(() => document.querySelector('.optional-card').open) &&
-    (await page.locator('.optional-card ol').first().isVisible()));
+  check('the WhatsApp way\'s steps are shown from the start',
+    await page.locator('#way-whatsapp ol').first().isVisible());
 
   // The JSON instruction is the load-bearing one: Takeout ships My Activity as
   // HTML by default, so a reader who follows the happy path lands on an
   // archive the parser refuses.
-  const optionalOpen = await page.locator('.optional-card').innerText();
+  const optionalOpen = await page.locator('#request-data').innerText();
   // Google's steps, now only in the Load your data popout (read with textContent: the popout is closed).
   const googleSteps = await page.evaluate(() => document.querySelector('#datasources-dialog [data-help="google"]').textContent.replace(/\s+/g, ' '));
   check('it tells the reader to deselect everything but My Activity',
@@ -2817,7 +2816,7 @@ try {
   // exists.
   check('no format-trap widget is left behind — the warning is text now',
     (await page.locator('.format-trap').count()) === 0);
-  const igStep = (await page.locator('.help-card > ol > li').nth(3).innerText())
+  const igStep = (await page.locator('#way-instagram > ol > li').nth(3).innerText())
     .replace(/\s+/g, ' ').trim();
   check('the Instagram list sets the three settings on Confirm your export, JSON marked not HTML',
     /^On Confirm your export, set: Date range All time Format JSON \(not HTML\) Media quality Lower Then tap Start export and enter your password\.$/.test(igStep), igStep);
@@ -2847,33 +2846,20 @@ try {
   // would mean the two had drifted back out of sync.
   check('neither Facebook nor Google is covered here any more — the main page offers Instagram and WhatsApp',
     !/Facebook|Google/.test(optionalOpen));
-  // Closed again so the rest of the suite meets the page as a reader first
-  // does, and so the screenshots below are of the default state.
-  await page.click('.optional-card > summary');
-  check('clicking the summary again closes it',
-    await page.evaluate(() => !document.querySelector('.optional-card').open));
+
   // Clicking scrolled the page down to the card. Several checks below measure
   // against the viewport — the hero-mark sweep reads elementFromPoint over the
   // hero buttons — so put the page back where it was before touching this.
   await page.evaluate(() => window.scrollTo(0, 0));
 
-  // It lives *inside* the Instagram instructions card, after the numbered
-  // steps — the two are one job, and a second card of the same weight read as
-  // a second required step. Held as containment rather than as document order,
-  // because order alone was also true when it was a separate card sitting
-  // next to this one.
-  check('the optional sources live inside the Instagram instructions card, after its steps',
+  // Both ways live inside the one card, WhatsApp first.
+  check('both ways live inside the one card, WhatsApp first, then Instagram',
     await page.evaluate(() => {
-      const igCard = [...document.querySelectorAll('#view-welcome .card')]
-        .find(c => /Request your Instagram data first/.test(c.textContent));
-      const optional = document.querySelector('.optional-card');
-      const steps = igCard && igCard.querySelector('ol');
-      if (!igCard || !optional || !steps) return false;
-      return igCard.contains(optional) &&
-        Boolean(steps.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const card = document.querySelector('#request-data');
+      const wa = document.querySelector('#way-whatsapp'), ig = document.querySelector('#way-instagram');
+      return Boolean(card && wa && ig) && card.contains(wa) && card.contains(ig) &&
+        Boolean(wa.compareDocumentPosition(ig) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
-  check('it is not a card of its own any more, so it reads as part of that one',
-    await page.evaluate(() => !document.querySelector('.optional-card').classList.contains('card')));
   // One card between the Instagram steps and the upload box, not two.
   check('the welcome page did not gain a second instructions card',
     (await page.locator('#view-welcome > .card.help').count()) === 1,
@@ -3323,10 +3309,10 @@ try {
   // same as the fix; the "not HTML" wording is what carries the warning; see
   // the check on that line's exact text a few dozen lines up.
   check('the how-to underlines every label the reader has to find, and only those',
-    (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
+    (await page.locator('#way-instagram > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
     ['≡\u00a0Menu', 'Accounts Centre', 'Your information and permissions', 'Export your information',
       'Create export', 'your Instagram account', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
-    (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
+    (await page.locator('#way-instagram > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
   // are the words to hunt for in Google's own menus, and they go stale the
   // same way. textContent, since the disclosure is closed here. takeout.google.com
@@ -3351,11 +3337,11 @@ try {
   });
   check('in the Add your data popout Instagram\'s steps are plain text with the same labels, the settings as one sentence',
     igPopout.same && igPopout.peeks === 0 && !igPopout.rows && igPopout.frontPeeks > 0 && igPopout.sentence, JSON.stringify(igPopout));
-  check('the optional sources underline their menu labels too',
-    (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
+  check('the WhatsApp way underlines its menu labels too',
+    (await page.evaluate(() => [...document.querySelectorAll('#way-whatsapp .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
     ['⋮', 'More', 'Export chat', 'Without media'].join(' | '),
-    await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
+    await page.evaluate(() => [...document.querySelectorAll('#way-whatsapp .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole
   // process starts, so it is worth being able to tap straight to it rather
@@ -3470,6 +3456,18 @@ try {
       check('on a phone the hint above the steps says to tap',
         await phone.evaluate(() => [...document.querySelector('#request-data .howto-hint').children]
           .filter(s => getComputedStyle(s).display !== 'none').map(s => s.textContent).join('|')) === 'Tap a purple label to see that screen.');
+      // On a phone the two ways are tabs, WhatsApp's open first; Instagram's steps are a tap away.
+      const tabs = await phone.evaluate(() => ({ tabs: getComputedStyle(document.querySelector('.ways-tabs')).display,
+        wa: getComputedStyle(document.querySelector('#way-whatsapp')).display, ig: getComputedStyle(document.querySelector('#way-instagram')).display,
+        labels: [...document.querySelectorAll('.ways-tab')].map(t => t.textContent).join('|'),
+        oneLine: [...document.querySelectorAll('.ways-tab')].every(t => t.scrollWidth <= t.clientWidth + 1 && t.getBoundingClientRect().height < 40) }));
+      await phone.click('#ways-tab-instagram');
+      const switched = await phone.evaluate(() => getComputedStyle(document.querySelector('#way-whatsapp')).display === 'none' &&
+        getComputedStyle(document.querySelector('#way-instagram')).display !== 'none' &&
+        document.querySelector('#ways-tab-instagram').getAttribute('aria-selected') === 'true');
+      check('on a phone the two ways are slim tabs, one line each, WhatsApp open first; a tap opens Instagram\'s',
+        tabs.tabs === 'flex' && tabs.wa !== 'none' && tabs.ig === 'none' && tabs.labels === '⚡ WhatsApp · now|🎯 Instagram · 2hrs' &&
+          tabs.oneLine && switched, JSON.stringify({ ...tabs, switched }));
       const placed = await phone.evaluate(() => {
         const link = document.querySelector('#steps-guide-open');
         const steps = document.querySelector('#request-data ol[data-howto="instagram"]');
@@ -4316,7 +4314,7 @@ try {
         return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
       };
       const root = getComputedStyle(document.documentElement);
-      const text = parse(getComputedStyle(document.querySelector('#hero-start')).color);
+      const text = parse(getComputedStyle(document.querySelector('#hero-wa')).color);
       return {
         start: ratio(text, parse(root.getPropertyValue('--accent'))),
         end: ratio(text, parse(root.getPropertyValue('--accent-2'))),
@@ -4361,8 +4359,8 @@ try {
   for (const width of [460, 412, 390, 375, 360, 320]) {
     await page.setViewportSize({ width, height: 800 });
     heroRowAtWidths[width] = await page.evaluate(() => {
-      const start = document.querySelector('#hero-start');
-      const sample = document.querySelector('#hero-load');
+      const start = document.querySelector('#hero-wa');
+      const sample = document.querySelector('#hero-start');
       const a = start.getBoundingClientRect();
       const b = sample.getBoundingClientRect();
       if (Math.abs(a.top - b.top) > 2) return 'stacked';
@@ -4381,12 +4379,12 @@ try {
   // Get my data leads. Checked in both document order and rendered position —
   // a flex `order` or `row-reverse` would move it visually while leaving it
   // second to a screen reader and to anything tabbing through.
-  check('Get my data comes first, then Load my data, in the markup and on the screen',
+  check('Start with WhatsApp comes first, then Request my IG data, in the markup and on the screen',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('.hero-actions button')].map(b => b.id);
-      const start = document.querySelector('#hero-start').getBoundingClientRect();
-      const load = document.querySelector('#hero-load').getBoundingClientRect();
-      return buttons.join() === 'hero-start,hero-load' && start.left < load.left;
+      const start = document.querySelector('#hero-wa').getBoundingClientRect();
+      const load = document.querySelector('#hero-start').getBoundingClientRect();
+      return buttons.join() === 'hero-wa,hero-start' && start.left < load.left;
     }),
     (await page.locator('.hero-actions button').allInnerTexts()).join(' → '));
 
@@ -4394,17 +4392,17 @@ try {
   // filled, Load my data an outline heavy enough to hold its own next to it.
   // A hairline border would leave the pair looking like one button and one
   // afterthought, so the weight is asserted rather than assumed.
-  check('Get my data is the filled one and Load my data a thick outline',
+  check('Start with WhatsApp is the filled one and Request my IG data a thick outline',
     await page.evaluate(() => {
-      const outline = getComputedStyle(document.querySelector('#hero-load'));
-      const filled = getComputedStyle(document.querySelector('#hero-start'));
+      const outline = getComputedStyle(document.querySelector('#hero-start'));
+      const filled = getComputedStyle(document.querySelector('#hero-wa'));
       const transparent = /rgba\(0, 0, 0, 0\)|transparent/.test(outline.backgroundColor) &&
         outline.backgroundImage === 'none';
       return filled.backgroundImage.includes('gradient') &&
         transparent && parseFloat(outline.borderTopWidth) >= 2;
     }),
     await page.evaluate(() => {
-      const outline = getComputedStyle(document.querySelector('#hero-load'));
+      const outline = getComputedStyle(document.querySelector('#hero-start'));
       return 'outline border ' + outline.borderTopWidth + ', bg ' + outline.backgroundColor;
     }));
   // The thicker border has to be paid for out of the padding. Asserting the
@@ -4420,8 +4418,8 @@ try {
         return parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) +
           parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth);
       };
-      return Math.abs(box(document.querySelector('#hero-start')) -
-        box(document.querySelector('#hero-load'))) < 0.5;
+      return Math.abs(box(document.querySelector('#hero-wa')) -
+        box(document.querySelector('#hero-start'))) < 0.5;
     }),
     await page.evaluate(() => {
       const box = node => {
@@ -4429,8 +4427,8 @@ try {
         return Math.round((parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) +
           parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth)) * 100) / 100;
       };
-      return box(document.querySelector('#hero-start')) + ' vs ' +
-        box(document.querySelector('#hero-load'));
+      return box(document.querySelector('#hero-wa')) + ' vs ' +
+        box(document.querySelector('#hero-start'));
     }));
 
   // The reader pressing this on a first visit has no export yet — the file is
