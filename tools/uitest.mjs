@@ -3214,7 +3214,7 @@ try {
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
   check('the four steps say what you get, not how it works, and step 2 names Vertex AI alone',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
-    'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync' &&
+    'Load your data | PsycheAI reads it | Gain insights | Psyche Sync' &&
     /summary of your data is analysed by Google Vertex AI\. No data is stored by PsycheAI\./.test(await page.locator('.step-card').nth(1).innerText()) &&
     !/Claude/.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
@@ -3230,7 +3230,7 @@ try {
       if (!step || !help) return false;
       return Boolean(step.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING);
     }),
-    // Collapsed: the card's own text starts "1\nLoad your IG data\n\n…", and a
+    // Collapsed: the card's own text starts "1\nLoad your data\n\n…", and a
     // detail that breaks across lines gets cut off wherever it is read back.
     (await page.locator('.step-card').nth(0).innerText()).replace(/\s+/g, ' ').trim());
   // ---- the footer ----
@@ -12808,7 +12808,7 @@ try {
         }));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
-        /Go deeper in your Psyche Report, compare with friends in Psyche Sync, get advice from Ask PsycheAI, and track your progress in Psyche Hub\./.test(paidIntro.replace(/\s+/g, ' ')) &&
+        /Go deeper in your Psyche Report, sync with friends in Psyche Sync, get advice from Ask PsycheAI, and track your progress in Psyche Hub\./.test(paidIntro.replace(/\s+/g, ' ')) &&
           !/Unlock/.test(paidIntro) && await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-home-intro .cx-go')].map(n => n.dataset.cxGo).join() === 'card,report,sync,ask,hub'),
         paidIntro);
       check('and Copy link is one of the card\'s tools there, with no sync on My Psyche',
@@ -13123,7 +13123,7 @@ try {
         offerParts.secret === 0 && !/secret bonus|roast/i.test(offerParts.lockedText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the Psyche Report, with an en dash, not an em dash',
         /your personality on one card, read from your own data/i.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
-          /This is your Psyche Card – your personality on one card, read from your own data\. Unlock the reasoning in your Psyche Report, compare with friends in Psyche Sync, get advice from Ask PsycheAI, and track your progress in Psyche Hub\./.test(offerParts.intro.replace(/\s+/g, ' ')),
+          /This is your Psyche Card – your personality on one card, read from your own data\. Unlock the reasoning in your Psyche Report, sync with friends in Psyche Sync, get advice from Ask PsycheAI, and track your progress in Psyche Hub\./.test(offerParts.intro.replace(/\s+/g, ' ')),
         offerParts.intro);
       const shareFirst = await sp.evaluate(() => {
         const panel = document.querySelector('#profile-body .full-report-locked');

@@ -1530,9 +1530,9 @@
         // own line, so the buttons line up down the right.
         // {br}: a line break on a phone only, so the report's sentence starts a line.
         introPaid: 'This is your {card} – your personality on one card, read from your own data. {br}Go deeper in your {report}, ' +
-          'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
+          'sync with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
         introFree: 'This is your {card} – your personality on one card, read from your own data. {br}Unlock the reasoning in your {report}, ' +
-          'compare with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
+          'sync with friends in {sync}, get advice from {ask}, and track your progress in {hub}.',
         introLinks: { card: 'Psyche Card', report: 'Psyche Report', sync: 'Psyche Sync', ask: 'Ask PsycheAI', hub: 'Psyche Hub' },
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
