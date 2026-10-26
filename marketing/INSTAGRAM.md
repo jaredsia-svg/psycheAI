@@ -250,3 +250,12 @@ No pressure either way. Here's one of ours for a feel: [link]
 
 Per-creator codes with caps already exist (`PSYCHEAI_PROMO_CODES=CODE:cap:lastday:percent`, and links can carry
 `?promo=`), so each creator can get their own trackable code.
+
+## Start here carousel (feed post, 1080x1350)
+
+`node promo/posts.mjs` draws `marketing/posts/start-ig.png` (Instagram's steps) and `start-wa.png` (two WhatsApp chats for a reader who can't wait), from `promo/posts-stage.html`. Post them as one carousel, Instagram first. Caption:
+
+> Start here 👇 A full MBTI-style personality study from your own data. No questions asked.
+> 🎯 Instagram: request your data (slide 1), it arrives in about 2 hours.
+> ⚡ No time to wait? Export 2–3 WhatsApp chats (slide 2) and get your Psyche Card in minutes.
+> Have both? Load them together for the fullest read. Free at psycheai.io
