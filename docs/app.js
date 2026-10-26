@@ -2965,8 +2965,9 @@
     };
     return '<div class="insight-tier insight-free">' +
       '<div class="insight-free-copy">' +
-        '<p class="tier-badges"><span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span></p>' +
-        '<h3 class="tier-title">' + esc(I.freeTitle) + '</h3>' +
+        // The green "Free" on the title's own line, to its right (26 October 2026; it had a line of its own).
+        '<div class="tier-head"><h3 class="tier-title">' + esc(I.freeTitle) + '</h3>' +
+          '<span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span></div>' +
         '<p class="tier-blurb">' + esc(I.freeBlurb) + '</p>' +
         // The name of each part of the card, and nothing under it.
         '<ul class="card-features">' + I.cardItems.map(([icon, title]) =>
@@ -2987,10 +2988,10 @@
       '</div>' +
     '</div>' +
     '<div class="insight-tier insight-premium premium-tier">' +
-      // Free, as the card is: the same green badge over the title.
-      '<p class="tier-badges"><span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span></p>' +
-      '<div class="premium-tier-head">' +
+      // Free, as the card is: the same green badge, to the right of the title on its line.
+      '<div class="premium-tier-head tier-head">' +
         '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
+        '<span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span>' +
       '</div>' +
       '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +
       '<ol class="insight-parts">' + parts.map((key, i) =>

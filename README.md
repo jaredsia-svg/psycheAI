@@ -1535,6 +1535,8 @@ evidence from your own data behind each finding. Plus deeper insights the card h
 attachment style, career strengths, wellbeing and a plan to grow.*; and only the plan keeps its question
 line (the other four parts are their pills). *Gain insights* reads *Learn more about your personality,
 relationships, and career. Ask PsycheAI anything about yourself.*
+The green *Free* badge on the card and the report now sits on the title's own line, just to its right,
+instead of a line of its own above it (`.tier-head`), so on a phone it no longer costs a row.
 
 **Adding data later keeps the chats** (26 October 2026). A stored digest holds the chats' sampled
 lines, not the files, and the files are rarely to hand again. So:

@@ -3599,7 +3599,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .insight-card-head .btn { flex: none; padding: .45rem .9rem; font-size: .9rem; }
 
 .insight-tier { margin-top: 1.2rem; border-radius: var(--radius); }
-.tier-badges { margin: 0; }
+/* The title and its green "Free" on one line, the badge just to its right, at every width. */
+.tier-head { display: flex; align-items: center; gap: .55rem; flex-wrap: nowrap; margin: 0 0 .25rem; }
+.tier-head .tier-title { margin: 0; flex: 0 1 auto; min-width: 0; }
+.tier-head .tier-badge { flex: none; }
 .tier-badge {
   display: inline-block; padding: .18rem .65rem; border-radius: 999px;
   font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;

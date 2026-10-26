@@ -3997,14 +3997,18 @@ try {
     };
   });
   // Free, as the card is: the card's own green badge over the title, and no price in the head.
-  check('the front page\'s Psyche Report wears the card\'s green "Free" badge, with no price in its head',
+  check('the front page\'s Psyche Report wears the card\'s green "Free" badge to the right of its title, as the card does, with no price in its head',
     await page.evaluate(() => {
       const tier = document.querySelector('#view-welcome .insight-premium');
-      const badge = tier && tier.querySelector('.tier-badges .tier-badge-free');
+      const badge = tier && tier.querySelector('.premium-tier-head .tier-badge-free');
       const card = document.querySelector('#view-welcome .insight-free .tier-badge-free');
       const look = el => el && [getComputedStyle(el).backgroundColor, getComputedStyle(el).color].join();
+      // On the title's line, to its right (26 October 2026), for the report and the card alike.
+      const beside = (b, t) => { const x = b.getBoundingClientRect(), y = t.getBoundingClientRect();
+        return x.left >= y.right - 1 && Math.abs((x.top + x.bottom) / 2 - (y.top + y.bottom) / 2) <= 8; };
       return Boolean(badge && card) && badge.textContent === 'Free' && look(badge) === look(card) &&
-        badge.getBoundingClientRect().bottom <= tier.querySelector('.tier-title').getBoundingClientRect().top + 1 &&
+        beside(badge, tier.querySelector('.tier-title')) &&
+        beside(card, document.querySelector('#view-welcome .insight-free .tier-title')) &&
         !tier.querySelector('.premium-tier-head .premium-tier-price') && !/first one is free/i.test(tier.textContent);
     }) && premiumTier.oldLine === 0);
   // The price of a re-run: a footnote under what comes with the report, in the currency checkout charges.
