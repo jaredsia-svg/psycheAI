@@ -1449,6 +1449,17 @@
       linkRule: 'Every connection who makes their card from your link earns you 1 credit. Redeem a credit for 5 questions to PsycheAI, or for a Psyche Report to gift.',
       statCredits: 'credits',
       // One or two plain lines for each part of the hub, behind its "i".
+      // Under the hub's title (26 October 2026): every part that is not a button explains itself.
+      intro: { touch: 'Tap any name, number or icon to see what it means.', mouse: 'Hover over any name, number or icon to see what it means.' },
+      // A number's own words, from the number itself (app.js, fillNumTip).
+      numTips: {
+        syncs: n => n ? 'You have synced with ' + n + (n === 1 ? ' person.' : ' people.') : 'No syncs yet. Share your link to compare cards with a friend.',
+        ask: (asked, of) => of ? asked + (asked === 1 ? ' question' : ' questions') + ' asked out of ' + of + ' available.'
+          : 'How many questions you have asked PsycheAI, out of how many you have.',
+        opens: n => n + (n === 1 ? ' person has' : ' people have') + ' opened your link.',
+        friends: n => n + (n === 1 ? ' person has' : ' people have') + ' made their Psyche Card from your link.',
+        credits: n => 'You have ' + n + (n === 1 ? ' credit' : ' credits') + '. Each is 5 questions to PsycheAI or a Psyche Report to gift.',
+      },
       tips: {
         report: 'Your full Psyche Report: every result explained, with the evidence behind it. Read it here or download the PDF.',
         reportLocked: 'Your full Psyche Report: every result explained, with the evidence. It unlocks free when 1 person makes their card from your link.',

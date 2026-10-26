@@ -804,11 +804,19 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   #view-profile.profile-paid .cta-row {
     --cta-press: 0 1px 2px rgba(36, 26, 46, .14), 0 4px 12px rgba(123, 63, 160, .22);
   }
-  #view-profile.profile-paid .cta-row .btn, #view-profile.profile-paid .cta-row .cta-signal {
-    border: 0 !important; background: var(--cta-button, var(--bg-alt)) !important; box-shadow: var(--cta-press) !important;
+  /* One section, as on a laptop (26 October 2026): a tinted card, set apart in colour from the white
+     report sections above it, holding the signal strength row and the three actions as quiet icons.
+     Before, each was a white button of its own. */
+  #view-profile.profile-paid .cta-row {
+    gap: .2rem; padding: .45rem; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg-alt)); box-shadow: var(--shadow);
+  }
+  #view-profile.profile-paid .cta-row .btn {
+    border: 0 !important; background: transparent !important; box-shadow: none !important;
   }
   #view-profile.profile-paid .cta-row .cta-signal {
-    justify-content: flex-start; padding: .65rem .9rem .65rem .6rem; border-radius: 14px; font-size: .86rem;
+    justify-content: flex-start; padding: .6rem .9rem .6rem .6rem; border-radius: 13px; font-size: .86rem;
+    border: 0 !important; background: color-mix(in srgb, var(--accent) 14%, var(--bg-alt)) !important; box-shadow: none !important;
   }
   #view-profile.profile-paid .cta-row .cta-signal .hub-ring { width: 30px; height: 30px; }
   #view-profile.profile-paid .cta-row .cta-signal .hub-ring b { width: 24px; height: 24px; font-size: .66rem; }
@@ -5389,10 +5397,22 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The tick and the numbers on Psyche Sync and Ask PsycheAI show their tile's
    tooltip on hover, as the name does (a tap opens it on a phone: app.js). Who
    made the card or report is its last line. */
-.hub-l1:has(.hub-stamp:hover) > .hub-tip-text, .hub-l1:has(.hub-stamp:focus-visible) > .hub-tip-text,
-.hub-l1:has(.hub-num:hover) > .hub-tip-text { display: block; }
-.hub-l1 .hub-num { cursor: help; }
-.hub-l1:has(.hub-num:hover) .hub-name { color: var(--accent); }
+.hub-l1:has(.hub-stamp:hover) > .hub-tip:first-child + .hub-tip-text, .hub-l1:has(.hub-stamp:focus-visible) > .hub-tip:first-child + .hub-tip-text,
+.hub-l1:has(.hub-lockmark:hover) > .hub-tip:first-child + .hub-tip-text { display: block; }
+.hub-l1 .hub-lockmark { cursor: help; }
+/* Every part that is not a button explains itself (26 October 2026): the tiles' numbers, the link's counts and
+   the credit rule each open their own words on hover, focus or a tap (app.js, fillNumTip). */
+.hub-numtip { border: 0; background: none; padding: 0; margin: 0; font-family: inherit; cursor: help; }
+.hub-numtip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.hub-numtip:hover + .hub-tip-text, .hub-numtip:focus-visible + .hub-tip-text, .hub-numtip.is-open + .hub-tip-text { display: block; }
+.hub-statbtn, .hub-notebtn { display: inline-flex; align-items: center; gap: .3rem; font: inherit; color: inherit; white-space: nowrap; }
+.hub-statbtn:hover b, .hub-numtip.hub-num:hover { filter: brightness(1.15); }
+.hub-intro { margin: .45rem 1rem 0; text-align: center; font-size: .74rem; color: var(--ink-soft); }
+.hub-intro .hint-mouse { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .hub-intro .hint-touch { display: none; }
+  .hub-intro .hint-mouse { display: inline; }
+}
 .hub-tip-text { pointer-events: none; }
 .hub-tip-made { display: block; margin-top: .4rem; padding-top: .4rem; border-top: 1px solid rgba(255, 255, 255, .18); color: #e8dcf4; }
 .hub-tip-made b { color: #fff; font-weight: 700; }

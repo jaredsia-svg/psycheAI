@@ -3060,6 +3060,23 @@ one-tint, an alternating and two purple-to-pink versions, and chose "B2", the wi
 - **Phone line:** on a phone the gradient line was drawn by the box around the card and its title
   (`.profile-top::before`), not by the card's own section. It is gone too.
 
+### Every part of the hub explains itself (26 Oct 2026)
+
+A line under the hub's title says how: *Tap any name, number or icon to see what it means* on a phone,
+*Hover over…* with a mouse. Every part that is not a button now opens words of its own on a tap, hover
+or focus:
+- the tiles' numbers (`.hub-numtip`, `fillNumTip`), worded from the number as it stands, since the
+  server fills the counts in later: *You have synced with 10 people.*, *1 question asked out of 5
+  available.*;
+- the link's three counts: *N people have opened your link.*, *N people have made their Psyche Card
+  from your link.*, *You have N credits. Each is 5 questions to PsycheAI or a Psyche Report to gift.*;
+- the credit rule pill (its words were a `title` that phones never showed);
+- the report's lock, with the tile's own words, as the ticks already did.
+
+Before, a tile's number opened the tile's general tip. On a phone, My Report's foot is now one tinted
+section like the laptop's side menu: the signal strength row, then Back, Report and Add data as quiet
+icons, set apart in colour from the white report sections above (each was a white button of its own).
+
 ### The hub's buttons lift off their rows (October 2026)
 
 **What changed.** The hub's buttons (Read, download, See list, share, Ask, copy, the data-source chips,

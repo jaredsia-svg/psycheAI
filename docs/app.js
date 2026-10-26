@@ -2248,8 +2248,10 @@
     return '<div class="hub-tile hub-' + key + (opts.cta ? ' is-cta' : '') + '" data-hub="' + key + '">' +
       '<div class="hub-l1">' + hubTip(opts.tip || key, opts.name, '', opts.mark, opts.made) +
         '<span class="hub-badge" data-hub-badge' + (opts.badge ? '' : ' hidden') + '>' + esc(opts.badge || '') + '</span>' +
-        (opts.state || '<b class="hub-num" data-hub-num aria-describedby="hub-tip-' + esc(opts.tip || key) + '"' +
-          (opts.numLabel ? ' aria-label="' + esc(opts.numLabel) + '"' : '') + '>' + esc(opts.num) + '</b>') +
+        // The number explains itself in its own words (fillNumTip), on a tap, hover or focus.
+        (opts.state || '<button type="button" class="hub-num hub-numtip" data-hub-num data-numtip="' + esc(key) + '" aria-expanded="false"' +
+          ' aria-describedby="hub-tip-' + esc(key) + '-n"' + (opts.numLabel ? ' aria-label="' + esc(opts.numLabel) + '"' : '') + '>' + esc(opts.num) + '</button>' +
+          '<span class="hub-tip-text" role="tooltip" id="hub-tip-' + esc(key) + '-n"></span>') +
       '</div>' +
       (opts.line2 || '<div class="hub-acts">' + opts.buttons.map(([go, label, icon, extra]) =>
         '<button type="button" class="hub-go' + (extra || '') + '" data-hub-go="' + esc(go) + '" aria-label="' + esc(label) + '">' +
@@ -2342,6 +2344,7 @@
     return '<section class="card section-card hub-card screen-only" aria-labelledby="hub-title">' +
       // The hub's own mark beside its name, in the title's gradient.
       '<div class="hub-bar"><h2 id="hub-title">' + titleMark('grid', 'hub-title-grad').replace('title-mark', 'hub-title-mark') + esc(H.title) + '</h2></div>' +
+      '<p class="hub-intro"><span class="hint-touch">' + esc(H.intro.touch) + '</span><span class="hint-mouse">' + esc(H.intro.mouse) + '</span></p>' +
       '<div class="hub-in">' +
       '<div class="hub-tiles">' + tiles.join('') + '</div>' +
       '<div class="hub-rows">' + hubLinkRowHtml(explained) +
@@ -2378,13 +2381,17 @@
   function hubLinkRowHtml(paid) {
     const H = Copy.STRUCTURED.hub;
     const R = TEXT.referral;
-    const stat = (key, label) => '<li class="hub-linkstat"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</li>';
+    // Each count explains itself (fillNumTip), as the tiles' numbers do.
+    const stat = (key, label) => '<li class="hub-linkstat"><button type="button" class="hub-numtip hub-statbtn" data-numtip="' + key + '"' +
+      ' aria-expanded="false" aria-describedby="hub-tip-stat-' + key + '"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</button>' +
+      '<span class="hub-tip-text" role="tooltip" id="hub-tip-stat-' + key + '"></span></li>';
     return '<div class="hub-row hub-linkrow referral-card" data-paid="' + (paid ? '1' : '0') + '" aria-label="' + esc(H.link) + '">' +
       '<span class="hub-linkhead">' + hubTip('link', H.link, 'hub-rl') +
         '<button type="button" class="hub-copy hub-linkcopy" data-hub-go="copy" aria-label="' + esc(H.copyLink) + '" title="' + esc(H.copyLink) + '">' +
           hubIcon('copy') + '</button></span>' +
       '<ul class="hub-linkstats">' + stat('opens', H.statOpened) + stat('friends', H.statCards) + stat('credits', H.statCredits) + '</ul>' +
-      '<p class="hub-linknote" title="' + esc(H.linkRule) + '"><span>' + esc(H.linkNote) + '</span></p>' +
+      '<p class="hub-linknote"><button type="button" class="hub-numtip hub-notebtn" aria-expanded="false" aria-describedby="hub-tip-rule">' +
+        '<span>' + esc(H.linkNote) + '</span></button><span class="hub-tip-text" role="tooltip" id="hub-tip-rule">' + esc(H.linkRule) + '</span></p>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
         '<button type="button" class="hub-btn referral-gift">' + hubIcon('gift') + '<span>' + esc(R.gift) + '</span></button></div>' +
       '<p class="referral-status" role="status" hidden></p>' +
@@ -2498,14 +2505,33 @@
 
   // The tips: a tap opens one (and shuts any other); a tap anywhere else, or
   // Escape, shuts it. Hover and focus show it too, in CSS.
-  const closeHubTips = except => document.querySelectorAll('.hub-tip.is-open').forEach(tip => {
+  const closeHubTips = except => document.querySelectorAll('.hub-tip.is-open, .hub-numtip.is-open').forEach(tip => {
     if (tip !== except) { tip.classList.remove('is-open'); tip.setAttribute('aria-expanded', 'false'); }
   });
+  // A number's words, from the number as it stands now (the server fills the
+  // counts in later): "You have synced with 10 people", "1 question asked out
+  // of 5 available". Written as it is pointed at, tapped or focused.
+  function fillNumTip(button) {
+    const key = button.dataset.numtip;
+    const words = Copy.STRUCTURED.hub.numTips[key];
+    const text = button.nextElementSibling;
+    if (!words || !text) return;
+    const nums = (button.textContent.match(/\d+/g) || []).map(Number);
+    text.textContent = key === 'ask' ? words(nums[0] || 0, nums.length > 1 ? nums[1] : 0) : words(nums[0] || 0);
+  }
+  const fillFrom = event => {
+    const button = event.target.closest && event.target.closest('.hub-numtip[data-numtip]');
+    if (button) fillNumTip(button);
+  };
+  document.addEventListener('pointerover', fillFrom);
+  document.addEventListener('focusin', fillFrom);
   document.addEventListener('click', event => {
-    // The tick under a ready tile and the number on Psyche Sync and Ask
-    // PsycheAI open their tile's tooltip as its name does.
-    const beside = event.target.closest('.hub-l1 .hub-stamp, .hub-l1 .hub-num');
-    const tip = event.target.closest('.hub-tip') || (beside && beside.closest('.hub-l1').querySelector('.hub-tip'));
+    // The tick under a ready tile and the lock open their tile's tooltip as
+    // its name does; a number, a count and the credit rule open their own.
+    const own = event.target.closest('.hub-numtip');
+    if (own && own.dataset.numtip) fillNumTip(own);
+    const beside = event.target.closest('.hub-l1 .hub-stamp, .hub-l1 .hub-lockmark');
+    const tip = own || event.target.closest('.hub-tip') || (beside && beside.closest('.hub-l1').querySelector('.hub-tip'));
     closeHubTips(tip);
     if (!tip) return;
     const open = !tip.classList.contains('is-open');

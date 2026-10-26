@@ -11692,8 +11692,12 @@ try {
       const numTips = [];
       for (const key of ['syncs', 'ask']) {
         await sp.hover('.hub-tile[data-hub="' + key + '"] .hub-num');
-        numTips.push(await sp.evaluate(k => getComputedStyle(document.querySelector('#hub-tip-' + k)).display !== 'none' &&
-          !document.querySelector('.hub-tile[data-hub="' + k + '"] .hub-num').title, key));
+        // Its own words since 26 October 2026, from the number: "You have synced with N people", "N questions asked out of M available".
+        numTips.push(await sp.evaluate(k => {
+          const tip = document.querySelector('#hub-tip-' + k + '-n');
+          return getComputedStyle(tip).display !== 'none' && !document.querySelector('.hub-tile[data-hub="' + k + '"] .hub-num').title &&
+            (k === 'syncs' ? /^(You have synced with \d+ (person|people)\.|No syncs yet\.)/ : /questions? asked out of \d+ available\.$|^How many questions you have asked/).test(tip.textContent);
+        }, key));
       }
       await sp.mouse.move(2, 2);
       // Ask PsycheAI's count is asked/total: what this reader has asked, of
@@ -11749,7 +11753,7 @@ try {
           tick: Boolean(tile('report').querySelector('.hub-ok')) && Boolean(tile('psyche').querySelector('.hub-ok')), report: goes('report'), syncs: goes('syncs'), ask: goes('ask'),
           card: goes('psyche'),
           link: [...hub.querySelectorAll('.hub-linkrow .referral-n')].map(n => n.dataset.stat).join(),
-          linkButtons: [...hub.querySelectorAll('.hub-linkrow button:not(.hub-tip)')].filter(b => !b.closest('[hidden]'))
+          linkButtons: [...hub.querySelectorAll('.hub-linkrow button:not(.hub-tip):not(.hub-numtip)')].filter(b => !b.closest('[hidden]'))
             .map(b => b.getAttribute('aria-label') || b.textContent.trim()).join(),
           rowOrder: [...hub.querySelectorAll('.hub-rows > .hub-row')].map(r => r.classList[1]).join(),
           cta: hub.querySelectorAll('.hub-tile.is-cta').length,
@@ -11782,7 +11786,7 @@ try {
           await sp.click('.hub-keep .hub-rl').then(() => sp.evaluate(() => getComputedStyle(document.querySelector('#hub-tip-syncs')).display === 'none')));
       check('Your Link is a row of its own: its counts and what a credit is for, with no popout',
         await sp.evaluate(() => document.querySelectorAll('#profile-body .hub-linkrow .referral-n').length === 3 &&
-          document.querySelector('.hub-linkrow .hub-linknote').textContent === '1 card made = 1 credit = 5 questions or 1 report to gift' &&
+          document.querySelector('.hub-linkrow .hub-linknote .hub-notebtn').textContent === '1 card made = 1 credit = 5 questions or 1 report to gift' &&
           !document.querySelector('.hub-card [data-hub-go="link"]')));
       {
         let early = false;
@@ -12744,7 +12748,8 @@ try {
             noDelete: document.querySelector('#delete-profile').hidden &&
               getComputedStyle(document.querySelector('#delete-profile')).display === 'none' &&
               boxes.every(b => Math.abs(b.width - boxes[0].width) <= 1),
-            across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
+            // Inside the one tinted section since 26 October 2026: across it, within its padding.
+            across: Math.abs(boxes[0].left - r.left) <= 12 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 12,
             thinCompat: !document.querySelector('#profile-side .cx-compat'),
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
@@ -14014,7 +14019,7 @@ try {
           /1 card made = 1 credit = 5 questions or 1 report to gift/.test(card.text) && /^Share Your Link/.test(card.text) &&
           await rp.evaluate(() => document.querySelector('#profile-body').lastElementChild.matches('.hub-card') &&
             !document.querySelector('#profile-body .referral-card:not(.hub-linkrow)')) &&
-          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button:not(.hub-tip)')].filter(b => !b.closest('[hidden]'))
+          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .hub-linkrow button:not(.hub-tip):not(.hub-numtip)')].filter(b => !b.closest('[hidden]'))
               .map(b => b.getAttribute('aria-label')).join() === 'Copy your link'),
         JSON.stringify(card));
       await closeLink(rp);
