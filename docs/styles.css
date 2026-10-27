@@ -4754,8 +4754,15 @@ details.more[open] > summary::after { content: ' ▴'; }
 .datasources-dialog .ds-row > .mode-option {
   flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: .55rem .5rem .55rem .75rem;
 }
-.datasources-dialog .ds-row > .mode-option:hover,
-.datasources-dialog .ds-row > .mode-option:focus-visible { background: var(--accent-soft); }
+/* Pink only while pressed (27 October 2026): on a phone :hover stuck after the tap, and focus came
+   back to the row from the file picker, so the row stayed pink, as it did while a file was read.
+   A mouse still gets it on hover; the keyboard gets an outline. */
+.datasources-dialog .ds-row > .mode-option:active:not(:disabled) { background: var(--accent-soft); }
+@media (hover: hover) {
+  .datasources-dialog .ds-row > .mode-option:hover:not(:disabled) { background: var(--accent-soft); }
+}
+.datasources-dialog .ds-row > .mode-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.datasources-dialog .ds-row > .mode-option.is-loading:disabled { background: transparent; }
 .datasources-dialog .mode-body > .muted:empty { display: none; }
 .ds-how {
   flex: none; align-self: stretch; font: inherit; font-size: .78rem; font-weight: 600; color: var(--accent);

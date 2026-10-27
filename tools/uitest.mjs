@@ -796,7 +796,7 @@ try {
         document.querySelector('#datasources-drop').compareDocumentPosition(document.querySelector('#datasources-dialog .mode-options')) === Node.DOCUMENT_POSITION_FOLLOWING),
     await rowLabel('instagram'));
   check('and nor do the others: the groups say what is needed, WhatsApp shows its chats as an empty ring in three parts',
-    (await rowLabel('whatsapp')) === '≥2 WhatsApp chats' &&
+    (await rowLabel('whatsapp')) === '2–3 WhatsApp chats' &&
       (await rowLabel('google')) === 'Google Takeout' && (await rowLabel('facebook')) === 'Facebook' &&
       await page.evaluate(() => document.querySelectorAll('#datasources-dialog .ds-dots i').length === 3 &&
         document.querySelector('#datasources-dialog .ds-dots').dataset.n === '0' &&
@@ -1486,7 +1486,7 @@ try {
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
       check('a new reader is offered Instagram, WhatsApp chats, Google Takeout and Facebook, one line each',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '≥2 WhatsApp chats', 'Google Takeout', 'Facebook']), JSON.stringify(shown.rows));
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
         JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
@@ -13880,7 +13880,7 @@ try {
       const a = await readChats(first, ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x', look);
       check('one file box: a first upload asks for one of Instagram or the chats, sets Continue back, and holds it until it has one',
         seen.empty === 'Required (At least one)' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
-          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '≥2 WhatsApp chats', 'Google Takeout', 'Facebook']),
+          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook']),
         JSON.stringify(seen));
       // One chat in: the heading asks for one more, and Continue says so (26 October 2026).
       {

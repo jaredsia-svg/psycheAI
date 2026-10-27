@@ -971,7 +971,7 @@
     // row shows it as dots (October 2026), and says nothing while empty.
     whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded – tap to load a different one'
       : n + ' of ' + max + ' chats loaded',
-    whatsappFirstTitle: '≥2 WhatsApp chats',
+    whatsappFirstTitle: '2–3 WhatsApp chats',
     // A first upload needs Instagram or two WhatsApp chats (three at most; October 2026):
     // the two rows' tags, and the line under the file box saying where the
     // reader stands (askDataSources, showMinimum).

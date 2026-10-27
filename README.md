@@ -1458,12 +1458,16 @@ file types the box now sorts by itself, and kept the help a first-timer needs at
   *Evidence behind every finding*) stack on the left with **See sample** beside them, rather than the
   button on a line of its own. Ask PsycheAI's pill sits beside its name on one line, shortened to
   *1 free, then … for 5*; at 420px and under the Sync and Ask rows drop their icons to make room.
+- **A row is pink only while pressed** (27 October 2026): on a phone the hover stuck after the tap and
+  focus came back to the row from the file picker, so the row stayed pink, and it was pink too while its
+  file was read. Now a tap flashes it, a mouse still gets it on hover, the keyboard an outline. The
+  WhatsApp row reads *2–3 WhatsApp chats* (*≥2* for a day).
 - Restore from a backup sits between Back and Continue, under *Optional data* (27 October 2026).
 - **Google and Facebook are folded away on a first upload** (27 October 2026): four rows read as four
   things to fetch, when Instagram or two chats is all a first read needs. *Optional data ▾*, a quiet grey
   link between Back and Continue, unfolds them under *Optional*; a Google or Facebook file dropped in the
   box is still read, and unfolds them so its tick shows. The required heading became *Required (At least
-  one)* and the WhatsApp row *≥2 WhatsApp chats* (first upload only: from the report page one chat beside
+  one)* and the WhatsApp row *2–3 WhatsApp chats* (first upload only: from the report page one chat beside
   Instagram is fine), so the minimum is on the row itself.
 - **The required group says what is still needed** (26 October 2026; it read *Need either IG or 2 x
   WhatsApp* whatever was loaded, so after one chat it was not clear what to do): *Required (IG or 2
