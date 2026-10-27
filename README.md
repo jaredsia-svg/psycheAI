@@ -9110,9 +9110,12 @@ above the Instagram steps answer it, so a reader has it before they start the ex
   - The note under them says only "Real answers, trimmed." (Its second sentence, "ChatGPT had nothing to go on;
     PsycheAI read one reader's own data.", was dropped on 25 October 2026.) ChatGPT was asked with nothing to go on;
     with an upload it would not be generic, so the section claims only that it starts from what you tell it.
-- **"Why not just upload my data to ChatGPT?"** is a table of where the data goes with each: the service,
-  what is sent, training and what is kept. (A fifth row, "Reads", on how much each takes in, was dropped on 25
-  October 2026.)
+- **"Where does your data go?"** (*Why not just upload my data to ChatGPT?* until 27 October 2026, a question
+  many visitors never had; the FAQ keeps it) is a table of where the data goes with PsycheAI and with the same
+  files uploaded to ChatGPT: the service, what is sent, training, what is kept, and since 27 October who can read
+  the results (*OpenAI, for safety or legal reasons* against *Only you*: a report waits on the server only
+  encrypted, lib/results.js, and is kept on the device), then a link to how data flows on the privacy page. (A
+  row "Reads", on how much each takes in, was dropped on 25 October 2026.)
   - It is the FAQ answer of the same name in short. Its claims are the FAQ's, about ChatGPT's personal plans: it
     *may* train unless you turn that off, and it keeps data until you delete it and then up to 30 days.
   - It stays a table on a phone, in smaller type, because the two columns side by side are the point.

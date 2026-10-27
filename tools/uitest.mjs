@@ -896,18 +896,20 @@ try {
         side: coach ? [...coach.querySelectorAll('.vs-ans')].map(e => Math.round(e.getBoundingClientRect().top)) : [], rows,
         note: coach && coach.querySelector('.vs-note').textContent };
     });
-    check('the front page asks "why PsycheAI" and "why not ChatGPT" in two sections, just above the Instagram steps',
-      vs.order && vs.heads[0] === 'Why PsycheAI stands out?' && vs.heads[1] === 'Why not just upload my data to ChatGPT?',
+    check('the front page asks "why PsycheAI" and "where does your data go" in two sections, just above the Instagram steps',
+      vs.order && vs.heads[0] === 'Why PsycheAI stands out?' && vs.heads[1] === 'Where does your data go?',
       JSON.stringify(vs.heads));
     check('the coach section puts one question to ChatGPT and PsycheAI, their answers side by side on a laptop',
       vs.q === 'What would I regret most about my life when I’m old?' && vs.who.join('|') === 'ChatGPT|PsycheAI' &&
         vs.side.length === 2 && Math.abs(vs.side[0] - vs.side[1]) < 2, JSON.stringify(vs));
     const row = k => (vs.rows.find(r => r[0] === k) || []).slice(1).join(' | '), coachNote = vs.note;
-    check('the ChatGPT comparison keeps to the FAQ: consumer against enterprise, raw against a reviewed summary, may train, 30 days, no accounts (four rows, no "Reads"); the answers\' note is only "Real answers, trimmed."',
+    check('the ChatGPT comparison keeps to the FAQ: consumer against enterprise, raw against a reviewed summary, may train, 30 days, no accounts, who can read the results (five rows, no "Reads"), with a link to how data flows; the answers\' note is only "Real answers, trimmed."',
       vs.rows[0].join('|') === '|ChatGPT|PsycheAI' && row('Service') === 'Consumer plan | Enterprise tier (Google Vertex AI)' &&
         row('What’s sent') === 'Your raw export: photos, videos, friends’ messages | A 100–200 KB de-identified text summary you review first' &&
         row('Trains on it?') === 'May, unless you turn it off | No' && row('Kept') === 'Until you delete it, then up to 30 days | Nowhere. No accounts' &&
-        vs.rows.length === 5 && !row('Reads') && coachNote === 'Real answers, trimmed.',
+        row('Who can read your results') === 'OpenAI, for safety or legal reasons | Only you' &&
+        vs.rows.length === 6 && !row('Reads') && coachNote === 'Real answers, trimmed.' &&
+        await page.locator('#vs-chatgpt .vs-more a[href="/privacy#flow-title"]').count() === 1,
       JSON.stringify(vs.rows));
   }
   check('the instructions stay in the document while collapsed, so they can still be found',
