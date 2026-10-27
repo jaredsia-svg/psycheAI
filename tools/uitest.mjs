@@ -13947,6 +13947,18 @@ try {
       check('the same three chats in another browser are not a second free read',
         again.body.account === a.body.account && /Your free Psyche Card has already been used/.test(againText) &&
           !(await again.pg.evaluate(() => localStorage.getItem('psycheai_profile'))), againText.slice(0, 200));
+      // Back from that payment sheet reviews the same data again, and Back there opens Add your data
+      // with the chats still loaded (27 October 2026: it fell to the retry offer, with no way back).
+      {
+        await again.pg.click('#premium-cancel');
+        const reviewed = await again.pg.waitForSelector('#review-dialog[open]', { timeout: 15000 }).then(() => true, () => false);
+        const retry = await again.pg.evaluate(() => !document.querySelector('#upload-retry').hidden);
+        await again.pg.click('#review-cancel');
+        const sources = await again.pg.waitForSelector('#datasources-dialog[open]', { timeout: 15000 }).then(() => true, () => false);
+        const dots = await again.pg.evaluate(() => document.querySelector('#datasources-dialog .ds-dots').dataset.n);
+        check('Back on that payment sheet returns to the review, and Back there to Add your data, the chats still loaded',
+          reviewed && !retry && sources && dots === '3', JSON.stringify({ reviewed, retry, sources, dots }));
+      }
       await again.pg.close();
       // Keeping one chat and swapping the rest is not a second free read
       // either: each chat carries its own one-way code (October 2026).

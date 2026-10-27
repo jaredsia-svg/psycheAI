@@ -6749,6 +6749,9 @@
     // Declining costs nothing — the report and digest the reader arrived with
     // are untouched.
     const auth = await authoriseAnalysis();
+    // Back from the payment sheet reviews the same data again (27 October
+    // 2026: it ran on, unpaid, into an error).
+    if (auth === PAY_BACK) return rerunWithAdditionalData(extraSupplements, freshInstagram);
     if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
 
     applyReviewDecision(digest, decision);
@@ -6836,11 +6839,24 @@
         stopElapsed();
         guardUnload(false);
         analysisNote = digestHasInstagram(digest) ? TEXT.freeUsedBlurb : TEXT.freeUsedChatsBlurb;
-        const paid = await authoriseAnalysis();
+        // Back from the payment sheet steps upstream, as everywhere else (27
+        // October 2026: it fell to the retry offer, with no way back to the
+        // review or the data): the review again, then the sheet; Back at the
+        // review opens Add your data with everything still loaded.
+        for (;;) {
+          const paid = await authoriseAnalysis();
+          if (paid && paid !== PAY_BACK) { analysisNote = ''; return runAnalysis(digest, paid); }
+          if (paid !== PAY_BACK) break;
+          show('welcome');
+          let again;
+          try { again = await askReview(digest, { paymentDue: true }); } catch (e) { again = null; }
+          if (again === REVIEW_BACK) { analysisNote = ''; return startFromSources(); }
+          if (!again) { analysisNote = ''; return; }
+          applyReviewDecision(digest, again);
+          state.digest = digest;
+          writeDigest(digest);
+        }
         analysisNote = '';
-        // Back has no review to return to here (it was agreed before the
-        // refusal), so it is the same as not paying: the retry offer.
-        if (paid && paid !== PAY_BACK) return runAnalysis(digest, paid);
         offerRetry(error.message);
         return;
       }

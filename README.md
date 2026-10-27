@@ -1518,6 +1518,12 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**Back from a payment sheet steps back** (27 October 2026). Two paid paths ignored the sheet's Back.
+A first read refused its free card (the account or a chat had one) offered the sheet, and Back fell to
+the retry offer, scrolled to the foot of the page, with no way back to the review or the data. Now Back
+reopens the review, and Back there opens Add your data with everything loaded (runAnalysis, freeUsed).
+And a paid re-run (not the bundled one) ran on unpaid after Back, into an error; it now reviews again.
+
 **A popout closes from outside it, not from its edge** (27 October 2026). The hub's popouts (Save
 Backup, AI Personal Context, the link and method sheets), the backup-saved note and Delete everything
 closed on any click whose target was the <dialog> itself, which is the backdrop *and* the box's own
