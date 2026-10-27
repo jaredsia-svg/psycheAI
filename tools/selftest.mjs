@@ -3099,6 +3099,16 @@ check('the reader\'s own handle is replaced with a placeholder',
   const wrong = lines.map((line, i) => [line, out[i], want[i]]).filter(([, got, expect]) => got !== expect);
   check('passwords and codes, IBANs, Luhn-checked cards, bank accounts, other IDs and street addresses are replaced; ordinary words stay',
     wrong.length === 0, JSON.stringify(wrong));
+  const more = ['username: jsmith88', 'my username is ana.tan', 'user id is 4471', 'login: ana.t', 'login is broken',
+    'handle is @kopi_king', 'login code: AB12CD', 'your code is 482913', 'backup code 8F3K-2LQ9', 'the code is clean',
+    'dress code is smart casual', 'user name changed today'];
+  const moreOut = Digest.forModel({ schema: 'psycheai-digest/1', profile: {}, samples: { captions: more } }).samples.captions;
+  const moreWant = ['username: PsycheSecret', 'my username is PsycheSecret', 'user id is PsycheSecret', 'login: PsycheSecret',
+    'login is broken', 'handle is PsycheSecret', 'login code: PsycheSecret', 'your code is PsycheSecret',
+    'backup code PsycheSecret', 'the code is clean', 'dress code is smart casual', 'user name changed today'];
+  const moreWrong = more.map((line, i) => [line, moreOut[i], moreWant[i]]).filter(([, got, expect]) => got !== expect);
+  check('usernames and login codes of any shape are replaced too; a login that is broken and a dress code stay',
+    moreWrong.length === 0, JSON.stringify(moreWrong));
   check('the prompt names the two new markers', /PsycheSecret/.test(prompts.PROFILE_SYSTEM) && /PsycheAddress/.test(prompts.PROFILE_SYSTEM));
 }
 // Links, a website, a city, postcodes elsewhere, and a name in any script:

@@ -2488,6 +2488,17 @@
   const SECRETS = [
     [/\b(password|passwd|passcode|pwd|pw|wifi pass(?:word)?)(\s*(?:is|:|=)\s*)\S+/gi, '$1$2' + SECRET_MARK],
     [/\b(otp|pin|cvv|cvc|tac|2fa code|verification code|security code|login code|one[- ]time (?:pass(?:word|code)|code))(\s*(?:is|:|=)?\s*)\d{3,8}\b/gi, '$1$2' + SECRET_MARK],
+    // Login codes in any form (27 October 2026): letters and digits mixed, or
+    // split "123-456", after a code word; and any code given as one ("your code
+    // is 482913", "code: 4821").
+    [/\b(otp|tac|2fa code|verification code|security code|login code|access code|sign[- ]in code|backup code|recovery code|one[- ]time (?:pass(?:word|code)|code))(\s*(?:is|:|=)?\s*)(?=[A-Z0-9-]*\d)[A-Z0-9]{2,6}(?:[- ][A-Z0-9]{2,6}){0,3}\b/gi, '$1$2' + SECRET_MARK],
+    [/\b(code)(\s*(?:is|:|=)\s*)\d{3,4}[- ]?\d{0,4}\b/gi, '$1$2' + SECRET_MARK],
+    // Usernames and login names, anyone's, wherever they are given as one
+    // ("username: jsmith88", "user id is 4471", "login: ana.t"). Other people's
+    // @handles are numbered and the reader's own is PsycheUser already; this is
+    // the name typed out with no @.
+    [/\b(user ?name|user ?id|login(?: id| name)?|log-?in id|account name|handle|gamertag|ign)(\s*(?::|=)\s*)@?(?!PsycheUser\b)[\w.@-]{2,40}/gi, '$1$2' + SECRET_MARK],
+    [/\b(user ?name|user ?id|login id|login name|account name|handle|gamertag)(\s+is\s+)@?(?!PsycheUser\b)[\w.@-]{2,40}/gi, '$1$2' + SECRET_MARK],
   ];
   // A street address: a unit (#05-123), a block (Blk 123A), or a number before
   // a street word ("14 Elm Street", "12 Jalan Besar"). The street is gone; the

@@ -264,7 +264,9 @@ grouped account number or digits after *account/acct/a/c*, a Singapore car plate
 wallet and a date of birth beside *DOB/born on* (all "PsycheNumber"); an IBAN that passes mod 97 and a
 13–19 digit card number in any grouping that passes Luhn (`scrubNumbers`); passwords, OTPs, PINs, CVVs
 and long API-key-like tokens, by the word beside them ("PsycheSecret", `SECRETS`; *forgot my password*
-stays); and street addresses, a unit (#05-123), a block (Blk 123A) or a number before a street word, not
+stays), and, also on 27 October, login codes of any shape (*backup code 8F3K-2LQ9*, *your code is 482913*)
+and usernames given as one (*username: jsmith88*, *user id is 4471*, *login: ana.t*; *login is broken*
+and *dress code* stay); and street addresses, a unit (#05-123), a block (Blk 123A) or a number before a street word, not
 a year ("PsycheAddress", `ADDRESSES`); other people's @handles become "[P1]", "[P2]";
 links are stripped; and activity dates — `rhythm.firstActivity`/`lastActivity` and each source's span —
 are given to the month (`monthSpan`, applied again in `forModel` for digests stored before). The review
