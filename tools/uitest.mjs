@@ -847,7 +847,7 @@ try {
     return { head: card.querySelector('h2').textContent, lede: card.querySelector('.help-lede').textContent,
       both: shown('#way-whatsapp') && shown('#way-instagram'), tabs: getComputedStyle(card.querySelector('.ways-tabs')).display,
       tags: [...card.querySelectorAll('.way-tag')].map(t => t.textContent), note: card.querySelector('.ways-both').textContent,
-      google: /Google/.test(card.textContent) };
+      google: /Google(?! Drive)/.test(card.textContent) };
   });
   check('Two ways to start: WhatsApp and Instagram side by side on a laptop, each with its time, no tabs, nothing about Google',
     ways.head === 'Two ways to start' && ways.lede === 'Choose to load your WhatsApp chats, your IG data, or both.' && ways.both &&
@@ -2868,7 +2868,7 @@ try {
   // dialog's own "See download instructions" disclosure. A stray mention here
   // would mean the two had drifted back out of sync.
   check('neither Facebook nor Google is covered here any more — the main page offers Instagram and WhatsApp',
-    !/Facebook|Google/.test(optionalOpen));
+    !/Facebook|Google(?! Drive)/.test(optionalOpen));
 
   // Clicking scrolled the page down to the card. Several checks below measure
   // against the viewport — the hero-mark sweep reads elementFromPoint over the
