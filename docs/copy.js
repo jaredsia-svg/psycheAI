@@ -1274,10 +1274,10 @@
       // currency, the one checkout charges.
       premiumRerun: price => 'Re-runs are ' + price + '.',
       // A part's one line, only where it says something its pills do not (26 October 2026: the other four
-      // questions went; the plan's stays).
-      partBlurbs: {
-        together: 'So what do I do next? Your development plan.',
-      },
+      // questions went; the plan's stays). None since 27 October: the last part's is a pill (partChips).
+      partBlurbs: {},
+      // Pills for a part whose sections the report does not name: the plan.
+      partChips: { together: ['Your development plan'] },
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],

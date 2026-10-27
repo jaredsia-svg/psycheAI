@@ -4138,8 +4138,8 @@ try {
   check('and How you connect carries a Conflict style pill, after Attachment style',
     premiumTier.connectChips.join('|') === 'Your love languages|Attachment style|Conflict style|Who suits you',
     premiumTier.connectChips.join('|'));
-  check('and Putting it together has no pill: its line says what it is',
-    premiumTier.togetherChips === 0, String(premiumTier.togetherChips));
+  check('and Putting it together has one pill, Your development plan, in place of its line (27 October 2026)',
+    premiumTier.togetherChips === 1, String(premiumTier.togetherChips));
   check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
     premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
     premiumTier.careerChips.join('|'));
@@ -4186,10 +4186,10 @@ try {
   check('and Your Psyche Report stands alone in its head, with no "Premium" badge, and its blurb says what it holds beyond the card',
     await page.evaluate(() => document.querySelectorAll('.premium-tier-head .mode-badge').length === 0 &&
       document.querySelector('.premium-tier .tier-blurb').textContent === 'Every part of your card explained, with the evidence from your own data behind each finding. Plus deeper insights the card has no room for: your attachment style, career strengths, wellbeing and a plan to grow.'));
-  // Since 26 October 2026 only the plan keeps a line of its own; the other parts are their pills.
-  check('and only the last part keeps its line, the others left to their pills',
-    await page.evaluate(() => [...document.querySelectorAll('.premium-tier .insight-part-q')].map(p => p.textContent).join('|')) ===
-      'So what do I do next? Your development plan.' &&
+  // Since 27 October 2026 no part keeps a line: the plan is a pill too.
+  check('every part is its pills, the last one "Your development plan", with no lines beneath',
+    await page.evaluate(() => document.querySelectorAll('.premium-tier .insight-part-q').length === 0 &&
+      [...document.querySelectorAll('.premium-tier .insight-part:last-child .insight-part-chips span')].map(s => s.textContent).join('|') === 'Your development plan') &&
       await page.evaluate(() => document.querySelectorAll('.premium-tier .insight-part').length === 5));
   // ---- "See sample report" closes the premium tier ----
   //

@@ -105,7 +105,8 @@ REELS['career'] = {
         (['So I asked {B},', 'and it answered from my own data.'], 0.85, True, 0.1),
         (["You don't hate your job.", 'You hate the routine parts of it.'], 0.85, True, 0.15),
         (['Your Psyche Report goes further.', 'Your edge at work,', "what's holding you back,", 'and the careers that suit you best.'], 0.85, True, [0.2, 0.06, 0.06]),
-        (['A coach that already knows you.', 'Try it at {PsycheAIdotIOquick}.'], 0.85, True, 0.2),  # the address as the mirror reel says it
+        # The address as the character reels say it, seven even syllables (27 October 2026: the quick form ran together).
+        (['A coach that already knows you.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.2),
     ],
     'hold': {0: 0.5, 1: 1.8, 3: 4.5, 4: 1.0},  # 1: "am I the problem?" typed after the voice; 3: time to read the whole answer
     # Its own piece, hopeful: B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell

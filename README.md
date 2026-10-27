@@ -1520,6 +1520,10 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**The report's parts on the front page** (27 October 2026): the last, *Putting it together*, shows a purple
+pill, *Your development plan*, where it had the line *So what do I do next? Your development plan.* (`partChips`),
+and the green badges beside Your Psyche Card and Your Psyche Report read *Free*, not *FREE*.
+
 **Review and popout tidy-ups** (27 October 2026).
 - A file for an optional source dropped in the box shows its row under *Optional* at once, with its
   progress, folded or not (`optionalReading`).

@@ -3601,7 +3601,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .tier-head .tier-badge { flex: none; }
 .tier-badge {
   display: inline-block; padding: .18rem .65rem; border-radius: 999px;
-  font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  font-size: .76rem; font-weight: 800; letter-spacing: .02em;
 }
 .tier-badge-free { background: var(--good-soft); color: var(--good); }
 .tier-title { margin: .45rem 0 .25rem; font-size: 1.3rem; line-height: 1.25; }

@@ -3020,7 +3020,8 @@
           '<span class="insight-part-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' +
           '<div><h4>' + esc(S.parts[key].title) + '</h4>' +
           (I.partBlurbs[key] ? '<p class="insight-part-q">' + esc(I.partBlurbs[key]) + '</p>' : '') +
-          (sectionsOf[key].length ? '<p class="insight-part-chips">' + sectionsOf[key].map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' : '') +
+          ((chips => chips.length ? '<p class="insight-part-chips">' + chips.map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' : '')(
+            sectionsOf[key].length ? sectionsOf[key] : (I.partChips && I.partChips[key]) || [])) +
         '</div></li>').join('') + '</ol>' +
       '<div class="insight-premium-foot">' +
         // What comes with it, then the price of a re-run as a footnote under it.
