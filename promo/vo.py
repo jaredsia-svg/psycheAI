@@ -72,14 +72,16 @@ NAMES = {'{Mulan}': list('muːlˈɑːn'), '{Odysseus}': list('oʊ dˈɪsi əs'),
          # as "psychei" in the mirror reel's last line, 24 October 2026).
          '{PsycheAIdotIOquick}': list('sˈaɪki ˌeɪˈaɪ dˌɑːt ˌaɪˈoʊ'),
          # Every letter given its sound: as text, "E N T P" after "of" was said "ANTP" (24 October 2026).
-         '{MBTIofENTP}': list('ˈɛm bˈiː tˈiː ˈaɪ əv ˈiː ˈɛn tˈiː pˈiː')}
+         '{MBTIofENTP}': list('ˈɛm bˈiː tˈiː ˈaɪ əv ˈiː ˈɛn tˈiː pˈiː'),
+         # WOTS-ap, stressed first: as text it was "wuts-APP" (27 October 2026).
+         '{WhatsApp}': list('wˈʌtsæp')}
 
 def named(text):
     """Phonemes for a line with a {Name} in it: the words around it phonemized, the name as given."""
     sents = [[]]
     for part in re.split(r'(\{\w+\})', text):
-        if part in NAMES:
-            sents[-1] = sents[-1] + ([' '] if sents[-1] else []) + NAMES[part]
+        if part in NAMES or part == '{B}':
+            sents[-1] = sents[-1] + ([' '] if sents[-1] else []) + (BRAND if part == '{B}' else NAMES[part])
         elif re.search('[A-Za-z0-9]', part):
             # Punctuation straight after a name ("{Mulan}. The…") stays with the name, so the voice pauses there.
             lead = re.match(r'\s*([,.?!]*)', part).group(1)
@@ -115,7 +117,7 @@ def heard(a):
     s = rec.create_stream(); s.accept_waveform(SR, np.concatenate([pad, a, pad])); rec.decode_stream(s); return s.result.text
 
 def words(text):
-    text = text.replace('{MBTIofENTP}', 'mbti of entp').replace('{PsycheAIdotIOquick}', 'psyche ai dot i o').replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
+    text = text.replace('{WhatsApp}', 'whatsapp').replace('{MBTIofENTP}', 'mbti of entp').replace('{PsycheAIdotIOquick}', 'psyche ai dot i o').replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
     # The recogniser writes a spoken address as one: "psyche ai dot app" comes back "psycheai.app".
     text = re.sub(r'(?<=[a-z])\.(?=[a-z])', ' dot ', text).replace('psycheai', 'psyche ai')
     # A spelled-out ending, "dot I O", is heard as ".io", and a spelled-out type, "E N T P", as "ENTP".

@@ -215,7 +215,7 @@ REELS['character-odysseus'] = character_reel('en_US-ryan-high', 'twelve', '{Odys
 # and like the Tin Man's reel ends his tour on Most in sync with, then "Who's your Mulan?" (she is on his card, and
 # he on hers; the Tin Man's reel tags her too).
 REELS['character-odysseus'] = dict(REELS['character'], voice='en_US-ryan-high', lines=[
-    (['I let {B} read two WhatsApp chats of mine.', 'And it told me which character I am.'], 0.85, True, 0.3),
+    (['I let {B} read two {WhatsApp} chats of mine.', 'And it told me which character I am.'], 0.85, True, 0.3),
     REELS['character']['lines'][1], (['{Odysseus}.'], 1.05, None),
     (['Resourceful planner, with a way out of every corner.', 'Driven by stimulation, achievement, and self direction.',
       '{MBTIofENTP}.', 'Most in sync with {Mulan}.'], 0.85, True, [0.6, 0.6, 0.6]),
@@ -853,7 +853,15 @@ elif R.get('mood') != 'thriller':
         at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
 
     for k in range(1, REVEAL): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
-    at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
+    if R.get('mood') == 'character':
+        # The slot (27 October 2026): the noise riser swooshed loudly through the last slow tiles, before the
+        # character was there. Now the ticks carry the crawl, a quiet rising tone lifts the last 0.7 s, and a
+        # softer hit lands as the tile stops.
+        L = int(0.7 * SR); x = np.arange(L) / SR
+        lift = np.sin(2 * np.pi * np.cumsum(330 + 330 * (x / 0.7) ** 2) / SR) * (x / 0.7) ** 2 * 0.12
+        at(DROP - 0.7, lift.astype(np.float32), 0.5); at(DROP, impact(), 0.7)
+    else:
+        at(DROP - 1.6, riser(1.6), 0.9); at(DROP, impact(), 1.0)
 
 if R.get('mood') == 'thriller':
     # One song in two states (25 October 2026, third version; the first two changed piece at the switch and
