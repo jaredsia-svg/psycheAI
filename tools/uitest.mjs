@@ -3363,7 +3363,7 @@ try {
   check('the WhatsApp way underlines its menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('#way-whatsapp .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['⋮', 'More', 'Export chat', 'Without media', 'Save to Files', 'Drive', '☰'].join(' | '),
+    ['⋮', 'More', 'Export chat', 'Without media', 'Save to Files', 'Drive'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('#way-whatsapp .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole

@@ -1528,8 +1528,9 @@ story and carousel put iPhone first in step b.
 **Saving a chat on Android** (27 October 2026). WhatsApp's export on Android opens the share sheet,
 which has no "save to device", so the steps said to save a file the reader could not. They now say:
 iPhone, *Save to Files*; Android, *Drive* (or Dropbox, OneDrive), or email it to yourself and download
-the attachment; and, at the load step, that on Android a file in Drive, Dropbox or OneDrive is under
-*☰* in the file picker, which lists those apps when installed, so nothing has to be downloaded first.
+the attachment. Cut the same day to three short steps: *Export chat → Without media*; *Save it: on
+iPhone, Save to Files; on Android, Drive or email it to yourself*; *Load it here/below*. (A file in
+Drive shows in Android's file picker under its ☰ menu; the steps no longer say so.)
 The WhatsApp story (start-5) and carousel slide (start-wa) say the same in step d.
 
 **Each chat read across its whole history** (27 October 2026). The reader's own messages were cut to
