@@ -1496,14 +1496,15 @@ its `.ds-how`), and askDataSources moves rows, not buttons.
 
 **How the conversations pool is shared** (26 October 2026, `waChatChars` in `docs/digest.js`).
 WhatsApp chats have first claim on the 95,000-character conversations pool: each may take up to
-25,000 beside Instagram (40,000 with no Instagram), and the Instagram DMs with Messenger keep at least
+25,000 beside Instagram (45,000 for two chats with no Instagram, 30,000 for three: two chats fill the
+90,000 three do, since 27 October 2026; 40,000 before), and the Instagram DMs with Messenger keep at least
 30,000 whenever the export has them, the per-chat share rounded down to 5,000:
 
 | | 1 chat | 2 chats | 3 chats |
 |---|---|---|---|
 | Instagram, full DMs | 25k, DMs 70k | 25k each, DMs 45k | 20k each, DMs 35k |
 | Instagram, no DMs | 25k | 25k each | 25k each |
-| WhatsApp alone | – | 40k each | 30k each |
+| WhatsApp alone | – | 45k each | 30k each |
 
 Until then every chat was held to 15,000 wherever it was read. Measured on a heavy synthetic account
 (1,500 captions, 25 long DM threads, chats of 8,000 messages): beside an Instagram with no DMs, three
@@ -1516,6 +1517,18 @@ hold more than that room, their lowest-ranked conversations are dropped first, d
 fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 25,000-character chat
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
+
+**Each chat read across its whole history** (27 October 2026). The reader's own messages were cut to
+the most recent 4,000 a chat before sampling (`ownPerChat`, a memory bound set when WhatsApp reading
+began, never measured), which in a busy chat reached back only to 2023, though every message read
+(up to 60,000 a chat) already fed the counts and span. The cap is gone: all of them go to the sampler,
+which reads the last five years first, counted back from the chat's last message (`waRecentYears`):
+anything older is held to a fifth of the chat's places (`waOlderShare` 0.2), in up to three periods of
+its own, and takes more only when the recent years run short of messages (a chat busy in 2017 and quiet
+now). Within each part the places spread over equal periods, each by the square root of its messages,
+tilted a little to the later ones (`waRecencyTilt` 0.5: the last weighs 1.5× the first). On a ten-year
+chat of 12,000 of the reader's messages, the 422 lines run 2016 to 2026: 78 from 2016–20 (18%), about
+70 a year from 2022. The digest's size, and so the cost, does not change.
 
 **The prompts** carry `CHATS_ONLY_RULE` in the card's and the report's digest sections: no captions,
 posts, likes, follows or histograms to mention or read absence from; everything from how the reader

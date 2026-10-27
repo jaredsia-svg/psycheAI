@@ -4366,7 +4366,7 @@ check('the sample arrives in chronological order',
       Digest.sourceSizes(threeFree).instagram - Digest.evidenceChars(igOnly) < 400,
     Digest.sourceSizes(threeFree).instagram + ' vs ' + Digest.evidenceChars(igOnly));
   // How the conversations pool is shared (26 October 2026): each chat up to
-  // 25,000 beside Instagram (40,000 with no Instagram), the DMs keeping at
+  // 25,000 beside Instagram (up to 50,000 with no Instagram), the DMs keeping at
   // least 30,000 when the export has them, in steps of 5,000.
   {
     const dmLines = n => Array.from({ length: n }, (_, i) => '[2025] [t' + (1 + (i % 10)) + '] ' + 'a message of my own '.repeat(4) + i);
@@ -4374,9 +4374,9 @@ check('the sample arrives in chronological order',
     const table = [
       [fake(['instagram'], 600), [25000, 25000, 20000]],
       [fake(['instagram'], 0), [25000, 25000, 25000]],
-      [fake([], 0), [40000, 40000, 30000]],
+      [fake([], 0), [50000, 45000, 30000]],
     ].map(([d, want]) => [1, 2, 3].map(n => Digest.waChatChars(d, n)).join() === want.join());
-    check('the conversations pool: 25k, 25k, 20k a chat beside full DMs; 25k beside none; 40k, 40k, 30k for chats alone',
+    check('the conversations pool: 25k, 25k, 20k a chat beside full DMs; 25k beside none; 50k, 45k, 30k for chats alone (two chats fill what three do)',
       table.every(Boolean) && Digest.DM_FLOOR_CHARS === 30000, JSON.stringify(table));
     const fullDms = { ...signals, messages: { total: 40000, threads: 25, groupThreads: 0, sent: 20000, received: 20000, avgSentLength: 80,
       ownTexts: Array.from({ length: 20000 }, (_, i) => ({ text: 'A message of my own about the plan and the people in it, number ' + i + ' ' + 'w'.repeat(220), ts: 1500000000 + i * 3600, thread: i % 25 })) } };
@@ -9284,6 +9284,41 @@ check('the schema requires evidence on where they align and differ',
   check('new WhatsApp chats replace the ones in a stored digest',
     replaced.whatsapp.chats.length === 1 && replaced.coverage.sources.filter(x => x === 'whatsapp').length === 1,
     JSON.stringify([replaced.whatsapp.chats.length, replaced.coverage.sources]));
+
+  // A long chat is read across its whole history, tilted a little to recent years (27 October 2026:
+  // the reader's own messages were cut to the most recent 4,000, which in a busy chat reached back
+  // only to 2023).
+  {
+    const start = Date.UTC(2016, 0, 1), end = Date.UTC(2026, 9, 1), n = 24000;
+    const stamp = t => { const d = new Date(t); const h = d.getUTCHours() % 12 || 12;
+      return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + String(d.getUTCFullYear()).slice(2) + ', ' + h + ':' +
+        String(d.getUTCMinutes()).padStart(2, '0') + (d.getUTCHours() < 12 ? ' AM' : ' PM'); };
+    const text = Array.from({ length: n }, (_, i) => {
+      const t = start + Math.floor((end - start) * i / n);
+      return stamp(t) + ' - ' + (i % 2 ? 'Jo Park: honestly I keep thinking about what you said, message ' + i
+        : 'Kai Ong: and then what happened next ' + i);
+    }).join('\n');
+    const long = WA.summarise(await WA.readChats([new File([text], 'WhatsApp Chat with Kai Ong.txt')]), 'Jo Park');
+    const lines = Digest.buildFromSupplements({ whatsapp: long }).whatsapp.ownMessageSample;
+    const perYear = {};
+    for (const l of lines) { const y = (String(l).match(/^\[(\d{4})\]/) || [])[1]; if (y) perYear[y] = (perYear[y] || 0) + 1; }
+    const total = Object.values(perYear).reduce((a, b) => a + b, 0);
+    const older = ['2016', '2017', '2018', '2019', '2020'].reduce((sum, y) => sum + (perYear[y] || 0), 0);
+    check('a ten-year chat is quoted from its first year to its last, the last five years first and older ones held to about a fifth',
+      long.chats[0].ownMessages.length === n / 2 && perYear['2016'] > 0 && perYear['2026'] > 0 &&
+        older > 0 && older <= total * 0.22 && (perYear['2025'] || 0) > (perYear['2017'] || 0) * 3,
+      JSON.stringify(perYear));
+    // Busy long ago and quiet now: the older years take what the recent ones cannot fill.
+    const quiet = Array.from({ length: 6000 }, (_, i) => {
+      const t = i < 5900 ? start + Math.floor((Date.UTC(2020, 0, 1) - start) * i / 5900) : end - (6000 - i) * 86400000;
+      return stamp(t) + ' - ' + (i % 2 ? 'Jo Park: what I keep coming back to is this, number ' + i : 'Kai Ong: go on ' + i);
+    }).join('\n');
+    const old = WA.summarise(await WA.readChats([new File([quiet], 'WhatsApp Chat with Kai Ong.txt')]), 'Jo Park');
+    const oldLines = Digest.buildFromSupplements({ whatsapp: old }).whatsapp.ownMessageSample;
+    const oldShare = oldLines.filter(l => /^\[(2016|2017|2018|2019|2020)\]/.test(String(l))).length / Math.max(1, oldLines.length);
+    check('and a chat busy long ago but quiet now still reads its older years, rather than leaving places empty',
+      oldShare > 0.5 && oldLines.length > 100, JSON.stringify([oldShare, oldLines.length]));
+  }
 
   // Chats kept across a re-run (Digest.carryChats): the stored lines join a
   // digest rebuilt from Instagram, or a chat added after a reload.

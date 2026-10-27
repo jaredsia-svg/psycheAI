@@ -9639,14 +9639,16 @@ try {
       await waPage.reload({ waitUntil: 'load' });
       await waPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
       await openAllSections(waPage);
+      // The reader's plain line first: with three lines and two places, the
+      // later ones are read (the recency tilt, 27 October 2026).
       const group = [
+        '[31/08/2026, 22:40:00] Sam Rivera: leaving at 7 sharp, do not be late',
         '[01/09/2026, 19:02:11] Sam Rivera: who is in for the hike on saturday?',
         '[01/09/2026, 19:05:40] Mia Wong: me!',
         '[01/09/2026, 19:06:02] Zoe Lim: ‎image omitted',
         '[01/09/2026, 19:07:30] Sam Rivera: great, Mia can you bring the map',
         'and the snacks',
         '[02/09/2026, 08:15:00] Zoe Lim: count me in',
-        '[03/09/2026, 22:40:00] Sam Rivera: leaving at 7 sharp, do not be late',
       ].join('\n');
       const pair = [
         '9/4/26, 9:01 PM - Sam Rivera: did you get home ok?',

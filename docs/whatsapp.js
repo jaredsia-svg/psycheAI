@@ -42,9 +42,10 @@
     // Parsed messages held per chat while the reader is still being worked
     // out. Long chats keep their most recent stretch.
     messagesPerChat: 60000,
-    // Own messages kept per chat for sampling, the most recent; the digest
-    // samples again.
-    ownPerChat: 4000,
+    // No cap on the reader's own messages per chat (27 October 2026; it was the
+    // most recent 4,000, which in a busy chat reached back only two or three
+    // years): every one of the messages read goes to the digest's sampler, which
+    // spreads its places across the whole chat, tilted a little to recent years.
     // A long message is held as its opening and its end (keepEnds in
     // instagram.js), the shape digest.js shows; `len` keeps the full length,
     // so a pasted or forwarded one can still be told apart.
@@ -302,7 +303,7 @@
           medianOthersReplyMinutes: median(othersReplies),
           averageSentLength: sent ? Math.round(chars / sent) : 0,
           userQuestionShare: sent ? Math.round((questions / sent) * 100) / 100 : 0,
-          ownMessages: own.slice(-LIMITS.ownPerChat),
+          ownMessages: own,
         };
         // The chat's name, for the pre-send review's per-chat switch on this
         // device only: a property JSON cannot see, so it is never sent or stored.

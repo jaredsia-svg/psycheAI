@@ -264,6 +264,14 @@
     // handed to the busiest one. (One chat alone is bounded by
     // messageThreadChars instead.)
     waMaxShare: 0.40,
+    // A chat's places through time (27 October 2026): the last five years
+    // first, counted back from its last message, with anything older held to
+    // a fifth of them (more only if the recent years run short of messages);
+    // and within each part a little more for the later periods (the last
+    // weighs 1.5× the first).
+    waRecentYears: 5,
+    waOlderShare: 0.2,
+    waRecencyTilt: 0.5,
     // Derived rather than typed, so the ceiling and the price cannot drift
     // apart. This was hardcoded at 600000, which is 49,516 chars *past* what
     // COST_CAP buys: a digest that actually filled it would have cost $0.5212
@@ -1503,10 +1511,39 @@
       const first = dated ? list[0].ts : 0;
       const span = dated ? list[list.length - 1].ts - first : 0;
       const count = span > 0 ? Math.max(1, Math.min(opts.periods || LIMITS.messagePeriods, want)) : 1;
-      const periods = Array.from({ length: count }, () => []);
-      for (const m of list) periods[span > 0 ? Math.min(count - 1, Math.floor((m.ts - first) * count / (span + 1))) : 0].push(m);
-      const perPeriod = allocatePlaces(periods.map(p => Math.max(p.length ? 1 : 0, Math.round(Math.sqrt(p.length) * 100))),
-        want, want, periods.map(p => p.length));
+      const slice = (msgs, from, width, n) => {
+        const out = Array.from({ length: n }, () => []);
+        for (const m of msgs) out[width > 0 ? Math.min(n - 1, Math.floor((m.ts - from) * n / (width + 1))) : 0].push(m);
+        return out;
+      };
+      // Each period by the square root of its messages, and, where asked, a
+      // little more for the later ones (opts.recencyTilt: the last period
+      // weighs 1 + tilt times the first).
+      const tilt = opts.recencyTilt || 0;
+      const weights = ps => ps.map((p, i) => Math.max(p.length ? 1 : 0,
+        Math.round(Math.sqrt(p.length) * 100 * (1 + (ps.length > 1 ? tilt * i / (ps.length - 1) : 0)))));
+      let periods;
+      let perPeriod;
+      // The recent years first (opts.recentYears, counted back from the chat's
+      // last message): older ones get at most opts.olderShare of the places,
+      // in periods of their own, unless the recent years run out of messages.
+      const recentSpan = (opts.recentYears || 0) * 365.25 * 86400;
+      const cut = list.length ? list[list.length - 1].ts - recentSpan : 0;
+      if (recentSpan > 0 && span > recentSpan) {
+        const older = list.filter(m => m.ts < cut);
+        const recent = list.filter(m => m.ts >= cut);
+        const oldCount = Math.max(1, Math.min(3, Math.round(count * (span - recentSpan) / span)));
+        const olderPeriods = slice(older, first, cut - first, oldCount);
+        const recentPeriods = slice(recent, cut, list[list.length - 1].ts - cut, count);
+        const recentTotal = Math.min(recent.length, want - Math.min(older.length, Math.floor(want * (opts.olderShare || 0))));
+        const olderTotal = Math.min(older.length, want - recentTotal);
+        periods = olderPeriods.concat(recentPeriods);
+        perPeriod = allocatePlaces(weights(olderPeriods), olderTotal, olderTotal, olderPeriods.map(p => p.length))
+          .concat(allocatePlaces(weights(recentPeriods), recentTotal, recentTotal, recentPeriods.map(p => p.length)));
+      } else {
+        periods = slice(list, first, span, count);
+        perPeriod = allocatePlaces(weights(periods), want, want, periods.map(p => p.length));
+      }
       const chosen = new Set();
       periods.forEach((period, p) => {
         const room = perPeriod[p];
@@ -2822,6 +2859,7 @@
           Object.assign({}, m && typeof m === 'object' ? m : { text: m }, { thread: c.chat }))), {
           limit: LIMITS.waMessages, minShare: LIMITS.waMinShare, maxShare: LIMITS.waMaxShare,
           threadChars: waChatChars(digest, chats.length), label: key => key, alwaysTag: true, stats: waStats,
+          recencyTilt: LIMITS.waRecencyTilt, recentYears: LIMITS.waRecentYears, olderShare: LIMITS.waOlderShare,
         }),
       };
       chatLabels(digest, chats.map(c => c.chat), (rank, key) => key, key => {
@@ -2861,14 +2899,17 @@
   //                       1 chat         2 chats              3 chats
   //   Instagram, full DMs 25k, DMs 70k   25k each, DMs 45k    20k each, DMs 35k
   //   Instagram, no DMs   25k            25k each             25k each
-  //   WhatsApp alone      –              40k each             30k each
+  //   WhatsApp alone      –              45k each             30k each
+  //
+  // Two chats alone fill the pool as three do, 90k, rather than stopping at
+  // 80k (27 October 2026: 40k each until then; one chat alone may take 50k).
   //
   // Until then every chat was held to 15,000 wherever it was read: three
   // chats beside an account with no DMs were 28% of the read while room the
   // pool left spilled into more captions. Room the chats leave unused still
   // goes to the DMs, then to the public pool (conversationsSpare).
   const WA_CHAT_CHARS = 25000;
-  const WA_ALONE_CHAT_CHARS = 40000;
+  const WA_ALONE_CHAT_CHARS = 50000;
   const DM_FLOOR_CHARS = 30000;
   const WA_CHAT_STEP = 5000;
   // The DMs' room below which they keep only their top conversations.
