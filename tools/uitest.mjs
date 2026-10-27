@@ -852,7 +852,7 @@ try {
   check('Two ways to start: WhatsApp and Instagram side by side on a laptop, each with its time, no tabs, nothing about Google',
     ways.head === 'Two ways to start' && ways.lede === 'Choose to load your WhatsApp chats, your IG data, or both.' && ways.both &&
       ways.tabs === 'none' && ways.tags.join('|') === '⚡ About 2 minutes|🎯 Most complete · 2 hours' &&
-      ways.note === '💡 Both? Request Instagram now, then load it with your chats when it arrives.' && !ways.google &&
+      ways.note === '💡 Get best of both worlds and the highest signal score by requesting your Instagram data now, and loading it together with your WhatsApp chats.' && !ways.google &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), JSON.stringify(ways));
   check('and "How it works" no longer calls Google recommended',
     /Download your data from Instagram, or export 2–3 WhatsApp chats\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
@@ -2908,7 +2908,7 @@ try {
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
-        'A full personality study from your own Instagram or WhatsApp data. No questions asked. No sign-up.';
+        'A full personality study from your own Instagram and WhatsApp data. No questions asked. No sign-up.';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()

@@ -1565,8 +1565,9 @@ your Instagram data first* and WhatsApp folded under it:
   WhatsApp (*⚡ About 2 minutes*, its two steps, ending *then load it below*: no button of its own since 27
   October, Start here's **Load my data** is the one) and Instagram (*🎯 Most complete ·
   2 hours*, its steps and See illustration), side by side on a laptop, and on a phone two slim tabs,
-  *⚡ WhatsApp · now* and *🎯 Instagram · 2hrs*, WhatsApp open first (`chooseWay`). Under both: *💡 Both?
-  Request Instagram now, then load it with your chats when it arrives.*, which keeps the free read for
+  *⚡ WhatsApp · now* and *🎯 Instagram · 2hrs*, WhatsApp open first (`chooseWay`). Under both: *💡 Get best
+  of both worlds and the highest signal score by requesting your Instagram data now, and loading it
+  together with your WhatsApp chats.* (27 October 2026; it was *Both? Request Instagram now…*), which keeps the free read for
   both together. WhatsApp is equal, not the default path: a card from chats alone reads less, and adding
   Instagram after it is the paid re-run (a free first add was offered and set aside).
 - *How it works* step 1 is *Load your data*; the app's install description names WhatsApp; the card's
@@ -2247,6 +2248,8 @@ so it is built in rather than left to a plugin.
   The lede ends *No questions asked. No sign-up.* since 26 October 2026, for visitors tired of
   subscriptions. A line of its own under the buttons (*Free Psyche Card and report · No sign-up*) was
   tried the same day and dropped: it made the hero look busy.
+  *your own Instagram and WhatsApp data* since 27 October (it was *or*): the two read together, not one or
+  the other.
 - **The logo goes to the main page.** For a reader with a card, `data-nav="main"` shows the main page
   (not `home`, which is also where Back lands and so has to stay their card). There the steps card
   and the Start here card are hidden (`#view-welcome.is-returning`): they already have data. Request
