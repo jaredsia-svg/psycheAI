@@ -258,7 +258,14 @@ running anything again.
 **What is de-identified before sending, and what is not.** On the device, before review: the reader's
 name and username become "PsycheUser"; email addresses, phone numbers, and identity, card and postal
 numbers become "PsycheEmail", "PsychePhone" and "PsycheNumber" (`ID_NUMBERS` — a Singapore NRIC/FIN, a
-grouped card number, a postcode after "Singapore"); other people's @handles become "[P1]", "[P2]";
+grouped card number, a postcode after "Singapore"). Since 27 October 2026 also: a US SSN, a Malaysian IC,
+a Hong Kong ID, a UK National Insurance number, a passport number beside the word, a Singapore bank's
+grouped account number or digits after *account/acct/a/c*, a Singapore car plate, an IP address, a crypto
+wallet and a date of birth beside *DOB/born on* (all "PsycheNumber"); an IBAN that passes mod 97 and a
+13–19 digit card number in any grouping that passes Luhn (`scrubNumbers`); passwords, OTPs, PINs, CVVs
+and long API-key-like tokens, by the word beside them ("PsycheSecret", `SECRETS`; *forgot my password*
+stays); and street addresses, a unit (#05-123), a block (Blk 123A) or a number before a street word, not
+a year ("PsycheAddress", `ADDRESSES`); other people's @handles become "[P1]", "[P2]";
 links are stripped; and activity dates — `rhythm.firstActivity`/`lastActivity` and each source's span —
 are given to the month (`monthSpan`, applied again in `forModel` for digests stored before). The review
 popout says so at its top in one line (`.deid-note`: "De-identified before sending. Your name, contact
@@ -1511,8 +1518,8 @@ is bounded by characters, not by its two-fifths share of places. The 179,000 lin
 **The prompts** carry `CHATS_ONLY_RULE` in the card's and the report's digest sections: no captions,
 posts, likes, follows or histograms to mention or read absence from; everything from how the reader
 writes to these few people; and, since the reader chose them, extraversion near the middle and the E/I
-letter slight unless their own words say otherwise. The confidence score starts at 55–68 for two chats
-alone and 58–74 for three (see the table under `CONFIDENCE_SCORING`). `sourcePhrase` names WhatsApp. The free prompt's reserve rose to
+letter slight unless their own words say otherwise. The confidence score starts at 58–72 for two chats
+alone and 62–78 for three (see the table under `CONFIDENCE_SCORING`). `sourcePhrase` names WhatsApp. The free prompt's reserve rose to
 14,550 tokens (`FREE_FIXED_INPUT_TOKENS`, 14,493 measured).
 
 **One free read each, without an Instagram account to hold it to.** A chat export does not carry the
@@ -7176,12 +7183,14 @@ Both prompts now carry one rule, `CONFIDENCE_SCORING` (lib/prompts.js; the merge
   | Instagram + Facebook or WhatsApp | 72–86 |
   | Instagram + Facebook or WhatsApp + Google | 74–88 |
   | Instagram + Facebook + WhatsApp (± Google) | 76–90 |
-  | 2 WhatsApp chats | 55–68 |
-  | 3 WhatsApp chats | 58–74 |
-  | 2 / 3 chats + Google | 57–70 / 60–76 |
-  | 2 / 3 chats + Facebook (± Google) | 62–80 / 65–84 |
+  | 2 WhatsApp chats | 58–72 |
+  | 3 WhatsApp chats | 62–78 |
+  | 2 / 3 chats + Google | 60–74 / 64–80 |
+  | 2 / 3 chats + Facebook (± Google) | 65–82 / 68–86 |
 
-  (Before: Instagram alone 65–79, one more source 70–84, two or more 75–90, chats alone 55–72 or 60–76
+  (Chats alone raised on 27 October 2026, from 55–68 for two and 58–74 for three, with Google 57–70 / 60–76
+  and with Facebook 62–80 / 65–84: three chats now top out at 78, just under Instagram alone.
+  Before: Instagram alone 65–79, one more source 70–84, two or more 75–90, chats alone 55–72 or 60–76
   with Google or Facebook. Those let Instagram with only Google reach 84, and did not tell two chats from
   three. Earlier still, late October 2026, lowered from 68–82, 76–88 and 82–92: an Instagram-only reader
   scored 81.) The prompt reserves rose by 50 tokens for the longer rule.

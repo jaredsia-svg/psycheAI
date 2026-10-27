@@ -4,7 +4,7 @@ description: "Answers about PsycheAI: what it is, what file you need, what happe
 canonical: https://psycheai.io/faq
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # Frequently asked questions
@@ -45,7 +45,7 @@ No. PsycheAI uses Google Vertex AI on Google Cloud’s enterprise tier, where Go
 
 ### Can the digest be linked back to me?
 
-The digest is de-identified on your device before it is sent. Your name and username become a blank, and email addresses, phone numbers, ID, card and postal numbers are removed. In your posts, comments and messages, everyone else’s @handles become numbers like [P1], and the names of people you message become numbers like [N1]. Links are dropped, and dates are cut to the month.
+The digest is de-identified on your device before it is sent. Your name and username become a blank, and email addresses, phone numbers, ID, card, bank and postal numbers, passwords and codes, and street addresses are removed. In your posts, comments and messages, everyone else’s @handles become numbers like [P1], and the names of people you message become numbers like [N1]. Links are dropped, and dates are cut to the month.
 
 It is sent over encrypted (HTTPS) connections, from your browser to PsycheAI and on to Google, and PsycheAI never saves it to disk. Anything Google keeps for a short time is stored encrypted.
 

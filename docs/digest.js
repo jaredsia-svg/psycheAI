@@ -1033,7 +1033,7 @@
   //
   // against $0.259 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 40600;
+  const MERGED_FIXED_INPUT_TOKENS = 40650;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
   const MERGED_COST_CAP = 0.185;
 
@@ -2441,6 +2441,9 @@
   const EMAIL_MARK = 'PsycheEmail';
   const PHONE_MARK = 'PsychePhone';
   const NUMBER_MARK = 'PsycheNumber';
+  // Passwords, one-time codes, PINs and keys; and street addresses (27 October 2026).
+  const SECRET_MARK = 'PsycheSecret';
+  const ADDRESS_MARK = 'PsycheAddress';
   // Identity, card and address numbers, before the phone patterns see them:
   // a Singapore NRIC or FIN ("S1234567A"), a card number in its usual groups
   // ("4111 1111 1111 1111"), and a postcode written after the country. Each
@@ -2456,7 +2459,73 @@
     [/\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/g, NUMBER_MARK],
     [/\b[A-Z]\d[A-Z] ?\d[A-Z]\d\b/g, NUMBER_MARK],
     [/\b([A-Z]{2}) \d{5}(?:-\d{4})?\b/g, '$1 ' + NUMBER_MARK],
+    // More of the world's identity numbers, each in a shape nothing else takes
+    // (27 October 2026): a US Social Security number (123-45-6789), a Malaysian
+    // IC (900101-14-5678), a Hong Kong ID with its check digit (A123456(7)), a UK
+    // National Insurance number (AB 12 34 56 C), and a passport number wherever
+    // the word is beside it.
+    [/\b\d{3}-\d{2}-\d{4}\b/g, NUMBER_MARK],
+    [/\b\d{6}-\d{2}-\d{4}\b/g, NUMBER_MARK],
+    [/\b[A-Z]{1,2}\d{6}\([0-9A]\)/g, NUMBER_MARK],
+    [/\b[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z] ?\d{2} ?\d{2} ?\d{2} ?[A-D]\b/g, NUMBER_MARK],
+    [/\b(passport)(\s*(?:no\.?|number|#))?\s*[:#]?\s*[A-Z0-9]{6,9}\b/gi, '$1 ' + NUMBER_MARK],
+    // Bank accounts: an IBAN (checked, mod 97, in scrubNumbers), a Singapore
+    // bank's grouped account number (123-456789-0, 501-123456-001), and any run
+    // of digits after the word account, acct or a/c.
+    [/\b\d{3}-\d{5,7}-\d{1,3}\b/g, NUMBER_MARK],
+    [/\b(acc(?:oun)?t|acct|a\/c)(\s*(?:no\.?|number|#))?\s*[:#]?\s*\d[\d -]{4,20}\d\b/gi, '$1 ' + NUMBER_MARK],
+    // A Singapore car plate (SBA1234Z, EX123A), an IP address, and a crypto wallet.
+    [/\b(?:S[A-HJ-NP-Z]{2}|E[A-HJ-NP-Z])\d{1,4}[A-HJ-MP-Z]\b/g, NUMBER_MARK],
+    [/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, NUMBER_MARK],
+    [/\b(?:0x[a-fA-F0-9]{40}|bc1[a-z0-9]{25,60}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})\b/g, NUMBER_MARK],
+    // A date of birth, wherever it is called one: the day is gone, as every
+    // other date in the digest is.
+    [/\b(dob|d\.o\.b\.?|date of birth|birthday is|born on)\s*[:\-]?\s*\d{1,4}[\/.\- ]\d{1,2}[\/.\- ]\d{2,4}\b/gi, '$1 ' + NUMBER_MARK],
   ];
+  // Secrets, by the word beside them, since a password has no shape of its own:
+  // "password is hunter2", "pw: x", "OTP 482913", "PIN 1234", "CVV 123". The
+  // word stays, so "shared a password" is still the finding.
+  const SECRETS = [
+    [/\b(password|passwd|passcode|pwd|pw|wifi pass(?:word)?)(\s*(?:is|:|=)\s*)\S+/gi, '$1$2' + SECRET_MARK],
+    [/\b(otp|pin|cvv|cvc|tac|2fa code|verification code|security code|login code|one[- ]time (?:pass(?:word|code)|code))(\s*(?:is|:|=)?\s*)\d{3,8}\b/gi, '$1$2' + SECRET_MARK],
+  ];
+  // A street address: a unit (#05-123), a block (Blk 123A), or a number before
+  // a street word ("14 Elm Street", "12 Jalan Besar"). The street is gone; the
+  // town, which places nobody, stays.
+  const ADDRESSES = [
+    /#\d{1,3}-\d{1,5}[A-Z]?\b/g,
+    /\b(?:blk|block)\s*\d{1,4}[A-Z]?\b/gi,
+    /\b(?!(?:19|20)\d{2}\b)\d{1,5}[A-Z]?,?\s+(?:[A-Z][\w'-]*\s+){1,3}(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Boulevard|Blvd|Crescent|Cres|Close|Way|Place|Pl|Terrace|Court|Ct)\b\.?/g,
+    /\b\d{1,5}[A-Z]?,?\s+(?:Jalan|Lorong|Jln|Lor)(?:\s+[A-Z][\w'-]*){1,3}/g,
+  ];
+  // Long digit runs that pass a check: a card number in any grouping (Amex's
+  // 4-6-5 too) by Luhn, and an IBAN by mod 97. The shapes above take the
+  // common card grouping whether or not it checks out; this catches the rest
+  // without eating an order or tracking number that only looks like one.
+  function luhn(digits) {
+    let sum = 0;
+    for (let i = 0; i < digits.length; i++) {
+      let d = Number(digits[digits.length - 1 - i]);
+      if (i % 2) { d *= 2; if (d > 9) d -= 9; }
+      sum += d;
+    }
+    return sum % 10 === 0;
+  }
+  function ibanValid(raw) {
+    const iban = raw.replace(/\s+/g, '').toUpperCase();
+    if (iban.length < 15 || iban.length > 34) return false;
+    const moved = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, c => String(c.charCodeAt(0) - 55));
+    let rest = 0;
+    for (const ch of moved) rest = (rest * 10 + Number(ch)) % 97;
+    return rest === 1;
+  }
+  function scrubNumbers(text) {
+    return text
+      .replace(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\b/g, m => (ibanValid(m) ? NUMBER_MARK : m))
+      .replace(/\b\d(?:[ -]?\d){12,18}\b/g, m => (luhn(m.replace(/\D/g, '')) ? NUMBER_MARK : m))
+      // An API key or token: a long unbroken run of letters and digits mixed.
+      .replace(/\b[A-Za-z0-9_-]{32,}\b/g, m => (/^0x[a-fA-F0-9]{40}$/.test(m) ? NUMBER_MARK : /\d/.test(m) && /[A-Za-z]/.test(m) ? SECRET_MARK : m));
+  }
   // Links, in every field: a link names a person's shop, page or profile, and
   // says nothing a model could use. Taken out whole, with "www." ones too.
   const LINKS = /\s*\b(?:https?:\/\/|www\.)\S+/gi;
@@ -2604,7 +2673,10 @@
       // of an address like j.smith2024@mail.com and leave a broken one behind.
       let out = text.replace(LINKS, ' ').replace(/ {2,}/g, ' ').trim();
       out = out.replace(EMAIL, EMAIL_MARK);
+      for (const [pattern, mark] of SECRETS) out = out.replace(pattern, mark);
+      out = scrubNumbers(out);
       for (const [pattern, mark] of ID_NUMBERS) out = out.replace(pattern, mark);
+      for (const pattern of ADDRESSES) out = out.replace(pattern, ADDRESS_MARK);
       for (const pattern of PHONES) out = out.replace(pattern, PHONE_MARK);
       return out;
     };

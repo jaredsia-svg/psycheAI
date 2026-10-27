@@ -3080,6 +3080,27 @@ check('the reader\'s own handle is replaced with a placeholder',
       /^\d{4}-\d{2}$/.test(String(Digest.forModel(Object.assign({}, digest, { rhythm: Object.assign({}, digest.rhythm, { firstActivity: '2012-10-21' }) })).rhythm.firstActivity)),
     JSON.stringify([digest.rhythm.firstActivity, digest.rhythm.lastActivity]));
 }
+// Bank, secret and address details, and more of the world's ID numbers (27 October 2026): each
+// replaced by its marker, while the same words in ordinary use stay.
+{
+  const lines = ['my password is hunter2 lol', 'forgot my password again', 'OTP 482913 do not share', 'pin it to the board',
+    'IBAN GB82 WEST 1234 5698 7654 32 for rent', 'amex 3782 822463 10005', 'SSN 123-45-6789', 'IC 900101-14-5678',
+    'HKID A123456(7)', 'NI AB 12 34 56 C', 'passport no: E1234567', 'DBS acct 123-456789-0', 'account number 0123456789',
+    'my account is fine', 'car SBA1234Z parked', 'server 192.168.1.1', 'DOB 12/03/1994', 'born in 1994',
+    'Blk 123A Ang Mo Kio #05-123', 'live at 14 Elm Street, Leeds', '2024 Grand Prix Road trip', 'version 1.2.3 out',
+    'key ' + ['tok', 'Q7xR2mP9vL4kT8nB3wZ6yH1jF5cD0aS'].join('_'), 'score 3-2 in 2024'];
+  const out = Digest.forModel({ schema: 'psycheai-digest/1', profile: {}, samples: { captions: lines } }).samples.captions;
+  const want = ['my password is PsycheSecret lol', 'forgot my password again', 'OTP PsycheSecret do not share', 'pin it to the board',
+    'IBAN PsycheNumber for rent', 'amex PsycheNumber', 'SSN PsycheNumber', 'IC PsycheNumber',
+    'HKID PsycheNumber', 'NI PsycheNumber', 'passport PsycheNumber', 'DBS acct PsycheNumber', 'account PsycheNumber',
+    'my account is fine', 'car PsycheNumber parked', 'server PsycheNumber', 'DOB PsycheNumber', 'born in 1994',
+    'PsycheAddress Ang Mo Kio PsycheAddress', 'live at PsycheAddress, Leeds', '2024 Grand Prix Road trip', 'version 1.2.3 out',
+    'key PsycheSecret', 'score 3-2 in 2024'];
+  const wrong = lines.map((line, i) => [line, out[i], want[i]]).filter(([, got, expect]) => got !== expect);
+  check('passwords and codes, IBANs, Luhn-checked cards, bank accounts, other IDs and street addresses are replaced; ordinary words stay',
+    wrong.length === 0, JSON.stringify(wrong));
+  check('the prompt names the two new markers', /PsycheSecret/.test(prompts.PROFILE_SYSTEM) && /PsycheAddress/.test(prompts.PROFILE_SYSTEM));
+}
 // Links, a website, a city, postcodes elsewhere, and a name in any script:
 // none of them reach the model, whichever field they sit in.
 {
@@ -9336,7 +9357,7 @@ check('the schema requires evidence on where they align and differ',
   check('the prompts say what a digest of chats alone is, and score it lower',
     prompts.FREE_SYSTEM.includes(prompts.CHATS_ONLY_RULE) && prompts.FULL_SYSTEM.includes(prompts.CHATS_ONLY_RULE) &&
       /has no `instagram`/.test(prompts.CHATS_ONLY_RULE) && /never how many people the reader seeks out/.test(prompts.CHATS_ONLY_RULE) &&
-      /WhatsApp chats with no Instagram: two chats, 55–68; three, 58–74; with Google, 57–70 for two and 60–76 for three; with Facebook, 62–80 for two and 65–84 for three/.test(prompts.CONFIDENCE_SCORING) &&
+      /WhatsApp chats with no Instagram: two chats, 58–72; three, 62–78; with Google, 60–74 for two and 64–80 for three; with Facebook, 65–82 for two and 68–86 for three/.test(prompts.CONFIDENCE_SCORING) &&
       !/Instagram is always there/.test(prompts.FULL_SYSTEM));
   const blocks = prompts.profileBlocks ? prompts.profileBlocks(sent) : null;
   check('and the request names WhatsApp as the source, not Instagram',
