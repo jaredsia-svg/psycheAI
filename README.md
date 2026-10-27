@@ -1518,6 +1518,32 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**TikTok and a journal, optional sources** (27 October 2026). Two more rows in both data popouts,
+under *Optional* with Google and Facebook, folded behind *Optional data* in Add your data *and* in Add /
+change data; folded, a source that is loaded still shows, alone (TikTok loaded shows TikTok, not the
+list). The file box sorts them by what is in them (`detectSource`): a TikTok download is
+`user_data_tiktok.json` (or `user_data.json`), on its own or zipped; a `.md`, or a `.txt` whose lines are
+not dated messages, is a journal; a `.txt` of dated lines stays a WhatsApp chat.
+- **TikTok** (`readTikTok`) is read by shape, since TikTok renames its sections between versions: an array
+  of records is known by its keys (`SearchTerm`, `Comment`, `Content`/`From`) and the names above it. Watch,
+  like, favourite and share histories are links only, so they are counted and never read. What is read:
+  the reader's comments, their own videos' captions, their searches, the hashtags on their videos, and
+  their side of their DMs (`ownSide`, as Instagram's and Messenger's, tagged `[k1]`…). Public pool for
+  the words and searches (ranked as Facebook is, kept to 10,000 before Instagram's own words give),
+  conversations pool for the DMs.
+- **A journal** (`readJournal`): plain text or Markdown, split into entries at dated headings (2024-03-01,
+  1 March 2024, March 1, 2024, 3/1/24) or, undated, at paragraphs; under 150 words is refused. Up to 120
+  entries of 900 characters, at most 25,000 in all, in the conversations pool beside the chats. Names the
+  other sources know are numbered; others stay as written, which the review row says (*names stay as
+  written*), with its "Leave out anything mentioning" box to take them out. Contacts, IDs and the rest
+  are redacted as everywhere.
+- **Review:** one switch each (`includeTikTok`, `includeJournal`; `omitTikTok`, `omitJournal`).
+- **Prompts:** `EXTRA_SOURCES_RULE` in the card, report and paid prompts: TikTok's counts say how much,
+  never what; a journal is read gently and a hard entry is never a diagnosis; either with the reader's
+  own words scores as a strong source, as Facebook does, and TikTok with only counts and searches is
+  light. The rule took the free card's worst case to $0.08703, so `FREE_COST_CAP` (and the deep read's)
+  went from $0.087 to $0.088; the prompt reserves rose to 14,900 and 40,920 tokens.
+
 **Group chats and the number of chats are not evidence of breadth** (27 October 2026). Two group chats
 alone came back as *slight introversion: directs energy into two enduring circles rather than
 broadening the network*, and *others open the majority of exchanges across both groups*. Both read the

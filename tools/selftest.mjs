@@ -5434,8 +5434,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 179000 && DIG === 179000 && Digest.DEEP_DIGEST_CHARS === 179000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card, its Overview and its roast cost at most 8.7 cents',
-    Digest.FREE_COST_CAP === 0.087 && freeWorst <= 0.087 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card, its Overview and its roast cost at most 8.8 cents',
+    Digest.FREE_COST_CAP === 0.088 && freeWorst <= 0.088 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most 17.2 cents',
     Digest.COST_CAP === 0.172 && fullWorst <= 0.172 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
@@ -5869,7 +5869,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('the premium read\'s two calls each fit their own cost cap at its 179,000-character line',
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS &&
-        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.087,
+        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.088,
       Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
     check('and together cost no more than twenty-six cents',
@@ -9318,6 +9318,62 @@ check('the schema requires evidence on where they align and differ',
     const oldShare = oldLines.filter(l => /^\[(2016|2017|2018|2019|2020)\]/.test(String(l))).length / Math.max(1, oldLines.length);
     check('and a chat busy long ago but quiet now still reads its older years, rather than leaving places empty',
       oldShare > 0.5 && oldLines.length > 100, JSON.stringify([oldShare, oldLines.length]));
+  }
+
+  // TikTok and a journal, optional sources (27 October 2026): sorted by what is in them, read by shape,
+  // and sent only as the reader's own words, de-identified, with counts for the rest.
+  {
+    const dms = [];
+    for (let i = 0; i < 40; i++) {
+      dms.push({ Date: '2024-03-' + String(1 + (i % 28)).padStart(2, '0') + ' 10:0' + (i % 10) + ':00', From: 'sam_k', Content: 'what do you think about plan ' + i });
+      dms.push({ Date: '2024-03-' + String(1 + (i % 28)).padStart(2, '0') + ' 10:0' + (i % 10) + ':30', From: 'jo.park', Content: 'honestly sam_k we should just go for it, call 91234567, number ' + i });
+    }
+    const tiktokData = {
+      Activity: {
+        'Video Browsing History': { VideoList: Array.from({ length: 30 }, (_, i) => ({ Date: '2024-01-0' + (1 + (i % 9)) + ' 10:00:00', Link: 'https://www.tiktokv.com/' + i })) },
+        'Like List': { ItemFavoriteList: [{ Date: '2024-01-01 10:00:00', Link: 'l' }, { Date: '2024-01-02 10:00:00', Link: 'm' }] },
+        'Search History': { SearchList: [{ Date: '2024-02-01 10:00:00', SearchTerm: 'how to start running' }, { Date: '2024-02-02 10:00:00', SearchTerm: 'how to start running' }] },
+      },
+      Comment: { Comments: { CommentsList: [{ Date: '2024-03-01 10:00:00', Comment: 'this is so me, my sister Mia does this too' }] } },
+      'Direct Messages': { 'Chat History': { ChatHistory: { 'Chat History with sam_k:': dms } } },
+      Profile: { 'Profile Information': { ProfileMap: { userName: 'jo.park' } } },
+      Video: { Videos: { VideoList: [{ Date: '2024-04-01 10:00:00', Link: 'v', Desc: 'first try at sourdough' }] } },
+    };
+    const ttFile = new File([JSON.stringify(tiktokData)], 'user_data_tiktok.json');
+    const ttZip = new File([makeZip([{ name: 'user_data_tiktok.json', content: JSON.stringify(tiktokData) }])], 'tiktok.zip');
+    const journalFile = new File(['2024-03-01\nWent for a run and Mia Wong called about the move; I felt calmer after. Email me at jo@example.com.\n\n' +
+      'March 3, 2024\n' + 'I keep wondering whether I am doing enough at work, and whether it matters as much as I think it does. '.repeat(8)], 'journal.md');
+    const kinds = await Promise.all([ttFile, ttZip, journalFile, new File(['A note to self about the week. '.repeat(20)], 'notes.txt'),
+      new File(['12/03/2024, 21:14 - Ann: hi'], 'chat.txt')].map(f => Supplement.detectSource(f)));
+    check('one box: a TikTok download (JSON or zip), a journal (.md or a .txt of prose) and a chat (.txt of dated lines) are told apart',
+      kinds.join() === 'tiktok,tiktok,journal,journal,whatsapp', kinds.join());
+    const tt = await Supplement.readTikTok([ttFile]);
+    check('TikTok is read by shape: own comments, captions, searches and DMs; watches and likes only counted',
+      tt.counts.watched === 30 && tt.counts.liked === 2 && tt.comments.length === 1 && tt.captions[0] === 'first try at sourdough' &&
+        tt.searchTerms.get('how to start running') === 2 && tt.ownMessages.length === 40 && tt.owner === 'jo.park',
+      JSON.stringify(tt.counts));
+    const jn = await Supplement.readJournal([journalFile]);
+    check('a journal is read as dated entries, its words counted',
+      jn.entries.length === 2 && jn.entries[0].ts === Date.UTC(2024, 2, 1) / 1000 && jn.counts.words > 150, JSON.stringify(jn.counts));
+    let refused = '';
+    try { await Supplement.readJournal([new File(['too short'], 'x.txt')]); } catch (error) { refused = error.message; }
+    check('and one too short to read is refused, saying so', /too little writing/.test(refused), refused);
+    const both = Digest.buildFromSupplements({ whatsapp: summary, tiktok: tt, journal: jn });
+    const out = Digest.forModel(both);
+    const text = Digest.renderEvidence(out);
+    check('the digest carries TikTok and the journal, in their pools, sent through forModel',
+      out.coverage.sources.includes('tiktok') && out.coverage.sources.includes('journal') &&
+        /## tiktok\.commentSample/.test(text) && /## tiktok\.ownMessageSample/.test(text) && /## journal\.entrySample/.test(text) &&
+        Digest.poolSizes(both).public.tiktok > 0 && Digest.poolSizes(both).conversations.journal > 0, out.coverage.sources.join());
+    check('and de-identified: the reader and the people in their DMs and chats are not named, numbers and addresses go',
+      !/jo\.park|sam_k|Mia Wong|91234567|jo@example\.com/.test(text) && /PsycheEmail/.test(text) && /PsychePhone/.test(text), text.slice(0, 300));
+    const off = JSON.parse(JSON.stringify(both));
+    Digest.omitTikTok(off); Digest.omitJournal(off);
+    check('the review can leave either out whole',
+      !off.tiktok && !off.journal && !off.coverage.sources.includes('tiktok') && !off.coverage.sources.includes('journal'));
+    check('the prompts say what TikTok and a journal are, and how they score',
+      prompts.FREE_SYSTEM.includes(prompts.EXTRA_SOURCES_RULE) && prompts.PREMIUM_SYSTEM.includes(prompts.EXTRA_SOURCES_RULE) &&
+        /never read a hard entry as a diagnosis/.test(prompts.EXTRA_SOURCES_RULE) && /links only/.test(prompts.EXTRA_SOURCES_RULE));
   }
 
   // Chats kept across a re-run (Digest.carryChats): the stored lines join a

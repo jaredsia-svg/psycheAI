@@ -1402,6 +1402,34 @@
     </button>
     <button class="ds-how" data-how="facebook" type="button" aria-expanded="false">How?</button>
     </div>
+    <!-- TikTok's data download and a journal or notes file, optional since 27 October 2026
+         (Supplement.readTikTok, readJournal). -->
+    <div class="ds-row" data-row="tiktok">
+    <button class="mode-option" data-datasource="tiktok" type="button">
+      <span class="mode-icon">🎵</span>
+      <span class="mode-body"><strong><span class="mode-title">TikTok</span> <span class="mode-tag"></span></strong>
+        <span class="muted"></span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="ds-how" data-how="tiktok" type="button" aria-expanded="false">How?</button>
+    </div>
+    <div class="ds-row" data-row="journal">
+    <button class="mode-option" data-datasource="journal" type="button">
+      <span class="mode-icon">📓</span>
+      <span class="mode-body"><strong><span class="mode-title">Journal or notes</span> <span class="mode-tag"></span></strong>
+        <span class="muted"></span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="ds-how" data-how="journal" type="button" aria-expanded="false">How?</button>
+    </div>
     <!-- Up to three chats, each from WhatsApp's own Export chat. Only the
          reader's messages are read; see docs/whatsapp.js. -->
     <div class="ds-row" data-row="whatsapp">
@@ -1431,8 +1459,8 @@
        replaced Instagram export. -->
   <!-- WhatsApp is not in it since October 2026: the chats are carried onto
        the new export (Digest.carryChats). -->
-  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google
-    and Facebook data fresh too – reload them here as well if you want them included in this run. Your WhatsApp chats are kept.</p>
+  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your optional data
+    (Google, Facebook, TikTok, journal) fresh too – reload it here as well if you want it included in this run. Your WhatsApp chats are kept.</p>
   <!-- At the unlock, over an existing card: the first tap on a source asks
        this before the file picker opens, once per opening. "Choose file" is a
        click of its own, so it can open the picker directly (a picker opened
@@ -1470,6 +1498,14 @@
         <h3>Facebook</h3>
         <ol data-howto="facebook"></ol>
       </div>
+      <div class="help-tiktok" data-help="tiktok">
+        <h3>TikTok</h3>
+        <ol data-howto="tiktok"></ol>
+      </div>
+      <div class="help-journal" data-help="journal">
+        <h3>Journal or notes</h3>
+        <ol data-howto="journal"></ol>
+      </div>
       <div class="help-whatsapp" data-help="whatsapp">
         <h3>WhatsApp</h3>
         <ol data-howto="whatsapp"></ol>
@@ -1499,7 +1535,7 @@
     </span>
     <button class="btn" id="datasources-continue" type="button">Continue</button>
   </div>
-  <input type="file" id="datasources-input" accept=".zip,application/zip,.txt,text/plain" multiple hidden>
+  <input type="file" id="datasources-input" accept=".zip,application/zip,.txt,text/plain,.json,application/json,.md,text/markdown" multiple hidden>
   <input type="file" id="restore-input" accept=".json,application/json" hidden>
 </dialog>
 
@@ -1720,6 +1756,17 @@
       <span class="ui-label">JSON</span>. Your posts, comments, friends and messages are what’s read.</li>
 </template>
 
+<template id="howto-tiktok">
+  <li>TikTok → <span class="ui-label">Profile</span> → <span class="ui-label">☰</span> → <span class="ui-label">Settings and privacy</span> →
+      <span class="ui-label">Account</span> → <span class="ui-label">Download your data</span>.</li>
+  <li>Choose <span class="ui-label">All data</span> and format <span class="ui-label">JSON</span>, then
+      <span class="ui-label">Request data</span>. It is ready in a few hours to a few days, under <span class="ui-label">Download data</span>.</li>
+  <li>Load the file it gives you here.</li>
+</template>
+<template id="howto-journal">
+  <li>Export your journal or notes as plain text (.txt) or Markdown (.md): Day One, Notion and Obsidian can, and an Apple or Google note can be copied into a text file.</li>
+  <li>Load it here. Names you wrote stay as written unless you leave them out at the review.</li>
+</template>
 <template id="howto-whatsapp">
   <li>In WhatsApp, open a chat with a close connection → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
       <span class="ui-label">More</span> → <span class="ui-label">Export chat</span> → <span class="ui-label">Without media</span>.</li>

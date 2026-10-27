@@ -211,6 +211,17 @@ REELS['character-mulan'] = character_reel('en_US-hfc_female-medium', 'nine', '{M
     ['Organiser with a warm centre, and a quiet battery.', 'Driven by care for my people.', 'Shows care through acts of service.'])
 REELS['character-odysseus'] = character_reel('en_US-ryan-high', 'twelve', '{Odysseus}.',
     ['Resourceful planner, with a way out of every corner.', 'Driven by stimulation, achievement, and self direction.', '{MBTIofENTP}.'])
+# Odysseus opens on two WhatsApp chats, not years of Instagram (27 October 2026; character-stage.html, WHO.chats),
+# and like the Tin Man's reel ends his tour on Most in sync with, then "Who's your Mulan?" (she is on his card, and
+# he on hers; the Tin Man's reel tags her too).
+REELS['character-odysseus'] = dict(REELS['character'], voice='en_US-ryan-high', lines=[
+    (['I let {B} read two WhatsApp chats of mine, with close friends.', 'And it told me which character I am.'], 0.85, True, 0.3),
+    REELS['character']['lines'][1], (['{Odysseus}.'], 1.05, None),
+    (['Resourceful planner, with a way out of every corner.', 'Driven by stimulation, achievement, and self direction.',
+      '{MBTIofENTP}.', 'Most in sync with {Mulan}.'], 0.85, True, [0.6, 0.6, 0.6]),
+    (["Who's your {Mulan}?", 'Tag them.'], 0.85, True, 0.3),
+    REELS['character']['lines'][5],
+])
 REELS['character-sherlock'] = character_reel('en_US-ryan-high', 'eight', 'Sherlock Holmes.',
     ['Quiet investigator, who notices what others miss.', 'Big Five. Openness, eighty five.', 'Values truth, and independence.'])
 

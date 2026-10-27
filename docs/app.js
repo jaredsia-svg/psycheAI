@@ -46,6 +46,12 @@
   // string and label they share comes from here rather than being written twice.
   const Copy = window.PsycheCopy;
   const TEXT = Copy.TEXT;
+  // The optional sources, in the order the Add your data popouts list them
+  // (TikTok and a journal since October 2026), and what a popout collected of
+  // them: each source's reader output, where one was loaded.
+  const OPTIONAL_SOURCES = ['google', 'facebook', 'tiktok', 'journal'];
+  const loadedSupplements = (collected, keys) => Object.fromEntries(keys
+    .filter(key => collected && typeof collected[key] === 'object' && collected[key]).map(key => [key, collected[key]]));
   // "Jared", from "Jared Tan": a friend is named by first name on their link.
   const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
   // The friend's link a sync was started from, until it lands (adoptComparison).
@@ -2356,7 +2362,7 @@
       ['whatsapp', short.whatsapp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
       ['google', short.google, Boolean(digest && digest.google)],
       ['facebook', short.facebook, Boolean(digest && digest.facebook)],
-    ];
+    ].concat(['tiktok', 'journal'].filter(key => digest && digest[key]).map(key => [key, short[key], true]));
     const conf = report.confidence || {};
     const score = Math.max(0, Math.min(100, Math.round(Number(conf.score) || 0)));
     const saved = store.read(KEYS.lastBackup, null);
@@ -4072,6 +4078,8 @@
     if (state.signals || (digest && digestHasInstagram(digest))) loaded.push('Instagram');
     if ((digest && digest.google) || supplements.google) loaded.push('Google');
     if ((digest && digest.facebook) || supplements.facebook) loaded.push('Facebook');
+    if ((digest && digest.tiktok) || supplements.tiktok) loaded.push('TikTok');
+    if ((digest && digest.journal) || supplements.journal) loaded.push('your journal');
     if ((digest && digest.whatsapp) || supplements.whatsapp) loaded.push('WhatsApp');
     note.hidden = loaded.length === 0;
     note.textContent = loaded.length
@@ -4127,7 +4135,7 @@
           // Instagram, then WhatsApp chats with close friends, Google and
           // Facebook, all three optional (Facebook since late October 2026:
           // it was offered only from the report page before).
-          sources: ['instagram', 'whatsapp', 'google', 'facebook'],
+          sources: ['instagram', 'whatsapp', 'google', 'facebook', 'tiktok', 'journal'],
           first: true,
           // Instagram, or two or three WhatsApp chats (October 2026): either is a
           // first read, and the popout says where the reader stands.
@@ -4165,9 +4173,7 @@
       if (state.signals) {
         state.chats = null;
         state.signals.supplements = Object.assign({}, priorSupplements,
-          typeof collected.google === 'object' ? { google: collected.google } : null,
-          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null,
-          typeof collected.whatsapp === 'object' ? { whatsapp: collected.whatsapp } : null);
+          loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp')));
       } else if (typeof collected.whatsapp === 'object') {
         // No Instagram: the chats are the read, and the reader is known by
         // them (accountKeys) and called by their name in them (ownDisplayName).
@@ -4180,18 +4186,14 @@
         // WhatsApp chats and no Instagram (October 2026), with Google or
         // Facebook beside them if loaded: a digest of those alone.
         digest = Digest.buildFromSupplements(Object.assign({ whatsapp: collected.whatsapp },
-          typeof collected.google === 'object' ? { google: collected.google } : null,
-          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null));
+          loadedSupplements(collected, OPTIONAL_SOURCES)));
       } else if (state.digest) {
         // The retry path after a reload: the archive is gone but the digest
         // it produced is not, and the digest is the only thing the server was
         // ever going to be sent. Copied rather than mutated so a declined
         // review leaves the stored one exactly as it was.
         digest = JSON.parse(JSON.stringify(state.digest));
-        const extra = {};
-        if (typeof collected.google === 'object') extra.google = collected.google;
-        if (typeof collected.facebook === 'object') extra.facebook = collected.facebook;
-        if (typeof collected.whatsapp === 'object') extra.whatsapp = collected.whatsapp;
+        const extra = loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp'));
         // The handle so the supplement's own text can be scrubbed too — see
         // redactOwnHandle. Undefined when the archive is gone, which is the
         // gap that function documents rather than one worth reopening the
@@ -5186,6 +5188,8 @@
     if (!decision.includeFacebookConnections) Digest.omitFacebookConnections(target);
     if (!decision.includeFacebookMessages) Digest.omitFacebookMessages(target);
     if (!decision.includeWhatsApp) Digest.omitWhatsApp(target);
+    if (!decision.includeTikTok) Digest.omitTikTok(target);
+    if (!decision.includeJournal) Digest.omitJournal(target);
     return target;
   }
 
@@ -5421,6 +5425,27 @@
           'were only counted, and nobody is named.']);
     }
 
+    // TikTok and a journal (October 2026): one switch each.
+    const tt = digest.tiktok;
+    if (tt) {
+      const ttWriting = (tt.commentSample || []).length + (tt.captionSample || []).length;
+      const ttDms = (tt.ownMessageSample || []).length;
+      const ttSearches = (tt.topSearches || []).length;
+      const count = ttWriting + ttDms + ttSearches;
+      rows.push(['review-tiktok', 'includeTikTok', count, 'TikTok', 'TikTok – nothing found',
+        [ttWriting ? n(ttWriting, 'comment or caption', 'comments and captions') + ' of your own' : '',
+          ttSearches ? n(ttSearches, 'search', 'searches') : '',
+          ttDms ? n(ttDms, 'message', 'messages') + ' of yours (each may show a short, anonymised line of what it answered)' : '']
+          .filter(Boolean).join(', ') + ', plus counts of what you watched, liked and shared. Nobody is named.']);
+    }
+    const jn = digest.journal;
+    if (jn) {
+      const entries = (jn.entrySample || []).length;
+      rows.push(['review-journal', 'includeJournal', entries, 'Your journal', 'Your journal – nothing found',
+        n(entries, 'entry', 'entries') + ' of your own writing, sampled through time. Names other sources know are numbered; ' +
+          'any other name stays as you wrote it, so leave out anyone you would rather not send with the box below.']);
+    }
+
     // The reader's thumbs on their current report, when there are any: sent
     // with a paid run so the new report answers them (prompts.marksBlock), and
     // a row of their own here so they go only as reviewed. The server takes
@@ -5454,6 +5479,8 @@
       'review-searches': ['instagramSearches'],
       'review-yt-searches': ['google.topYoutubeSearches'],
       'review-google-searches': ['google.topGoogleSearches'],
+      'review-tiktok': ['tiktok.commentSample', 'tiktok.captionSample', 'tiktok.topSearches', 'tiktok.topHashtags', 'tiktok.ownMessageSample'],
+      'review-journal': ['journal.entrySample'],
     };
     const CHATS = {
       'review-dms': 'directMessages.ownMessageSample',
@@ -5939,7 +5966,7 @@
     // wants it, one screen later. Hidden rather than removed from the markup:
     // one dialog, two audiences.
     // WhatsApp second, after Instagram, as at the first upload.
-    const offered = settings.sources || ['instagram', 'whatsapp', 'google', 'facebook'];
+    const offered = settings.sources || ['instagram', 'whatsapp'].concat(OPTIONAL_SOURCES);
     // A first upload sets Instagram apart, since it is the one source required.
     dialog.classList.toggle('is-first-upload', Boolean(settings.first));
     // Rows, and their instructions, in the order offered: the welcome page
@@ -5947,7 +5974,7 @@
     // keeps the markup's own order. Moving a node is all it takes, and every
     // opening sets the order afresh, so neither entry point inherits the
     // other's.
-    const order = offered.concat(['instagram', 'whatsapp', 'google', 'facebook'].filter(x => !offered.includes(x)));
+    const order = offered.concat(['instagram', 'whatsapp'].concat(OPTIONAL_SOURCES).filter(x => !offered.includes(x)));
     const optionsBox = dialog.querySelector('.mode-options');
     const helpBox = dialog.querySelector('.supplement-help-body');
     const helpTail = helpBox.querySelector('.help-illustrated');
@@ -5964,28 +5991,33 @@
     // "Optional" over the rest. Elsewhere the rows are one plain list.
     const needHead = $('#datasources-minimum');
     const optionalHead = $('#datasources-optional');
-    needHead.hidden = optionalHead.hidden = !settings.requireMinimum;
-    // The optional rows start folded (27 October 2026): "Optional data", between
-    // the buttons, unfolds them. Only the row wraps are hidden, not the buttons,
-    // so a Google or Facebook file in the box is still read, and unfolds them.
+    needHead.hidden = !settings.requireMinimum;
+    // The optional rows start folded, in both popouts (27 October 2026):
+    // "Optional data", between the buttons, unfolds them. Folded, a source
+    // that is loaded still shows, alone under "Optional" (TikTok loaded shows
+    // TikTok, not the whole list). Only the row wraps are hidden, not the
+    // buttons, so any file in the box is still read.
     const moreButton = $('#datasources-more');
-    let optionalRows = [];
+    const optionalRows = order.filter(x => OPTIONAL_SOURCES.includes(x) && offered.includes(x));
+    let optionalOpen = false;
+    // Set once `added` exists, below.
+    let optionalLoaded = () => false;
     moreButton.hidden = true;
-    const foldOptional = folded => {
-      optionalHead.hidden = folded || !optionalRows.length;
-      for (const source of optionalRows) rowWrap(source).hidden = folded;
-      moreButton.setAttribute('aria-expanded', String(!folded));
+    const foldOptional = open => {
+      optionalOpen = open;
+      const shown = optionalRows.filter(source => open || optionalLoaded(source));
+      for (const source of optionalRows) rowWrap(source).hidden = !shown.includes(source);
+      optionalHead.hidden = !shown.length;
+      moreButton.setAttribute('aria-expanded', String(open));
     };
     if (settings.requireMinimum) {
       const needs = order.filter(x => x === 'instagram' || x === 'whatsapp');
-      const rest = order.filter(x => !needs.includes(x) && offered.includes(x));
       if (needs.length) optionsBox.insertBefore(needHead, rowWrap(needs[0]));
-      optionalHead.textContent = TEXT.dataSourcesOptional;
-      if (rest.length) optionsBox.insertBefore(optionalHead, rowWrap(rest[0]));
-      else optionalHead.hidden = true;
-      optionalRows = rest;
-      moreButton.textContent = TEXT.dataSourcesMore;
     }
+    optionalHead.textContent = TEXT.dataSourcesOptional;
+    optionalHead.hidden = true;
+    if (optionalRows.length) optionsBox.insertBefore(optionalHead, rowWrap(optionalRows[0]));
+    moreButton.textContent = TEXT.dataSourcesMore;
     // "How?" on a row opens that source's steps alone, below the rows; the
     // same again closes them.
     const helpDrawer = dialog.querySelector('.supplement-help');
@@ -6042,7 +6074,7 @@
     }
     if (optionalRows.length) {
       moreButton.hidden = false;
-      foldOptional(true);
+      foldOptional(false);
     }
     // Every list below is built from the visible rows, so a hidden source can
     // neither be ticked, read, nor resolved.
@@ -6076,6 +6108,8 @@
       instagram: pendingDataSourceReads.instagram || Boolean((digest && digestHasInstagram(digest)) || state.signals) || undefined,
       google: pendingDataSourceReads.google || Boolean(digest && digest.google) || undefined,
       facebook: pendingDataSourceReads.facebook || Boolean(digest && digest.facebook) || undefined,
+      tiktok: pendingDataSourceReads.tiktok || Boolean(digest && digest.tiktok) || undefined,
+      journal: pendingDataSourceReads.journal || Boolean(digest && digest.journal) || undefined,
       whatsapp: pendingDataSourceReads.whatsapp || Boolean(digest && digest.whatsapp) || undefined,
     };
     // The WhatsApp row says how many of its three chats are loaded: those
@@ -6192,6 +6226,8 @@
     // export, from memory or from the stored digest (October 2026).
     const isStale = source =>
       source !== 'whatsapp' && replacedInstagram && Boolean(added[source]) && !carriedInMemory(source);
+    // Stale ones too: replacing Instagram drops them, and their rows stay to be loaded again.
+    optionalLoaded = source => Boolean(added[source]);
 
     const markAdded = () => {
       for (const button of buttons) {
@@ -6218,9 +6254,9 @@
       // Recomputed on every call rather than fixed the moment Instagram is
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
-      $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook'));
-      // An optional file loaded through the box unfolds its rows, so its tick shows.
-      if (optionalRows.some(source => Boolean(added[source]) && !isStale(source))) foldOptional(false);
+      $('#datasources-instagram-note').hidden = !OPTIONAL_SOURCES.some(isStale);
+      // A loaded optional source shows, folded or not, so its tick does.
+      foldOptional(optionalOpen);
       showWhatsAppCount();
       showMinimum();
     };
@@ -6361,7 +6397,8 @@
               return { message: [startOver ? TEXT.whatsappFull(waMax) : '', repeatNote].filter(Boolean).join(' '), tone: '' };
             }
           } else {
-            const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
+            const reader = { google: Supplement.readGoogle, facebook: Supplement.readFacebook,
+              tiktok: Supplement.readTikTok, journal: Supplement.readJournal }[source];
             added[source] = await reader(files, {
               onProgress: p => {
                 const share = p.total ? Math.min(1, p.done / p.total) : 0;
@@ -6392,7 +6429,7 @@
       // it (a later part of a split export), else to the row that was tapped,
       // else to Instagram, whose reader says plainly what is wrong with it.
       const readFiles = async (picked, hint) => {
-        const files = Array.from(picked || []).filter(f => /\.(zip|txt)$/i.test(f.name));
+        const files = Array.from(picked || []).filter(f => /\.(zip|txt|json|md|markdown)$/i.test(f.name));
         if (!files.length) {
           if (Array.from(picked || []).length) say(TEXT.dataSourcesWrongType, 'bad');
           return;
@@ -6493,7 +6530,7 @@
       drop.addEventListener('click', choose);
       const onMore = () => {
         const unfold = moreButton.getAttribute('aria-expanded') !== 'true';
-        foldOptional(!unfold);
+        foldOptional(unfold);
         if (unfold) optionalHead.scrollIntoView({ block: 'nearest', behavior: scrollBehaviour() });
       };
       moreButton.addEventListener('click', onMore);
@@ -6612,16 +6649,11 @@
 
       if (state.signals) {
         state.signals.supplements = Object.assign({}, priorSupplements,
-          typeof collected.google === 'object' ? { google: collected.google } : null,
-          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null,
-          typeof collected.whatsapp === 'object' ? { whatsapp: collected.whatsapp } : null);
+          loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp')));
       }
 
-      const outcome = await rerunWithAdditionalData({
-        google: typeof collected.google === 'object' ? collected.google : undefined,
-        facebook: typeof collected.facebook === 'object' ? collected.facebook : undefined,
-        whatsapp: typeof collected.whatsapp === 'object' ? collected.whatsapp : undefined,
-      }, typeof collected.instagram === 'object' ? priorSupplements || {} : null);
+      const outcome = await rerunWithAdditionalData(loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp')),
+        typeof collected.instagram === 'object' ? priorSupplements || {} : null);
       // Anything other than Back is terminal: the run happened, the payment
       // was declined, the reader pressed Escape, or something failed and has
       // already written its own message to #profile-alert.
@@ -8071,7 +8103,7 @@
    */
   function countedInFull(digest) {
     const by = countedBySource(digest);
-    return by.instagram.concat(by.google, by.facebook, by.whatsapp);
+    return by.instagram.concat(by.google, by.facebook, by.tiktok, by.journal, by.whatsapp);
   }
 
   /**
@@ -8099,7 +8131,9 @@
     const google = [];
     const facebook = [];
     const whatsapp = [];
-    if (!digest) return { instagram: items, google, facebook, whatsapp };
+    const tiktok = [];
+    const journal = [];
+    if (!digest) return { instagram: items, google, facebook, whatsapp, tiktok, journal };
     // Totals are rounded to read at a glance — 9,741 is "9.7k", 637 is "~600"
     // — while what was actually read stays exact.
     const num = value => roughCount(value);
@@ -8141,7 +8175,14 @@
     if (fbPosts) facebook.push(R.facebookPosts(fbPosts.shown, fbPosts.of));
     const wa = read('whatsappMessages');
     if (digest.whatsapp) whatsapp.push(R.whatsapp((digest.whatsapp.chats || []).length, wa ? wa.shown : '0', wa ? wa.of : '0'));
-    return { instagram: items, google, facebook, whatsapp };
+    const ttComments = read('tiktokComments');
+    if (ttComments) tiktok.push(R.tiktokComments(ttComments.shown, ttComments.of));
+    const ttSearches = read('tiktokSearches');
+    if (ttSearches) tiktok.push(R.tiktokSearches(ttSearches.shown, ttSearches.of));
+    if (digest.tiktok && num(digest.tiktok.counts && digest.tiktok.counts.watched)) tiktok.push(R.tiktokWatched(num(digest.tiktok.counts.watched)));
+    const entries = read('journalEntries');
+    if (entries) journal.push(R.journal(entries.shown, entries.of));
+    return { instagram: items, google, facebook, whatsapp, tiktok, journal };
   }
 
   /** A total to the nearest hundred: under 100 as it is, then "~600", then "9.7k". */
@@ -8189,7 +8230,10 @@
         hint: S.sourceWhatsAppHint },
       { key: 'google', icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { key: 'facebook', icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
-    ];
+    ].concat([
+      { key: 'tiktok', icon: '🎵', label: TEXT.sourceTikTok, loaded: true },
+      { key: 'journal', icon: '📓', label: TEXT.sourceJournal, loaded: true },
+    ].filter(row => digest && digest[row.key]));
     const note = !paid ? S.sourcesFreeNote
       : TEXT.analysisPriceNoteUnlocked;
     // WhatsApp's ticks: one for each of the three chats recommended.
@@ -9224,6 +9268,8 @@
       sources: (!state.digest || digestHasInstagram(state.digest) ? [TEXT.sourceInstagram] : [])
         .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
         .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : [])
+        .concat(state.digest && state.digest.tiktok ? [TEXT.sourceTikTok] : [])
+        .concat(state.digest && state.digest.journal ? [TEXT.sourceJournal] : [])
         .concat(state.digest && state.digest.whatsapp ? [TEXT.sourceWhatsApp] : []),
       // What the evidence page's "Read from" lists, the same as the page's.
       counted: countedInFull(state.digest),
@@ -9975,7 +10021,7 @@
       if (!collected) return null;
       lastPremiumCollected = collected;
       const fresh = key => typeof collected[key] === 'object';
-      const anyFresh = ['instagram', 'google', 'facebook', 'whatsapp'].some(fresh);
+      const anyFresh = ['instagram', 'whatsapp'].concat(OPTIONAL_SOURCES).some(fresh);
       if (!anyFresh && !state.digest) {
         // Nothing to write the full report from: the Instagram export has
         // gone from this device and was not loaded again.
@@ -9990,11 +10036,7 @@
       if (fresh('instagram')) state.signals = collected.instagram;
       repairOwnName().catch(() => {});
       keepChatsCurrent(collected);
-      const extra = {
-        google: fresh('google') ? collected.google : undefined,
-        facebook: fresh('facebook') ? collected.facebook : undefined,
-        whatsapp: fresh('whatsapp') ? collected.whatsapp : undefined,
-      };
+      const extra = loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp'));
       // Two digests come out of this. The standard one — what every later
       // free run reads — takes any source added here; the premium read is
       // what the full report is written from: the standard digest the card
@@ -10006,9 +10048,7 @@
       try {
         if (anyFresh) {
           if (state.signals) {
-            state.signals.supplements = Object.assign({}, priorSupplements,
-              extra.google ? { google: extra.google } : null, extra.facebook ? { facebook: extra.facebook } : null,
-              extra.whatsapp ? { whatsapp: extra.whatsapp } : null);
+            state.signals.supplements = Object.assign({}, priorSupplements, extra);
             digest = withStoredChats(Digest.build(state.signals, { includeMessages: true }), state.signals);
           } else if (state.digest) {
             digest = Digest.addSupplements(JSON.parse(JSON.stringify(state.digest)), extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
@@ -10124,7 +10164,7 @@
   // quietly drop it.
   function deepDigestFrom(signals, base, adding) {
     const supplements = Object.assign({}, signals.supplements, adding);
-    if (['google', 'facebook', 'whatsapp'].some(key => base[key] && !supplements[key])) return null;
+    if (['whatsapp'].concat(OPTIONAL_SOURCES).some(key => base[key] && !supplements[key])) return null;
     const out = withStoredChats(Digest.build(Object.assign({}, signals, { supplements }), { includeMessages: true, deep: true }), { supplements });
     out.__deep = true;
     out.__rebuilt = true;

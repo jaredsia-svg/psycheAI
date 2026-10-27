@@ -250,6 +250,20 @@
     // 600 so Messenger can fill the room its pool has left at the unlock;
     // the pool trims it back (trimToPools).
     fbMessages: 600,
+    // TikTok (October 2026): the reader's comments, their own videos'
+    // captions, their searches and the hashtags on their videos, and their
+    // side of their DMs, sized like Facebook's.
+    ttComments: 200,
+    ttCaptions: 100,
+    ttSearches: 80,
+    ttHashtags: 40,
+    ttMessages: 600,
+    // A journal or notes file (October 2026): its entries, each up to 900
+    // characters, spread through time, held to journalChars in all (beside
+    // anything else; more when it is the only writing beside the chats).
+    journalEntries: 120,
+    journalEntryChars: 900,
+    journalChars: 25000,
     // The reader's own messages from up to three WhatsApp chats, sampled per
     // chat like any other conversation and tagged [c1]–[c3]. Each chat is
     // guaranteed a quarter of the places when it has that many. 1,200 since
@@ -633,7 +647,9 @@
     // is not a second source, and must not open the larger free read.
     return some(d.whatsapp, ['chats', 'ownMessageSample']) ||
       some(d.google, ['topChannels', 'videoTitleSample', 'topYoutubeSearches', 'topGoogleSearches']) ||
-      some(d.facebook, ['postSample', 'commentSample', 'friends', 'topSearches', 'ownMessageSample']);
+      some(d.facebook, ['postSample', 'commentSample', 'friends', 'topSearches', 'ownMessageSample']) ||
+      some(d.tiktok, ['commentSample', 'captionSample', 'topSearches', 'ownMessageSample']) ||
+      some(d.journal, ['entrySample']);
   }
   /** The pools this digest is held to: the free read's two tiers, or the premium read's. */
   function poolCapsFor(digest) {
@@ -666,11 +682,15 @@
       ['instagram', 'storyLikedAccounts'], ['instagram', 'instagramSearches'],
       ['facebook', 'facebook.postSample'], ['facebook', 'facebook.commentSample'],
       ['facebook', 'facebook.friends'], ['facebook', 'facebook.topSearches'],
+      ['tiktok', 'tiktok.commentSample'], ['tiktok', 'tiktok.captionSample'],
+      ['tiktok', 'tiktok.topSearches'], ['tiktok', 'tiktok.topHashtags'],
     ],
     conversations: [
       ['whatsapp', 'whatsapp.ownMessageSample'],
+      ['journal', 'journal.entrySample'],
       ['instagram', 'directMessages.ownMessageSample'],
       ['facebook', 'facebook.ownMessageSample'],
+      ['tiktok', 'tiktok.ownMessageSample'],
     ],
     searches: [
       ['google', 'google.topChannels'], ['google', 'google.videoTitleSample'],
@@ -779,9 +799,9 @@
         // reader's own Instagram words, then the extras' guaranteed part, then
         // Facebook below its 10,000.
         const extras = pool === 'public' ? extrasSize(digest) : 0;
-        const rank = (source, path) => pool === 'conversations' ? (source === 'whatsapp' ? 1 : 0)
+        const rank = (source, path) => pool === 'conversations' ? (source === 'whatsapp' || source === 'journal' ? 1 : 0)
           : pool !== 'public' ? 1
-          : source === 'facebook' ? ((sizes.facebook || 0) > FACEBOOK_MIN_CHARS ? 0 : 2)
+          : source === 'facebook' || source === 'tiktok' ? ((sizes[source] || 0) > FACEBOOK_MIN_CHARS ? 0 : 2)
           : path in EXTRA_CAPS ? (extras > EXTRAS_GUARANTEED ? -1 : 1.5) : 1;
         let pick = null;
         for (const [source, path, kind] of entries) {
@@ -958,7 +978,8 @@
   // $0.086 once the card's prompt carried the MBTI ledger and its rubric
   // (MBTI_LEDGER_RULES, about 1,800 tokens more; 13,084 measured); $0.087
   // with the breadth rule and the mixed-words cap beside it (13,547).
-  const FREE_COST_CAP = 0.087;
+  // $0.088 since 27 October 2026: the rule on TikTok and journals took the worst case to $0.08703.
+  const FREE_COST_CAP = 0.088;
   // Instagram alone, at its 100,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
@@ -1004,7 +1025,7 @@
   // (14,074 measured). 14,250 with the shared-words rows on N/S and T/F
   // (14,216 measured). 14,550 with the rule for a digest of WhatsApp chats
   // alone (CHATS_ONLY_RULE, 14,493 measured).
-  const FREE_FIXED_INPUT_TOKENS = 14800;
+  const FREE_FIXED_INPUT_TOKENS = 14900;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -1023,7 +1044,7 @@
   // $0.259 for the whole unlock at most, against a US$5 payment; $0.172 when
   // nothing is added and the card stands. Held by the same selftest check as
   // the standard caps.
-  const DEEP_FREE_COST_CAP = 0.087;
+  const DEEP_FREE_COST_CAP = 0.088;
   const DEEP_COST_CAP = 0.172;
 
   // The unlock that adds data in one call (lib/prompts.js, MERGED_SYSTEM),
@@ -1041,7 +1062,7 @@
   //
   // against $0.259 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 40800;
+  const MERGED_FIXED_INPUT_TOKENS = 40920;
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
   const MERGED_COST_CAP = 0.185;
 
@@ -2327,6 +2348,9 @@
       digest.facebook && digest.facebook.postSample, digest.facebook && digest.facebook.commentSample,
       digest.facebook && digest.facebook.ownMessageSample,
       digest.whatsapp && digest.whatsapp.ownMessageSample,
+      digest.tiktok && digest.tiktok.commentSample, digest.tiktok && digest.tiktok.captionSample,
+      digest.tiktok && digest.tiktok.ownMessageSample,
+      digest.journal && digest.journal.entrySample,
     ];
     for (const list of lists) {
       if (!Array.isArray(list)) continue;
@@ -2437,6 +2461,9 @@
       digest.facebook && digest.facebook.postSample, digest.facebook && digest.facebook.commentSample,
       digest.facebook && digest.facebook.ownMessageSample,
       digest.whatsapp && digest.whatsapp.ownMessageSample,
+      digest.tiktok && digest.tiktok.commentSample, digest.tiktok && digest.tiktok.captionSample,
+      digest.tiktok && digest.tiktok.ownMessageSample,
+      digest.journal && digest.journal.entrySample,
     ];
     for (const list of lists) {
       if (!Array.isArray(list)) continue;
@@ -2453,12 +2480,12 @@
   }
   /** The reader's own name in each added source, never numbered. */
   function supplementOwners(supplements) {
-    return ['whatsapp', 'facebook'].map(key => supplements && supplements[key] && supplements[key].owner).filter(Boolean);
+    return ['whatsapp', 'facebook', 'tiktok'].map(key => supplements && supplements[key] && supplements[key].owner).filter(Boolean);
   }
   /** Everyone in the added sources' conversations (whatsapp.js, supplement.js `names`), and Facebook friends. */
   function supplementNames(supplements) {
     const s = supplements || {};
-    return ['whatsapp', 'facebook'].flatMap(key => (s[key] && Array.isArray(s[key].names)) ? s[key].names : [])
+    return ['whatsapp', 'facebook', 'tiktok'].flatMap(key => (s[key] && Array.isArray(s[key].names)) ? s[key].names : [])
       .concat(s.facebook && Array.isArray(s.facebook.friends) ? s.facebook.friends : []);
   }
 
@@ -2836,6 +2863,63 @@
       }
     }
 
+    // TikTok (October 2026): what the reader wrote and looked for there, and
+    // the counts of what they watched, liked and shared (links only, so
+    // never read). Its DMs are sampled per conversation like Messenger's.
+    if (supplements.tiktok && !digest.tiktok) {
+      const t = supplements.tiktok;
+      const ttStats = {};
+      digest.coverage.sources.push('tiktok');
+      digest.tiktok = {
+        note: 'From a TikTok data download. counts are complete: watched, liked, favorited and shared are videos (links only, ' +
+          'so what they were is unknown), comments and videos the user\'s own. commentSample is the user\'s own comments, ' +
+          'captionSample the captions of their own videos, topSearches what they searched for, topHashtags the hashtags on ' +
+          'their videos. Only the user\'s own direct messages are sampled, tagged [k1]… by conversation; a line may open with ' +
+          '«them: …», the message it replied to, shortened and de-identified.',
+        span: monthSpan(t.span),
+        counts: t.counts,
+        commentSample: sampleTexts(t.comments, LIMITS.ttComments, 240),
+        captionSample: sampleTexts(t.captions, LIMITS.ttCaptions, 240),
+        topSearches: topKeys(t.searchTerms, LIMITS.ttSearches, 3),
+        topHashtags: topKeys(t.hashtags instanceof Map ? t.hashtags : new Map(), LIMITS.ttHashtags, 2),
+        ownMessageSample: sampleConversations(t.ownMessages, {
+          limit: LIMITS.ttMessages, topThreads: LIMITS.messageTopThreads, threadCap: LIMITS.messageThreadCap,
+          minShare: LIMITS.messageMinShare, label: (key, rank) => 'k' + (rank + 1), stats: ttStats,
+        }),
+      };
+      digest.coverage.sampling.tiktokComments = { shown: digest.tiktok.commentSample.length, available: t.counts.comments };
+      digest.coverage.sampling.tiktokSearches = { shown: digest.tiktok.topSearches.length, available: countOf(t.searchTerms) };
+      if (digest.tiktok.ownMessageSample.length) {
+        digest.coverage.sampling.tiktokMessages = {
+          shown: digest.tiktok.ownMessageSample.length, available: (t.ownMessages || []).length,
+          withContext: ttStats.withContext || 0,
+        };
+      }
+    }
+
+    // A journal or notes file (October 2026): the reader's own reflective
+    // writing, its entries spread evenly through time (most recent half
+    // first, as sampleTexts does), held to journalChars.
+    if (supplements.journal && !digest.journal) {
+      const j = supplements.journal;
+      digest.coverage.sources.push('journal');
+      let entries = sampleTexts(j.entries || [], LIMITS.journalEntries, LIMITS.journalEntryChars, 20);
+      while (entries.length > 1 && listChars(entries) > LIMITS.journalChars) {
+        const per = listChars(entries) / entries.length;
+        entries = dropEvenly(entries, Math.max(1, Math.ceil((listChars(entries) - LIMITS.journalChars) / per)));
+      }
+      digest.journal = {
+        note: 'From journal or notes files the user wrote for themselves: private, reflective writing, never meant for ' +
+          'anyone else. Each line is one entry (or paragraph), with its year when the entry was dated. Read it for how ' +
+          'they think, what they worry about and hope for, and how they talk to themselves; quote it gently, and never ' +
+          'read a hard day as a diagnosis.',
+        span: monthSpan(j.span),
+        counts: j.counts,
+        entrySample: entries,
+      };
+      digest.coverage.sampling.journalEntries = { shown: entries.length, available: (j.counts && j.counts.entries) || 0 };
+    }
+
     // WhatsApp: up to three chats the reader exported one by one (see
     // docs/whatsapp.js). Each chat is counts and timings — who starts
     // conversations, how fast each side answers, when the reader writes — and
@@ -2992,6 +3076,12 @@
     if (supplements && supplements.whatsapp && digest.whatsapp) {
       dropChats(digest);
     }
+    // A new TikTok download or journal replaces the one the digest holds.
+    for (const key of ['tiktok', 'journal']) {
+      if (!(supplements && supplements[key] && digest[key])) continue;
+      delete digest[key];
+      if (digest.coverage && Array.isArray(digest.coverage.sources)) digest.coverage.sources = digest.coverage.sources.filter(x => x !== key);
+    }
     applySupplements(digest, supplements || {});
     // One digest, one numbering: nothing to renumber.
     if (adding) carryChats(digest, JSON.parse(JSON.stringify(adding)), { sameNumbering: true });
@@ -3039,6 +3129,8 @@
     'google.topChannels', 'google.videoTitleSample', 'google.topYoutubeSearches', 'google.topGoogleSearches',
     'facebook.postSample', 'facebook.commentSample', 'facebook.friends', 'facebook.topSearches',
     'facebook.ownMessageSample',
+    'tiktok.commentSample', 'tiktok.captionSample', 'tiktok.topSearches', 'tiktok.topHashtags', 'tiktok.ownMessageSample',
+    'journal.entrySample',
     'whatsapp.ownMessageSample',
   ];
 
@@ -3084,7 +3176,7 @@
   // The tags a sampled line can open with: its year, its conversation, the
   // kind of post. Only these, so a caption that happens to begin "[sic]" is
   // never mistaken for one.
-  const LINE_TAGS = /^((?:\[(?:\d{4}|[tcm]\d{1,2}|post|story|reel)\] )+)/;
+  const LINE_TAGS = /^((?:\[(?:\d{4}|[tcmk]\d{1,2}|post|story|reel)\] )+)/;
 
   /**
    * Lines written in order, the tags they share said once. A digest's lines
@@ -3126,6 +3218,8 @@
       d.whatsapp && d.whatsapp.ownMessageSample,
       d.facebook && d.facebook.postSample, d.facebook && d.facebook.commentSample,
       d.facebook && d.facebook.ownMessageSample,
+      d.tiktok && d.tiktok.commentSample, d.tiktok && d.tiktok.captionSample, d.tiktok && d.tiktok.ownMessageSample,
+      d.journal && d.journal.entrySample,
     ];
     let total = 0;
     for (const list of lists) {
@@ -3199,6 +3293,12 @@
       ['fbFriends', () => digest.facebook && digest.facebook.friends, v => { digest.facebook.friends = v; }],
       ['fbTopSearches', () => digest.facebook && digest.facebook.topSearches, v => { digest.facebook.topSearches = v; }],
       ['fbOwnMessages', () => digest.facebook && digest.facebook.ownMessageSample, v => { digest.facebook.ownMessageSample = v; }],
+      ['ttComments', () => digest.tiktok && digest.tiktok.commentSample, v => { digest.tiktok.commentSample = v; }],
+      ['ttCaptions', () => digest.tiktok && digest.tiktok.captionSample, v => { digest.tiktok.captionSample = v; }],
+      ['ttSearches', () => digest.tiktok && digest.tiktok.topSearches, v => { digest.tiktok.topSearches = v; }],
+      ['ttHashtags', () => digest.tiktok && digest.tiktok.topHashtags, v => { digest.tiktok.topHashtags = v; }],
+      ['ttOwnMessages', () => digest.tiktok && digest.tiktok.ownMessageSample, v => { digest.tiktok.ownMessageSample = v; }],
+      ['journalEntries', () => digest.journal && digest.journal.entrySample, v => { digest.journal.entrySample = v; }],
       ['waOwnMessages', () => digest.whatsapp && digest.whatsapp.ownMessageSample, v => { digest.whatsapp.ownMessageSample = v; }],
     ];
     // forModel passes lower floors: it only ever trims a request that is over
@@ -3308,6 +3408,8 @@
     google: ['videoTitleSample', 'topGoogleSearches', 'topYoutubeSearches', 'topChannels'],
     facebook: ['postSample', 'commentSample', 'fbFriends', 'fbTopSearches', 'fbOwnMessages'],
     whatsapp: ['waOwnMessages'],
+    tiktok: ['ttComments', 'ttCaptions', 'ttSearches', 'ttHashtags', 'ttOwnMessages'],
+    journal: ['journalEntries'],
   };
   /** How much of the evidence text each source takes, as the model reads it. */
   function sourceSizes(digest) {
@@ -3363,6 +3465,10 @@
     facebookFriends: d => d.facebook && d.facebook.friends,
     facebookMessages: d => d.facebook && d.facebook.ownMessageSample,
     whatsappMessages: d => d.whatsapp && d.whatsapp.ownMessageSample,
+    tiktokComments: d => d.tiktok && d.tiktok.commentSample,
+    tiktokSearches: d => d.tiktok && d.tiktok.topSearches,
+    tiktokMessages: d => d.tiktok && d.tiktok.ownMessageSample,
+    journalEntries: d => d.journal && d.journal.entrySample,
   };
   function restateShown(digest) {
     const sampling = digest.coverage && digest.coverage.sampling;
@@ -3522,6 +3628,24 @@
         friends: listOf(f.friends),
         topSearches: listOf(f.topSearches),
         ownMessageSample: listOf(f.ownMessageSample),
+      };
+    }
+    const tt = plain(d.tiktok);
+    if (tt) {
+      out.tiktok = {
+        note: tt.note, span: monthSpan(tt.span), counts: plain(tt.counts) || {},
+        commentSample: listOf(tt.commentSample),
+        captionSample: listOf(tt.captionSample),
+        topSearches: listOf(tt.topSearches),
+        topHashtags: listOf(tt.topHashtags),
+        ownMessageSample: listOf(tt.ownMessageSample),
+      };
+    }
+    const jn = plain(d.journal);
+    if (jn) {
+      out.journal = {
+        note: jn.note, span: monthSpan(jn.span), counts: plain(jn.counts) || {},
+        entrySample: listOf(jn.entrySample),
       };
     }
     // Field by field, like the rest: a chat is numbers and two short words,
@@ -3715,6 +3839,23 @@
     return digest;
   }
 
+  // The reader unticked TikTok or their journal at the review: the whole block goes.
+  function omitSource(key) {
+    return digest => {
+      if (!digest || !digest[key]) return digest;
+      delete digest[key];
+      if (digest.coverage) {
+        if (Array.isArray(digest.coverage.sources)) digest.coverage.sources = digest.coverage.sources.filter(s => s !== key);
+        if (digest.coverage.sampling) {
+          for (const name of Object.keys(digest.coverage.sampling)) if (name.startsWith(key)) delete digest.coverage.sampling[name];
+        }
+      }
+      return digest;
+    };
+  }
+  const omitTikTok = omitSource('tiktok');
+  const omitJournal = omitSource('journal');
+
   // The reader unticked WhatsApp at the review: the whole block goes, counts
   // and all, since every number in it is about their private chats.
   function omitWhatsApp(digest) {
@@ -3745,7 +3886,7 @@
   // The conversation tag a message line carries ("[t3]", "[c1]", "[m2]"), or ''.
   function lineChat(item) {
     const m = typeof item === 'string' ? LINE_TAGS.exec(item) : null;
-    const tag = m && /\[([tcm]\d{1,2})\]/.exec(m[1]);
+    const tag = m && /\[([tcmk]\d{1,2})\]/.exec(m[1]);
     return tag ? tag[1] : '';
   }
 
@@ -3860,6 +4001,6 @@
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,
     omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome,
-    omitFacebookPosts, omitFacebookConnections, omitFacebookMessages, omitWhatsApp,
+    omitFacebookPosts, omitFacebookConnections, omitFacebookMessages, omitWhatsApp, omitTikTok, omitJournal,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

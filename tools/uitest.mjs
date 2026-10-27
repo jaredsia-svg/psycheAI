@@ -534,6 +534,10 @@ async function answerReview(page, options) {
 // to go on ("Updating your data sources may change your Psyche Card"); this
 // answers it, so the file picker opens either way.
 async function clickSource(pg, selector) {
+  // An optional row folded behind "Optional data" (27 October 2026) is unfolded first.
+  if (await pg.locator(selector).isHidden().catch(() => false) &&
+      await pg.locator('#datasources-more').isVisible().catch(() => false) &&
+      (await pg.getAttribute('#datasources-more', 'aria-expanded')) !== 'true') await pg.click('#datasources-more');
   await pg.click(selector);
   const confirm = pg.locator('#datasources-confirm');
   try { await confirm.waitFor({ state: 'visible', timeout: 400 }); } catch (error) { return; }
@@ -766,10 +770,10 @@ try {
     await page.click('#datasources-more');
     const refolded = await page.locator('#datasources-dialog .ds-row[data-row="google"]').isHidden();
     await page.click('#datasources-more');
-    check('Optional data, between Back and Continue and over Restore, unfolds Google and Facebook under Optional, and folds them again',
+    check('Optional data, between Back and Continue and over Restore, unfolds Google, Facebook, TikTok and Journal under Optional, and folds them again',
       spot.between && spot.above && spot.text === 'Optional data' && spot.expanded === 'false' &&
-        JSON.stringify(opened) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook']) &&
-        openCount === 4 && refolded,
+        JSON.stringify(opened) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook', 'tiktok', 'journal']) &&
+        openCount === 6 && refolded,
       JSON.stringify({ spot, opened, openCount, refolded }));
   }
   {
@@ -827,8 +831,10 @@ try {
   check('the blurb does not spend its first line instructing the obvious',
     !/^load your data below/i.test(askBlurb), askBlurb);
 
-  check('the first-run popout offers Instagram, WhatsApp, Google and Facebook',
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4 &&
+  check('the first-run popout offers Instagram, WhatsApp, Google, Facebook, TikTok and a journal',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 6 &&
+    (await page.locator('#datasources-dialog [data-datasource="tiktok"]').isVisible()) === true &&
+    (await page.locator('#datasources-dialog [data-datasource="journal"]').isVisible()) === true &&
     (await page.locator('#datasources-dialog [data-datasource="facebook"]').isVisible()) === true);
   check('and its download instructions include Facebook to match',
     (await page.locator('#datasources-dialog [data-help="facebook"]').count()) === 1 &&
@@ -1513,10 +1519,10 @@ try {
         help: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]:not([hidden]) h3')].map(h => h.textContent),
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
-      check('a new reader is offered Instagram, WhatsApp chats, Google Takeout and Facebook, one line each',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook']), JSON.stringify(shown.rows));
+      check('a new reader is offered Instagram, WhatsApp chats, Google Takeout, Facebook, TikTok and a journal, one line each',
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
-        JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook']) &&
+        JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
         JSON.stringify(shown.help));
       const [igPick] = await Promise.all([
@@ -6518,7 +6524,7 @@ try {
       check('and Continue goes on to "Your data for the Psyche Report", WhatsApp second',
         /Your data for the Psyche Report/.test(await low.locator('#datasources-dialog-title').innerText()) &&
           (await low.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')]
-            .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook');
+            .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook,tiktok,journal');
       await low.click('#datasources-back').catch(() => low.keyboard.press('Escape'));
       await dialogClosed(low, '#datasources-dialog').catch(() => {});
       await frames(low);
@@ -8671,8 +8677,8 @@ try {
   // Google and Facebook folded behind Optional data since 27 October 2026.
   const foldedRows = await page.locator('#datasources-dialog .mode-option:visible').count();
   await page.click('#datasources-more');
-  check('it offers Instagram and WhatsApp, and Google and Facebook behind Optional data',
-    foldedRows === 2 && (await page.locator('#datasources-dialog .mode-option:visible').count()) === 4 &&
+  check('it offers Instagram and WhatsApp, and Google, Facebook, TikTok and a journal behind Optional data',
+    foldedRows === 2 && (await page.locator('#datasources-dialog .mode-option:visible').count()) === 6 &&
     await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible() &&
     await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible(),
     (await page.locator('#datasources-dialog .mode-option:visible').count()) + ' rows shown');
@@ -9372,9 +9378,9 @@ try {
   page.off('filechooser', noteChooser);
   check('the button opens the data-sources popout, without asking for anything through a native picker yet',
     (await page.locator('#datasources-dialog').isVisible()) && !popoutPickerOpened);
-  check('all four sources are offered, Instagram first and WhatsApp second, as at the first upload',
+  check('all six sources are offered, Instagram first and WhatsApp second, as at the first upload',
     (await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option')]
-      .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook');
+      .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook,tiktok,journal');
   check('Instagram already shows loaded, and its row is still enabled — replacing it is allowed',
     await page.evaluate(() => {
       const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
@@ -9959,6 +9965,8 @@ try {
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
   check('before anything is tapped, the popout says nothing about the card changing',
     !(await page.locator('#datasources-confirm').isVisible()));
+  // Folded behind Optional data since 27 October 2026.
+  if ((await page.getAttribute('#datasources-more', 'aria-expanded')) !== 'true') await page.click('#datasources-more');
   check('it lists every source, Facebook included, so more can be added before paying',
     ['instagram', 'google', 'facebook'].every(Boolean) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()) &&
@@ -13910,7 +13918,7 @@ try {
       const a = await readChats(first, ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x', look);
       check('one file box: a first upload asks for one of Instagram or the chats, sets Continue back, and holds it until it has one',
         seen.empty === 'Required (At least one)' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
-          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook']),
+          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes']),
         JSON.stringify(seen));
       // One chat in: the heading asks for one more, and Continue says so (26 October 2026).
       {

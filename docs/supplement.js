@@ -673,6 +673,267 @@
     return out;
   }
 
+  // ---------- TikTok (October 2026) ----------
+  //
+  // TikTok's "Download your data" in JSON: one file, user_data_tiktok.json
+  // (user_data.json before 2024), on its own or in a .zip. Its sections are
+  // named in English and have moved between versions ("Activity" → "Your
+  // Activity", "Comment" → "Comments"), so it is read by shape rather than by
+  // path: an array of records is classified by the keys its records carry and
+  // the section names above it. Watch, like and share histories are links
+  // only, so they are counted, never read; what is read is what the reader
+  // wrote or looked for: their comments, their own videos' captions, their
+  // searches, and their side of their direct messages (ownSide, as for
+  // Instagram and Messenger: each with the one message it answered,
+  // de-identified, and nothing else of the other side).
+  function emptyTikTok() {
+    return {
+      source: 'tiktok',
+      comments: [],
+      captions: [],
+      searchTerms: new Map(),
+      searches: [],
+      hashtags: new Map(),
+      ownMessages: [],
+      // Usernames in the reader's DMs, held in memory only so digest.js can
+      // number them where the reader's own words mention them; never copied
+      // into the digest.
+      names: [],
+      counts: { watched: 0, liked: 0, favorited: 0, shared: 0, comments: 0, videos: 0, searches: 0,
+        following: 0, followers: 0, threads: 0, messages: 0, received: 0 },
+      kinds: {},
+      span: { first: 0, last: 0 },
+      owner: '',
+    };
+  }
+  // "2024-03-01 21:14:09", in UTC as TikTok writes it.
+  function tiktokSeconds(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 0;
+    const ms = Date.parse(/^\d{4}-\d{2}-\d{2} \d/.test(raw) ? raw.replace(' ', 'T') + 'Z' : raw);
+    return Number.isFinite(ms) ? Math.round(ms / 1000) : 0;
+  }
+  function pick(record, ...keys) {
+    for (const key of keys) {
+      const value = record && record[key];
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+    return '';
+  }
+  function readTikTokData(out, data) {
+    const profile = (function find(node, depth) {
+      if (!node || typeof node !== 'object' || depth > 6) return null;
+      if (node.ProfileMap || node.profileMap) return node.ProfileMap || node.profileMap;
+      for (const key of Object.keys(node)) {
+        const hit = find(node[key], depth + 1);
+        if (hit) return hit;
+      }
+      return null;
+    })(data, 0);
+    if (profile) out.owner = out.owner || trimText(pick(profile, 'userName', 'username', 'UserName'), 80);
+    const chats = [];
+    const visit = (node, path, depth) => {
+      if (!node || typeof node !== 'object' || depth > 8) return;
+      if (Array.isArray(node)) {
+        const records = node.filter(item => item && typeof item === 'object' && !Array.isArray(item));
+        if (!records.length) return;
+        const where = path.join(' / ').toLowerCase();
+        const sample = records[0];
+        if ('SearchTerm' in sample || 'searchTerm' in sample) {
+          for (const r of records) {
+            const term = trimText(pick(r, 'SearchTerm', 'searchTerm'), LIMITS.textChars);
+            if (!term) continue;
+            out.counts.searches++;
+            noteSpan(out.span, tiktokSeconds(r.Date || r.date));
+            bump(out.searchTerms, term.toLowerCase());
+            keep(out.searches, term, LIMITS.searchBuffer);
+            out.kinds.searches = true;
+          }
+        } else if (/chat history/.test(where) && ('Content' in sample || 'content' in sample)) {
+          chats.push(records);
+        } else if (/comment/.test(where) && ('Comment' in sample || 'comment' in sample)) {
+          for (const r of records) {
+            const text = trimText(pick(r, 'Comment', 'comment'), LIMITS.textChars);
+            if (!text) continue;
+            out.counts.comments++;
+            noteSpan(out.span, tiktokSeconds(r.Date || r.date));
+            keep(out.comments, text, LIMITS.commentBuffer);
+            out.kinds.comments = true;
+          }
+        } else if (/hashtag/.test(where) && ('HashtagName' in sample || 'hashtagName' in sample)) {
+          for (const r of records) bump(out.hashtags, trimText(pick(r, 'HashtagName', 'hashtagName'), 60).toLowerCase());
+        } else if (/brows|watch/.test(where)) {
+          out.counts.watched += records.length;
+          for (const r of records) noteSpan(out.span, tiktokSeconds(r.Date || r.date));
+          out.kinds.watched = true;
+        } else if (/like list|liked/.test(where)) {
+          out.counts.liked += records.length;
+          out.kinds.liked = true;
+        } else if (/favou?rite/.test(where)) {
+          out.counts.favorited += records.length;
+        } else if (/share/.test(where)) {
+          out.counts.shared += records.length;
+        } else if (/following/.test(where)) {
+          out.counts.following += records.length;
+          out.kinds.following = true;
+        } else if (/follower/.test(where)) {
+          out.counts.followers += records.length;
+        } else if (/video/.test(where) && ('Link' in sample || 'VideoLink' in sample || 'Desc' in sample)) {
+          for (const r of records) {
+            out.counts.videos++;
+            noteSpan(out.span, tiktokSeconds(r.Date || r.date));
+            const text = trimText(pick(r, 'Desc', 'Description', 'Title', 'Caption'), LIMITS.textChars);
+            if (text) keep(out.captions, text, LIMITS.postBuffer);
+            out.kinds.videos = true;
+          }
+        }
+        return;
+      }
+      for (const key of Object.keys(node)) visit(node[key], path.concat(key), depth + 1);
+    };
+    visit(data, [], 0);
+    // Direct messages last, once the owner is known: each "Chat History with
+    // …" is one conversation, a bare number here, so nobody is named.
+    for (const records of chats) {
+      const thread = out.counts.threads++;
+      const list = [];
+      const senders = new Set();
+      for (const r of records) {
+        const sender = trimText(pick(r, 'From', 'from'), 80);
+        const ts = tiktokSeconds(r.Date || r.date);
+        noteSpan(out.span, ts);
+        out.counts.messages++;
+        if (sender) senders.add(sender);
+        if (!(out.owner && sender === out.owner)) out.counts.received++;
+        const text = String(fixText(pick(r, 'Content', 'content'))).replace(/\s+/g, ' ').trim();
+        if (text) list.push({ sender, text, ts });
+      }
+      if (!out.owner) continue;
+      const others = [...senders].filter(n => n !== out.owner);
+      for (const name of others) if (!out.names.includes(name)) out.names.push(name);
+      for (const own of root.PsycheInstagram.ownSide(list, out.owner, { blankOwnText: true, otherNames: others })) {
+        if (out.ownMessages.length >= LIMITS.commentBuffer) break;
+        out.ownMessages.push(Object.assign(own, { thread, len: own.text.length, text: root.PsycheInstagram.keepEnds(own.text) }));
+      }
+      out.kinds.messages = true;
+    }
+  }
+  /** Whether a parsed JSON file is a TikTok data download. */
+  function looksTikTok(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+    const keys = Object.keys(data).map(k => k.toLowerCase());
+    const hits = ['activity', 'your activity', 'comment', 'comments', 'direct message', 'direct messages', 'profile',
+      'video', 'videos', 'tiktok live', 'tiktok shopping', 'ads and data', 'app settings', 'likes and favorites']
+      .filter(k => keys.includes(k)).length;
+    return hits >= 3;
+  }
+  async function readTikTok(files, options) {
+    const opts = options || {};
+    const report = opts.onProgress || function () {};
+    const out = emptyTikTok();
+    let found = 0;
+    let sawHtml = false;
+    for (const file of Array.from(files || [])) {
+      const name = String((file && file.name) || '').toLowerCase();
+      if (name.endsWith('.json')) {
+        report({ phase: 'parse', done: 0, total: 1, label: 'Reading your data on your device. No data is being sent out.' });
+        let data = null;
+        try { data = JSON.parse(await file.text()); } catch (e) { data = null; }
+        if (looksTikTok(data)) { readTikTokData(out, data); found++; }
+        continue;
+      }
+      const seen = await eachJson([file], (path, data) => {
+        if (looksTikTok(data)) { readTikTokData(out, data); found++; }
+      }, report);
+      sawHtml = sawHtml || seen.sawHtml;
+    }
+    if (!found) {
+      throw new Error(sawHtml
+        ? 'This TikTok data is in TXT/HTML format. Request it again in TikTok and choose JSON.'
+        : 'This does not look like your TikTok data. In TikTok, request your data in JSON format and choose the file it sends you.');
+    }
+    const kinds = Object.keys(out.kinds);
+    if (kinds.length < SUPPLEMENT_MINIMUM) {
+      throw new Error('Only ' + kinds.length + ' kind' + (kinds.length === 1 ? '' : 's') +
+        ' of TikTok activity could be read from this file. Request your data again with All data selected.');
+    }
+    out.span = finishSpan(out.span);
+    report({ phase: 'done', done: 1, total: 1, label: 'Finished reading' });
+    return out;
+  }
+
+  // ---------- a journal or notes (October 2026) ----------
+  //
+  // Plain text or Markdown the reader wrote themselves: a journal, Day One or
+  // Notion exported as Markdown, Apple Notes copied out. The most reflective
+  // writing anybody gives PsycheAI, so it is read as entries: a dated heading
+  // ("2024-03-01", "1 March 2024", "March 1, 2024", "# 3/1/24") starts one,
+  // and with no dates, paragraphs are the entries. Nothing in it is anyone
+  // else's words, but it can name people: names the other sources know are
+  // numbered in the digest, and the review's "Leave out anything mentioning"
+  // takes the rest.
+  const MONTHS = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+  const DATE_LINE = new RegExp('^\\s*(?:#+\\s*)?(?:[a-z]+,?\\s+)?(?:' +
+    '(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})' +
+    '|(\\d{1,2})\\s+(' + MONTHS + ')\\.?,?\\s+(\\d{4})' +
+    '|(' + MONTHS + ')\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})' +
+    '|(\\d{1,2})[/.](\\d{1,2})[/.](\\d{2,4})' +
+    ')\\b[^\\n]{0,60}$', 'i');
+  function journalDate(line) {
+    const m = DATE_LINE.exec(line);
+    if (!m) return 0;
+    const month = name => 1 + ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(name.slice(0, 3).toLowerCase());
+    let y, mo, d;
+    if (m[1]) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if (m[4]) { d = +m[4]; mo = month(m[5]); y = +m[6]; }
+    else if (m[7]) { mo = month(m[7]); d = +m[8]; y = +m[9]; }
+    else { d = +m[10]; mo = +m[11]; y = +m[12]; if (y < 100) y += 2000; if (mo > 12) { const t = d; d = mo; mo = t; } }
+    if (!(y > 1990 && y < 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return 0;
+    return Math.round(Date.UTC(y, mo - 1, d) / 1000);
+  }
+  function journalEntries(text) {
+    const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+    const dated = [];
+    let current = null;
+    for (const line of lines) {
+      const ts = journalDate(line);
+      if (ts) { current = { ts, lines: [] }; dated.push(current); continue; }
+      if (current) current.lines.push(line);
+    }
+    const clean = t => t.replace(/^#+\s*/gm, '').replace(/[*_`>]+/g, '').replace(/\s+/g, ' ').trim();
+    if (dated.length >= 2) {
+      return dated.map(e => ({ ts: e.ts, text: clean(e.lines.join('\n')) })).filter(e => e.text.length >= 20);
+    }
+    return String(text || '').replace(/\r\n?/g, '\n').split(/\n\s*\n/).map(p => ({ ts: 0, text: clean(p) }))
+      .filter(e => e.text.length >= 20);
+  }
+  async function readJournal(files, options) {
+    const opts = options || {};
+    const report = opts.onProgress || function () {};
+    const out = { source: 'journal', entries: [], counts: { files: 0, entries: 0, words: 0, dated: 0 }, kinds: {}, span: { first: 0, last: 0 } };
+    for (const file of Array.from(files || [])) {
+      report({ phase: 'parse', done: 0, total: 1, label: 'Reading your data on your device. No data is being sent out.' });
+      const text = fixText(await file.text());
+      const entries = journalEntries(text);
+      if (!entries.length) continue;
+      out.counts.files++;
+      for (const e of entries) {
+        out.counts.entries++;
+        out.counts.words += e.text.split(/\s+/).length;
+        if (e.ts) { out.counts.dated++; noteSpan(out.span, e.ts); }
+        if (out.entries.length < LIMITS.postBuffer) out.entries.push({ ts: e.ts, text: e.text.slice(0, 4000) });
+      }
+    }
+    if (out.counts.words < 150) {
+      throw new Error('There is too little writing in this file to read. A journal or notes file of a few pages or more works best.');
+    }
+    out.span = finishSpan(out.span);
+    report({ phase: 'done', done: 1, total: 1, label: 'Finished reading' });
+    return out;
+  }
+  // A WhatsApp export's line: a date, a time, then a sender ("12/03/2024, 21:14 - Ann: …" or "[12/03/2024, 21:14:09] Ann: …").
+  const WHATSAPP_LINE = /^\u200e?\[?\d{1,4}[/.-]\d{1,2}[/.-]\d{2,4},?\s+\d{1,2}[:.]\d{2}/m;
+
   // ---------- which export a file is ----------
   //
   // The data popout has one box for every source (October 2026): the reader
@@ -705,12 +966,25 @@
 
   async function detectSource(file) {
     const name = String((file && file.name) || '');
-    if (/\.txt$/i.test(name)) return 'whatsapp';
+    // A .txt is a WhatsApp chat when its lines are dated messages, and a
+    // journal or notes file otherwise; Markdown is always one (October 2026).
+    if (/\.(md|markdown)$/i.test(name)) return 'journal';
+    if (/\.txt$/i.test(name)) {
+      let head = '';
+      try { head = await file.slice(0, 8192).text(); } catch (e) { return 'whatsapp'; }
+      return WHATSAPP_LINE.test(head) ? 'whatsapp' : 'journal';
+    }
+    if (/\.json$/i.test(name)) {
+      let head = '';
+      try { head = await file.slice(0, 65536).text(); } catch (e) { return 'unknown'; }
+      return /"(Activity|Your Activity|Direct Messages?|Profile Information|ProfileMap)"/.test(head) ? 'tiktok' : 'unknown';
+    }
     if (!/\.zip$/i.test(name)) return 'unknown';
     let entries;
     try { entries = (await root.PsycheZip.open(file)).entries; } catch (error) { return 'unknown'; }
     const paths = entries.map(e => String(e.name || '').toLowerCase());
     if (paths.some(p => /(^|\/)takeout\/|my ?activity\.json$|(^|\/)my activity\//.test(p))) return 'google';
+    if (paths.some(p => /(^|\/)user_data(_tiktok)?\.json$/.test(p))) return 'tiktok';
     // Only for an archive with data files in it: a part of an export that is all photos says nothing.
     const meta = paths.some(p => p.endsWith('.json')) ? metaProduct(paths, [name]) : '';
     if (meta) return meta;
@@ -731,7 +1005,8 @@
 
   root.PsycheSupplement = {
     __testing,
-    readGoogle, readFacebook, detectSource, metaProduct, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
+    readGoogle, readFacebook, readTikTok, readJournal, detectSource, metaProduct, LIMITS, SOURCES, SUPPLEMENT_MINIMUM,
+    journalEntries, looksTikTok,
     // Exported for the tests, which hold the locale-proofing directly rather
     // than inferring it from a parsed archive.
     hostOf, queryOf, productOf, stripLeadingVerb, searchShape,
