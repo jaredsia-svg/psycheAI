@@ -4000,7 +4000,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .datasources-dialog .supplement-actions { flex-wrap: nowrap; align-items: center; }
 .datasources-dialog .ds-mid { display: flex; flex-direction: column; align-items: center; gap: .3rem; min-width: 0; }
 .datasources-dialog .ds-mid .link-btn { font-size: .78rem; line-height: 1.25; text-align: center; }
-.datasources-dialog .ds-more { color: var(--ink-soft); }
+.datasources-dialog .ds-more { display: block; width: 100%; border: 0; border-top: 1px solid var(--line); background: transparent;
+  padding: .5rem .75rem .45rem; text-align: left; font-family: inherit; cursor: pointer; }
+.datasources-dialog .ds-more[hidden] { display: none; }
+@media (hover: hover) { .datasources-dialog .ds-more:hover { color: var(--accent); } }
 .datasources-dialog .ds-more::after { content: ' ▾'; }
 .datasources-dialog .ds-more[aria-expanded="true"]::after { content: ' ▴'; }
 .datasources-dialog .ds-mid .link-btn[hidden] { display: none; }

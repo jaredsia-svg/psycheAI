@@ -1361,6 +1361,9 @@
          (or an optional file is loaded). Placed by askDataSources, which moves rows. -->
     <p class="ds-group" id="datasources-minimum" hidden></p>
     <p class="ds-group" id="datasources-optional" hidden></p>
+    <!-- On a first upload, "Optional ▾" folds the optional rows, a small line inside the box under the
+         required ones (27 October 2026; it was "Optional data" between Back and Continue). -->
+    <button class="ds-group ds-more" id="datasources-more" type="button" aria-expanded="false" hidden>Optional</button>
     <div class="ds-row" data-row="instagram">
     <button class="mode-option" data-datasource="instagram" type="button">
       <span class="mode-icon">📷</span>
@@ -1530,7 +1533,6 @@
          "Optional data" unfolds the Google and Facebook rows, and under it
          Restore from a backup, in a browser with no card. -->
     <span class="btn-spacer ds-mid">
-      <button class="link-btn ds-more" id="datasources-more" type="button" aria-expanded="false" hidden>Optional data</button>
       <button class="link-btn datasources-restore" id="restore-open" type="button" hidden>Restore from a backup</button>
     </span>
     <button class="btn" id="datasources-continue" type="button">Continue</button>

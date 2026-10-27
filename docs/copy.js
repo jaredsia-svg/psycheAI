@@ -993,7 +993,7 @@
     dataSourcesNeedOneDone: 'Required',
     dataSourcesNeedOneMet: 'Required: done',
     dataSourcesOptional: 'Optional',
-    dataSourcesMore: 'Optional data',
+    dataSourcesMore: 'Optional',
     startNeedsMinimum: (min = 2) => 'Load your Instagram data, or ' + min + ' WhatsApp chats, to get started.',
     startNeedsMore: n => 'Add ' + n + ' more WhatsApp ' + (n === 1 ? 'chat' : 'chats') + ', or your Instagram data, to get started.',
     // A file the box cannot take, and one for a source this popout does not offer.

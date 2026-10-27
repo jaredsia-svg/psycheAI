@@ -6008,7 +6008,8 @@
       optionalOpen = open;
       const shown = optionalRows.filter(source => open || optionalLoaded(source));
       for (const source of optionalRows) rowWrap(source).hidden = !shown.includes(source);
-      optionalHead.hidden = !shown.length;
+      // "Optional ▾" is the heading itself now: the plain one stays out.
+      optionalHead.hidden = true;
       moreButton.setAttribute('aria-expanded', String(open));
     };
     if (settings.requireMinimum) {
@@ -6017,7 +6018,7 @@
     }
     optionalHead.textContent = TEXT.dataSourcesOptional;
     optionalHead.hidden = true;
-    if (optionalRows.length) optionsBox.insertBefore(optionalHead, rowWrap(optionalRows[0]));
+    if (optionalRows.length) optionsBox.insertBefore(moreButton, rowWrap(optionalRows[0]));
     moreButton.textContent = TEXT.dataSourcesMore;
     // "How?" on a row opens that source's steps alone, below the rows; the
     // same again closes them.

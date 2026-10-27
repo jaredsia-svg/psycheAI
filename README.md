@@ -1471,7 +1471,9 @@ file types the box now sorts by itself, and kept the help a first-timer needs at
   focus came back to the row from the file picker, so the row stayed pink, and it was pink too while its
   file was read. Now a tap flashes it, a mouse still gets it on hover, the keyboard an outline. The
   WhatsApp row reads *2–3 WhatsApp chats* (*≥2* for a day).
-- Restore from a backup sits between Back and Continue, under *Optional data* (27 October 2026).
+- Restore from a backup sits between Back and Continue (27 October 2026), alone since *Optional ▾* moved
+  into the box: a small line under the WhatsApp row, styled like the Required heading, that folds the
+  optional rows under it.
 - **Google and Facebook are folded away on a first upload** (27 October 2026): four rows read as four
   things to fetch, when Instagram or two chats is all a first read needs. *Optional data ▾*, a quiet grey
   link between Back and Continue, unfolds them under *Optional*; a Google or Facebook file dropped in the

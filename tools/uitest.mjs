@@ -754,17 +754,19 @@ try {
   const groups = await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-options > :not([hidden])')]
     .map(el => el.matches('.ds-group') ? '#' + el.textContent.trim() : el.dataset.row));
   check('a first upload groups its rows: Need one (Instagram, WhatsApp), then Optional (Google, Facebook), each row one line with a How?',
-    JSON.stringify(groups) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp']) &&
+    JSON.stringify(groups) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp', '#Optional']) &&
       await page.locator('#datasources-dialog .ds-row:not([hidden]) .ds-how').count() === 2,
     JSON.stringify(groups));
-  // The optional rows are folded (27 October 2026): "Optional data", between
-  // Back and Continue over Restore from a backup, unfolds them, and again folds them.
+  // The optional rows are folded (27 October 2026): "Optional ▾", a small line inside the box under the
+  // WhatsApp row, unfolds them, and again folds them; Restore from a backup is left alone between the buttons.
   {
     const spot = await page.evaluate(() => {
       const r = el => document.querySelector(el).getBoundingClientRect();
       const more = r('#datasources-more'), back = r('#datasources-back'), go = r('#datasources-continue'), restore = r('#restore-open');
-      return { between: more.left >= back.right && more.right <= go.left && restore.left >= back.right && restore.right <= go.left,
-        above: more.bottom <= restore.top, text: document.querySelector('#datasources-more').textContent,
+      const wa = r('#datasources-dialog .ds-row[data-row="whatsapp"]'), box = r('#datasources-dialog .mode-options');
+      return { between: restore.left >= back.right && restore.right <= go.left,
+        above: more.top >= wa.bottom - 1 && more.bottom <= box.bottom + 1 && more.bottom < back.top,
+        text: document.querySelector('#datasources-more').textContent,
         expanded: document.querySelector('#datasources-more').getAttribute('aria-expanded') };
     });
     await page.click('#datasources-more');
@@ -774,8 +776,8 @@ try {
     await page.click('#datasources-more');
     const refolded = await page.locator('#datasources-dialog .ds-row[data-row="google"]').isHidden();
     await page.click('#datasources-more');
-    check('Optional data, between Back and Continue and over Restore, unfolds Google, Facebook, TikTok and Journal under Optional, and folds them again',
-      spot.between && spot.above && spot.text === 'Optional data' && spot.expanded === 'false' &&
+    check('Optional, a small line in the box under WhatsApp, unfolds Google, Facebook, TikTok and Journal under it, and folds them again',
+      spot.between && spot.above && spot.text === 'Optional' && spot.expanded === 'false' &&
         JSON.stringify(opened) === JSON.stringify(['#Required (At least one)', 'instagram', 'whatsapp', '#Optional', 'google', 'facebook', 'tiktok', 'journal']) &&
         openCount === 6 && refolded,
       JSON.stringify({ spot, opened, openCount, refolded }));
