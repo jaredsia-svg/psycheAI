@@ -2459,11 +2459,19 @@
     setHtml(dialog.querySelector('.hub-dialog-body'), html);
     if (!dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
   }
+  // A click on the backdrop closes a popout; one on its own edge does not
+  // (27 October 2026). The backdrop and the dialog's padding are both the
+  // <dialog> as the click's target, so it is told by where the click landed.
+  function clickedOutside(dialog, event) {
+    if (event.target !== dialog) return false;
+    const box = dialog.getBoundingClientRect();
+    return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+  }
   for (const id of ['hub-link-dialog', 'hub-method-dialog', 'hub-confirm-dialog']) {
     const dialog = document.getElementById(id);
     if (!dialog) continue;
     dialog.querySelector('.hub-dialog-close').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener('click', event => { if (clickedOutside(dialog, event)) dialog.close(); });
   }
 
   document.addEventListener('click', event => {
@@ -2653,6 +2661,9 @@
   // downloads until the reader says so.
   // Locked (AI Personal Context before the report): the same words, with
   // Download greyed out and why.
+  let afterHubBackup = null;
+  const hubConfirmDialog = document.getElementById('hub-confirm-dialog');
+  if (hubConfirmDialog) hubConfirmDialog.addEventListener('close', () => { afterHubBackup = null; });
   function openHubConfirm(kind, locked) {
     const C = Copy.STRUCTURED.hub.confirm[kind];
     const tick = hubIcon('tick');
@@ -2668,7 +2679,11 @@
     const button = event.target.closest('[data-hub-confirm]');
     if (!button) return;
     const dialog = document.getElementById('hub-confirm-dialog');
-    if (button.dataset.hubConfirm === 'backup') saveBackup({ quiet: true });
+    if (button.dataset.hubConfirm === 'backup') {
+      saveBackup({ quiet: true });
+      // Opened from the report's keep note: that note goes once the file is saved.
+      if (afterHubBackup) afterHubBackup();
+    }
     else if (button.dataset.hubConfirm === 'ai') downloadAiProfile();
     dialog.close();
   });
@@ -9239,10 +9254,13 @@
       '<button type="button" class="report-keep-close" aria-label="' + esc(TEXT.close) + '">✕</button>';
     note.querySelector('.report-keep-save').addEventListener('click', exportPdf);
     // A full backup keeps it too (with the card, the syncs and the questions), so it puts the note away the same way.
+    // The same popout as My Psyche's Save Backup (27 October 2026): nothing downloads until Download backup.
     note.querySelector('.report-keep-backup').addEventListener('click', () => {
-      saveBackup();
-      store.write(KEYS.pdfSaved, true);
-      removeHeadNote(note);
+      openHubConfirm('backup');
+      afterHubBackup = () => {
+        store.write(KEYS.pdfSaved, true);
+        removeHeadNote(note);
+      };
     });
     note.querySelector('.report-keep-close').addEventListener('click', () => {
       keepNoteClosed = true;
@@ -10999,7 +11017,7 @@
   // reader's next choice to make, now with a copy kept.
   $('#delete-backup').addEventListener('click', saveBackup);
   $('#delete-dialog').addEventListener('click', event => {
-    if (event.target === $('#delete-dialog')) $('#delete-dialog').close();
+    if (clickedOutside($('#delete-dialog'), event)) $('#delete-dialog').close();
   });
   $('#delete-confirm').addEventListener('click', () => {
     $('#delete-dialog').close();
@@ -11073,7 +11091,7 @@
   }
   $('#save-backup').addEventListener('click', () => saveBackup());
   $('#backup-dialog-ok').addEventListener('click', () => $('#backup-dialog').close());
-  $('#backup-dialog').addEventListener('click', event => { if (event.target === $('#backup-dialog')) $('#backup-dialog').close(); });
+  $('#backup-dialog').addEventListener('click', event => { if (clickedOutside($('#backup-dialog'), event)) $('#backup-dialog').close(); });
 
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 

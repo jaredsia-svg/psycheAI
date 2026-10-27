@@ -1226,6 +1226,34 @@ try {
         /^Your Psyche Report is only saved in this browser, and not on PsycheAI’s servers\. Download PDF or full backup to keep it\./.test(keepText.trim()) &&
           !/Safari/.test(keepText) &&
           await halfPage.locator('#profile-body .report-keep-note .report-keep-backup').count() === 1, keepText);
+      // Its Backup opens My Psyche's Save Backup popout (27 October 2026): nothing downloads, and the note
+      // stays, until Download backup; a click on the popout's own edge does not close it.
+      {
+        let early = false;
+        const onEarly = () => { early = true; };
+        halfPage.on('download', onEarly);
+        await halfPage.click('#profile-body .report-keep-backup');
+        await halfPage.waitForSelector('#hub-confirm-dialog[open]', { timeout: 5000 }).catch(() => {});
+        const box = await halfPage.locator('#hub-confirm-dialog').boundingBox();
+        await halfPage.mouse.click(box.x + 3, box.y + box.height / 2);
+        const afterEdge = await halfPage.evaluate(() => document.querySelector('#hub-confirm-dialog').open);
+        await halfPage.waitForTimeout(300);
+        halfPage.off('download', onEarly);
+        const [backup] = await Promise.all([
+          halfPage.waitForEvent('download', { timeout: 15000 }).catch(() => null),
+          halfPage.click('#hub-confirm-dialog [data-hub-confirm="backup"]'),
+        ]);
+        const noteGone = (await halfPage.locator('.report-keep-note').count()) === 0;
+        check('the note\'s Backup opens the Save Backup popout, which an edge click leaves open; only Download backup saves, and the note goes',
+          !early && afterEdge && Boolean(backup) && /\.json$/.test(backup.suggestedFilename()) && noteGone,
+          JSON.stringify({ early, afterEdge, file: backup && backup.suggestedFilename(), noteGone }));
+        // Bring the note back for the PDF checks below.
+        await halfPage.evaluate(() => localStorage.removeItem('psycheai_pdf_saved'));
+        await halfPage.reload();
+        await halfPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+        await halfPage.click('#nav-full');
+        await halfPage.waitForSelector('#profile-body .report-keep-note', { timeout: 30000 }).catch(() => {});
+      }
       const [saved] = await Promise.all([
         halfPage.waitForEvent('download', { timeout: 15000 }).catch(() => null),
         halfPage.click('#profile-body .report-keep-save'),

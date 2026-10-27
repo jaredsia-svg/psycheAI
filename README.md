@@ -1518,6 +1518,18 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**A popout closes from outside it, not from its edge** (27 October 2026). The hub's popouts (Save
+Backup, AI Personal Context, the link and method sheets), the backup-saved note and Delete everything
+closed on any click whose target was the <dialog> itself, which is the backdrop *and* the box's own
+padding, so a tap near the edge closed them. Now the click must land outside the box
+(`clickedOutside`). And the report's keep note's *Backup* opens the same Save Backup popout as My
+Psyche instead of downloading at once: nothing is saved, and the note stays, until *Download backup*.
+
+**The privacy page names the locked box** (27 October 2026). Its line on a shared link adds that this
+is client-side encryption, the idea WhatsApp and Signal use for messages, where most cloud services
+encrypt what they store but keep the key, so can read it. True of the code: the card is sealed with
+AES-GCM in the browser and the key travels after the link's #, which no browser sends (lib/links.js).
+
 **The wait, in words** (27 October 2026). The live count beside an analysis, a sync and the report
 reads *1 minute 30 seconds* rather than *90s* (`TEXT.elapsed`), and the wait is said as *2–4 minutes to
 complete* rather than *a few minutes* (the working note, `premiumGenerating`, `premiumRefreshingFree`).
