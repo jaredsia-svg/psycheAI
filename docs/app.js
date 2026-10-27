@@ -4870,9 +4870,9 @@
     $('#progress-bar').classList.add('indeterminate');
     elapsedTimer = setInterval(() => {
       const seconds = Math.round((Date.now() - started) / 1000);
-      $('#progress-label').textContent = label + ' – ' + seconds + 's';
+      $('#progress-label').textContent = label + ' – ' + TEXT.elapsed(seconds);
     }, 1000);
-    $('#progress-label').textContent = label + ' – ' + Math.round((Date.now() - started) / 1000) + 's';
+    $('#progress-label').textContent = label + ' – ' + TEXT.elapsed(Math.round((Date.now() - started) / 1000));
   }
   function stopElapsed() {
     if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
@@ -6768,8 +6768,7 @@
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
       'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
-      'analysis. It usually takes a few minutes for the personality analysis to be ' +
-      'completed. Please be patient.';
+      'analysis. The personality analysis usually takes 2–4 minutes to complete. Please be patient.';
     startElapsed('Analysing');
     show('working');
 
@@ -9732,7 +9731,7 @@
     const time = $('#premium-progress-time');
     bar.hidden = false;
     const start = Date.now();
-    const tick = () => { time.textContent = Math.floor((Date.now() - start) / 1000) + 's'; };
+    const tick = () => { time.textContent = TEXT.elapsed(Math.floor((Date.now() - start) / 1000)); };
     tick();
     progressTimer = setInterval(tick, 1000);
   }

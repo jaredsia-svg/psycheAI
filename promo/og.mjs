@@ -50,7 +50,7 @@ p { margin-top: 26px; font-size: 27px; line-height: 1.35; color: #6b3f8f; font-w
 <div class="text">
   <div class="brand">${mark('#7b3fa0', 6)}PsycheAI</div>
   <h1>Your personal AI coach<br><span>that already knows you.</span></h1>
-  <p>A full personality study from your own Instagram data. No questions asked.</p>
+  <p>A full personality study from your own Instagram and WhatsApp data. No questions asked.</p>
 </div>
 <div class="cta">Your first Psyche Card is free · psycheai.io</div>
 <img class="card" src="${card}">

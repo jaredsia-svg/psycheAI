@@ -15,7 +15,7 @@ What PsycheAI is, what happens to your data, and what it costs.
 
 ### What is PsycheAI?
 
-A reading of yourself already sitting in your Instagram data or WhatsApp chats (and, if you like, Google or Facebook). Your free summary card names the character you are most like, your signature patterns, what motivates you, your MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part of it with evidence from your data. It is not a test and not a diagnosis.
+A reading of yourself already sitting in your Instagram data and WhatsApp chats (and, if you like, Google or Facebook). Your free summary card names the character you are most like, your signature patterns, what motivates you, your MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part of it with evidence from your data. It is not a test and not a diagnosis.
 
 ### How long does it take?
 

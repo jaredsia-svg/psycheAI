@@ -3363,7 +3363,7 @@ try {
   check('the WhatsApp way underlines its menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('#way-whatsapp .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['⋮', 'More', 'Export chat', 'Without media'].join(' | '),
+    ['⋮', 'More', 'Export chat', 'Without media', 'Save to Files', 'Drive', '☰'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('#way-whatsapp .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole
@@ -6700,7 +6700,7 @@ try {
   await page.waitForSelector('#premium-progress:not([hidden])', { timeout: 10000 });
   check('a progress bar with a live seconds count shows while the paid call is in flight',
     await page.locator('#premium-progress .progress-bar.indeterminate').isVisible() &&
-    /^\d+s$/.test((await page.locator('#premium-progress-time').innerText()).trim()));
+    /^(\d+ minutes? )?\d+ seconds?$|^\d+ minutes?$/.test((await page.locator('#premium-progress-time').innerText()).trim()));
 
   // The paid sections are a background job like everything else, and the one
   // most expensive to lose — the reader has already been charged. Its record

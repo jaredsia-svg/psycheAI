@@ -62,7 +62,7 @@ Tag the overthinker in your life 👇
 
 The roast is free with every Psyche Card.
 Comment ROAST and I'll send you the link 🔥
-(Request your Instagram data first, it takes a few hours to arrive. Read it tonight.)
+(Load 2 WhatsApp chats now, or request your Instagram data and read it tonight. Both together read deepest.)
 
 #overthinking #personalitytest #roastme #selfimprovement #psycheai
 ```
@@ -226,6 +226,8 @@ Step 1 (do it now): request your Instagram data. It takes a few hours to arrive,
 psycheai.io/download-instagram-data
 
 Step 2: when the email lands, load it on psycheai.io. Your files stay on your device; only a de-identified summary is analysed, and nothing is kept.
+
+Can't wait? Export 2–3 WhatsApp chats (Without media) and load them now. Add Instagram later for the fullest read.
 
 Your first Psyche Card is free, and the roast comes with it 🔥
 ```

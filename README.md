@@ -1518,6 +1518,20 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**The wait, in words** (27 October 2026). The live count beside an analysis, a sync and the report
+reads *1 minute 30 seconds* rather than *90s* (`TEXT.elapsed`), and the wait is said as *2–4 minutes to
+complete* rather than *a few minutes* (the working note, `premiumGenerating`, `premiumRefreshingFree`).
+The pitch says *Instagram and WhatsApp data* everywhere it said *or*: the link previews, the share
+image (`promo/og.mjs`), the web-app manifest, the invite text and the FAQ's first answer. The WhatsApp
+story and carousel put iPhone first in step b.
+
+**Saving a chat on Android** (27 October 2026). WhatsApp's export on Android opens the share sheet,
+which has no "save to device", so the steps said to save a file the reader could not. They now say:
+iPhone, *Save to Files*; Android, *Drive* (or Dropbox, OneDrive), or email it to yourself and download
+the attachment; and, at the load step, that on Android a file in Drive, Dropbox or OneDrive is under
+*☰* in the file picker, which lists those apps when installed, so nothing has to be downloaded first.
+The WhatsApp story (start-5) and carousel slide (start-wa) say the same in step d.
+
 **Each chat read across its whole history** (27 October 2026). The reader's own messages were cut to
 the most recent 4,000 a chat before sampling (`ownPerChat`, a memory bound set when WhatsApp reading
 began, never measured), which in a busy chat reached back only to 2023, though every message read
@@ -1561,7 +1575,7 @@ refusal says *Your free Psyche Card has already been used* rather than naming an
 The card is named from the chats (`ownDisplayName` falls back to `state.chats.owner`, in memory only).
 
 **The front page and the guides say WhatsApp too** (26 October 2026), with the fewest edits: the hero
-line and link previews (*…from your own Instagram or WhatsApp data*), the FAQ's *What is PsycheAI?*,
+line and link previews (*…from your own Instagram and WhatsApp data*, *or* until 27 October 2026), the FAQ's *What is PsycheAI?*,
 *How long does it take?* (*No time to wait? Two WhatsApp chats export in seconds.*) and *What file do I
 need?*, a line under *Request your Instagram data first*, the friend's Sync invite, the Psyche
 personality test's first step, `llms.txt`, and the closing box every generated guide shares (*…or

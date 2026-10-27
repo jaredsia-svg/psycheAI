@@ -249,7 +249,7 @@
     // reader's own card would say.
     // By first name only: "Jared", not "Jared Tan".
     inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your connection') + ' Psyche Card',
-    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram or WhatsApp data. No questionnaire, ' +
+    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram and WhatsApp data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
     inviteStart: 'Get my free Psyche Card',
     // The guessing game on the waiting screen, while a first free read is
@@ -733,7 +733,13 @@
     // still sentence next to a spinning bar reads as stalled.
     // The unlock is one call: the written report behind the card, the roast and
     // the four premium sections, in one response.
-    premiumGenerating: 'Writing your Psyche Report… this may take a few minutes.',
+    premiumGenerating: 'Writing your Psyche Report… this may take 2–4 minutes to complete.',
+    // The live count beside a model call (27 October 2026: "1 minute 30 seconds", not "90s").
+    elapsed: total => {
+      const m = Math.floor(total / 60), s = total % 60;
+      const unit = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+      return m ? unit(m, 'minute') + (s ? ' ' + unit(s, 'second') : '') : unit(s, 'second');
+    },
     // The three states of coming back to an unlock that never arrived. Not one
     // string, because "you already paid" is the part that has to land first
     // and a reader skimming a dialog reads the title.
@@ -811,7 +817,7 @@
     // Shown between the two calls an unlock-with-added-data makes. Says
     // plainly that the second one is not another charge, because a second
     // progress bar after a payment otherwise reads like one.
-    premiumRefreshingFree: 'Writing your Psyche Report from the new data – this takes a few minutes. Your card is redrawn with it at no extra charge…',
+    premiumRefreshingFree: 'Writing your Psyche Report from the new data – this takes 2–4 minutes to complete. Your card is redrawn with it at no extra charge…',
     premiumCancel: 'Back',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',
