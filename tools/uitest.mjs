@@ -625,7 +625,11 @@ const browser = await chromium.launch();
 // small): only the checks about those notes clear them.
 const PRIVATE_CLOSED = () => { try { sessionStorage.setItem('psycheai_private_closed', '1'); sessionStorage.setItem('psycheai_thin_said', '1'); } catch (e) { /* about:blank */ } };
 const originalNewPage = browser.newPage.bind(browser);
-const rawNewContext = browser.newContext.bind(browser);
+// Every page leaves when told to (27 October 2026): the app asks "Leave site?" when a report has never been
+// saved, and Playwright's own answer to a dialog is to dismiss it, which would cancel each reload and goto.
+const leaveFreely = context => context.on('page', opened => opened.on('dialog', d => (d.type() === 'beforeunload' ? d.accept() : d.dismiss()).catch(() => {})));
+const rawNewContextUnwatched = browser.newContext.bind(browser);
+const rawNewContext = async options => { const context = await rawNewContextUnwatched(options); leaveFreely(context); return context; };
 const rawNewPage = async options => {
   const context = await rawNewContext(options);
   const opened = await context.newPage();
@@ -1276,6 +1280,49 @@ try {
       await halfPage.fill('#premium-promo-input', '').catch(() => {});
     } finally {
       await halfPage.close();
+    }
+  }
+
+  // ---- leaving with something to lose (27 October 2026) ----
+  // Data loaded but not yet sent, or a report never saved as a PDF or a backup: the browser asks
+  // "Leave site?". A saved report does not.
+  {
+    const pg = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      const asked = [];
+      pg.on('dialog', d => asked.push(d.type()));
+      await pg.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await pg.click('#open-sources');
+      await pg.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const [pick] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 15000 }), pg.click('#datasources-drop')]);
+      await pick.setFiles({ name: 'journal.md', mimeType: 'text/markdown',
+        buffer: Buffer.from('2024-03-01\n' + 'I keep wondering whether I am doing enough at work. '.repeat(20) + '\n\n2024-04-01\n' + 'A long walk helped. '.repeat(20)) });
+      await pg.waitForSelector('#datasources-dialog .mode-option[data-datasource="journal"].is-added', { timeout: 15000 });
+      await pg.reload({ waitUntil: 'load' });
+      const unsent = asked.filter(t => t === 'beforeunload').length;
+      const sample = cardOnlySample(await pg.evaluate(() => fetch('sample.json').then(r => r.json())));
+      const seedReport = saved => pg.evaluate(([report, keep]) => {
+        localStorage.setItem('psycheai_profile', JSON.stringify({ report, card: report.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString() }));
+        if (keep) localStorage.setItem('psycheai_pdf_saved', 'true'); else localStorage.removeItem('psycheai_pdf_saved');
+        localStorage.removeItem('psycheai_last_backup');
+      }, [sample, saved]);
+      await seedReport(false);
+      await pg.reload({ waitUntil: 'load' });
+      await pg.mouse.click(5, 300);
+      const before = asked.length;
+      await pg.reload({ waitUntil: 'load' });
+      const unsaved = asked.slice(before).filter(t => t === 'beforeunload').length;
+      await seedReport(true);
+      await pg.mouse.click(5, 300);
+      const before2 = asked.length;
+      await pg.reload({ waitUntil: 'load' });
+      await pg.mouse.click(5, 300);
+      await pg.reload({ waitUntil: 'load' });
+      const saved = asked.slice(before2).filter(t => t === 'beforeunload').length;
+      check('leaving with data loaded but not sent, or a report never saved, asks first; a saved report does not',
+        unsent >= 1 && unsaved >= 1 && saved === 0, JSON.stringify({ unsent, unsaved, saved }));
+    } finally {
+      await pg.close();
     }
   }
 
@@ -11115,6 +11162,9 @@ try {
   // beforeunload and reading back whether it was prevented, rather than
   // trying to drive a real navigation through Playwright's own handling of
   // that dialog, which is unreliable across browsers for exactly this event.
+  // The report counts as saved here, so only the comparison's own guard is measured (an unsaved report
+  // asks before leaving too, since 27 October 2026).
+  await page.evaluate(() => localStorage.setItem('psycheai_pdf_saved', 'true'));
   const beforeunloadPrevented = () => page.evaluate(() => {
     const event = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);

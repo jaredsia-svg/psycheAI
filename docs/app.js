@@ -6393,6 +6393,7 @@
             if (addsTo) Object.defineProperty(added.whatsapp, 'addsTo', { value: addsTo, enumerable: false });
             pendingDataSourceReads.whatsapp = added.whatsapp;
             pendingDataSourceReads.whatsappChats = chats;
+            loadedUnsent = true;
             state.waChats = addsTo ? null : chats;
             if (startOver || repeatNote) {
               return { message: [startOver ? TEXT.whatsappFull(waMax) : '', repeatNote].filter(Boolean).join(' '), tone: '' };
@@ -6414,6 +6415,7 @@
             pendingDataSourceReads[source] = added[source];
           }
           setSourceProgress(source, null, '');
+          loadedUnsent = true;
           return null;
         } catch (error) {
           setSourceProgress(source, null, '');
@@ -9828,6 +9830,8 @@
    */
   let unloadGuard = null;
   function guardUnload(on) {
+    // A run has started: what was loaded is on its way.
+    if (on) loadedUnsent = false;
     if (on && !unloadGuard) {
       unloadGuard = event => { event.preventDefault(); event.returnValue = ''; };
       window.addEventListener('beforeunload', unloadGuard);
@@ -9836,6 +9840,37 @@
       unloadGuard = null;
     }
   }
+
+  // Leaving with something to lose (27 October 2026), beside the guard above
+  // for a run in progress: data loaded but not yet sent (reading it again
+  // takes minutes and a trip to the files), or a report that has never been
+  // saved anywhere but this browser (no PDF, no backup). The browser shows its
+  // own "Leave site?"; it cannot be worded. Not for a link to another page of
+  // the site, an email link, or while a payment sheet is open (a bank's page
+  // may take over the tab).
+  let loadedUnsent = false;
+  let leavingInside = false;
+  document.addEventListener('click', event => {
+    const link = event.target.closest && event.target.closest('a[href]');
+    if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+    let url;
+    try { url = new URL(link.href, location.href); } catch (error) { return; }
+    if (url.origin === location.origin || !/^https?:$/.test(url.protocol)) {
+      leavingInside = true;
+      setTimeout(() => { leavingInside = false; }, 1500);
+    }
+  }, true);
+  function leaveWouldLose() {
+    if (leavingInside || $('#premium-dialog').open) return false;
+    if (loadedUnsent) return true;
+    const profile = state.profile;
+    return Boolean(profile && profile.report) && !store.read(KEYS.pdfSaved, false) && !store.read(KEYS.lastBackup, null);
+  }
+  window.addEventListener('beforeunload', event => {
+    if (unloadGuard || !leaveWouldLose()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
 
   function stopProgress() {
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }

@@ -1518,6 +1518,14 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**Leaving with something to lose asks first** (27 October 2026). Beside the guard while a run is in
+progress (`guardUnload`), the browser's own "Leave site?" now also comes up when data has been loaded
+and not yet sent (`loadedUnsent`: set when a file is read, cleared when a run starts), and while a report
+has never been saved anywhere but this browser (no PDF, no backup: `pdfSaved`, `lastBackup`). Not for a
+link to another page of the site or an email link, and not while a payment sheet is open, since a bank's
+page may take over the tab. The browser words it, not the page; phones often skip it, and it may keep a
+page out of the back-forward cache while it applies.
+
 **TikTok and a journal, optional sources** (27 October 2026). Two more rows in both data popouts. In Add
 your data they sit under *Optional* with Google and Facebook, folded behind *Optional data*; folded, a
 source that is loaded still shows, alone (TikTok loaded shows TikTok, not the list). In Add / change data,
