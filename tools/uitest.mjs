@@ -2448,7 +2448,13 @@ try {
         }
       };
       resumePage.on('request', watch);
-      await resumePage.click('#pending-work-go');
+      // The report is on screen before the press too, so the request itself and the record's clearing
+      // are what is waited for (27 October 2026: waiting on the view raced the request under load).
+      await Promise.all([
+        resumePage.waitForRequest(request => request.method() === 'POST' && /\/api\/analyse/.test(request.url()), { timeout: 60000 }).catch(() => {}),
+        resumePage.click('#pending-work-go'),
+      ]);
+      await resumePage.waitForFunction(() => localStorage.getItem('psycheai_pending') === null, null, { timeout: 60000 }).catch(() => {});
       await resumePage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
       resumePage.off('request', watch);
       check('pressing it re-sends the same authorisation rather than asking for payment again',
@@ -9965,9 +9971,11 @@ try {
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
   check('before anything is tapped, the popout says nothing about the card changing',
     !(await page.locator('#datasources-confirm').isVisible()));
-  // Folded behind Optional data since 27 October 2026.
-  if ((await page.getAttribute('#datasources-more', 'aria-expanded')) !== 'true') await page.click('#datasources-more');
-  check('it lists every source, Facebook included, so more can be added before paying',
+  // After a first run every source shows, with no Optional data to unfold (27 October 2026).
+  check('it lists every source, Facebook included, so more can be added before paying, with nothing folded or labelled',
+    await page.locator('#datasources-more').isHidden() && await page.locator('#datasources-optional').isHidden() &&
+    await page.locator('#datasources-dialog .mode-option[data-datasource="tiktok"]').isVisible() &&
+    await page.locator('#datasources-dialog .mode-option[data-datasource="journal"]').isVisible() &&
     ['instagram', 'google', 'facebook'].every(Boolean) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible()) &&

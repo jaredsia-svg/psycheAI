@@ -5992,13 +5992,14 @@
     const needHead = $('#datasources-minimum');
     const optionalHead = $('#datasources-optional');
     needHead.hidden = !settings.requireMinimum;
-    // The optional rows start folded, in both popouts (27 October 2026):
+    // On a first upload the optional rows start folded (27 October 2026):
     // "Optional data", between the buttons, unfolds them. Folded, a source
     // that is loaded still shows, alone under "Optional" (TikTok loaded shows
     // TikTok, not the whole list). Only the row wraps are hidden, not the
-    // buttons, so any file in the box is still read.
+    // buttons, so any file in the box is still read. After a first run (Add /
+    // change data) nothing is required, so every source shows, unlabelled.
     const moreButton = $('#datasources-more');
-    const optionalRows = order.filter(x => OPTIONAL_SOURCES.includes(x) && offered.includes(x));
+    const optionalRows = settings.requireMinimum ? order.filter(x => OPTIONAL_SOURCES.includes(x) && offered.includes(x)) : [];
     let optionalOpen = false;
     // Set once `added` exists, below.
     let optionalLoaded = () => false;

@@ -1518,10 +1518,10 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
-**TikTok and a journal, optional sources** (27 October 2026). Two more rows in both data popouts,
-under *Optional* with Google and Facebook, folded behind *Optional data* in Add your data *and* in Add /
-change data; folded, a source that is loaded still shows, alone (TikTok loaded shows TikTok, not the
-list). The file box sorts them by what is in them (`detectSource`): a TikTok download is
+**TikTok and a journal, optional sources** (27 October 2026). Two more rows in both data popouts. In Add
+your data they sit under *Optional* with Google and Facebook, folded behind *Optional data*; folded, a
+source that is loaded still shows, alone (TikTok loaded shows TikTok, not the list). In Add / change data,
+after a first run, nothing is required, so every source shows, with no group labels and nothing folded. The file box sorts them by what is in them (`detectSource`): a TikTok download is
 `user_data_tiktok.json` (or `user_data.json`), on its own or zipped; a `.md`, or a `.txt` whose lines are
 not dated messages, is a journal; a `.txt` of dated lines stays a WhatsApp chat.
 - **TikTok** (`readTikTok`) is read by shape, since TikTok renames its sections between versions: an array

@@ -20,6 +20,12 @@ body { font-family: Inter, sans-serif; color: #fff; }
   clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
 /* The hook. */
 #h1 { z-index: 20; left: 60px; right: 60px; top: 600px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
+/* Which two chats (WHO.chats, 27 October 2026): small, a green tick each, shown and never said. */
+#chats { z-index: 20; left: 0; right: 0; top: 770px; font-size: 40px; font-weight: 700; color: rgba(255,255,255,.88); }
+#chats div { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 14px; }
+#chats i { width: 44px; height: 44px; border-radius: 50%; background: #25d366; position: relative; flex: none; }
+#chats i::after { content: ''; position: absolute; left: 15px; top: 9px; width: 11px; height: 20px; border: solid #fff;
+  border-width: 0 5px 5px 0; transform: rotate(45deg); }
 #h2 { z-index: 20; left: 60px; right: 60px; top: 1120px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.07; }
 /* The data the app reads, shown with Instagram as it is said. */
 .app { z-index: 21; width: 130px; height: 130px; }
@@ -73,6 +79,7 @@ body { font-family: Inter, sans-serif; color: #fff; }
     <div class="el" id="h1">I let <span class="grad">PsycheAI</span> read<br><span id="years"></span> years of my Instagram.</div>
     <div class="el app" id="ig"><div class="ic"></div></div><div class="el app" id="wa"><div class="ic"></div></div>
     <div class="el app" id="gg"><div class="ic"></div></div><div class="el app" id="fb"><div class="ic"></div></div>
+    <div class="el" id="chats" hidden><div><i></i>1 chat with a close friend</div><div><i></i>1 group chat</div></div>
     <div class="el" id="h2">Then it told me which<br>character I am.</div>
 
     <div class="el" id="title">WHICH CHARACTER ARE YOU?</div>
@@ -135,9 +142,9 @@ if (WHO.chats) {
   const h1 = $('h1');
   h1.textContent = 'I let ';
   const grad = document.createElement('span'); grad.className = 'grad'; grad.textContent = 'PsycheAI';
-  h1.append(grad, ' read', document.createElement('br'), 'two WhatsApp chats', document.createElement('br'), 'with close friends…');
-  h1.style.top = '520px';
-  h1.style.fontSize = '76px';
+  // "With close friends" is said, not shown.
+  h1.append(grad, ' read', document.createElement('br'), 'two WhatsApp chats…');
+  h1.style.top = '560px';
   $('h2').textContent = 'And it told me which';
   $('h2').append(document.createElement('br'), 'character I am.');
 }
@@ -179,6 +186,11 @@ function hook(t) {
   });
   const a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), b = back(prog(t, s.marks[1] - 0.15, s.marks[1] + 0.25));
   show('h1', clamp(a * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
+  if (WHO.chats) {
+    const c = back(prog(t, said + 0.45, said + 0.85)), gone = prog(t, s.end - 0.5, s.end - 0.2);
+    $('chats').hidden = false;
+    show('chats', t >= said + 0.45 ? clamp(c * 2) * (1 - gone) : 0, 'translateY(' + (1 - Math.min(1, c)) * 24 + 'px)');
+  }
   show('h2', clamp(b * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, b)) + ')');
 }
 
