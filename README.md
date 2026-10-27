@@ -1518,6 +1518,16 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**Group chats and the number of chats are not evidence of breadth** (27 October 2026). Two group chats
+alone came back as *slight introversion: directs energy into two enduring circles rather than
+broadening the network*, and *others open the majority of exchanges across both groups*. Both read the
+loading, not the reader: two or three chats is what PsycheAI asks for, and in a group of eight the
+reader opening one conversation in eight is their fair share. `CHATS_ONLY_RULE` now forbids citing the
+number of chats or calling the reader's circle few or narrow, and `CONVERSATIONS_RULE` judges who
+starts a group conversation against one in `members` (each chat's `kind` and `members` were already
+in the digest); only a one-to-one chat shows who reaches out first. The privacy page's line on a
+shared link now reads *PsycheAI keeps an encrypted copy…*.
+
 **Back from a payment sheet steps back** (27 October 2026). Two paid paths ignored the sheet's Back.
 A first read refused its free card (the account or a chat had one) offered the sheet, and Back fell to
 the retry offer, scrolled to the foot of the page, with no way back to the review or the data. Now Back

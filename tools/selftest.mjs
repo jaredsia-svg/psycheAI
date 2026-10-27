@@ -9404,6 +9404,12 @@ check('the schema requires evidence on where they align and differ',
       /has no `instagram`/.test(prompts.CHATS_ONLY_RULE) && /never how many people the reader seeks out/.test(prompts.CHATS_ONLY_RULE) &&
       /WhatsApp chats with no Instagram: two chats, 58–72; three, 62–78; with Google, 60–74 for two and 64–80 for three; with Facebook, 65–82 for two and 68–86 for three/.test(prompts.CONFIDENCE_SCORING) &&
       !/Instagram is always there/.test(prompts.FULL_SYSTEM));
+  // Two group chats alone read as "two circles rather than a wider network" and "others open most
+  // exchanges" (27 October 2026): the number of chats is never evidence, and a group's openings are shared.
+  check('the number of chats is never evidence of breadth, and who opens a group chat is judged against one in its members',
+    /never cite the number of chats as evidence/.test(prompts.CHATS_ONLY_RULE) && /does not broaden their network/.test(prompts.CHATS_ONLY_RULE) &&
+      /fair share is about one in `members`/.test(prompts.CONVERSATIONS_RULE || '') &&
+      prompts.FREE_SYSTEM.includes('fair share is about one in `members`'));
   const blocks = prompts.profileBlocks ? prompts.profileBlocks(sent) : null;
   check('and the request names WhatsApp as the source, not Instagram',
     !blocks || /built from their WhatsApp data/.test(blocks[0].text), blocks && blocks[0].text.slice(0, 120));
