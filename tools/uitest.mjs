@@ -1493,7 +1493,7 @@ try {
         await off.click('#datasources-continue');
       }
       check('and with the network off, the export is read and summarised through to the review',
-        (await off.locator('#review-dialog[open]').count()) === 1 && /Your posts & comments/.test(await off.locator('#review-list').innerText()));
+        (await off.locator('#review-dialog[open]').count()) === 1 && /IG posts & comments/.test(await off.locator('#review-list').innerText()));
       await off.click('#review-send');
       const held = await off.evaluate(() => ({ open: document.querySelector('#review-dialog').open,
         said: document.querySelector('#review-offline').hidden ? '' : document.querySelector('#review-offline').textContent }));
@@ -1571,7 +1571,7 @@ try {
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
       check('a new reader is offered Instagram, WhatsApp chats, Google Takeout, Facebook, TikTok and a journal, one line each',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes']), JSON.stringify(shown.rows));
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes .md or .txt file']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
         JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
@@ -4958,13 +4958,13 @@ try {
   // must actually be numbers, not a placeholder left over from a template.
   // Each row is a short name and a live count, least personal first (25 October 2026).
   check('the review names your own posts and comments, with a real count',
-    /Your posts & comments\s*\d+/.test(reviewText), reviewText.slice(0, 400));
+    /IG posts & comments\s*\d+/.test(reviewText), reviewText.slice(0, 400));
   // The raw follow list is no longer sent, so the row no longer offers it —
   // and must not, since a review screen naming something the digest does not
   // contain is the one failure it cannot have. How many accounts they follow
   // still goes, as a number, with the other counts.
   check('the review names the accounts you like, with a real count',
-    /Accounts you like\s*\d+/.test(reviewText), reviewText.slice(0, 400));
+    /IG accounts liked\s*\d+/.test(reviewText), reviewText.slice(0, 400));
   check('its rows run from least to most personal: activity first, direct messages last',
     await page.evaluate(() => [...document.querySelectorAll('#review-list .review-row')].map(r => r.dataset.row).join()) ===
       'review-activity,review-topics,review-accounts,review-liked-captions,review-captions,review-searches,review-dms',
@@ -9062,13 +9062,14 @@ try {
   // skipped still sees the original six, which is asserted on the very first
   // upload further up and is what keeps that count meaningful. Seven rather
   // than eight since the Gemini row went with the prompt text it described.
-  check('adding both sources adds seven rows to the review, not a lumped-together one',
-    (await page.locator('#review-list input[type="checkbox"]').count()) === 14,
+  // Six since 27 October 2026: Facebook friends are no longer sent.
+  check('adding both sources adds six rows to the review, not a lumped-together one',
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 13,
     (await page.locator('#review-list input[type="checkbox"]').count()) + ' rows');
   const supplementedReview = await page.locator('#review-dialog').innerText();
   for (const label of ['YouTube watching', 'YouTube searches', 'Google searches',
     'Chrome browsing', 'Facebook posts & comments',
-    'Facebook friends', 'Messenger']) {
+    'Messenger']) {
     check('the review names ' + JSON.stringify(label) + ' as its own row',
       supplementedReview.includes(label));
   }
@@ -9139,10 +9140,10 @@ try {
     JSON.stringify(strippedBody.google.counts));
   check('no Gemini prompt text is in the body at all, ticked or not',
     strippedBody.google.geminiPromptSample === undefined);
-  check('unticking the Facebook rows empties posts, comments, friends and messages',
+  check('unticking the Facebook rows empties posts, comments and messages, and no friends list is ever sent',
     strippedBody.facebook.postSample.length === 0 &&
     strippedBody.facebook.commentSample.length === 0 &&
-    strippedBody.facebook.friends.length === 0 &&
+    !('friends' in strippedBody.facebook) &&
     strippedBody.facebook.ownMessageSample.length === 0);
   // Not one word of any of it may survive anywhere in the payload. Every
   // needle here is unique to a supplement fixture: "half marathon training
@@ -13980,7 +13981,7 @@ try {
       const a = await readChats(first, ['Mia Wong', 'Jun Lee', 'Ava Tan'], 'x', look);
       check('one file box: a first upload asks for one of Instagram or the chats, sets Continue back, and holds it until it has one',
         seen.empty === 'Required (At least one)' && seen.waiting && /Load your Instagram data, or 2 WhatsApp chats, to get started/.test(seen.refused) &&
-          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes']),
+          JSON.stringify(seen.rows) === JSON.stringify(['Instagram', '2–3 WhatsApp chats', 'Google Takeout', 'Facebook', 'TikTok', 'Journal or notes .md or .txt file']),
         JSON.stringify(seen));
       // One chat in: the heading asks for one more, and Continue says so (26 October 2026).
       {

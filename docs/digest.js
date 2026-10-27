@@ -647,7 +647,7 @@
     // is not a second source, and must not open the larger free read.
     return some(d.whatsapp, ['chats', 'ownMessageSample']) ||
       some(d.google, ['topChannels', 'videoTitleSample', 'topYoutubeSearches', 'topGoogleSearches']) ||
-      some(d.facebook, ['postSample', 'commentSample', 'friends', 'topSearches', 'ownMessageSample']) ||
+      some(d.facebook, ['postSample', 'commentSample', 'topSearches', 'ownMessageSample']) ||
       some(d.tiktok, ['commentSample', 'captionSample', 'topSearches', 'ownMessageSample']) ||
       some(d.journal, ['entrySample']);
   }
@@ -681,7 +681,7 @@
       ['instagram', 'mostEngagedWith', 'fixed'],
       ['instagram', 'storyLikedAccounts'], ['instagram', 'instagramSearches'],
       ['facebook', 'facebook.postSample'], ['facebook', 'facebook.commentSample'],
-      ['facebook', 'facebook.friends'], ['facebook', 'facebook.topSearches'],
+      ['facebook', 'facebook.topSearches'],
       ['tiktok', 'tiktok.commentSample'], ['tiktok', 'tiktok.captionSample'],
       ['tiktok', 'tiktok.topSearches'], ['tiktok', 'tiktok.topHashtags'],
     ],
@@ -2838,22 +2838,22 @@
         counts: f.counts,
         postSample: sampleTexts(f.posts, LIMITS.fbPosts, 240),
         commentSample: sampleTexts(f.comments, LIMITS.fbComments, 240),
-        friends: sampleEvenly(f.friends, LIMITS.fbFriends),
+        // No friends list since 27 October 2026: names of people, with nothing about the reader in them.
+        // The names still number the people the reader's own words mention (supplementNames).
         topSearches: topKeys(f.searchTerms, LIMITS.fbSearches, 4),
         ownMessageSample: sampleConversations(f.ownMessages, {
           limit: LIMITS.fbMessages, topThreads: LIMITS.messageTopThreads, threadCap: LIMITS.messageThreadCap,
           minShare: LIMITS.messageMinShare, label: (key, rank) => 'm' + (rank + 1), stats: fbStats,
         }),
       };
-      spareMessages(digest, 'facebook.ownMessageSample', f.ownMessages, {
+      const fbSpare = spareMessages(digest, 'facebook.ownMessageSample', f.ownMessages, {
         limit: LIMITS.fbMessages, topThreads: LIMITS.messageTopThreads, threadCap: LIMITS.messageThreadCap,
         minShare: LIMITS.messageMinShare, label: (key, rank) => 'm' + (rank + 1),
       });
+      // Who each Messenger chat is with, for the review on this device (27 October 2026: they read Chat 1…).
+      chatLabels(digest, (fbSpare && fbSpare.topKeys) || fbStats.topKeys, rank => 'm' + (rank + 1), key => (f.threadTitles || {})[key] || '');
       digest.coverage.sampling.facebookPosts = {
         shown: digest.facebook.postSample.length, available: f.counts.posts,
-      };
-      digest.coverage.sampling.facebookFriends = {
-        shown: digest.facebook.friends.length, available: f.counts.friends,
       };
       if (digest.facebook.ownMessageSample.length) {
         digest.coverage.sampling.facebookMessages = {
@@ -2887,6 +2887,7 @@
           minShare: LIMITS.messageMinShare, label: (key, rank) => 'k' + (rank + 1), stats: ttStats,
         }),
       };
+      chatLabels(digest, ttStats.topKeys, rank => 'k' + (rank + 1), key => (t.threadTitles || {})[key] || '');
       digest.coverage.sampling.tiktokComments = { shown: digest.tiktok.commentSample.length, available: t.counts.comments };
       digest.coverage.sampling.tiktokSearches = { shown: digest.tiktok.topSearches.length, available: countOf(t.searchTerms) };
       if (digest.tiktok.ownMessageSample.length) {
@@ -3127,7 +3128,7 @@
     'instagramTopics',
     'mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith', 'storyLikedAccounts', 'instagramSearches',
     'google.topChannels', 'google.videoTitleSample', 'google.topYoutubeSearches', 'google.topGoogleSearches',
-    'facebook.postSample', 'facebook.commentSample', 'facebook.friends', 'facebook.topSearches',
+    'facebook.postSample', 'facebook.commentSample', 'facebook.topSearches',
     'facebook.ownMessageSample',
     'tiktok.commentSample', 'tiktok.captionSample', 'tiktok.topSearches', 'tiktok.topHashtags', 'tiktok.ownMessageSample',
     'journal.entrySample',
@@ -3290,7 +3291,6 @@
       ['topChannels', () => digest.google && digest.google.topChannels, v => { digest.google.topChannels = v; }],
       ['postSample', () => digest.facebook && digest.facebook.postSample, v => { digest.facebook.postSample = v; }],
       ['commentSample', () => digest.facebook && digest.facebook.commentSample, v => { digest.facebook.commentSample = v; }],
-      ['fbFriends', () => digest.facebook && digest.facebook.friends, v => { digest.facebook.friends = v; }],
       ['fbTopSearches', () => digest.facebook && digest.facebook.topSearches, v => { digest.facebook.topSearches = v; }],
       ['fbOwnMessages', () => digest.facebook && digest.facebook.ownMessageSample, v => { digest.facebook.ownMessageSample = v; }],
       ['ttComments', () => digest.tiktok && digest.tiktok.commentSample, v => { digest.tiktok.commentSample = v; }],
@@ -3406,7 +3406,7 @@
   // The supplement lists by source, from trimToBudget's own table.
   const SUPPLEMENT_LISTS = {
     google: ['videoTitleSample', 'topGoogleSearches', 'topYoutubeSearches', 'topChannels'],
-    facebook: ['postSample', 'commentSample', 'fbFriends', 'fbTopSearches', 'fbOwnMessages'],
+    facebook: ['postSample', 'commentSample', 'fbTopSearches', 'fbOwnMessages'],
     whatsapp: ['waOwnMessages'],
     tiktok: ['ttComments', 'ttCaptions', 'ttSearches', 'ttHashtags', 'ttOwnMessages'],
     journal: ['journalEntries'],
@@ -3462,7 +3462,6 @@
     youtubeSearchTerms: d => d.google && d.google.topYoutubeSearches,
     youtubeChannels: d => d.google && d.google.topChannels,
     facebookPosts: d => d.facebook && d.facebook.postSample,
-    facebookFriends: d => d.facebook && d.facebook.friends,
     facebookMessages: d => d.facebook && d.facebook.ownMessageSample,
     whatsappMessages: d => d.whatsapp && d.whatsapp.ownMessageSample,
     tiktokComments: d => d.tiktok && d.tiktok.commentSample,
@@ -3625,7 +3624,6 @@
         note: f.note, span: monthSpan(f.span), counts: plain(f.counts) || {},
         postSample: listOf(f.postSample),
         commentSample: listOf(f.commentSample),
-        friends: listOf(f.friends),
         topSearches: listOf(f.topSearches),
         ownMessageSample: listOf(f.ownMessageSample),
       };
@@ -3828,7 +3826,7 @@
 
   function omitFacebookConnections(digest) {
     if (!digest.facebook) return digest;
-    digest.facebook.friends = [];
+    delete digest.facebook.friends;
     if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.facebookFriends;
     return digest;
   }

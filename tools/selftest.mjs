@@ -5164,7 +5164,7 @@ const omitCases = [
   ['omitChrome', d => d.google.counts.visits === undefined &&
     d.google.counts.distinctDomains === undefined],
   ['omitFacebookPosts', d => d.facebook.postSample.length === 0 && d.facebook.commentSample.length === 0],
-  ['omitFacebookConnections', d => d.facebook.friends.length === 0],
+  ['omitFacebookConnections', d => !('friends' in d.facebook)],
   ['omitFacebookMessages', d => d.facebook.ownMessageSample.length === 0],
 ];
 for (const [name, emptied] of omitCases) {

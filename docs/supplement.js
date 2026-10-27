@@ -561,6 +561,14 @@
       if (!out.threadIndex) Object.defineProperty(out, 'threadIndex', { value: new Map(), enumerable: false, writable: true });
       if (!out.threadIndex.has(key)) out.threadIndex.set(key, out.threadIndex.size);
       const thread = out.threadIndex.get(key);
+      // Who each conversation is with, for the review's chat names on this
+      // device only (a property JSON cannot see, so it is never sent or stored).
+      if (!out.threadTitles) Object.defineProperty(out, 'threadTitles', { value: {}, enumerable: false, writable: true });
+      if (!out.threadTitles[thread]) {
+        const people = (Array.isArray(data && data.participants) ? data.participants : []).map(p => trimText(p && p.name, 80))
+          .filter(name => name && name !== out.owner);
+        out.threadTitles[thread] = trimText(fixText((data && data.title) || ''), 80) || people.join(', ');
+      }
       // The reader's own messages per conversation, for engagedThreads below.
       if (!out.ownByThread) Object.defineProperty(out, 'ownByThread', { value: new Map(), enumerable: false, writable: true });
       out.counts.threads++;
@@ -750,7 +758,7 @@
             out.kinds.searches = true;
           }
         } else if (/chat history/.test(where) && ('Content' in sample || 'content' in sample)) {
-          chats.push(records);
+          chats.push({ records, title: String(path[path.length - 1] || '').replace(/^chat history with\s*/i, '').replace(/:\s*$/, '') });
         } else if (/comment/.test(where) && ('Comment' in sample || 'comment' in sample)) {
           for (const r of records) {
             const text = trimText(pick(r, 'Comment', 'comment'), LIMITS.textChars);
@@ -794,8 +802,10 @@
     visit(data, [], 0);
     // Direct messages last, once the owner is known: each "Chat History with
     // …" is one conversation, a bare number here, so nobody is named.
-    for (const records of chats) {
+    if (!out.threadTitles) Object.defineProperty(out, 'threadTitles', { value: {}, enumerable: false, writable: true });
+    for (const { records, title } of chats) {
       const thread = out.counts.threads++;
+      out.threadTitles[thread] = trimText(title, 80);
       const list = [];
       const senders = new Set();
       for (const r of records) {

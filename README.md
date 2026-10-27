@@ -1520,6 +1520,18 @@ fit are never cut. The sampled places for WhatsApp rose from 450 to 1,200 so a 2
 is bounded by characters, not by its two-fifths share of places. The 179,000 line, Instagram's
 50,000 of the public pool, and the cost caps are unchanged.
 
+**Review and popout tidy-ups** (27 October 2026).
+- A file for an optional source dropped in the box shows its row under *Optional* at once, with its
+  progress, folded or not (`optionalReading`).
+- Messenger's and TikTok's chats are named in the review as Instagram's and WhatsApp's are (they read
+  *Chat 1…*): each thread's title is kept on the device only (`threadTitles`, a property JSON cannot see)
+  and labels the review's rows through `chatLabels`.
+- Facebook friends are no longer in the summary: a list of other people's names says nothing about the
+  reader. The names still number the people the reader's own words mention, and the review row went.
+- Instagram's review rows say so: *IG accounts liked*, *IG posts liked*, *IG posts & comments*, *IG
+  searches*, *IG direct messages*. Beside *Tap to preview*: *most personal last ↓*.
+- The journal row says *.md or .txt file* beside its name.
+
 **Leaving with something to lose asks first** (27 October 2026). Beside the guard while a run is in
 progress (`guardUnload`), the browser's own "Leave site?" now also comes up when data has been loaded
 and not yet sent (`loadedUnsent`: set when a file is read, cleared when a run starts), and while a report

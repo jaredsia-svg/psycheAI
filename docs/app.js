@@ -5392,7 +5392,6 @@
     const fb = digest.facebook;
     if (fb) {
       const fbWriting = fb.postSample.length + fb.commentSample.length;
-      const fbFriends = fb.friends.length;
       const fbMessages = fb.ownMessageSample.length;
       rows.push(
         ['review-fb-posts', 'includeFacebookPosts', fbWriting,
@@ -5400,10 +5399,6 @@
           fbWriting ? n(fb.postSample.length, 'post', 'posts') + ' and ' + n(fb.commentSample.length, 'comment', 'comments') +
             ' – a sample of your own words on Facebook.' :
             'No Facebook posts or comments were found in your data.'],
-        ['review-fb-connections', 'includeFacebookConnections', fbFriends,
-          'Facebook friends & follows', 'Facebook friends & follows – none found',
-          fbFriends ? fbFriends + ' names, sampled evenly across the list.' :
-            'No Facebook connections were found in your data.'],
         ['review-fb-messages', 'includeFacebookMessages', fbMessages,
           'Facebook Messenger', 'Facebook Messenger – none found',
           fbMessages ? fbMessages + ' of your own messages sampled out of ' + fb.counts.messages +
@@ -5471,7 +5466,6 @@
     const PATHS = {
       'review-topics': ['instagramTopics'],
       'review-accounts': ['mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith', 'storyLikedAccounts'],
-      'review-fb-connections': ['facebook.friends'],
       'review-liked-captions': ['samples.likedPostCaptions', 'samples.likedPostHashtags'],
       'review-yt-watched': ['google.topChannels', 'google.videoTitleSample'],
       'review-captions': ['samples.captions', 'samples.comments'],
@@ -6003,6 +5997,9 @@
     let optionalOpen = false;
     // Set once `added` exists, below.
     let optionalLoaded = () => false;
+    // An optional source being read shows under Optional at once, its progress
+    // in its row, folded or not (27 October 2026).
+    const optionalReading = new Set();
     moreButton.hidden = true;
     const foldOptional = open => {
       optionalOpen = open;
@@ -6229,7 +6226,7 @@
     const isStale = source =>
       source !== 'whatsapp' && replacedInstagram && Boolean(added[source]) && !carriedInMemory(source);
     // Stale ones too: replacing Instagram drops them, and their rows stay to be loaded again.
-    optionalLoaded = source => Boolean(added[source]);
+    optionalLoaded = source => Boolean(added[source]) || optionalReading.has(source);
 
     const markAdded = () => {
       for (const button of buttons) {
@@ -6457,7 +6454,9 @@
           for (const source of order) {
             if (!groups[source]) continue;
             if (!offered.includes(source)) { notes.push({ message: TEXT.dataSourcesNotHere(source), tone: 'bad' }); continue; }
-            const outcome = await readSource(source, groups[source]);
+            optionalReading.add(source);
+            foldOptional(optionalOpen);
+            const outcome = await readSource(source, groups[source]).finally(() => optionalReading.delete(source));
             if (outcome && outcome.message) notes.push(outcome);
           }
         } catch (error) {
