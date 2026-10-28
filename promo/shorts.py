@@ -105,7 +105,8 @@ REELS['career'] = {
         # something anyone could say).
         # A beat before the twist (28 October 2026).
         (["I finally got the promotion I'd been chasing for years.", 'But I dread work even more today.'], 0.85, True, 1.0),
-        (['Why?', 'Was I chasing the wrong thing?'], 0.95, True, 0.4),
+        # "Why?" alone was over too quickly (28 October 2026).
+        (['I kept wondering why.', 'Was I chasing the wrong thing?'], 0.95, True, 0.8),
         (['So I asked {B},', 'and it answered from my own data.'], 0.85, True, 0.1),
         # The bold sentences only; the evidence between them is read on screen in the pause (28 October 2026).
         (['The promotion took you away from what you love.', "You don't need a bigger title.", 'You need a role where helping people grow is the job.'], 0.85, True, [3.6, 0.15]),
