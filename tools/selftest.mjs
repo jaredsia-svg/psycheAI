@@ -9711,10 +9711,13 @@ check('the schema requires evidence on where they align and differ',
 {
   const muse = readFileSync(join(root, 'docs', 'muse.html'), 'utf8');
   check('the Muse page has the sections the plugin redirects to, and the connector address',
-    ['add', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp'));
+    ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp'));
   check('it says what the plugin never receives or guesses, and that the read is sealed under the link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(muse) && /never guess your religion, ethnicity, politics/.test(muse) &&
       /key that exists only in your link/.test(muse));
+  check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
+    /US\$4\.99 a month or US\$29 a year/.test(muse) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(muse) &&
+      /we never see your card/.test(muse) && /Cancelling keeps Plus until the end of the period you paid for/.test(muse) && /Sync, 2 picks a week/.test(muse));
   check('it stays out of search until launch, with the usual footer note',
     /<meta name="robots" content="noindex">/.test(muse) && /class="footer-note"/.test(muse) && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes('/muse'));
 }
