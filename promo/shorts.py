@@ -95,20 +95,22 @@ REELS['roast'] = {
     'reveal': 1, 'swing': 0.0, 'early_claps': False,
     'music_lift': (4, 1.35),  # from the honest friend to the end, the music a little louder (24 October 2026)
 }
-# The career reel: the job questions everyone has, asked of PsycheAI, answered from the reader's own data, then
-# what the report's career assessment adds. The same voice as the roast.
+# The career reel: why the reader wants a promotion, asked of PsycheAI, answered from their own data (what they
+# want is to be the one people come to: to teach and help), then what the report's career assessment adds. The same voice as the roast.
 REELS['career'] = {
     'voice': 'en_US-ryan-high',
     'lines': [
-        (['Struggling with your job?'], 0.85, None),
-        (['Am I in the wrong job?', 'Why do I dread going to work?'], 0.95, True, 0.4),
+        # 28 October 2026: the promotion everyone chases, and what it stands for (the routine-parts script read as
+        # something anyone could say).
+        (['I thought I wanted a promotion.'], 0.85, None),
+        (['Why do I want it so badly?', 'Why does nothing at work feel like enough?'], 0.95, True, 0.4),
         (['So I asked {B},', 'and it answered from my own data.'], 0.85, True, 0.1),
-        (["You don't hate your job.", 'You hate the routine parts of it.'], 0.85, True, 0.15),
+        (["You don't want a bigger title.", 'You want to be the one people come to.'], 0.85, True, 0.15),
         (['Your Psyche Report goes further.', 'Your edge at work,', "what's holding you back,", 'and the careers that suit you best.'], 0.85, True, [0.2, 0.06, 0.06]),
         # The address as the character reels say it, seven even syllables (27 October 2026: the quick form ran together).
         (['A coach that already knows you.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.2),
     ],
-    'hold': {0: 0.5, 1: 1.8, 3: 4.5, 4: 1.0},  # 1: "am I the problem?" typed after the voice; 3: time to read the whole answer
+    'hold': {0: 0.5, 1: 1.8, 3: 4.5, 4: 1.0},  # 1: "what do I actually want?" typed after the voice; 3: time to read the whole answer
     # Its own piece, hopeful: B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell
     # into D major (D A Bm G) for the answer, with a light beat, a warm bass and a plucked tune; fuller for the
     # report; a held D chord to close.

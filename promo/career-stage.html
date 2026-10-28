@@ -1,7 +1,7 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <style>
-/* The career reel (shorts.py career): the job questions as searches, asked of PsycheAI, its answer typed in,
+/* The career reel (shorts.py career): wanting a promotion, its doubts as searches, asked of PsycheAI, its answer typed in,
    then what the report's career assessment adds. */
 @font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; }
@@ -84,13 +84,13 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
   <div id="dusk"></div>
   <div id="motes"></div>
-  <div class="el" id="hookIcon">💼</div>
+  <div class="el" id="hookIcon">📈</div>
   <div class="el" id="hook"></div>
   <div class="el" id="search"><div id="bar"><span>🔍</span><span id="q"></span></div><div id="recent"><h6>Recent searches</h6></div></div>
   <div class="el cap" id="ask1">So I asked <span class="grad">PsycheAI</span><span class="dots" id="dots1"><i>.</i><i>.</i><i>.</i></span></div>
   <div class="el cap" id="ask2">…and it answered from my own data</div>
   <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="chat"><h6>ASK PSYCHEAI</h6>
-    <div class="bq">Am I in the wrong job, or am I the problem?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span><span>🔎 Google</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
+    <div class="bq">Why do I want a promotion so badly?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span><span>🔎 Google</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
   <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
   <div class="el app" id="gg"><div class="ic"></div><div class="nm">Google</div></div>
   <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
@@ -115,24 +115,24 @@ const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x
 const [HOOK, QS, ASK, ANS, REP, CLOSE] = S;
 
 // The hook, letter by letter.
-const hookChars = [...'Struggling with your job?'].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
+const hookChars = [...'I thought I wanted a promotion.'].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
 // The questions: typed into a search bar one after another, piling up as recent searches. The voice says the first
 // two; the last is typed in the quiet after them.
-const SEARCHES = ['am I in the wrong job?', 'why do I dread going to work?', 'am I the problem?'];
+const SEARCHES = ['why do I want a promotion so badly?', 'why does nothing at work feel like enough?', 'what do I actually want?'];
 const rows = SEARCHES.map(tx => mk('rs', '<span>🕘</span><div>' + tx + '</div>', $('recent')));
 // The answer: a sample reader's, from the kinds of evidence the app reads; the first sentence is what the voice says.
-const ANSWER = '<b>You don’t hate your job. You hate the routine parts of it.</b> Every time you’ve talked about quitting, ' +
-  'it was the routine parts: reports, approvals, waiting on someone. But your longest, fastest messages are when you’re untangling ' +
-  'a problem – a friend’s CV, a trip that fell apart, a launch that went sideways. <b>A new job won’t fix that. Go after the complex, ' +
-  'challenging problems in the one you have.</b>';
+const ANSWER = '<b>You don’t want a bigger title. You want to be the one people come to.</b> Your longest messages aren’t about ' +
+  'your job at all. They’re you walking a friend through a CV, a budget, a hard decision, step by step, without being asked. ' +
+  'That’s when you sound most like yourself. <b>A promotion that takes you away from that won’t feel like enough. Look for the ' +
+  'role where teaching and helping people is the job.</b>';
 const answerWords = ANSWER.split(/(?<=\s)/);
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report adds: its career assessment, part by part, as the voice names each.
 const CARDS = [
-  ['🎯', 'Your edge', '<p>Solving complex, challenging problems faster than anyone around you</p>'],
-  ['🧱', 'What’s holding you back', '<p>Waiting for permission to start what you already see</p>'],
-  ['🧭', 'Careers that suit you', '<div class="cols"><div class="yes"><b>Suits you best</b>Product operations · Consulting · Early-stage teams</div>' +
-    '<div class="no"><b>Likely to drain you</b>Compliance · Data entry</div></div>'],
+  ['🎯', 'Your edge', '<p>Explaining hard things so clearly that people can act on them</p>'],
+  ['🧱', 'What’s holding you back', '<p>Chasing titles that take you further from the people you help</p>'],
+  ['🧭', 'Careers that suit you', '<div class="cols"><div class="yes"><b>Suits you best</b>Coaching · Training · Mentoring-heavy team lead</div>' +
+    '<div class="no"><b>Likely to drain you</b>Admin-heavy management · Solo back-office roles</div></div>'],
 ];
 const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
   return d; });
