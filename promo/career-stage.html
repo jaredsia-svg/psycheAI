@@ -65,10 +65,19 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 .dots i { font-style: normal; }
 /* What the report adds. */
 #more { z-index: 20; left: 60px; right: 60px; top: 260px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.08; }
-.rc { z-index: 15; left: 80px; width: 920px; padding: 38px 44px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(90,40,120,.2); }
+.rc { z-index: 15; left: 80px; width: 920px; padding: 30px 44px; border-radius: 44px; background: #fff; box-shadow: 0 30px 80px rgba(90,40,120,.2); }
 .rc small { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 850; letter-spacing: .07em; color: #8a3fd0; text-transform: uppercase; }
 .rc small span { font-size: 44px; }
 .rc p { margin-top: 14px; font-size: 44px; font-weight: 800; line-height: 1.2; color: #2a1238; }
+/* What drives you: three of the ten motivations, the top two and the bottom one, with the MBTI type beside the title. */
+.rc small em { margin-left: auto; padding: 6px 18px; border-radius: 999px; font-style: normal; font-size: 26px; letter-spacing: .06em; color: #fff;
+  background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+.mot { display: grid; grid-template-columns: 330px 1fr 64px; align-items: center; gap: 20px; margin-top: 14px; font-size: 32px; font-weight: 750; color: #2a1238; }
+.mot .bar { height: 22px; border-radius: 11px; background: #efe4f7; overflow: hidden; }
+.mot .bar i { display: block; height: 100%; width: 0; border-radius: 11px; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); }
+.mot.low .bar i { background: #b9a8c9; }
+.mot b { text-align: right; font-weight: 850; }
+.rc .note { margin-top: 12px; font-size: 26px; font-weight: 700; color: #8a7a99; }
 .cols { display: flex; gap: 26px; margin-top: 18px; }
 .cols div { flex: 1; padding: 20px 24px; border-radius: 26px; font-size: 32px; font-weight: 700; line-height: 1.35; }
 .cols b { display: block; font-size: 26px; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
@@ -133,7 +142,12 @@ const ANSWER = '<b>The promotion took you away from what you love: teaching, hel
 const answerWords = ANSWER.split(/(?<=\s)/), adviceAt = answerWords.findIndex(w => w.startsWith('show.')) + 1;
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report adds: its career assessment, part by part, as the voice names each.
+// The motivations are Schwartz's ten values as the report scores them, named as the app names them; a promotion mostly
+// rewards influence, and this reader's is low.
+const MOTIVES = [['Care for your people', 92], ['Self-direction', 74], ['Influence (status, control)', 18, 'low']];
 const CARDS = [
+  ['🧲', 'What drives you<em>ENFJ</em>', MOTIVES.map(([n, v, c]) => '<div class="mot' + (c ? ' ' + c : '') + '"><span>' + n + '</span><div class="bar"><i data-v="' + v +
+    '"></i></div><b>' + v + '</b></div>').join('') + '<div class="note">Top and bottom of your 10 motivations</div>'],
   ['🎯', 'Your edge', '<p>Explaining hard things so clearly that people can act on them</p>'],
   ['🧱', 'What’s holding you back', '<p>Chasing titles that take you further from the people you help</p>'],
   ['🧭', 'Careers that suit you', '<div class="cols"><div class="yes"><b>Suits you best</b>Coaching · Training · Mentoring-heavy team lead</div>' +
@@ -143,8 +157,8 @@ const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><s
   return d; });
 // Stacked by their own heights with an even gap, since a card can run to two lines or three. Measured every frame:
 // on the first, a card can still be shorter than it ends up (its icon's font settling after the first paint).
-function stackCards() { let y = 560; cards.forEach(d => { const was = d.style.display; d.style.display = 'block';
-  d.style.top = y + 'px'; y += d.offsetHeight + 40; d.style.display = was; }); }
+function stackCards() { let y = 490; cards.forEach(d => { const was = d.style.display; d.style.display = 'block';
+  d.style.top = y + 'px'; y += d.offsetHeight + 26; d.style.display = was; }); }
 const motes = Array.from({ length: 26 }, (_, i) => { const d = document.createElement('div'); d.className = 'mote'; $('motes').appendChild(d);
   return { el: d, x: hash(i) * 1080, speed: 30 + hash(i + 4) * 50, phase: hash(i + 8), size: 3 + hash(i + 2) * 6 }; });
 
@@ -210,7 +224,9 @@ function render(t) {
   const mr = back(prog(t, REP.vo - 0.2, REP.vo + 0.2));
   show('more', repOn ? clamp(mr * 2) * (1 - repOut) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, mr) + pulse * 0.01) + ')');
   cards.forEach((c, i) => { const a = REP.marks[i + 1] - 0.15, p = back(prog(t, a, a + 0.35));
-    show(c, repOn ? clamp(p * 2) * (1 - repOut) : 0, 'perspective(1600px) rotateX(' + (1 - Math.min(1, p)) * -70 + 'deg) scale(' + (0.9 + 0.1 * Math.min(1, p)) + ')'); });
+    show(c, repOn ? clamp(p * 2) * (1 - repOut) : 0, 'perspective(1600px) rotateX(' + (1 - Math.min(1, p)) * -70 + 'deg) scale(' + (0.9 + 0.1 * Math.min(1, p)) + ')');
+    // The bars fill once the card has landed.
+    c.querySelectorAll('.bar i').forEach((b, j) => { b.style.width = b.dataset.v * easeIO(prog(t, a + 0.3 + j * 0.12, a + 0.9 + j * 0.12)) + '%'; }); });
 
   // The close.
   const cl = back(prog(t, CLOSE.vo - 0.2, CLOSE.vo + 0.25));

@@ -219,7 +219,7 @@ horn hit, a crash and a boom were too harsh; and from the honest friend to the e
 ### The career reel
 
 ```
-npm run promo:shorts -- career   # out/PsycheAI-career.mp4, about 36 s
+npm run promo:shorts -- career   # out/PsycheAI-career.mp4, about 38 s
 ```
 
 Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
@@ -230,7 +230,7 @@ Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
 | 1 | Why? / Was I chasing the wrong thing? | only a search bar: the two doubts typed in as said, piling up as recent searches (searches are among what the app reads) |
 | 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; the dots after *PsycheAI* flicker while Instagram, Google and WhatsApp fly into the phone and a *Reading your data…* bar fills; Ask PsycheAI, the question asked |
 | 3 | The promotion took you away from what you love. … You don't need a bigger title. You need a role where helping people grow is the job. | the answer typed in, the evidence in the voice's pause and the advice as it is said: your longest messages are you getting a laid-off friend hired through your connections, or talking someone through a move at 1am; now your days are managing up and down, politics, and meetings for show; *You don't need a bigger title. You need a role where helping people grow is the job.* (a sample reader's) |
-| 4 | Your Psyche Report goes further. Your edge at work, what holds you back, and careers that suit you. | three cards from the report's career assessment as each is named: *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
+| 4 | Your Psyche Report goes further. What drives you, your edge at work, what holds you back, and careers that suit you. | four cards from the report as each is named: *What drives you* (the top two and the bottom one of the ten motivations as bars, *Care for your people* 92, *Self-direction* 74, *Influence (status, control)* 18, with *ENFJ* beside the title: a promotion mostly rewards influence, so the number backs the answer and shows the report measures); *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
 | 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
 
 **The promotion script** (28 October 2026). The first script (*Struggling with your job? … You don't hate your
