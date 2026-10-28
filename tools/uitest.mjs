@@ -15034,6 +15034,54 @@ try {
       check('a Muse read is not one of the reader’s free upload reads', !landed.runs || landed.runs === '0', String(landed.runs));
       check('the key leaves the address bar as soon as the read is opened', landed.address === '', landed.address);
 
+      // Ask in Muse: Muse wrote the read, so its questions go to Muse.
+      {
+        await mp.evaluate(() => {
+          window.__opened = [];
+          window.open = (url, target) => { window.__opened.push(url); return null; };
+          window.__copied = '';
+          try { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: text => { window.__copied = text; return Promise.resolve(); } } }); } catch (e) { /* kept */ }
+        });
+        const tile = await mp.evaluate(() => {
+          const t = document.querySelector('#profile-body .hub-tile[data-hub="ask"]');
+          const ig = document.querySelector('#profile-body .hub-chip[data-hub-source="instagram"]');
+          return { text: t ? t.textContent : '', igLoaded: Boolean(ig && !ig.classList.contains('is-add')) };
+        });
+        check('a Muse read\'s Ask tile says it is answered in Muse, with no count, and Instagram shows as read', /In Muse/.test(tile.text) && /Ask in Muse/.test(tile.text) && /Muse wrote your read/.test(tile.text) && !/\d/.test(tile.text) && tile.igLoaded, JSON.stringify(tile));
+        await mp.click('#profile-body .hub-tile[data-hub="ask"] [data-hub-go="ask"]');
+        await mp.waitForSelector('#ask-dialog[open]', { timeout: 10000 });
+        const panel = await mp.evaluate(() => ({ send: document.querySelector('#ask-send').textContent, credits: document.querySelector('#ask-credits').hidden,
+          buy: document.querySelector('#ask-buy').hidden, privacy: document.querySelector('#ask-privacy').textContent }));
+        check('Ask PsycheAI on a Muse read sends to Muse, with no credits or buying', panel.send === 'Ask in Muse' && panel.credits && panel.buy && /Nothing is sent from here/.test(panel.privacy), JSON.stringify(panel));
+        let asks = 0;
+        mp.on('request', r => { if (/\/api\/ask\b/.test(r.url())) asks++; });
+        await mp.fill('#ask-input', 'What do I keep trying to prove?');
+        await mp.click('#ask-send');
+        await mp.waitForFunction(() => window.__opened.length > 0, null, { timeout: 5000 });
+        const sent = await mp.evaluate(() => ({ opened: window.__opened, copied: window.__copied, said: document.querySelector('#ask-status') ? document.querySelector('#ask-status').textContent : '' }));
+        check('Ask in Muse copies the question and opens Muse, and nothing is asked here', sent.copied === 'What do I keep trying to prove?' && sent.opened[0] === 'https://www.meta.ai/' && asks === 0, JSON.stringify(sent) + ' asks ' + asks);
+        await mp.evaluate(() => { const d = document.querySelector('#ask-dialog'); if (d.open) d.close(); });
+      }
+
+      // Use for Psyche Pair: after a yes, the card-level part of the read is
+      // posted to the plugin, and nothing else.
+      {
+        await mp.evaluate(() => {
+          window.__posted = null;
+          window.confirm = () => true;
+          HTMLFormElement.prototype.submit = function () { window.__posted = { action: this.action, method: this.method, read: this.querySelector('input[name="read"]').value }; };
+        });
+        await mp.click('#profile-body .hub-card [data-hub-go="pair"]');
+        const posted = await mp.evaluate(() => window.__posted);
+        const read = posted ? JSON.parse(posted.read) : {};
+        const keys = Object.keys(read).sort().join();
+        check('Use for Psyche Pair posts the card-level read to the plugin\'s /join, and nothing else',
+          posted && posted.action === 'https://app.psycheai.io/join' && posted.method === 'post' && read.name === 'Mei' &&
+            keys === 'attachment,bigFive,card,confidence,essence,interests,mbti,name,patterns,relationship,topMotivators,values' &&
+            typeof read.bigFive.openness.score === 'number' && !('reading' in read.bigFive.openness) && !/Mock (detail|reading|evidence)|harsh|summary paragraph/i.test(posted.read),
+          posted ? posted.read.slice(0, 300) : 'nothing posted');
+      }
+
       // Opened again over a card already here: asked first, and nothing replaced on No.
       let asked = '';
       // The suite's own handler answers every confirm with No (leaveFreely); this only reads it.

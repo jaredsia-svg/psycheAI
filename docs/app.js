@@ -2004,6 +2004,51 @@
   // unlock offer, and the payment sheet behind it, lead with sharing the link,
   // and paying US$5 is the quiet second way in. Offered only while this
   // reader has no Psyche Report, since the server refuses it after.
+  // "Use for Psyche Pair": the card-level part of the read, and only that,
+  // posted to the PsycheAI plugin (app.psycheai.io/join, its lib/join.js) as
+  // a top-level form post once the reader agrees; they sign in there. The
+  // structured fields alone: no report text, no data, nothing from the digest.
+  function pairPayload() {
+    const r = (state.profile && state.profile.report) || {};
+    const list = (value, pick) => (Array.isArray(value) ? value.map(pick).filter(Boolean) : []);
+    const big = r.bigFive || {};
+    const love = (r.relationship && r.relationship.loveLanguages) || {};
+    return {
+      name: String((state.profile.card && state.profile.card.name) || '').split(/\s+/)[0],
+      confidence: { score: Number(r.confidence && r.confidence.score) || null },
+      essence: { character: r.essence && r.essence.character },
+      card: { headline: r.card && r.card.headline },
+      mbti: { type: r.mbti && r.mbti.type, letters: list(r.mbti && r.mbti.letters, l => ({ choice: l.choice, strength: l.strength })) },
+      bigFive: Object.fromEntries(['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']
+        .filter(k => big[k] && Number.isFinite(Number(big[k].score))).map(k => [k, { score: Number(big[k].score) }])),
+      attachment: { style: r.attachment && r.attachment.style },
+      relationship: { loveLanguages: { giving: list(love.giving, l => l.language && { language: l.language }),
+        receiving: list(love.receiving, l => l.language && { language: l.language }) } },
+      interests: list(r.interests, i => i.name && { name: i.name }).slice(0, 20),
+      values: list(r.values, v => v.value && { value: v.value }).slice(0, 6),
+      topMotivators: list(r.topMotivators || (r.card && r.card.motivators), m => String(m)).slice(0, 3),
+      patterns: list(r.patterns, p => p.name && { name: p.name }).slice(0, 3),
+    };
+  }
+  function usePairRead() {
+    if (!state.profile || !state.profile.report) return;
+    if (!window.confirm(TEXT.pairConfirm)) return;
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = TEXT.pairUrl;
+    const field = document.createElement('input');
+    field.type = 'hidden';
+    field.name = 'read';
+    field.value = JSON.stringify(pairPayload());
+    form.appendChild(field);
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // A read Muse wrote, with no data of its own added here: there is no digest
+  // for Ask PsycheAI to answer from, so its questions go to Muse.
+  const museOnly = () => Boolean(state.profile && state.profile.source === 'muse' && !state.digest);
+
   function firstFreeOffered() {
     return Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length &&
       !hasUnfetchedUnlock() && !store.read(KEYS.firstUsed, false);
@@ -2213,6 +2258,8 @@
   const HUB_ICONS = {
     // The Psyche Card: a portrait card with a face and two lines.
     card: '<rect x="6" y="3" width="12" height="18" rx="2.5"/><circle cx="12" cy="9.5" r="2.5"/><path d="M9 15h6M9.5 18h5"/>',
+    // Psyche Pair: a heart.
+    heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
     report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/><path d="M12 8.6l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
@@ -2347,7 +2394,11 @@
             buttons: [['unlock', firstFreeOffered() ? H.unlockFree : H.unlock, '', ' is-fill']] }),
       hubTile('syncs', { icon: 'sync', mark: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
         badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync'], ['share', H.share, 'share']] }),
-      hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
+      museOnly()
+        // A read Muse wrote: no count, as nothing is asked from here.
+        ? hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, tip: 'askMuse', state: '<span class="hub-state">' + esc(H.inMuse) + '</span>',
+            buttons: [['ask', Copy.STRUCTURED.ask.inMuse, 'ask']] })
+        : hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
         made: explained && asked ? esc(H.tips.askHistory) : '',
         // With answers to look back on: History the wide button, a small "?" to
         // ask a new one. Before any: Ask, the whole width.
@@ -2358,7 +2409,8 @@
     const short = H.sourceNames;
     const sources = [
       // A card read from WhatsApp chats alone has no Instagram to show loaded.
-      ['instagram', short.instagram, Boolean(digest && digestHasInstagram(digest))],
+      // A read Muse wrote read Instagram there, so it shows as loaded.
+      ['instagram', short.instagram, Boolean(digest && digestHasInstagram(digest)) || Boolean(state.profile && state.profile.source === 'muse')],
       ['whatsapp', short.whatsapp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
       ['google', short.google, Boolean(digest && digest.google)],
       ['facebook', short.facebook, Boolean(digest && digest.facebook)],
@@ -2386,6 +2438,8 @@
           // The one plain way to add a source or change what was read.
           '<button type="button" class="hub-change" data-hub-change data-flow="' + flow + '">' + hubIcon('redo') + '<span>' + esc(H.changeData) + '</span></button>' +
           dataNudgeHtml(score, sources, flow) +
+          // The read, taken to Psyche Pair in Muse (usePairRead), once there is a report.
+          (explained ? '<button type="button" class="hub-pair" data-hub-go="pair">' + hubIcon('heart') + '<span>' + esc(H.pair) + '</span></button>' : '') +
         '</div>' +
         '<div class="hub-row hub-keep" aria-label="' + esc(H.keep) + '">' +
           '<span class="hub-keephead">' + hubTip('keep', H.keep, 'hub-rl') + '</span>' +
@@ -2531,6 +2585,7 @@
         if (report) openMethodDialog(report);
         break;
       case 'backup': openHubConfirm('backup'); break;
+      case 'pair': usePairRead(); break;
       case 'ai': openHubConfirm('ai'); break;
       case 'ai-locked': openHubConfirm('ai', true); break;
       case 'delete': $('#delete-profile').click(); break;
@@ -6710,8 +6765,16 @@
       // broken. Saying what is needed is the whole fix — askDataSources
       // already treats Instagram as replaceable, so the reader's next attempt
       // has somewhere to go.
-      flash('#profile-alert', TEXT.rerunNeedsInstagram);
-      return;
+      // A read Muse wrote has no digest here: the chats (and Google or
+      // Facebook beside them) are the deeper read's evidence, as a card read
+      // from chats alone is (Digest.buildFromSupplements). Instagram itself
+      // Muse has already read.
+      if (state.profile && state.profile.source === 'muse' && extraSupplements && extraSupplements.whatsapp) {
+        digest = Digest.buildFromSupplements(extraSupplements);
+      } else {
+        flash('#profile-alert', state.profile && state.profile.source === 'muse' ? TEXT.museAddNeedsChats : TEXT.rerunNeedsInstagram);
+        return;
+      }
     }
 
     // Once premium is unlocked the run this pays for writes the full report
@@ -10414,6 +10477,10 @@
     const dataChanged = deepRead ? Boolean(paidDigest.__fresh)
       : Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest && !pendingPremiumDigest.__unchanged);
 
+    // A read Muse wrote keeps its card when data is added: the deeper read
+    // explains the same character from more evidence, as agreed for Muse
+    // readers, rather than drawing a new card.
+    const museCard = Boolean(state.profile && state.profile.source === 'muse');
     startProgress();
     guardUnload(true);
     try {
@@ -10425,7 +10492,7 @@
       // evidence is not one to hold a fuller report to.
       // With the reader's own name back to the placeholder: the stored card
       // has it put in (withOwnName), and none of it should travel.
-      const anchor = dataChanged ? null
+      const anchor = dataChanged && !museCard ? null
         : withPlaceholderName(state.profile && (state.profile.freeReport || state.profile.report), state.profile);
       const request = Object.assign({}, bundledAuth(auth), anchor ? { anchor } : {}, deepRead ? { deep: true } : {});
       // Recorded under its own kind, because collecting it is not the same as
@@ -10442,7 +10509,7 @@
       const sentDigest = Digest.forModel(paidDigest, { deep: deepRead });
       store.write(KEYS.reportDigestNext, sentDigest);
       const full = await LLM.analyseProfile(sentDigest, await withAttribution(request),
-        { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
+        { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged && !museCard }) });
       // A gifted report, now used.
       const gift = giftWaiting();
       if (gift && auth.referralGrant === gift.token) { store.remove(KEYS.gift); refreshGiftBanner(); refreshReportPromo(); }
@@ -10485,7 +10552,7 @@
       keepReportDigest();
       // What was loaded for this unlock is now part of it.
       pendingDataSourceReads = {};
-      await adoptFullReport(full, dataChanged, undefined,
+      await adoptFullReport(full, dataChanged && !museCard, undefined,
         deepRead && paidDigest.coverage ? { sampling: paidDigest.coverage.sampling || {} } : null);
       // Every section changed, so the whole report is redrawn rather than
       // having bodies spliced into a page still showing the locked block.
@@ -11463,8 +11530,9 @@
     // From the floating button the ideas open at once, over the lower half of
     // the conversation; ✕ folds them back under the Ideas button.
     showAskIdeas(Boolean(options && options.ideas));
-    $('#ask-privacy').textContent = A.privacy;
-    $('#ask-send').textContent = A.send;
+    $('#ask-privacy').textContent = museOnly() ? A.musePrivacy : A.privacy;
+    if (museOnly()) $('#ask-sub').textContent = A.museSub;
+    $('#ask-send').textContent = museOnly() ? A.inMuse : A.send;
     $('#ask-input').placeholder = A.placeholder;
     $('#ask-input').maxLength = ASK_MAX;
     sayAsk('');
@@ -11496,9 +11564,25 @@
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
+    if (museOnly()) {
+      // No credits to show or buy: nothing is asked from here.
+      $('#ask-credits').hidden = true;
+      $('#ask-buy').hidden = true;
+      $('#ask-send').hidden = false;
+      return;
+    }
     const pending = store.read(KEYS.askPending, null);
     if (pending && pending.paymentIntentId) await creditAskPayment(pending.paymentIntentId);
     await refreshAskCredits();
+  }
+
+  // Ask in Muse: the question is copied and Muse opened, for a read Muse wrote.
+  async function askInMuse(question) {
+    const A = Copy.STRUCTURED.ask;
+    let copied = false;
+    try { await navigator.clipboard.writeText(question); copied = true; } catch (error) { /* said below */ }
+    sayAsk(copied ? A.museCopied : A.museCopyFailed, copied ? 'good' : 'bad');
+    window.open(TEXT.museUrl, '_blank', 'noopener');
   }
   function askCount() {
     const n = $('#ask-input').value.length;
@@ -11511,6 +11595,7 @@
     const question = $('#ask-input').value.replace(/\s+/g, ' ').trim().slice(0, ASK_MAX);
     if (askBusy) return;
     if (question.length < 3) { sayAsk(A.tooShort, 'bad'); return; }
+    if (museOnly()) { await askInMuse(question); return; }
     if (askCreditsNow && askCreditsNow.total < 1) { renderAskCredits(); return; }
     const mine = await ensureReferral();
     if (!mine) return;

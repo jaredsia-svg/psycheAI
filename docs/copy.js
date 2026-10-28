@@ -504,6 +504,12 @@
     shortLinkUnreadable: 'That link couldn\u2019t be opened. It may have expired or been cut short – ask for it again.',
     // A read written by Muse through the PsycheAI plugin (lib/museimport.js).
     museReadUnreadable: 'That read couldn\u2019t be opened. It may have expired (links last 7 days) – ask Muse for a new one.',
+    // "Use for Psyche Pair" (app.js usePairRead): where it posts, and what it asks first.
+    pairUrl: 'https://app.psycheai.io/join',
+    pairConfirm: 'Use this read for Psyche Pair? Its matching gets the card-level part of your read: your type, Big Five, attachment lean, love languages, interests, values, motivations, character and headline. Never your data, messages or report text. You sign in on the next page.',
+    // Muse's own address, where "Ask in Muse" sends a Muse read's questions.
+    museUrl: 'https://www.meta.ai/',
+    museAddNeedsChats: 'Muse already read your Instagram. Add your WhatsApp chats (and Google or Facebook if you like) for a deeper read of the same card.',
     museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
@@ -1351,6 +1357,12 @@
       tooShort: 'Ask a little more – a few words at least.',
       failed: 'PsycheAI could not answer that just now. Your question was not used – try again.',
       noCredits: 'You have no questions left.',
+      // A read Muse wrote, with nothing added here: Muse answers, as it wrote it.
+      inMuse: 'Ask in Muse',
+      museSub: 'Muse wrote your read, so Muse answers your questions about it.',
+      musePrivacy: 'Your question is copied for you to paste into Muse. Nothing is sent from here. Add your WhatsApp or Google data for a deeper read, and Ask PsycheAI answers here too.',
+      museCopied: 'Copied. Paste it into Muse.',
+      museCopyFailed: 'Copy your question, then paste it into Muse.',
       // At the end of each part of My Report, the question started for them.
       partLink: 'Ask PsycheAI about this',
       partPrefill: title => 'About "' + title + '": ',
@@ -1420,6 +1432,8 @@
       unlock: 'Unlock',
       ask: 'Ask PsycheAI',
       questionsLeft: n => n + (n === 1 ? ' question left' : ' questions left'),
+      inMuse: 'In Muse',
+      pair: 'Use for Psyche Pair',
       questionsOf: (asked, of) => asked + ' of ' + of + (of === 1 ? ' question asked' : ' questions asked'),
       freeQuestion: n => n + (n === 1 ? ' free question' : ' free questions'),
       askGo: 'Ask',
@@ -1488,6 +1502,7 @@
         // The count explains itself (numTips.ask); History is said only once its button is there (askHistory).
         ask: 'Ask PsycheAI anything about your report.',
         askHistory: ' History shows your past answers.',
+        askMuse: 'Muse wrote your read, so Muse answers your questions about it. Add your WhatsApp or Google data for a deeper read, and Ask PsycheAI answers here too.',
       },
       // The two popouts that come before a download.
       confirm: {

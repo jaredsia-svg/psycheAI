@@ -2733,6 +2733,20 @@ rules for writing it live here, so the plugin and the site can't drift.
   address bar at once, the bundle is opened with WebCrypto and adopted like a finished run, marked
   `source: 'muse'`, with the full report open. It is free and doesn't count as one of the reader's
   free upload reads (`notARun`). If a card is already here, it asks before replacing it.
+- **Ask in Muse.** A Muse read has no digest here, so Ask PsycheAI has nothing to answer from. Until data is
+  added, its questions go to Muse, which wrote the read (`museOnly()` in `app.js`): the Ask tile says "In Muse" with no
+  count, and the panel's button is "Ask in Muse", which copies the question and opens Muse (`TEXT.museUrl`). Nothing is
+  sent from here, and no credits are shown or sold.
+- **Add more data: a deeper read of the same card.** "Add / change data" works on a Muse read: Instagram shows as
+  read, and WhatsApp chats (with Google or Facebook beside them) become the digest, as for a card read from chats alone
+  (`Digest.buildFromSupplements`). It is priced as any re-run after an unlock is (the US$5 bundled run; whether a first report per account should make it free is still to decide), but
+  the Muse card is kept: it is sent as the anchor even though data was added, and the card is not replaced, so the report
+  explains the same character from more evidence. From then on there is a digest, so Ask PsycheAI answers here.
+- **Use for Psyche Pair** (`usePairRead`, under Your Data once there is a report): after a confirm saying exactly what
+  goes, the page posts the card-level part of the read (type and letters, Big Five scores, attachment style, love
+  languages, interests, values, top motivators, character, headline, pattern names, confidence) to
+  `app.psycheai.io/join` as a top-level form post, and the reader signs in there. No report text and nothing from the
+  digest. The plugin maps it onto its matching profile (psyche-pair `lib/join.js`). The privacy page says so.
 - **`/muse`** (`docs/muse.html`) is the plugin's public page: how to add it to Muse, and the plugin's
   own privacy, terms and safety sections (`#privacy`, `#terms`, `#safety`), which the plugin's old
   addresses redirect to. Noindex and out of the sitemap until launch.

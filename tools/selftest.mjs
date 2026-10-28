@@ -9758,7 +9758,8 @@ check('the schema requires evidence on where they align and differ',
 
   const sealed = await museImport.seal(good.bundle, 'Mei Tan', 1000);
   const kept = await museImport.open(sealed.id);
-  check('only the sealed copy is kept', kept && !JSON.stringify(kept).includes('Mei') && !JSON.stringify(kept).includes('freeCard'));
+  check('only the sealed copy is kept', kept && Object.keys(kept).sort().join() === 'box,iv' &&
+    !/Mei|freeCard/.test(Buffer.from(kept.box, 'base64url').toString('latin1')));
   const raw = Buffer.from(kept.box, 'base64url');
   const d = createDecipheriv('aes-256-gcm', Buffer.from(sealed.key, 'base64url'), Buffer.from(kept.iv, 'base64url'));
   d.setAuthTag(raw.subarray(raw.length - 16));
@@ -9819,7 +9820,8 @@ check('the schema requires evidence on where they align and differ',
   check('import: a read that fails the checks is refused with what failed', out.refused.status === 422 && out.refused.json.problems.some(p => /summary/.test(p)));
   check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.system === 'string' && out.guide.json.schema);
   check('import: ?kind=sync gives the Sync guide', out.syncGuide.status === 200 && /writing this Sync through Muse/.test(out.syncGuide.json.system) && out.syncGuide.json.brief && out.syncGuide.json.schema);
-  check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' && !JSON.stringify(out.open.json).includes('Mei'));
+  check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' &&
+    Object.keys(out.open.json).sort().join() === 'box,iv' && !/Mei/.test(Buffer.from(out.open.json.box, 'base64url').toString('latin1')));
   check('import: an expired or unknown read is a 404', out.missing === 404);
 }
 
@@ -10287,7 +10289,7 @@ check('the schema requires evidence on where they align and differ',
 
   // B3: the anchor goes with the placeholder, not the reader's name.
   check('B3: an unlock\'s anchor has the reader\'s own name swapped back to the placeholder before it is sent',
-    /const anchor = dataChanged \? null\s*: withPlaceholderName\(state\.profile && \(state\.profile\.freeReport \|\| state\.profile\.report\), state\.profile\);/.test(appSource) &&
+    /const anchor = dataChanged && !museCard \? null\s*: withPlaceholderName\(state\.profile && \(state\.profile\.freeReport \|\| state\.profile\.report\), state\.profile\);/.test(appSource) &&
       /function withPlaceholderName\(value, profile\)/.test(appSource));
 
   // B4: one ZIP entry cannot unpack without limit.

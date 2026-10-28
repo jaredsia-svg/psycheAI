@@ -5081,6 +5081,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hub-num { font-size: 1rem; font-weight: 700; line-height: 1; color: var(--accent); white-space: nowrap; }
 .hub-num small { font-size: .72rem; font-weight: 600; color: var(--ink-soft); }
 .hub-ok { flex: none; display: grid; place-items: center; color: var(--good); }
+/* A state in words where a tile has no number (Ask PsycheAI on a read Muse wrote). */
+.hub-state { flex: none; margin-left: auto; font-size: .8rem; font-weight: 600; color: var(--accent); }
 .hub-ok .hub-svg { width: 20px; height: 20px; stroke-width: 3; }
 .hub-badge { font-size: .6rem; font-weight: 800; color: #fff; background: var(--accent); padding: .1rem .4rem; border-radius: 999px; white-space: nowrap; }
 .hub-badge[hidden] { display: none; }
@@ -5467,8 +5469,15 @@ details.more[open] > summary::after { content: ' ▴'; }
   color: var(--ink-soft); cursor: pointer; border-radius: 8px; }
 .hub-nudge-x:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .hub-data { flex-wrap: wrap; }
+/* Use for Psyche Pair: an outline of Add / change data's shape, on its own line. */
+.hub-pair { flex-basis: 100%; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; padding: .4rem .8rem;
+  border: 1.5px solid var(--accent); border-radius: 999px; background: transparent; font: inherit; font-size: .78rem; font-weight: 700;
+  color: var(--accent); cursor: pointer; white-space: nowrap; }
+.hub-pair .hub-svg { width: 13px; height: 13px; stroke-width: 2.2; }
+.hub-pair:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 @media (max-width: 759px) {
   .hub-change { flex-basis: 100%; min-height: 40px; font-size: .84rem; }
+  .hub-pair { min-height: 40px; font-size: .84rem; }
 }
 
 /* My Report's actions, on a laptop's side menu and a phone's bottom row
