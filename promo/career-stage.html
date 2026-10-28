@@ -15,7 +15,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #b2 { width: 760px; height: 760px; right: -220px; top: 900px; background: #e6dcff; }
 .mote { position: absolute; border-radius: 50%; background: #fff; }
 /* The hook. */
-#hook { z-index: 20; left: 70px; right: 70px; top: 800px; text-align: center; color: #fff; font-size: 104px; font-weight: 900; line-height: 1.05; letter-spacing: -0.035em; }
+#hook { z-index: 20; left: 70px; right: 70px; top: 800px; text-align: center; color: #fff; font-size: 92px; font-weight: 900; line-height: 1.05; letter-spacing: -0.035em; }
 #hook i { font-style: normal; }
 #hookIcon { z-index: 19; left: 0; right: 0; top: 560px; text-align: center; font-size: 170px; }
 /* The questions, as searches. */
@@ -116,17 +116,19 @@ const [HOOK, QS, ASK, ANS, REP, CLOSE] = S;
 
 // The hook, letter by letter.
 // The second sentence waits for the voice to reach it.
-const HOOK_A = 'I always wanted a promotion. ', HOOK_B = 'Then I got it, and I dreaded work even more.';
+const HOOK_A = 'I finally got the promotion I’d been chasing for years. ', HOOK_B = 'But I dread work even more today.';
 const hookChars = [...(HOOK_A + HOOK_B)].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
-// The questions: typed into a search bar one after another, piling up as recent searches. The voice says the first
-// two; the last is typed in the quiet after them.
-const SEARCHES = ['why do I dread work more after my promotion?', 'was I chasing the wrong thing?', 'what do I actually want?'];
+// The twist on a line of its own, after the beat.
+$('hook').insertBefore(document.createElement('br'), hookChars[HOOK_A.length]);
+// The questions: typed into a search bar one after another, piling up as recent searches. The voice says "Why?" over
+// the first; the second is typed in the quiet after it.
+const SEARCHES = ['why do I dread work more after my promotion?', 'was I chasing the wrong thing?'];
 const rows = SEARCHES.map(tx => mk('rs', '<span>🕘</span><div>' + tx + '</div>', $('recent')));
 // The answer: a sample reader's, from the kinds of evidence the app reads; the first sentence is what the voice says.
 const ANSWER = '<b>The promotion took you away from what you love: teaching, helping, and seeing it change someone’s life.</b> ' +
-  'Your longest messages are you helping a friend who got laid off land a job through your connections, or talking someone ' +
-  'through a hard decision to relocate at 1am. Now your days are managing up and down, office politics, and meetings that are ' +
-  'mostly for show. <b>You don’t need a bigger title. You need a role where helping people grow is the job.</b>';
+  'Your longest messages are you getting a laid-off friend hired through your connections, or talking someone through a move ' +
+  'at 1am. Now your days are managing up and down, politics, and meetings for show. <b>You don’t need a bigger title. You need ' +
+  'a role where helping people grow is the job.</b>';
 const answerWords = ANSWER.split(/(?<=\s)/);
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report adds: its career assessment, part by part, as the voice names each.
@@ -170,7 +172,7 @@ function render(t) {
   const sIn = back(prog(t, QS.start, QS.start + 0.4));
   show('search', qOn ? clamp(sIn * 2) * (1 - qOut) : 0, 'translateY(' + (1 - Math.min(1, sIn)) * 120 + 'px)');
   // The bar types the newest search while the rows pile up above the older ones.
-  const QT = [QS.marks[0], QS.marks[1], QS.voEnd + 0.2];
+  const QT = [QS.marks[0], QS.voEnd + 0.15];
   const k = QT.filter(m => t >= m - 0.1).length - 1, cur = SEARCHES[Math.max(0, k)];
   const typed = Math.round(cur.length * prog(t, QT[Math.max(0, k)] - 0.1, QT[Math.max(0, k)] + 0.5));
   $('q').innerHTML = cur.slice(0, typed) + '<span class="caret" style="opacity:' + (Math.sin(t * 12) > 0 ? 1 : 0) + '"></span>';
