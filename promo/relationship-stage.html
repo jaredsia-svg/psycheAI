@@ -123,10 +123,12 @@ const FIGHTS = ['You always put your parents before me.', 'You’re on your phon
   'Your work always comes first.', 'You said you’d be home by seven.', 'You don’t listen to me.'];
 const fights = FIGHTS.map((tx, i) => { const d = mk('fight el ' + (i % 2 ? 'r' : 'l'), tx, $('fights')); d.style.top = (330 + i * 190) + 'px'; return d; });
 // The answer: a sample reader's, from her own messages only; the first sentences are what the voice says.
-const ANSWER = '<b>It’s not the dishes. It’s feeling like you come second.</b> You show love by doing things: you plan, you ' +
-  'remember, you check in. When no one notices, a small thing becomes the fight. Your messages get short right before an argument – ' +
-  '‘fine’, ‘whatever’ – then long, two days later. <b>Say what you need before it builds: “I need to feel like a priority.”</b>';
-const answerWords = ANSWER.split(/(?<=\s)/);
+const ANSWER = '<b>It’s not the dishes. It’s wanting him to notice without being asked.</b> To you, asking makes it count less. ' +
+  'You’ve asked friends “should I really have to tell him?” more than once. Your messages go short – ‘fine’, ‘whatever’ – right ' +
+  'before a fight, then long, two days later. <b>Asking doesn’t make it count less. Tell him what you need, and give him the chance ' +
+  'to get it right.</b>';
+// Typed in two runs: up to the advice while the voice says the first line and pauses, then the advice as it is said.
+const answerWords = ANSWER.split(/(?<=\s)/), adviceAt = answerWords.findIndex(w => w.startsWith('later.')) + 1;
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report covers, part by part, as the voice names each: how you love, your attachment style, how you deal
 // with conflict, what you need in a partner (all read from her data alone).
@@ -135,7 +137,7 @@ const CARDS = [
     '<div class="no"><b>You need</b>Words of affirmation: to be noticed and told</div></div>'],
   ['🔗', 'Attachment style', '<p>Leans anxious: you need reassurance most when things go quiet</p>'],
   ['⚡', 'How you deal with conflict', '<p>Quiet first, then it all comes out over something small</p>'],
-  ['🧭', 'What you need in a partner', '<p>Someone who notices the effort, and says so</p>'],
+  ['🧭', 'What you need in a partner', '<p>Someone who notices without being asked</p>'],
 ];
 const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
   return d; });
@@ -200,7 +202,7 @@ function render(t) {
   $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, ASK.start + 0.8, ANS.start - 0.1))) + '%';
   [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, ASK.start + 1.1 + i * 0.25, ASK.start + 1.3 + i * 0.25); });
   $('answer').style.display = t >= ANS.vo - 0.05 ? 'block' : 'none';
-  const typedW = Math.round(answerWords.length * prog(t, ANS.vo, ANS.end - 1.4));
+  const typedW = Math.round(adviceAt * prog(t, ANS.vo, ANS.marks[2] - 0.3) + (answerWords.length - adviceAt) * prog(t, ANS.marks[2], ANS.voEnd));
   $('answer').innerHTML = fixTags(answerWords.slice(0, typedW).join('')) || '<span style="opacity:.5">● ● ●</span>';
   $('source').textContent = typedW >= answerWords.length ? 'From your messages and posts' : '';
 

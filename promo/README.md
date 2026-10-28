@@ -251,7 +251,7 @@ landed as a bang).
 ### The relationship reel
 
 ```
-npm run promo:shorts -- relationship   # out/PsycheAI-relationship.mp4, about 34 s
+npm run promo:shorts -- relationship   # out/PsycheAI-relationship.mp4, about 40 s
 ```
 
 Its own stage, `relationship-stage.html` (the career reel's, reworked), and its own voice: Piper's HFC female
@@ -262,8 +262,8 @@ Its own stage, `relationship-stage.html` (the career reel's, reworked), and its 
 | 0 | We fought about the dishes. Again. | on an evening dusk, a plate, the line typed out, *…again.* in pink |
 | 1 | Different topic. Same fight. | first, with music only (`lead` in its entry), the fights that keep coming back as messages, one after another: *You always put your parents before me.* … *You don't listen to me.*; then they blur as the voice names them |
 | 2 | So I asked PsycheAI why we keep fighting over small things, and it answered from my own data. | the career reel's loading: Instagram, Google and WhatsApp fly into the phone, *Reading your data…*, the dots flickering |
-| 3 | It's not the dishes. It's feeling like you come second. | the answer typed in: she shows love by doing things, and when no one notices a small thing becomes the fight; her messages get short before an argument; *Say what you need before it builds: "I need to feel like a priority."* (a sample reader's) |
-| 4 | Your Psyche Report shows how you love, your attachment style, how you handle conflict, and what you need from the person you love. | four cards, each as it is named: *How you show love* (you give acts of service / you need words of affirmation), *Attachment style*, *How you deal with conflict*, *What you need in a partner* |
+| 3 | It's not the dishes. It's wanting him to notice without being asked. … Asking doesn't make it count less. Tell him what you need. | the answer typed in, the evidence in the voice's pause and the advice as it is said: to her, asking makes it count less; she has asked friends "should I really have to tell him?"; her messages go short before a fight, then long two days later; *Asking doesn't make it count less. Tell him what you need, and give him the chance to get it right.* (a sample reader's; 28 October 2026, replacing *feeling like you come second*, which read as a line anyone could say) |
+| 4 | Your Psyche Report shows how you love, your attachment style, how you handle conflict, and what you need from the person you love. | four cards, each as it is named: *How you show love* (you give acts of service / you need words of affirmation), *Attachment style*, *How you deal with conflict*, *What you need in a partner* (*Someone who notices without being asked*) |
 | 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
 
 Only her data is read, so nothing speaks for him or for the couple: the report line was "how to better relate to
