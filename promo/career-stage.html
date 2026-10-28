@@ -90,7 +90,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div class="el cap" id="ask1">So I asked <span class="grad">PsycheAI</span><span class="dots" id="dots1"><i>.</i><i>.</i><i>.</i></span></div>
   <div class="el cap" id="ask2">…and it answered from my own data</div>
   <div class="el" id="phone"><div id="screen"><div id="notch"></div><div id="chat"><h6>ASK PSYCHEAI</h6>
-    <div class="bq">Why do I want a promotion so badly?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span><span>🔎 Google</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
+    <div class="bq">Why do I dread work more since my promotion?</div><div id="loading"><div class="ln">Reading your data<span class="dots" id="dots2"><i>.</i><i>.</i><i>.</i></span></div><div class="files"><span>📷 Instagram</span><span>💬 WhatsApp</span><span>🔎 Google</span></div><div class="track"><div class="fill"></div></div></div><div id="answer"></div><div id="source"></div></div></div></div>
   <div class="el app" id="ig"><div class="ic"></div><div class="nm">Instagram</div></div>
   <div class="el app" id="gg"><div class="ic"></div><div class="nm">Google</div></div>
   <div class="el app" id="wa"><div class="ic"></div><div class="nm">WhatsApp</div></div>
@@ -115,16 +115,18 @@ const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x
 const [HOOK, QS, ASK, ANS, REP, CLOSE] = S;
 
 // The hook, letter by letter.
-const hookChars = [...'I thought I wanted a promotion.'].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
+// The second sentence waits for the voice to reach it.
+const HOOK_A = 'I always wanted a promotion. ', HOOK_B = 'Then I got it, and I dreaded work even more.';
+const hookChars = [...(HOOK_A + HOOK_B)].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
 // The questions: typed into a search bar one after another, piling up as recent searches. The voice says the first
 // two; the last is typed in the quiet after them.
-const SEARCHES = ['why do I want a promotion so badly?', 'why does nothing at work feel like enough?', 'what do I actually want?'];
+const SEARCHES = ['why do I dread work more after my promotion?', 'was I chasing the wrong thing?', 'what do I actually want?'];
 const rows = SEARCHES.map(tx => mk('rs', '<span>🕘</span><div>' + tx + '</div>', $('recent')));
 // The answer: a sample reader's, from the kinds of evidence the app reads; the first sentence is what the voice says.
-const ANSWER = '<b>You don’t want a bigger title. You want to be the one people come to.</b> Your longest messages aren’t about ' +
-  'your job at all. They’re you walking a friend through a CV, a budget, a hard decision, step by step, without being asked. ' +
-  'That’s when you sound most like yourself. <b>A promotion that takes you away from that won’t feel like enough. Look for the ' +
-  'role where teaching and helping people is the job.</b>';
+const ANSWER = '<b>The promotion took you away from what you love: creating real value, teaching and helping people.</b> ' +
+  'Your longest messages are you helping a friend who got retrenched land a job through your connections, or talking someone ' +
+  'through a hard decision to relocate at 1am. Now your days are managing up and down, office politics, and meetings that are ' +
+  'mostly for show. <b>You don’t need a bigger title. You need a role where helping people grow is the job.</b>';
 const answerWords = ANSWER.split(/(?<=\s)/);
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report adds: its career assessment, part by part, as the voice names each.
@@ -158,7 +160,8 @@ function render(t) {
   // The hook.
   const hookOut = prog(t, HOOK.end - 0.25, HOOK.end);
   show('hook', 1 - hookOut);
-  hookChars.forEach((c, i) => { c.style.opacity = prog(t, HOOK.vo + i * 0.03, HOOK.vo + i * 0.03 + 0.1); });
+  hookChars.forEach((c, i) => { const a = i < HOOK_A.length ? HOOK.vo + i * 0.03 : HOOK.marks[1] + (i - HOOK_A.length) * 0.03;
+    c.style.opacity = prog(t, a, a + 0.1); });
   const ic = back(prog(t, HOOK.vo, HOOK.vo + 0.4));
   show('hookIcon', clamp(ic * 2) * (1 - hookOut), 'scale(' + Math.min(1.05, ic) + ') rotate(' + (-8 + Math.sin(t * 2) * 4) + 'deg)');
 

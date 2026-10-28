@@ -226,19 +226,20 @@ Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
 
 | Scene | Lines | On screen |
 | --- | --- | --- |
-| 0 | I thought I wanted a promotion. | typed out on a dusk ground, a rising chart |
-| 1 | Why do I want it so badly? / Why does nothing at work feel like enough? | only a search bar: three doubts typed in, piling up as recent searches (searches are among what the app reads); the voice says the first two, and *what do I actually want?* is typed in the quiet after them |
+| 0 | I always wanted a promotion. Then I got it, and I dreaded work even more. | typed out on a dusk ground as said, the second sentence when the voice reaches it, a rising chart |
+| 1 | Why? / Was I chasing the wrong thing? | only a search bar: three doubts typed in, piling up as recent searches (searches are among what the app reads); the voice says the first two, and *what do I actually want?* is typed in the quiet after them |
 | 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; the dots after *PsycheAI* flicker while Instagram, Google and WhatsApp fly into the phone and a *Reading your data…* bar fills; Ask PsycheAI, the question asked |
-| 3 | You don't want a bigger title. You want to be the one people come to. | the answer typed in: your longest messages are you walking a friend through a CV, a budget, a hard decision, unasked; *A promotion that takes you away from that won't feel like enough. Look for the role where teaching and helping people is the job.* (a sample reader's) |
+| 3 | The promotion took you away from what you love: creating real value, teaching and helping people. | the answer typed in: your longest messages are you helping a retrenched friend land a job through your connections, or talking someone through a decision to relocate at 1am; now your days are managing up and down, office politics and meetings mostly for show; *You don't need a bigger title. You need a role where helping people grow is the job.* (a sample reader's) |
 | 4 | Your Psyche Report goes further. Your edge at work, what's holding you back, and the careers that suit you best. | three cards from the report's career assessment as each is named: *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
 | 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
 
 **The promotion script** (28 October 2026). The first script (*Struggling with your job? … You don't hate your
-job. You hate the routine parts of it.*) asked what everyone asks and answered what anyone could say. A promotion
-is rarely about managing people: it stands for being seen, freedom or proof. The answer names which one it is
-for this reader, being the one people come to, and backs it with something only their messages show. The report's
-cards follow it: *Your edge* is explaining hard things, *What's holding you back* is chasing titles that take them
-further from people, and *Likely to drain you* lists admin-heavy management.
+job. You hate the routine parts of it.*) asked what everyone asks and answered what anyone could say. This one
+opens on a story with a twist, the promotion that made work worse: the arrival fallacy, and the person promoted out
+of the work they were good at. The answer says why from something only their messages show (the friend helped
+into a job, the 1am talk), against what the promotion brought (managing up and down, politics, meetings for
+show). The report's cards follow it: *Your edge* is explaining hard things, *What's holding you back* is chasing
+titles that take them further from people, and *Likely to drain you* lists admin-heavy management.
 
 The answer is held a second and a half once it is fully typed. "Your edge," on its own came out garbled, so it is said "your edge at work,". The first answer, "you hate
 following a plan you didn't help make", was hard to follow and did not match the evidence under it. The music:
