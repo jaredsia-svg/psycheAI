@@ -28,6 +28,7 @@ const store = require('./lib/store');
 const referral = require('./lib/referral');
 const askCredits = require('./lib/askcredits');
 const links = require('./lib/links');
+const museImport = require('./lib/museimport');
 const syncbox = require('./lib/syncbox');
 const indexNow = require('./lib/indexnow');
 const syncSeal = require('./lib/syncseal');
@@ -172,7 +173,7 @@ function promoRedeemed(code, key) {
 // read, and stopped as soon as it passes the limit when no length is given.
 const SMALL_BODY_BYTES = 64 * 1024;
 const LARGE_BODY_BYTES = 2 * 1024 * 1024;
-const LARGE_BODY_ROUTES = new Set(['/api/analyse', '/api/premium-analysis', '/api/ask']);
+const LARGE_BODY_ROUTES = new Set(['/api/analyse', '/api/premium-analysis', '/api/ask', '/api/import']);
 const bodyLimitFor = route => (LARGE_BODY_ROUTES.has(route) ? LARGE_BODY_BYTES : SMALL_BODY_BYTES);
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -1585,6 +1586,56 @@ async function handleLinkOpen(response, url) {
   sendJson(response, 200, found);
 }
 
+// A read written by Muse, sent by the PsycheAI plugin (lib/museimport.js).
+// The plugin's server signs it with the shared secret; the answer is checked
+// as a provider's merged answer is, sealed under a key made for it, and only
+// the sealed copy is kept. The link goes back to the plugin, which gives it to
+// the reader; the key after the # never comes here again.
+async function handleImport(request, response) {
+  if (!museImport.authorised(request.headers.authorization)) {
+    sendJson(response, museImport.enabled() ? 401 : 404, { error: museImport.enabled() ? 'Not authorised.' : 'No such endpoint.' });
+    return;
+  }
+  const body = await readJsonBody(request);
+  const result = museImport.bundleFrom(body && body.answer);
+  if (!result.ok) {
+    stats.count('muse_import_refused');
+    sendJson(response, 422, { error: 'The read does not match the PsycheAI schema.', problems: result.problems });
+    return;
+  }
+  const sealed = await museImport.seal(result.bundle, body && body.name);
+  if (!sealed) {
+    sendJson(response, 503, { error: 'Storage is unavailable. Try again in a moment.' });
+    return;
+  }
+  stats.count('muse_import');
+  sendJson(response, 200, {
+    url: SITE_ORIGIN + '/?m=' + sealed.id + '#' + sealed.key,
+    expiresInDays: museImport.SEALED_DAYS,
+    dropped: result.dropped,
+  });
+}
+
+// What the plugin hands Muse: the merged prompt with its Muse preface, and the schema.
+function handleImportGuide(request, response, url) {
+  if (!museImport.authorised(request.headers.authorization)) {
+    sendJson(response, museImport.enabled() ? 401 : 404, { error: museImport.enabled() ? 'Not authorised.' : 'No such endpoint.' });
+    return;
+  }
+  sendJson(response, 200, museImport.guide(url.searchParams.get('kind') === 'sync' ? 'sync' : 'read'));
+}
+
+// The sealed copy of a Muse read, for the device holding its key.
+async function handleImportOpen(response, url) {
+  const found = await museImport.open(url.searchParams.get('id'));
+  if (!found) {
+    sendJson(response, 404, { error: 'This read has expired. Ask Muse for a new link.' });
+    return;
+  }
+  stats.count('muse_import_opened');
+  sendJson(response, 200, found);
+}
+
 // Whether a sync sent back to this reader carries a seal this server made
 // (lib/syncseal.js). Answers yes or no and keeps nothing.
 async function handleSyncCheck(request, response) {
@@ -1779,6 +1830,10 @@ const API_GUARDS = {
   // one is a read of something the link's own id names.
   '/api/link': { limit: 'link', nonce: false },
   '/api/link/save': { limit: 'referral', nonce: true },
+  // A Muse read: the plugin's own requests are signed and come from one
+  // server, so they are not rate-limited per connection; opening one is a
+  // read of what the id names, like /api/link.
+  '/api/import/open': { limit: 'link', nonce: false },
   // Sending a sync back costs a store write, so it takes a ticket; collecting
   // and clearing are the owner's own reads, keyed by their secret, like
   // /api/referral.
@@ -2056,6 +2111,9 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/ask' && request.method === 'POST' ? () => handleAsk(request, response)
                   : route === '/api/link' && request.method === 'GET' ? () => handleLinkOpen(response, url)
                   : route === '/api/link/save' && request.method === 'POST' ? () => handleLinkSave(request, response)
+                  : route === '/api/import' && request.method === 'POST' ? () => handleImport(request, response)
+                  : route === '/api/import/guide' && request.method === 'GET' ? () => handleImportGuide(request, response, url)
+                  : route === '/api/import/open' && request.method === 'GET' ? () => handleImportOpen(response, url)
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
                   : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)
                   : route === '/api/sync/done' && request.method === 'POST' ? () => handleSyncDone(request, response)

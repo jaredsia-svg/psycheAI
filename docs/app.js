@@ -6943,7 +6943,7 @@
    * two copies of this would be two chances for a resumed report to be worth
    * slightly less than a waited-for one.
    */
-  async function adoptProfile(result, savedName) {
+  async function adoptProfile(result, savedName, options) {
     // In hand. Nothing is owed any more, so the offers to collect it go away
     // before anything else can fail below and leave them standing.
     clearPending();
@@ -6975,8 +6975,10 @@
     };
     // Counted only once the report is really in hand, so a provider outage
     // never spends somebody's free run. Kept outside KEYS on purpose — see
-    // RUNS_KEY — so "Delete everything" cannot roll it back to zero.
-    recordRun();
+    // RUNS_KEY — so "Delete everything" cannot roll it back to zero. A read
+    // Muse wrote is not a run here: it cost this site nothing, and the
+    // reader's free upload read stays theirs (adoptMuseRead).
+    if (!(options && options.notARun)) recordRun();
     if (!store.write(KEYS.profile, state.profile)) {
       flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
     }
@@ -13451,6 +13453,66 @@
    * (see handleStatus), so neither does the page.
    * Hidden when the server did not say, rather than showing a blank version.
    */
+  // ---------- A read written by Muse ----------
+  //
+  // The PsycheAI plugin hands the reader psycheai.io/?m=<id>#<key>. The server
+  // holds the read sealed under that key and never sees the key (it is after
+  // the #), so the page fetches the sealed copy, opens it here with WebCrypto,
+  // and adopts it as it would a bundle the server wrote: the card, then the
+  // report laid under it. The source is kept on the profile ('muse'), so the
+  // page knows a read Muse wrote: it is free, and Ask goes back to Muse.
+  const MUSE_ID = /^[A-Za-z0-9_-]{16}$/;
+  const MUSE_KEY = /^[A-Za-z0-9_-]{43}$/;
+
+  async function openMuseRead(id, key) {
+    const response = await fetch('api/import/open?id=' + encodeURIComponent(id), { cache: 'no-store' });
+    if (!response.ok) return null;
+    const sealed = await response.json();
+    const bytes = text => Uint8Array.from(atob(String(text).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(text).length + 3) % 4)), ch => ch.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey('raw', bytes(key), 'AES-GCM', false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes(sealed.iv) }, cryptoKey, bytes(sealed.box));
+    const opened = JSON.parse(new TextDecoder().decode(plain));
+    const data = opened && opened.bundle && opened.bundle.data;
+    return data && typeof data === 'object' && data.freeCard && typeof data.freeCard === 'object' ? opened : null;
+  }
+
+  async function adoptMuseRead(opened) {
+    const result = opened.bundle;
+    const name = String(opened.name || '').trim();
+    await adoptProfile(Object.assign({}, result, { data: result.data.freeCard }), name, { notARun: true });
+    await adoptFullReport(result, false, name);
+    state.profile.source = 'muse';
+    store.write(KEYS.profile, state.profile);
+    go('profile');
+    openPaidSections();
+  }
+
+  /** True when the page opened on a Muse read, handled or not. */
+  async function consumeMuseRead() {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('m')) return false;
+    const id = String(params.get('m') || '');
+    const key = location.hash.replace(/^#/, '');
+    params.delete('m');
+    const query = params.toString();
+    // The key leaves the address bar at once, so it is not in history or a screenshot.
+    history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
+    let opened = null;
+    try { opened = MUSE_ID.test(id) && MUSE_KEY.test(key) ? await openMuseRead(id, key) : null; } catch (error) { opened = null; }
+    if (!opened) {
+      if (state.profile) { renderProfile(); show('profile'); }
+      showUploadError(TEXT.museReadUnreadable);
+      return true;
+    }
+    if (state.profile && !window.confirm(TEXT.museReadReplace(firstName(opened.name)))) {
+      renderProfile();
+      show('profile');
+      return true;
+    }
+    await adoptMuseRead(opened);
+    return true;
+  }
+
   async function boot() {
     state.server = await LLM.status();
     // The server owns this number; the constant above is only what applies
@@ -13463,6 +13525,7 @@
     // layout it writes; redrawn once it has, so it is the card readers get.
     drawInsightPreview();
 
+    if (await consumeMuseRead()) return;
     if (await consumeIncomingLink()) return;
     openSampleFromHash();
     // Before the report below, because a job still running is newer than

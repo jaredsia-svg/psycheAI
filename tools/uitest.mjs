@@ -14989,6 +14989,80 @@ try {
     }
   }
 
+  // A read Muse wrote, through the PsycheAI plugin (lib/museimport.js): the
+  // plugin sends it here, gets back psycheai.io/?m=<id>#<key>, and the page
+  // opens it with the key that never reaches the server.
+  {
+    const musePort = PORT + 5;
+    const museServer = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(musePort), PSYCHEAI_MOCK: '1', PSYCHEAI_IMPORT_SECRET: 'uitest-import-secret',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-muse-budget.jsonl'),
+        PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-muse-usage.jsonl'),
+      },
+      stdio: 'ignore',
+    });
+    const mp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const mpErrors = [];
+    mp.on('pageerror', error => mpErrors.push(error.message));
+    try {
+      await waitForServer(musePort);
+      const base = 'http://localhost:' + musePort + '/';
+      const answer = (await (await import(join(root, 'lib', 'mock.js'))).default.analyseMerged({})).data;
+      const imported = await (await fetch(base + 'api/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer uitest-import-secret' },
+        body: JSON.stringify({ answer, name: 'Mei Tan' }),
+      })).json();
+      const link = String(imported.url || '').replace('https://psycheai.io/', base);
+      await mp.goto(base, { waitUntil: 'load' });
+      await mp.evaluate(() => localStorage.clear());
+      await mp.goto(link, { waitUntil: 'load' });
+      await mp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 30000 });
+      const landed = await mp.evaluate(() => {
+        const profile = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+        return {
+          source: profile && profile.source,
+          name: profile && profile.card && profile.card.name,
+          paid: Boolean(profile && profile.premiumAnalysis && Object.keys(profile.premiumAnalysis).length),
+          runs: localStorage.getItem('psycheai_runs'),
+          address: location.search + location.hash,
+          unlocked: Boolean(document.querySelector('#profile-body .hub-tile[data-hub="report"] .hub-stamp, #profile-body .hub-tile[data-hub="report"] .hub-ok')),
+        };
+      });
+      check('a Muse read opens on My Psyche with its full report, free, marked as from Muse',
+        landed.source === 'muse' && landed.paid && landed.unlocked && /^Mei/.test(landed.name || ''), JSON.stringify(landed));
+      check('a Muse read is not one of the reader’s free upload reads', !landed.runs || landed.runs === '0', String(landed.runs));
+      check('the key leaves the address bar as soon as the read is opened', landed.address === '', landed.address);
+
+      // Opened again over a card already here: asked first, and nothing replaced on No.
+      let asked = '';
+      // The suite's own handler answers every confirm with No (leaveFreely); this only reads it.
+      // Leaving the page raises a beforeunload dialog first, so take the confirm's.
+      mp.on('dialog', dialog => { if (dialog.type() === 'confirm') asked = dialog.message(); });
+      await mp.evaluate(() => {
+        const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
+        profile.createdAt = 'kept';
+        localStorage.setItem('psycheai_profile', JSON.stringify(profile));
+      });
+      await mp.goto(link, { waitUntil: 'load' });
+      await mp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      const kept = await mp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
+      check('a Muse read over a card already here asks first, and No keeps the card', /replaces the card and report/.test(asked) && kept === 'kept', asked + ' / ' + kept);
+
+      // A link with the wrong key opens nothing and says so.
+      await mp.evaluate(() => localStorage.clear());
+      const id = new URL(link).searchParams.get('m');
+      await mp.goto(base + '?m=' + id + '#' + 'A'.repeat(43), { waitUntil: 'load' });
+      await mp.waitForSelector('#upload-error:not([hidden])', { timeout: 15000 });
+      check('a Muse link with the wrong key opens nothing and says so',
+        /ask Muse for a new one/.test(await mp.locator('#upload-error').innerText()) && !(await mp.evaluate(() => localStorage.getItem('psycheai_profile'))));
+      check('the Muse read runs with no page errors', mpErrors.length === 0, mpErrors.join(' | '));
+    } finally {
+      await mp.close();
+      museServer.kill();
+    }
+  }
+
   check('no console errors anywhere in the flow', consoleErrors.length === 0, consoleErrors.join(' | '));
 } catch (error) {
   // Where in this file, as well as what: a timeout's message names the

@@ -502,6 +502,9 @@
     linkCopied: 'Link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
     shortLinkUnreadable: 'That link couldn\u2019t be opened. It may have expired or been cut short – ask for it again.',
+    // A read written by Muse through the PsycheAI plugin (lib/museimport.js).
+    museReadUnreadable: 'That read couldn\u2019t be opened. It may have expired (links last 7 days) – ask Muse for a new one.',
+    museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',

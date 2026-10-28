@@ -9667,7 +9667,7 @@ check('the schema requires evidence on where they align and differ',
   const guarded = Object.keys(server.API_GUARDS).sort();
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
-      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/guess', '/api/link', '/api/link/save',
+      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/guess', '/api/import/open', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
       '/api/stats', '/api/sync/check', '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
@@ -9681,7 +9681,8 @@ check('the schema requires evidence on where they align and differ',
   // /api/event is a step of the journey for the day's totals: it spends
   // nothing and returns nothing, and a ticket per step would cost more than
   // the count.
-  // /api/link opens a short link by the id the link itself names.
+  // /api/link opens a short link by the id the link itself names, and
+  // /api/import/open a Muse read the same way.
   // /api/guess locks a guess onto a running job by its key, as /api/result
   // reads one, and spends nothing.
   // /api/sync/inbox and /api/sync/done are the link owner's own reads and
@@ -9690,7 +9691,7 @@ check('the schema requires evidence on where they align and differ',
   // its own (October 2026) so the token cannot be guessed at speed.
   // /api/sync/check says whether a received sync's seal holds: it spends
   // nothing, keeps nothing and is asked once per sync collected.
-  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/guess', '/api/link', '/api/nonce', '/api/referral', '/api/result',
+  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/guess', '/api/import/open', '/api/link', '/api/nonce', '/api/referral', '/api/result',
     '/api/stats', '/api/sync/check', '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
@@ -9702,6 +9703,121 @@ check('the schema requires evidence on where they align and differ',
     server.NONCE_HEADER === 'x-psycheai-nonce', server.NONCE_HEADER);
   rateLimit.reset();
   nonces.reset();
+}
+
+// ---------- the plugin's public page ----------
+// docs/muse.html: what the plugin's old addresses redirect to. Its privacy
+// claims are about the plugin's code (psyche-pair README "Decisions").
+{
+  const muse = readFileSync(join(root, 'docs', 'muse.html'), 'utf8');
+  check('the Muse page has the sections the plugin redirects to, and the connector address',
+    ['add', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp'));
+  check('it says what the plugin never receives or guesses, and that the read is sealed under the link\'s key',
+    /never receive your posts, captions, comments, stories or messages/.test(muse) && /never guess your religion, ethnicity, politics/.test(muse) &&
+      /key that exists only in your link/.test(muse));
+  check('it stays out of search until launch, with the usual footer note',
+    /<meta name="robots" content="noindex">/.test(muse) && /class="footer-note"/.test(muse) && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes('/muse'));
+}
+
+// ---------- a read Muse wrote, through the PsycheAI plugin ----------
+//
+// lib/museimport.js: the plugin sends Muse's merged answer, signed with the
+// shared secret; it is checked as a provider's merged answer is, sealed under
+// a key made for it, and only the sealed copy is kept.
+{
+  const museImport = (await import('../lib/museimport.js')).default;
+  const prompts = (await import('../lib/prompts.js')).default;
+  const mock = (await import('../lib/mock.js')).default;
+  const store = (await import('../lib/store.js')).default;
+  const { createDecipheriv } = await import('node:crypto');
+  store._memory.reset();
+
+  const answer = (await mock.analyseMerged({})).data;
+  const good = museImport.bundleFrom(answer);
+  check('a merged answer from Muse becomes a bundle', good.ok && good.bundle.model === 'Muse' && good.bundle.data.freeCard && good.bundle.data.freeCard.card);
+  check('the bundle splits as the merged unlock does', JSON.stringify(Object.keys(good.bundle.data).filter(k => k !== 'freeCard').sort()) ===
+    JSON.stringify(Object.keys(prompts.splitMerged(prompts.checkMerged(answer).data).full).sort()));
+  const bad = museImport.bundleFrom(Object.assign({}, answer, { patterns: [] }));
+  check('an answer missing what a card needs is refused', !bad.ok && bad.problems.some(p => /patterns/.test(p)));
+  check('an answer that is not an object is refused', !museImport.bundleFrom(null).ok && !museImport.bundleFrom('text').ok);
+
+  const g = museImport.guide();
+  check('the guide is the merged prompt with the Muse preface, and the merged schema',
+    g.system.startsWith(museImport.GUIDE_PREFACE) && g.system.endsWith(prompts.MERGED_SYSTEM) && g.schema === prompts.MERGED_SCHEMA);
+  const sg = museImport.guide('sync');
+  check('the Sync guide is PsycheAI\'s Sync prompt with a Muse preface, its brief and its schema',
+    sg.system.startsWith(museImport.SYNC_PREFACE) && sg.system.endsWith(prompts.COMPATIBILITY_SYSTEM) && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
+      sg.brief.includes(prompts.briefFor().brief) && /whatever their relationship/.test(sg.brief));
+  check('and it keeps the Sync to card-level profiles, with the evidence kept back unless asked',
+    /card-level profile \(no report, no posts\)/.test(museImport.SYNC_PREFACE) && /Keep the evidence to yourself unless they ask why/.test(museImport.SYNC_PREFACE));
+  check('the preface keeps PsycheUser and other people out', /Write `PsycheUser` wherever/.test(museImport.GUIDE_PREFACE) &&
+    /Never use, quote or describe what anyone else wrote/.test(museImport.GUIDE_PREFACE));
+
+  const sealed = await museImport.seal(good.bundle, 'Mei Tan', 1000);
+  const kept = await museImport.open(sealed.id);
+  check('only the sealed copy is kept', kept && !JSON.stringify(kept).includes('Mei') && !JSON.stringify(kept).includes('freeCard'));
+  const raw = Buffer.from(kept.box, 'base64url');
+  const d = createDecipheriv('aes-256-gcm', Buffer.from(sealed.key, 'base64url'), Buffer.from(kept.iv, 'base64url'));
+  d.setAuthTag(raw.subarray(raw.length - 16));
+  const opened = JSON.parse(Buffer.concat([d.update(raw.subarray(0, raw.length - 16)), d.final()]).toString('utf8'));
+  check('the key in the link opens it, with the name and the source', opened.name === 'Mei Tan' && opened.source === 'muse' && opened.bundle.data.freeCard);
+  check('an id that is not one is not looked up', (await museImport.open('../../etc')) === null && (await museImport.open('')) === null);
+  check('a read is kept a week', museImport.SEALED_DAYS === 7);
+
+  const before = process.env.PSYCHEAI_IMPORT_SECRET;
+  delete process.env.PSYCHEAI_IMPORT_SECRET;
+  check('without the shared secret the route is off', !museImport.enabled() && !museImport.authorised('Bearer anything'));
+  process.env.PSYCHEAI_IMPORT_SECRET = 'a-shared-secret-of-some-length';
+  check('the plugin\'s secret is accepted', museImport.authorised('Bearer a-shared-secret-of-some-length'));
+  check('any other is not', !museImport.authorised('Bearer a-shared-secret-of-some-lengtX') && !museImport.authorised('a-shared-secret-of-some-length'));
+  if (before === undefined) delete process.env.PSYCHEAI_IMPORT_SECRET; else process.env.PSYCHEAI_IMPORT_SECRET = before;
+  store._memory.reset();
+}
+
+// The routes, against a real server.
+{
+  const port = 8951;
+  const script = `
+    const { spawn } = require('node:child_process');
+    const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+      env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_IMPORT_SECRET: 'test-import-secret-123' }, stdio: 'ignore',
+    });
+    const base = 'http://localhost:${port}';
+    (async () => {
+      for (let i = 0; i < 100; i++) {
+        try { await fetch(base + '/api/status'); break; } catch (error) { await new Promise(r => setTimeout(r, 100)); }
+      }
+      const answer = (await require(${JSON.stringify(join(root, 'lib', 'mock.js'))}).analyseMerged({})).data;
+      const send = (auth, body) => fetch(base + '/api/import', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth ? { Authorization: auth } : {}), body: JSON.stringify(body) });
+      const out = {};
+      out.noAuth = (await send(null, { answer })).status;
+      out.wrongAuth = (await send('Bearer nope', { answer })).status;
+      const ok = await send('Bearer test-import-secret-123', { answer, name: 'Mei Tan' });
+      out.ok = { status: ok.status, json: await ok.json() };
+      const refused = await send('Bearer test-import-secret-123', { answer: Object.assign({}, answer, { summary: '' }) });
+      out.refused = { status: refused.status, json: await refused.json() };
+      out.guideNoAuth = (await fetch(base + '/api/import/guide')).status;
+      const guide = await fetch(base + '/api/import/guide', { headers: { Authorization: 'Bearer test-import-secret-123' } });
+      out.guide = { status: guide.status, json: await guide.json() };
+      const syncGuide = await fetch(base + '/api/import/guide?kind=sync', { headers: { Authorization: 'Bearer test-import-secret-123' } });
+      out.syncGuide = { status: syncGuide.status, json: await syncGuide.json() };
+      const id = out.ok.json.url ? new URL(out.ok.json.url).searchParams.get('m') : '';
+      const open = await fetch(base + '/api/import/open?id=' + id);
+      out.open = { status: open.status, json: await open.json() };
+      out.missing = (await fetch(base + '/api/import/open?id=AAAAAAAAAAAAAAAA')).status;
+      server.kill();
+      process.stdout.write(JSON.stringify(out));
+    })().catch(e => { server.kill(); process.stdout.write(JSON.stringify({ error: String(e) })); });
+  `;
+  const out = JSON.parse(execFileSync(process.execPath, ['-e', script], { env: { PATH: process.env.PATH } }).toString());
+  check('import: no secret, no entry', out.noAuth === 401 && out.wrongAuth === 401, JSON.stringify([out.noAuth, out.wrongAuth]));
+  check('import: a good read gives a psycheai.io link with the key after the #',
+    out.ok.status === 200 && /^https:\/\/psycheai\.io\/\?m=[\w-]{16}#[\w-]{43}$/.test(out.ok.json.url || '') && out.ok.json.expiresInDays === 7, JSON.stringify(out.ok));
+  check('import: a read that fails the checks is refused with what failed', out.refused.status === 422 && out.refused.json.problems.some(p => /summary/.test(p)));
+  check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.system === 'string' && out.guide.json.schema);
+  check('import: ?kind=sync gives the Sync guide', out.syncGuide.status === 200 && /writing this Sync through Muse/.test(out.syncGuide.json.system) && out.syncGuide.json.brief && out.syncGuide.json.schema);
+  check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' && !JSON.stringify(out.open.json).includes('Mei'));
+  check('import: an expired or unknown read is a 404', out.missing === 404);
 }
 
 // ---------- how long a payment stays spendable ----------

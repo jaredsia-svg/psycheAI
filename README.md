@@ -2712,6 +2712,31 @@ you…"). Disclaimers ("not a diagnosis", "Is it therapy? No.") are untouched. T
 - replaced "Google Gemini or Anthropic Claude" on three guides and in `llms.txt` with Google Vertex
   AI, as the privacy policy says.
 
+## Reads from Muse (the PsycheAI plugin, October 2026)
+
+The PsycheAI plugin for Meta Muse (the psyche-pair repo, at `app.psycheai.io`) lets Muse write a read
+itself from the user's Instagram. PsycheAI checks it and hands the user a private link to it. The
+rules for writing it live here, so the plugin and the site can't drift.
+
+- **`GET /api/import/guide`** returns `{ system, schema }`: `MERGED_SYSTEM` with a Muse preface
+  (`lib/museimport.js` `GUIDE_PREFACE`: read Instagram as the evidence, never other people,
+  confidence 65–79 for Instagram alone) and `MERGED_SCHEMA`.
+- **`POST /api/import`** takes `{ answer, name }`. It runs the same `checkMerged` as a provider's
+  answer (422 with the problems if it fails), splits it with `splitMerged`, scores the type, and seals
+  the bundle with AES-GCM under a fresh key. Only the sealed bytes are stored (`muse:<id>`, 7 days).
+  The reply is `{ url: psycheai.io/?m=<id>#<key> }`: the key is only in the fragment, so this server
+  can't open what it keeps.
+- **`GET /api/import/open?id=`** returns the sealed bytes, rate limited as a link.
+- **Both writes need `Authorization: Bearer $PSYCHEAI_IMPORT_SECRET`** (16+ characters, shared with the
+  plugin). Without it set, the routes answer 503.
+- **On the page** (`consumeMuseRead` in `app.js`, first thing in `boot()`): the key leaves the
+  address bar at once, the bundle is opened with WebCrypto and adopted like a finished run, marked
+  `source: 'muse'`, with the full report open. It is free and doesn't count as one of the reader's
+  free upload reads (`notARun`). If a card is already here, it asks before replacing it.
+- **`/muse`** (`docs/muse.html`) is the plugin's public page: how to add it to Muse, and the plugin's
+  own privacy, terms and safety sections (`#privacy`, `#terms`, `#safety`), which the plugin's old
+  addresses redirect to. Noindex and out of the sitemap until launch.
+
 ## Kept across deploys (Upstash)
 
 `lib/store.js` talks to Upstash Redis over its REST API (`UPSTASH_REDIS_REST_URL`,
