@@ -15059,7 +15059,7 @@ try {
         await mp.click('#ask-send');
         await mp.waitForFunction(() => window.__opened.length > 0, null, { timeout: 5000 });
         const sent = await mp.evaluate(() => ({ opened: window.__opened, copied: window.__copied, said: document.querySelector('#ask-status') ? document.querySelector('#ask-status').textContent : '' }));
-        check('Ask in Muse copies the question and opens Muse, and nothing is asked here', sent.copied === 'What do I keep trying to prove?' && sent.opened[0] === 'https://www.meta.ai/' && asks === 0, JSON.stringify(sent) + ' asks ' + asks);
+        check('Ask in Muse copies the question and opens Muse, and nothing is asked here', sent.copied === 'What do I keep trying to prove?' && sent.opened[0] === 'https://muse.ai/' && asks === 0, JSON.stringify(sent) + ' asks ' + asks);
         await mp.evaluate(() => { const d = document.querySelector('#ask-dialog'); if (d.open) d.close(); });
       }
 

@@ -508,7 +508,7 @@
     pairUrl: 'https://app.psycheai.io/join',
     pairConfirm: 'Use this read for Psyche Pair? Its matching gets the card-level part of your read: your type, Big Five, attachment lean, love languages, interests, values, motivations, character and headline. Never your data, messages or report text. You sign in on the next page.',
     // Muse's own address, where "Ask in Muse" sends a Muse read's questions.
-    museUrl: 'https://www.meta.ai/',
+    museUrl: 'https://muse.ai/',
     museAddNeedsChats: 'Muse already read your Instagram. Add your WhatsApp chats (and Google or Facebook if you like) for a deeper read of the same card.',
     museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
