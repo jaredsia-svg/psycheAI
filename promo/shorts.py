@@ -96,7 +96,7 @@ REELS['roast'] = {
     'music_lift': (4, 1.35),  # from the honest friend to the end, the music a little louder (24 October 2026)
 }
 # The career reel: the promotion the reader always wanted made work worse; asked why, PsycheAI answers from their
-# own data (it took them away from creating real value, teaching and helping), then what the report's career
+# own data (it took them away from teaching, helping, and seeing it change someone's life), then what the report's career
 # assessment adds. The same voice as the roast.
 REELS['career'] = {
     'voice': 'en_US-ryan-high',
@@ -106,7 +106,7 @@ REELS['career'] = {
         (['I always wanted a promotion.', 'Then I got it, and I dreaded work even more.'], 0.85, True, 0.3),
         (['Why?', 'Was I chasing the wrong thing?'], 0.95, True, 0.4),
         (['So I asked {B},', 'and it answered from my own data.'], 0.85, True, 0.1),
-        (['The promotion took you away from what you love:', 'creating real value, teaching and helping people.'], 0.85, True, 0.15),
+        (['The promotion took you away from what you love:', "teaching, helping, and seeing it change someone's life."], 0.85, True, 0.15),
         (['Your Psyche Report goes further.', 'Your edge at work,', "what's holding you back,", 'and the careers that suit you best.'], 0.85, True, [0.2, 0.06, 0.06]),
         # The address as the character reels say it, seven even syllables (27 October 2026: the quick form ran together).
         (['A coach that already knows you.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.2),
