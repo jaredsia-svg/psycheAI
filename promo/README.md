@@ -219,7 +219,7 @@ horn hit, a crash and a boom were too harsh; and from the honest friend to the e
 ### The career reel
 
 ```
-npm run promo:shorts -- career   # out/PsycheAI-career.mp4, about 32 s
+npm run promo:shorts -- career   # out/PsycheAI-career.mp4, about 36 s
 ```
 
 Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
@@ -227,9 +227,9 @@ Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
 | Scene | Lines | On screen |
 | --- | --- | --- |
 | 0 | I finally got the promotion I'd been chasing for years. … But I dread work even more today. | typed out on a dusk ground as said, the second sentence after a one-second beat, when the voice reaches it; a rising chart |
-| 1 | Why? | only a search bar: two doubts typed in, piling up as recent searches (searches are among what the app reads); *why do I dread work more after my promotion?* under the voice, *was I chasing the wrong thing?* in the quiet after it |
+| 1 | Why? / Was I chasing the wrong thing? | only a search bar: the two doubts typed in as said, piling up as recent searches (searches are among what the app reads) |
 | 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; the dots after *PsycheAI* flicker while Instagram, Google and WhatsApp fly into the phone and a *Reading your data…* bar fills; Ask PsycheAI, the question asked |
-| 3 | The promotion took you away from what you love: teaching, helping, and seeing it change someone's life. | the answer typed in: your longest messages are you getting a laid-off friend hired through your connections, or talking someone through a move at 1am; now your days are managing up and down, politics, and meetings for show; *You don't need a bigger title. You need a role where helping people grow is the job.* (a sample reader's) |
+| 3 | The promotion took you away from what you love. … You don't need a bigger title. You need a role where helping people grow is the job. | the answer typed in, the evidence in the voice's pause and the advice as it is said: your longest messages are you getting a laid-off friend hired through your connections, or talking someone through a move at 1am; now your days are managing up and down, politics, and meetings for show; *You don't need a bigger title. You need a role where helping people grow is the job.* (a sample reader's) |
 | 4 | Your Psyche Report goes further. Your edge at work, what holds you back, and careers that suit you. | three cards from the report's career assessment as each is named: *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
 | 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
 

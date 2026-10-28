@@ -105,14 +105,15 @@ REELS['career'] = {
         # something anyone could say).
         # A beat before the twist (28 October 2026).
         (["I finally got the promotion I'd been chasing for years.", 'But I dread work even more today.'], 0.85, True, 1.0),
-        (['Why?'], 0.95, None),
+        (['Why?', 'Was I chasing the wrong thing?'], 0.95, True, 0.4),
         (['So I asked {B},', 'and it answered from my own data.'], 0.85, True, 0.1),
-        (['The promotion took you away from what you love:', "teaching, helping, and seeing it change someone's life."], 0.85, True, 0.15),
+        # The bold sentences only; the evidence between them is read on screen in the pause (28 October 2026).
+        (['The promotion took you away from what you love.', "You don't need a bigger title.", 'You need a role where helping people grow is the job.'], 0.85, True, [3.6, 0.15]),
         (['Your Psyche Report goes further.', 'Your edge at work,', 'what holds you back,', 'and careers that suit you.'], 0.85, True, [0.2, 0.06, 0.06]),
         # The address as the character reels say it, seven even syllables (27 October 2026: the quick form ran together).
         (['A coach that already knows you.', 'Try it at {PsycheAIdotIO}.'], 0.85, True, 0.2),
     ],
-    'hold': {0: 0.5, 1: 1.4, 3: 4.0, 4: 1.0},  # 1: "was I chasing the wrong thing?" typed after the voice; 3: time to read the whole answer
+    'hold': {0: 0.5, 1: 0.8, 3: 1.8, 4: 1.0},  # 1: the second search typed as said; 3: time to read the whole answer
     # Its own piece, hopeful: B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell
     # into D major (D A Bm G) for the answer, with a light beat, a warm bass and a plucked tune; fuller for the
     # report; a held D chord to close.

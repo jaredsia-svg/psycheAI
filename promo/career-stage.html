@@ -120,8 +120,7 @@ const HOOK_A = 'I finally got the promotion I’d been chasing for years. ', HOO
 const hookChars = [...(HOOK_A + HOOK_B)].map(ch => { const i = document.createElement('i'); i.textContent = ch; $('hook').appendChild(i); return i; });
 // The twist on a line of its own, after the beat.
 $('hook').insertBefore(document.createElement('br'), hookChars[HOOK_A.length]);
-// The questions: typed into a search bar one after another, piling up as recent searches. The voice says "Why?" over
-// the first; the second is typed in the quiet after it.
+// The questions: typed into a search bar one after another as the voice says them, piling up as recent searches.
 const SEARCHES = ['why do I dread work more after my promotion?', 'was I chasing the wrong thing?'];
 const rows = SEARCHES.map(tx => mk('rs', '<span>🕘</span><div>' + tx + '</div>', $('recent')));
 // The answer: a sample reader's, from the kinds of evidence the app reads; the first sentence is what the voice says.
@@ -129,7 +128,9 @@ const ANSWER = '<b>The promotion took you away from what you love: teaching, hel
   'Your longest messages are you getting a laid-off friend hired through your connections, or talking someone through a move ' +
   'at 1am. Now your days are managing up and down, politics, and meetings for show. <b>You don’t need a bigger title. You need ' +
   'a role where helping people grow is the job.</b>';
-const answerWords = ANSWER.split(/(?<=\s)/);
+// Typed in two runs: up to the closing advice while the voice says the first sentence and pauses, then the advice
+// as the voice says it.
+const answerWords = ANSWER.split(/(?<=\s)/), adviceAt = answerWords.findIndex(w => w.startsWith('show.')) + 1;
 const fixTags = h => /<b>(?![\s\S]*<\/b>)/.test(h) ? h + '</b>' : h;
 // What the report adds: its career assessment, part by part, as the voice names each.
 const CARDS = [
@@ -172,7 +173,7 @@ function render(t) {
   const sIn = back(prog(t, QS.start, QS.start + 0.4));
   show('search', qOn ? clamp(sIn * 2) * (1 - qOut) : 0, 'translateY(' + (1 - Math.min(1, sIn)) * 120 + 'px)');
   // The bar types the newest search while the rows pile up above the older ones.
-  const QT = [QS.marks[0], QS.voEnd + 0.15];
+  const QT = [QS.marks[0], QS.marks[1]];
   const k = QT.filter(m => t >= m - 0.1).length - 1, cur = SEARCHES[Math.max(0, k)];
   const typed = Math.round(cur.length * prog(t, QT[Math.max(0, k)] - 0.1, QT[Math.max(0, k)] + 0.5));
   $('q').innerHTML = cur.slice(0, typed) + '<span class="caret" style="opacity:' + (Math.sin(t * 12) > 0 ? 1 : 0) + '"></span>';
@@ -200,7 +201,7 @@ function render(t) {
   $('loading').querySelector('.fill').style.width = (100 * easeIO(prog(t, ASK.start + 0.8, ANS.start - 0.1))) + '%';
   [...$('loading').querySelectorAll('.files span')].forEach((f, i) => { f.style.opacity = prog(t, ASK.start + 1.1 + i * 0.25, ASK.start + 1.3 + i * 0.25); });
   $('answer').style.display = t >= ANS.vo - 0.05 ? 'block' : 'none';
-  const typedW = Math.round(answerWords.length * prog(t, ANS.vo, ANS.end - 1.4));
+  const typedW = Math.round(adviceAt * prog(t, ANS.vo, ANS.marks[1] - 0.3) + (answerWords.length - adviceAt) * prog(t, ANS.marks[1], ANS.voEnd));
   $('answer').innerHTML = fixTags(answerWords.slice(0, typedW).join('')) || '<span style="opacity:.5">● ● ●</span>';
   $('source').textContent = typedW >= answerWords.length ? 'From your messages, posts and saves' : '';
 
