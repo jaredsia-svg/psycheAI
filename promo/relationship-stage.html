@@ -123,9 +123,9 @@ const FIGHTS = ['You always put your parents before me.', 'You’re on your phon
   'Your work always comes first.', 'You said you’d be home by seven.', 'You don’t listen to me.'];
 const fights = FIGHTS.map((tx, i) => { const d = mk('fight el ' + (i % 2 ? 'r' : 'l'), tx, $('fights')); d.style.top = (330 + i * 190) + 'px'; return d; });
 // The answer: a sample reader's, from her own messages only; the first sentences are what the voice says.
-const ANSWER = '<b>It’s not the dishes. It’s wanting him to notice without being asked.</b> To you, asking makes it count less. ' +
+const ANSWER = '<b>It’s not the dishes. It’s wanting him to notice without being told.</b> To you, telling him makes it count less. ' +
   'You’ve asked friends “should I really have to tell him?” more than once. Your messages go short – ‘fine’, ‘whatever’ – right ' +
-  'before a fight, then long, two days later. <b>Asking doesn’t make it count less. Tell him what you need, and give him the chance ' +
+  'before a fight, then long, two days later. <b>Saying what you need helps a relationship grow. Tell him, and give him the chance ' +
   'to get it right.</b>';
 // Typed in two runs: up to the advice while the voice says the first line and pauses, then the advice as it is said.
 const answerWords = ANSWER.split(/(?<=\s)/), adviceAt = answerWords.findIndex(w => w.startsWith('later.')) + 1;
@@ -137,7 +137,7 @@ const CARDS = [
     '<div class="no"><b>You need</b>Words of affirmation: to be noticed and told</div></div>'],
   ['🔗', 'Attachment style', '<p>Leans anxious: you need reassurance most when things go quiet</p>'],
   ['⚡', 'How you deal with conflict', '<p>Quiet first, then it all comes out over something small</p>'],
-  ['🧭', 'What you need in a partner', '<p>Someone who notices without being asked</p>'],
+  ['🧭', 'What you need in a partner', '<p>Someone who notices without being told</p>'],
 ];
 const cards = CARDS.map(([ic, h, body], i) => { const d = mk('rc el', '<small><span>' + ic + '</span>' + h + '</small>' + body, $('cards'));
   return d; });

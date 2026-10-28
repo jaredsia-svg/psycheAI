@@ -134,7 +134,7 @@ REELS['relationship'] = {
         (['Different topic.', 'Same fight.'], 0.85, True, 0.3),
         (['So I asked {B} why we keep fighting over small things,', 'and it answered from my own data.'], 0.85, True, 0.15),
         # 28 October 2026: what she wants, named plainly, then the advice; the evidence between is read on screen in the pause.
-        (["It's not the dishes.", "It's wanting him to notice without being asked.", "Asking doesn't make it count less.", 'Tell him what you need.'], 0.85, True, [0.3, 4.2, 0.2]),
+        (["It's not the dishes.", "It's wanting him to notice without being told.", 'Saying what you need helps a relationship grow.', 'Tell him, and give him the chance to get it right.'], 0.85, True, [0.3, 4.2, 0.2]),
         (['Your Psyche Report shows how you love,', 'your attachment style,', 'how you handle conflict,', 'and what you need from the person you love.'], 0.85, True, [0.1, 0.1, 0.1]),
         (['A coach that already knows you.', 'Try it at {B} dot I O.'], 0.85, True, 0.2),
     ],
