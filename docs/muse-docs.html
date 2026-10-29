@@ -37,7 +37,7 @@
     <h2>Connecting</h2>
     <ul>
       <li><b>Address:</b> <code>https://app.psycheai.io/mcp</code>, MCP over HTTP (Streamable HTTP, JSON replies, POST only).</li>
-      <li><b>Sign-in:</b> OAuth 2.1 with PKCE (S256). Hosts register themselves (RFC 7591, <code>/oauth/register</code>); a host that asks for a client ID uses <code>psycheai</code>, a public client that returns only to Meta's own hosts. Discovery: <code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code>.</li>
+      <li><b>Sign-in:</b> OAuth 2.1 with PKCE (S256). Hosts register themselves (RFC 7591, <code>/oauth/register</code>); client ID metadata documents are accepted (an https <code>client_id</code>); a host that asks for a client ID uses <code>psycheai</code>, a public client that returns only to Meta's own hosts. Discovery: <code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code>.</li>
       <li><b>Accounts:</b> made on connect, with no email and no code: authorize returns the code at once, and a signed cookie brings the same browser back to the same account. Email sign-in (a 6-digit code, Google or Apple) is at <code>/oauth/authorize?…&amp;signin=email</code>, and an email can be added later from Muse for nudges. No password, no API key.</li>
       <li><b>Health:</b> <code>/health</code>.</li>
     </ul>
