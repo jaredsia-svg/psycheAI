@@ -9804,7 +9804,7 @@ check('the schema requires evidence on where they align and differ',
       /never fearful-avoidant or disorganised/.test(museImport.READ_SPEC) && /About half of adults lean secure/.test(museImport.READ_SPEC) &&
       /if a line would fit a stranger with a different attachment style, it has not used the read/.test(museImport.READ_SPEC) && /No private person is named/.test(museImport.READ_SPEC));
   check('the Sync spec keeps PsycheAI\'s tone rules', /tension, conflict, clash, friction, struggle, problem and incompatible are not used/.test(museImport.SYNC_SPEC) &&
-    /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC));
+    /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC) && /the same as a Sync on psycheai\.io/.test(museImport.SYNC_SPEC) && /shown to both people as one image/.test(museImport.SYNC_SPEC));
 
   const sealed = await museImport.seal(good.bundle, 'Mei Tan', 1000);
   const statusBefore = await museImport.status(sealed.id);

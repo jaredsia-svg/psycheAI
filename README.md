@@ -2802,6 +2802,8 @@ rules for writing it live here, so the plugin and the site can't drift.
   data too, so it can't pose as the Muse read's sources. Use for Psyche Pair is hidden on a Muse read with
   nothing added (Psyche Pair already has it) and reads "Update my Psyche Pair profile" once data is added.
 
+**One Sync, the same on both (29 Oct 2026).** A Sync in Muse used to be a small card of computed overlaps plus a short write-up in the chat that was never kept, while the site's Sync is a full report. The Sync spec now asks Muse for the site's own format (`COMPATIBILITY_SCHEMA`: summary, align and differ with evidence, howToPartner for each and together, caveats), with lengths that fit one image. The plugin keeps it for both people (its `save_sync`) and draws all of it into one tall image; the evidence and the caveat are on the image's page. My Syncs on the site is not fed yet: its inbox is addressed by a site link, which a Muse user may not have.
+
 ## Kept across deploys (Upstash)
 
 `lib/store.js` talks to Upstash Redis over its REST API (`UPSTASH_REDIS_REST_URL`,
