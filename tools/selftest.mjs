@@ -9779,7 +9779,7 @@ check('the schema requires evidence on where they align and differ',
       /The author of a caption is not automatically its subject/.test(museImport.READ_SPEC) && /dormant/.test(museImport.READ_SPEC) &&
       /E\/I follows breadth of contact/.test(museImport.READ_SPEC) && /it is never padded/.test(museImport.READ_SPEC) &&
       /## Reading plan/.test(museImport.READ_SPEC) && /the 10 to 15 conversations they write in most, not the first ones in the inbox/.test(museImport.READ_SPEC) && /across every year, not just the latest/.test(museImport.READ_SPEC));
-  check('the read is text only: photos and videos are not analysed', /\*\*Text only\.\*\*/.test(museImport.READ_SPEC) && /The photos and videos themselves are not analysed/.test(museImport.READ_SPEC) &&
+  check('the read is text only: photos and videos are not analysed', /\*\*Text only\.\*\*/.test(museImport.READ_SPEC) && /The photos and videos themselves are not analysed/.test(museImport.READ_SPEC) && /any text added on top of a story or post \(typed, pasted or in a text sticker, read in full\)/.test(museImport.READ_SPEC) &&
     /A story with no words on it counts only for its date/.test(museImport.READ_SPEC));
   check('the spec carries the career and development plan standards', /## Career/.test(museImport.READ_SPEC) && /One that would fit any organised, kind or hard-working person is a compliment, not an edge/.test(museImport.READ_SPEC) &&
     /## Development and the plan/.test(museImport.READ_SPEC) && /One plan of about five actions/.test(museImport.READ_SPEC) && /Every horizon has at least one: this week, this quarter, this year/.test(museImport.READ_SPEC) &&

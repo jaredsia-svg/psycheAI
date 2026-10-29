@@ -2734,8 +2734,8 @@ rules for writing it live here, so the plugin and the site can't drift.
   ceiling is 14,000 characters. **Career and the development plan** followed once the first three read well in
   a Muse run: the career coach's job (situation, edge, underused, holding back, fit), and one plan of about five
   first-move actions across this week, this quarter and this year, from `PREMIUM_SYSTEM` and the merged prompt.
-  **Text only:** the read is written from words and dates (captions, comments, messages, the bio, words on a
-  story or post, posting times). Muse can see images, so the spec says the photos and videos themselves are not
+  **Text only:** the read is written from words and dates (captions, comments, messages, the bio, any text
+  added on top of a story or post, typed, pasted or in a sticker, and posting times). Muse can see images, so the spec says the photos and videos themselves are not
   analysed (no faces, bodies, looks, clothes, surroundings or who is in them), and a story with no words counts
   only for its date. PsycheAI's own reads never had images; this keeps Muse's to the same evidence.
   The schema Muse is shown is `MUSE_SCHEMA`: the merged schema's shape with its wording cleaned of orders to a
