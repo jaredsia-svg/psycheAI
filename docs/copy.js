@@ -513,7 +513,7 @@
     // Said instead when the read here was built from uploaded data: the Muse
     // read is usually thinner, so the question leads with what would be lost.
     museReadReplaceDeeper: (name, sources) => 'You already have a deeper read here, from ' + sources + '. The read Muse just wrote for ' + (name || 'you') + ' is from Instagram only, so it is usually less detailed. Replace your deeper read and its data with it? Cancel keeps what you have.',
-    museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser, and the data you loaded for them. Save a backup first if you want to keep them.',
+    museReadReplace: name => 'Open the Psyche Card and Report Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser, your Ask PsycheAI answers about them, and the data you loaded for them. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
@@ -608,6 +608,18 @@
     bonusBadge: 'Bonus',
     // My Psyche's roast, under the card: a free secret bonus that comes with
     // every Psyche Card. See secretRoastHtml() in docs/app.js.
+    // The roast's words on a read Muse wrote. Muse writes that section
+    // playful and kind (lib/museimport.js MUSE_SCHEMA: Muse's safety check
+    // refused "least charitable" and "unkind"), so the labels say so rather
+    // than promising a harshness the writing doesn't have.
+    museRoast: {
+      bonus: 'A friendly roast',
+      bonusSub: 'Candid and on your side: the habits a close friend would tease you about.',
+      bonusCaveat: 'Playful, not an assessment and not a diagnosis. If any of it lands heavier than that, talk to someone you trust or a professional.',
+      bonusHarsh: 'What a close friend would tease you about',
+      lede: 'Your card is the polished version. This is the teasing one: the habits a close friend would rib you about.',
+      warn: 'Candid but kind, and just for you. It is not on your card and is never in your link.',
+    },
     secretRoast: {
       badge: 'Secret bonus unlocked',
       lede: 'Your card is the nice version. This is the other one: what your data says when nobody is being polite.',
@@ -1693,6 +1705,8 @@
     // Under the WhatsApp row of Your data.
     sourceWhatsAppHint: 'Up to 3 chats with close connections are recommended.',
     sourceLoaded: 'Loaded',
+    // A read Muse wrote: Instagram was read there, posts and messages both.
+    sourceViaMuse: 'Read by Muse from your Instagram: posts, stories and highlights, and your own side of your messages if you included them',
     sourcesFreeNote: 'Adding or changing data comes with the Psyche Report (US$5).',
     // "Read from": what the model actually read of each source, beside what
     // it only counted — "180 of 9,741 of your messages read", "623 stories

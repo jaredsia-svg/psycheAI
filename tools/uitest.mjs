@@ -15063,6 +15063,16 @@ try {
         await mp.evaluate(() => { const d = document.querySelector('#ask-dialog'); if (d.open) d.close(); });
       }
 
+      {
+        await openMethod(mp);
+        const sources = await mp.evaluate(() => {
+          const row = k => document.querySelector('#hub-method-dialog .source-read[data-source="' + k + '"]');
+          return { ig: row('instagram') && row('instagram').classList.contains('is-loaded'), igText: row('instagram') ? row('instagram').innerText : '',
+            wa: row('whatsapp') && row('whatsapp').classList.contains('is-missing'), lost: Boolean(document.querySelector('#hub-method-dialog .sources-read-lost')) };
+        });
+        await closeMethod(mp);
+        check('Signal strength on a Muse read shows Instagram as read, by Muse, and nothing lost', sources.ig && /Read by Muse from your Instagram/.test(sources.igText) && sources.wa && !sources.lost, JSON.stringify(sources));
+      }
       // A read Muse wrote, with nothing added: Psyche Pair already has it, so no button.
       check('a Muse-only read has no Use for Psyche Pair button', !(await mp.locator('#profile-body .hub-card [data-hub-go="pair"]').count()));
 
@@ -15087,6 +15097,7 @@ try {
         await mp.evaluate(() => {
           localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram', 'google'] }, google: { counts: {} } }));
           localStorage.setItem('psycheai_report_digest', '{"old":true}');
+          localStorage.setItem('psycheai_ask', JSON.stringify([{ q: 'About the old report?', a: { answer: 'You read as an ENTP.' } }]));
         });
         let deeperAsk = '';
         const onAsk = dialog => { if (dialog.type() === 'confirm') deeperAsk = dialog.message(); dialog.accept().catch(() => {}); };
@@ -15097,6 +15108,7 @@ try {
         await mp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 30000 });
         const after = await mp.evaluate(() => ({
           digest: localStorage.getItem('psycheai_digest'), reportDigest: localStorage.getItem('psycheai_report_digest'),
+          oldAsk: localStorage.getItem('psycheai_ask'),
           kept: (JSON.parse(localStorage.getItem('psycheai_profile')) || {}).createdAt,
           google: Boolean(document.querySelector('#profile-body .hub-chip[data-hub-source="google"]:not(.is-add)')),
           ask: (document.querySelector('#profile-body .hub-tile[data-hub="ask"]') || {}).textContent || '',
@@ -15104,8 +15116,8 @@ try {
         check('over an uploaded read, the question says a deeper read from its sources would be replaced', /deeper read here, from Instagram, Google/.test(deeperAsk) && /Cancel keeps what you have/.test(deeperAsk), deeperAsk);
         mp.removeListener('dialog', onAsk);
         mp.on('dialog', d => (d.type() === 'beforeunload' ? d.accept() : d.dismiss()).catch(() => {}));
-        check('a Muse read accepted over a card replaces it and drops the old card\'s data: Ask goes to Muse',
-          after.digest === null && after.reportDigest === null && after.kept !== 'kept' && !after.google && /Ask in Muse/.test(after.ask), JSON.stringify(after));
+        check('a Muse read accepted over a card replaces it and drops the old card\'s data and Ask answers: Ask goes to Muse',
+          after.digest === null && after.reportDigest === null && after.kept !== 'kept' && !after.google && /Ask in Muse/.test(after.ask) && after.oldAsk === null, JSON.stringify(after));
       }
 
       // Data added to a Muse read: the button updates Psyche Pair, posting the

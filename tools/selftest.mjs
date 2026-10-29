@@ -9781,9 +9781,18 @@ check('the schema requires evidence on where they align and differ',
       /## Reading plan/.test(museImport.READ_SPEC) && /the 10 to 15 conversations they write in most, not the first ones in the inbox/.test(museImport.READ_SPEC) && /across every year, not just the latest/.test(museImport.READ_SPEC));
   check('the read is text only: photos and videos are not analysed', /\*\*Text only\.\*\*/.test(museImport.READ_SPEC) && /The photos and videos themselves are not analysed/.test(museImport.READ_SPEC) && /any text added on top of a story or post \(typed, pasted or in a text sticker, read in full\)/.test(museImport.READ_SPEC) &&
     /A story with no words on it counts only for its date/.test(museImport.READ_SPEC));
+  {
+    const appSrc = readFileSync(join(docs, 'app.js'), 'utf8');
+    const pdfSrc = readFileSync(join(docs, 'pdf.js'), 'utf8');
+    const mr = globalThis.PsycheCopy.TEXT.museRoast || {};
+    check('a read Muse wrote gets roast labels that match its playful writing, on the page and in the PDF', /friendly roast/i.test(mr.bonus || '') &&
+      !/harsh|unkind|least charitable|not trying/i.test(Object.values(mr).join(" ")) && /roastWords\(\)\.bonus/.test(appSrc) && /W\.bonusHarsh/.test(appSrc) &&
+      /roastWords: profile\.source === 'muse' \? TEXT\.museRoast : null/.test(appSrc) && /renderRoast\(out, source\.bonus, meta\.roastWords\)/.test(pdfSrc));
+  }
   check('the spec asks for depth: moments not tallies, what it means, about the person not the dataset', /## Depth/.test(museImport.READ_SPEC) &&
     /Moments, not tallies/.test(museImport.READ_SPEC) && /Message length and per-topic counts say little about a person/.test(museImport.READ_SPEC) &&
-    /Not "in the record", "in the sampled messages" or "the data shows"/.test(museImport.READ_SPEC) && /it is not pulled towards 50 to be safe/.test(museImport.READ_SPEC));
+    /Not "in the record", "in the sampled messages" or "the data shows"/.test(museImport.READ_SPEC) && /it is not pulled towards 50 to be safe/.test(museImport.READ_SPEC) &&
+    /No one theme anchors more than three sections/.test(museImport.READ_SPEC) && /no two actions are the same task/.test(museImport.READ_SPEC));
   check('the guide carries the MBTI rubric, so ledger rows use ids the scorer knows', museImport.guide('read').rubric === mbtiScore.rubricText() &&
     /`own-words`/.test(museImport.guide('read').rubric) && /an id from the guide's `rubric`/.test(museImport.READ_SPEC));
   check('the spec carries the career and development plan standards', /## Career/.test(museImport.READ_SPEC) && /One that would fit any organised, kind or hard-working person is a compliment, not an edge/.test(museImport.READ_SPEC) &&
