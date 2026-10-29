@@ -4,7 +4,7 @@ description: "Observant, analytical and happiest with a puzzle to solve. What it
 canonical: https://psycheai.io/sherlock-holmes-personality
 author: "Jared, founder of PsycheAI"
 published: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # Most like Sherlock Holmes

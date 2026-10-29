@@ -4,7 +4,7 @@ description: "Resourceful, quick-thinking and always finding a way through. What
 canonical: https://psycheai.io/odysseus-personality
 author: "Jared, founder of PsycheAI"
 published: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # Most like Odysseus
