@@ -4,7 +4,7 @@ description: "A full sample PsycheAI reading for a fictional reader: the charact
 canonical: https://psycheai.io/sample-report
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # A sample PsycheAI report

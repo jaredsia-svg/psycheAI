@@ -2734,6 +2734,14 @@ rules for writing it live here, so the plugin and the site can't drift.
   ceiling is 14,000 characters. **Career and the development plan** followed once the first three read well in
   a Muse run: the career coach's job (situation, edge, underused, holding back, fit), and one plan of about five
   first-move actions across this week, this quarter and this year, from `PREMIUM_SYSTEM` and the merged prompt.
+  **Depth, and the MBTI rubric (29 Oct 2026).** A Muse report read as a summary of a feed: insights rested on
+  tallies ("61 of 359 longest messages"), one median message length anchored five sections, Big Five scores sat
+  near 50, and limits ("thin in the record") were restated in every section. Muse had built a digest of themes
+  and counts, then written from the digest. The spec's **Depth** section asks for writing from the items
+  themselves, moments with dates over tallies, what each finding means, the person not the dataset, and scores
+  where the evidence puts them. And the guide now carries `rubric` (`mbtiScore.rubricText()`): ledger rows must
+  use its ids, and Muse had to guess them ("the guide didn't supply the rubric"), so `cleanLedger` dropped rows
+  and the letters came out weak.
   **Text only:** the read is written from words and dates (captions, comments, messages, the bio, any text
   added on top of a story or post, typed, pasted or in a sticker, and posting times). Muse can see images, so the spec says the photos and videos themselves are not
   analysed (no faces, bodies, looks, clothes, surroundings or who is in them), and a story with no words counts
@@ -8138,7 +8146,11 @@ set larger, and the box no longer shrinks to fit (`flex-shrink: 0`), so the card
 clipping the blurb. A name outside the catalogue keeps the emblem medallion. The scene finds its gradients
 by id, and the same card markup goes into the page and its full-screen copy, so each inserted copy
 gets ids of its own (`freshArtIds`): a shared id can resolve to the copy in a closed dialog and draw
-the art blank. A check holds every gradient reference to an id that exists once.
+the art blank. A check holds every gradient reference to an id that exists once. Every scene is centred
+vertically in its box (`xMaxYMid slice`). It used to be anchored to the bottom to keep the ground,
+with three exceptions, but a short box (a short blurb) then cut the top off most scenes: Dr Watson's
+window and moon, Elsa's snowflake, Moana's sail, Spider-Man's web, Shrek's tree. Rendered side by side
+at the page's box shape, centring kept every subject whole; the cost is a sliver of ground on a few.
 
 **Seven scenes redrawn to keep to that rule** (October 2026). A review found seven that drew the
 character itself or an emblem its owner protects as a mark, and those carry more risk than naming the

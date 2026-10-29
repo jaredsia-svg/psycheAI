@@ -4,7 +4,7 @@ description: "Quietly brave, steady under pressure, loyal to the people they lov
 canonical: https://psycheai.io/mulan-personality
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # Most like Mulan

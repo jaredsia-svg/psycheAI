@@ -1,18 +1,18 @@
 {
   "mulan-personality": {
     "published": "2026-10-12",
-    "modified": "2026-10-21",
-    "hash": "c1b865494c886468"
+    "modified": "2026-10-29",
+    "hash": "bf4a2bdd15c3d5d1"
   },
   "rapunzel-personality": {
     "published": "2026-10-12",
-    "modified": "2026-10-21",
-    "hash": "ebfc9bbdeadd29d3"
+    "modified": "2026-10-29",
+    "hash": "8f7f629748b1bedc"
   },
   "the-tin-man-personality": {
     "published": "2026-10-21",
-    "modified": "2026-10-21",
-    "hash": "774adf17ee1049fd"
+    "modified": "2026-10-29",
+    "hash": "4de3d320416e2bd2"
   },
   "odysseus-personality": {
     "published": "2026-10-21",
@@ -216,8 +216,8 @@
   },
   "sample-report": {
     "published": "2026-10-12",
-    "modified": "2026-10-21",
-    "hash": "c131299ec3196034"
+    "modified": "2026-10-29",
+    "hash": "feddb845c58892c6"
   },
   "instagram-personality-test": {
     "published": "2026-10-08",

@@ -9761,7 +9761,7 @@ check('the schema requires evidence on where they align and differ',
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 14000 && !roleSetting.test(g.spec), String(g.spec.length));
+    !('system' in g) && g.spec.length < 16000 && !roleSetting.test(g.spec), String(g.spec.length));
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -9781,6 +9781,11 @@ check('the schema requires evidence on where they align and differ',
       /## Reading plan/.test(museImport.READ_SPEC) && /the 10 to 15 conversations they write in most, not the first ones in the inbox/.test(museImport.READ_SPEC) && /across every year, not just the latest/.test(museImport.READ_SPEC));
   check('the read is text only: photos and videos are not analysed', /\*\*Text only\.\*\*/.test(museImport.READ_SPEC) && /The photos and videos themselves are not analysed/.test(museImport.READ_SPEC) && /any text added on top of a story or post \(typed, pasted or in a text sticker, read in full\)/.test(museImport.READ_SPEC) &&
     /A story with no words on it counts only for its date/.test(museImport.READ_SPEC));
+  check('the spec asks for depth: moments not tallies, what it means, about the person not the dataset', /## Depth/.test(museImport.READ_SPEC) &&
+    /Moments, not tallies/.test(museImport.READ_SPEC) && /Message length and per-topic counts say little about a person/.test(museImport.READ_SPEC) &&
+    /Not "in the record", "in the sampled messages" or "the data shows"/.test(museImport.READ_SPEC) && /it is not pulled towards 50 to be safe/.test(museImport.READ_SPEC));
+  check('the guide carries the MBTI rubric, so ledger rows use ids the scorer knows', museImport.guide('read').rubric === mbtiScore.rubricText() &&
+    /`own-words`/.test(museImport.guide('read').rubric) && /an id from the guide's `rubric`/.test(museImport.READ_SPEC));
   check('the spec carries the career and development plan standards', /## Career/.test(museImport.READ_SPEC) && /One that would fit any organised, kind or hard-working person is a compliment, not an edge/.test(museImport.READ_SPEC) &&
     /## Development and the plan/.test(museImport.READ_SPEC) && /One plan of about five actions/.test(museImport.READ_SPEC) && /Every horizon has at least one: this week, this quarter, this year/.test(museImport.READ_SPEC) &&
     /including the same step on a different deadline/.test(museImport.READ_SPEC));

@@ -4,7 +4,7 @@ description: "Creative, hopeful and endlessly curious about the world. What it m
 canonical: https://psycheai.io/rapunzel-personality
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # Most like Rapunzel

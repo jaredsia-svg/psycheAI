@@ -4,7 +4,7 @@ description: "Gentle, devoted and all heart, even when they doubt it. What it me
 canonical: https://psycheai.io/the-tin-man-personality
 author: "Jared, founder of PsycheAI"
 published: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-29
 ---
 
 # Most like The Tin Man

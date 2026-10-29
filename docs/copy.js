@@ -1837,7 +1837,6 @@
   // upper right: Woody's boot stands on the ground, and the usual square
   // showed only its shaft; Dr Watson's bag sits under the window, and
   // Odysseus's horse rears its head to the top of the scene.
-  const ART_MIDDLE = ['Odysseus', 'Joy', 'Sherlock Holmes'];
   const ART_CROPS = { Mulan: '320 90 200 200', Woody: '200 94 336 336', 'Dr Watson': '300 110 220 220', Odysseus: '300 0 220 220', 'Sherlock Holmes': '310 50 210 210', Rapunzel: '330 110 190 190', 'The Tin Man': '320 60 190 190' };
   function characterArt(character, className, crop) {
     // Own properties only: a name such as "toString" from someone else's card
@@ -1849,11 +1848,12 @@
     const id = 'pc-art-' + (++artDrawn);
     // A crop is the subject alone, for a small round tile: the right of the
     // scene, where each drawing puts it, away from the fade on the left.
-    // The card's box is wider than a scene, so a scene is cropped: from the
-    // top, keeping its ground (ART_MIDDLE: from both ends, for the scenes whose
-    // subject is tall enough to lose its top that way).
+    // The card's box is wider than a scene, so a scene is cropped, from both
+    // ends. Cropping from the top only (to keep the ground) cut the subject's
+    // top off on most scenes when the hero is short (Dr Watson's window and
+    // moon, Elsa's snowflake, Moana's sail), so every scene is centred.
     const box = crop ? (ART_CROPS[name] || '220 20 300 300') + '" preserveAspectRatio="xMidYMid slice'
-      : '0 0 520 440" preserveAspectRatio="' + (ART_MIDDLE.includes(name) ? 'xMaxYMid' : 'xMaxYMax') + ' slice';
+      : '0 0 520 440" preserveAspectRatio="xMaxYMid slice';
     return '<svg class="' + (className || 'pc-art') + '" viewBox="' + box + '" ' +
       'aria-hidden="true" focusable="false">' + art.replace(/\{id\}/g, id) + '</svg>';
   }
