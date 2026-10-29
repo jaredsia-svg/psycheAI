@@ -9750,13 +9750,20 @@ check('the schema requires evidence on where they align and differ',
   // injection (Muse refused the old one, PsycheAI's 100,000-character model
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
-  check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === prompts.MERGED_SCHEMA &&
+  check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
     !('system' in g) && g.spec.length < 6000 && !roleSetting.test(g.spec), String(g.spec.length));
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
     /never therapy, treatment or a diagnosis/.test(museImport.READ_SPEC) && /sexual orientation, health, immigration status, political affiliation, religion/.test(museImport.READ_SPEC) &&
     /never about romance or dating/.test(museImport.READ_SPEC) && /65 to 79/.test(museImport.READ_SPEC));
+  {
+    const shown = JSON.stringify(museImport.MUSE_SCHEMA);
+    const keysOf = (node, path = '', out = []) => { if (node && node.properties) for (const [k, v] of Object.entries(node.properties)) { out.push(path + k); keysOf(v.items || v, path + k + '.', out); } return out; };
+    check('the schema Muse is shown has the merged schema\'s shape, with no orders to a model in its wording',
+      JSON.stringify(keysOf(museImport.MUSE_SCHEMA)) === JSON.stringify(keysOf(prompts.MERGED_SCHEMA)) &&
+        !/\byou are\b|system prompt|roast|least charitable|second drink|unkind/i.test(shown));
+  }
   check('the Sync spec keeps PsycheAI\'s tone rules', /tension, conflict, clash, friction, struggle, problem and incompatible are not used/.test(museImport.SYNC_SPEC) &&
     /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC));
 

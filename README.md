@@ -2724,6 +2724,9 @@ rules for writing it live here, so the plugin and the site can't drift.
   Not the model prompt: the first version handed Muse `MERGED_SYSTEM` (100,000 characters opening "You are
   PsycheAI"), and Muse's safety check refused it as prompt injection. The spec is written about the document,
   never at the assistant, and the selftest checks it sets no role. Keep its hard limits in step with `MERGED_SYSTEM`.
+  The schema Muse is shown is `MUSE_SCHEMA`: the merged schema's shape with its wording cleaned of orders to a
+  model (pointers to "the system prompt", "You are reading…", and the roast's register, now a playful, kind
+  section). `checkMerged` still validates the answer against the same rules.
 - **`POST /api/import`** takes `{ answer, name }`. It runs the same `checkMerged` as a provider's
   answer (422 with the problems if it fails), splits it with `splitMerged`, scores the type, and seals
   the bundle with AES-GCM under a fresh key. Only the sealed bytes are stored (`muse:<id>`, 7 days).
