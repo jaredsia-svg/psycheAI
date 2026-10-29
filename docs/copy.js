@@ -1376,6 +1376,7 @@
       suggestions: [
         'Who am I when I\u2019m not being useful, impressive or needed?',
         'What do I keep trying to prove, and to whom?',
+        'What am I most insecure about in my life?',
         'What would make my life worthwhile, even if nobody ever knew what I achieved?',
         'What would I regret most about my life when I\u2019m old?',
         'What do I already know needs attention in my life, but keep putting off because it means a hard choice?',
