@@ -2662,7 +2662,14 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    centred in the whole viewport. */
 .card-dialog[open] { display: grid; grid-template-rows: 1fr auto; }
 .card-dialog::backdrop { background: rgba(20, 14, 28, .92); }
-.card-dialog-frame { overflow: hidden; place-self: center; }
+.card-dialog-frame { overflow: hidden; place-self: center; position: relative; }
+/* Opened from Muse to share to a Story: the actions and a line on how. Where
+   the browser can't share a picture, the card as a picture to press and hold. */
+.card-dialog.is-story .card-dialog-tip { display: block; text-align: center; margin: 0; padding: 0 56px 0 16px; font-size: .85rem; order: 2; color: rgba(255, 255, 255, .85); }
+.card-dialog.is-story #card-download { display: none; }
+.card-dialog.is-story #card-share { white-space: nowrap; }
+.card-story-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--bg, #fff); -webkit-touch-callout: default; }
+.card-story-img[hidden] { display: none; }
 /* Bottom right, on the same line as the download and share buttons rather
    than diagonally opposite them in the top corner.
  *

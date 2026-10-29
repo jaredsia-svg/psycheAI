@@ -9873,6 +9873,15 @@ check('the schema requires evidence on where they align and differ',
         out.pdfWrongKey = (await fetch(base + '/api/import/pdf?id=' + pdfUrl.searchParams.get('id') + '&k=' + (key[0] === 'A' ? 'B' : 'A') + key.slice(1))).status;
         out.pdfNoKey = (await fetch(base + '/api/import/pdf?id=' + pdfUrl.searchParams.get('id'))).status;
       }
+      const syncBody = JSON.stringify({ a: 'Mei', b: 'Ana', report: { mode: 'platonic', summary: 'Mei brings the plan and Ana the spark.',
+        align: [{ title: 'Love of a plan', detail: 'You both like a plan.', evidence: ['both high conscientiousness'] }, { title: 'Kindness first', detail: 'Both put others first.', evidence: [] }],
+        differ: [{ title: 'Different paces', detail: 'Mei plans ahead and Ana decides on the day.', evidence: ['J/P'] }],
+        howToPartner: { forA: ['Leave the when open.', 'Ask what she noticed.', 'Plan one surprise.'], forB: ['Say yes early.', 'Share the plan.', 'Check in.'], together: ['A monthly walk.', 'One trip a year.'] }, caveats: 'Read from two cards.' } });
+      const syncPdf = await fetch(base + '/api/import/syncpdf', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-import-secret-123' }, body: syncBody });
+      const syncBytes = Buffer.from(await syncPdf.arrayBuffer());
+      out.syncPdf = { status: syncPdf.status, type: syncPdf.headers.get('content-type'), head: syncBytes.subarray(0, 5).toString(), names: /Mei/.test(syncBytes.toString('latin1')) && /Ana/.test(syncBytes.toString('latin1')), cache: syncPdf.headers.get('cache-control') };
+      out.syncPdfNoAuth = (await fetch(base + '/api/import/syncpdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: syncBody })).status;
+      out.syncPdfEmpty = (await fetch(base + '/api/import/syncpdf', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-import-secret-123' }, body: '{"report":{}}' })).status;
       server.kill();
       process.stdout.write(JSON.stringify(out));
     })().catch(e => { server.kill(); process.stdout.write(JSON.stringify({ error: String(e) })); });
@@ -9890,6 +9899,9 @@ check('the schema requires evidence on where they align and differ',
   check('import: the report\'s PDF, the page\'s own document, opens with the key its link carries and with nothing else',
     out.pdf && out.pdf.status === 200 && out.pdf.type === 'application/pdf' && out.pdf.head === '%PDF-' && out.pdf.name && /no-store/.test(out.pdf.cache) &&
     /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && out.pdfWrongKey === 404 && out.pdfNoKey === 404, JSON.stringify(out.pdf));
+  check('import: a Muse Sync comes back as the site\'s own Sync PDF, for the secret only, kept nowhere',
+    out.syncPdf && out.syncPdf.status === 200 && out.syncPdf.type === 'application/pdf' && out.syncPdf.head === '%PDF-' && out.syncPdf.names && /no-store/.test(out.syncPdf.cache) &&
+    out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
   check('import: the report in short comes back for the chat, one line per section in the report\'s order',
     JSON.stringify((out.ok.json.sections || []).map(s => s.title)) === JSON.stringify(['Overview', 'Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together', 'Appendix']) &&
     out.ok.json.sections.every(s => typeof s.finding === 'string' && s.finding.length > 10 && s.finding.length < 600) && /Care for your people/.test(JSON.stringify(out.ok.json.sections)), JSON.stringify(out.ok.json.sections));

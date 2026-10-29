@@ -15033,6 +15033,53 @@ try {
       check('a Muse read is not one of the reader’s free upload reads', !landed.runs || landed.runs === '0', String(landed.runs));
       check('the key leaves the address bar as soon as the read is opened', landed.address === '', landed.address);
 
+      // "Share to your Story" in Muse: the same link with story=1 opens on the
+      // card full screen, one button handing the picture alone to the share
+      // sheet; where a picture can't be shared, the card as a picture to hold.
+      for (const canShare of [true, false]) {
+        const again = await (await fetch(base + 'api/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer uitest-import-secret' },
+          body: JSON.stringify({ answer, name: 'Mei Tan' }),
+        })).json();
+        const storyLink = String(again.url || '').replace('https://psycheai.io/', base).replace('#', '&story=1#');
+        const sctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+        const sp = await sctx.newPage();
+        const spErrors = [];
+        sp.on('pageerror', error => spErrors.push(error.message));
+        await sp.addInitScript(can => {
+          window.__shared = null;
+          if (can) {
+            navigator.canShare = () => true;
+            navigator.share = data => { window.__shared = { files: data.files.map(f => f.type), text: data.text || null }; return Promise.resolve(); };
+          } else { navigator.canShare = undefined; navigator.share = undefined; }
+        }, canShare);
+        await sp.goto(storyLink, { waitUntil: 'load' });
+        await sp.waitForSelector('#card-dialog[open].is-story', { timeout: 30000 });
+        const opened = await sp.evaluate(() => ({
+          label: document.querySelector('#card-share-label').textContent, tip: document.querySelector('#card-dialog-tip').textContent,
+          tipShown: document.querySelector('#card-dialog-tip').offsetHeight > 0, download: document.querySelector('#card-download').offsetWidth,
+          address: location.search + location.hash,
+        }));
+        await sp.click('#card-share');
+        await sp.waitForFunction(can => (can ? window.__shared : !document.querySelector('#card-story-img').hidden), canShare, { timeout: 15000 });
+        const shared = await sp.evaluate(() => ({ shared: window.__shared, img: document.querySelector('#card-story-img').src.slice(0, 22), tip: document.querySelector('#card-dialog-tip').textContent }));
+        check(canShare ? 'a Muse Story link opens on the card full screen with one Share to Story button, and shares the picture alone'
+          : 'a Muse Story link where pictures can\'t be shared shows the card as a picture to press and hold',
+          opened.label === 'Share to Story' && /then Instagram, then Story/.test(opened.tip) && opened.tipShown && !opened.download && opened.address === '' && !spErrors.length &&
+          (canShare ? JSON.stringify(shared.shared) === '{"files":["image/png"],"text":null}' : shared.img === 'data:image/png;base64,' && /Press and hold the picture/.test(shared.tip)),
+          JSON.stringify({ opened, shared, spErrors }));
+        if (canShare) {
+          // The same link again, as when the reader opened the card first: no
+          // question about replacing the read with itself, straight to the card.
+          let asked = 0;
+          sp.on('dialog', d => { if (d.type() === 'confirm') asked++; (d.type() === 'beforeunload' ? d.accept() : d.dismiss()).catch(() => {}); });
+          await sp.goto(storyLink, { waitUntil: 'load' });
+          await sp.waitForSelector('#card-dialog[open].is-story', { timeout: 30000 });
+          check('the same Muse link opened again shows the read without asking to replace it', asked === 0, String(asked));
+        }
+        await sctx.close();
+      }
+
       // Ask in Muse: Muse wrote the read, so its questions go to Muse.
       {
         await mp.evaluate(() => {
@@ -15075,7 +15122,13 @@ try {
       // A read Muse wrote, with nothing added: Psyche Pair already has it, so no button.
       check('a Muse-only read has no Use for Psyche Pair button', !(await mp.locator('#profile-body .hub-card [data-hub-go="pair"]').count()));
 
-      // Opened again over a card already here: asked first, and nothing replaced on No.
+      // Another read opened over a card already here: asked first, and nothing
+      // replaced on No. (The same read opened again is just shown: below, with its Story link.)
+      const otherRead = await (await fetch(base + 'api/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer uitest-import-secret' },
+        body: JSON.stringify({ answer, name: 'Mei Tan' }),
+      })).json();
+      const otherLink = String(otherRead.url || '').replace('https://psycheai.io/', base);
       let asked = '';
       // The suite's own handler answers every confirm with No (leaveFreely); this only reads it.
       // Leaving the page raises a beforeunload dialog first, so take the confirm's.
@@ -15085,7 +15138,7 @@ try {
         profile.createdAt = 'kept';
         localStorage.setItem('psycheai_profile', JSON.stringify(profile));
       });
-      await mp.goto(link, { waitUntil: 'load' });
+      await mp.goto(otherLink, { waitUntil: 'load' });
       await mp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
       const kept = await mp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
       check('a Muse read over a card already here asks first, and No keeps the card', /replaces the card and report/.test(asked) && kept === 'kept', asked + ' / ' + kept);
@@ -15103,7 +15156,7 @@ try {
         const onAsk = dialog => { if (dialog.type() === 'confirm') deeperAsk = dialog.message(); dialog.accept().catch(() => {}); };
         mp.removeAllListeners('dialog');
         mp.on('dialog', onAsk);
-        await mp.goto(link, { waitUntil: 'load' });
+        await mp.goto(otherLink, { waitUntil: 'load' });
         await mp.waitForFunction(() => !localStorage.getItem('psycheai_digest'), null, { timeout: 30000 }).catch(() => {});
         await mp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 30000 });
         const after = await mp.evaluate(() => ({

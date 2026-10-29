@@ -9658,9 +9658,12 @@
       if (!blob) throw new Error('empty');
       const name = cardImageName() + '.png';
       const file = new File([blob], name, { type: 'image/png' });
+      // For a Story, the picture alone: with text beside it, some phones leave
+      // Instagram's Story out of the share sheet. The caption is on the clipboard.
+      const story = $('#card-dialog').classList.contains('is-story');
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: TEXT.cardSection, text: caption });
+          await navigator.share(story ? { files: [file] } : { files: [file], title: TEXT.cardSection, text: caption });
           return;
         } catch (error) {
           // The reader opened the share sheet and backed out themselves —
@@ -9668,12 +9671,47 @@
           if (error && error.name === 'AbortError') return;
         }
       }
+      if (story) { showStoryPicture(blob); return; }
       triggerDownload(blob, name);
     } catch (error) {
       flashCardStatus(TEXT.cardImageError);
     } finally {
       button.disabled = false;
     }
+  }
+
+  // A Muse link with story=1 ("Share to your Story" in Muse) opens on the
+  // card full screen, with the share button named for it and a line on how.
+  function openStoryCard() {
+    const dialog = $('#card-dialog');
+    if (!dialog || !$('#psyche-card-full')) return;
+    openPsycheCard();
+    dialog.classList.remove('is-guided', 'no-tools');
+    dialog.classList.add('is-story');
+    $('#psyche-card-full').classList.remove('pc-hint');
+    $('#card-share-label').textContent = TEXT.cardStoryShare;
+    $('#card-dialog-tip').textContent = TEXT.cardStoryTip;
+    // Fitted again with the line in place, so the card makes room for it.
+    layoutPsycheCard();
+    dialog.addEventListener('close', () => {
+      dialog.classList.remove('is-story');
+      $('#card-share-label').textContent = TEXT.cardShareLabel;
+      $('#card-story-img').hidden = true;
+    }, { once: true });
+  }
+
+  // Where this browser can't share a picture (some in-app browsers can't),
+  // the card as a picture over itself, to press and hold and save.
+  function showStoryPicture(blob) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = $('#card-story-img');
+      img.alt = TEXT.cardSection;
+      img.src = reader.result;
+      img.hidden = false;
+      $('#card-dialog-tip').textContent = TEXT.cardStoryHold;
+    };
+    reader.readAsDataURL(blob);
   }
 
   function openPsycheCard() {
@@ -13465,7 +13503,7 @@
     return data && typeof data === 'object' && data.freeCard && typeof data.freeCard === 'object' ? opened : null;
   }
 
-  async function adoptMuseRead(opened) {
+  async function adoptMuseRead(opened, id) {
     const result = opened.bundle;
     const name = String(opened.name || '').trim();
     // The uploaded data on this device belonged to the card being replaced:
@@ -13484,6 +13522,9 @@
     await adoptProfile(Object.assign({}, result, { data: result.data.freeCard }), name, { notARun: true });
     await adoptFullReport(result, false, name);
     state.profile.source = 'muse';
+    // Which read it was, so opening the same link again (its Story link from
+    // Muse, say) shows it rather than asking to replace it with itself.
+    state.profile.museId = id;
     store.write(KEYS.profile, state.profile);
     go('profile');
     openPaidSections();
@@ -13495,7 +13536,9 @@
     if (!params.has('m')) return false;
     const id = String(params.get('m') || '');
     const key = location.hash.replace(/^#/, '');
+    const story = params.get('story') === '1';
     params.delete('m');
+    params.delete('story');
     const query = params.toString();
     // The key leaves the address bar at once, so it is not in history or a screenshot.
     history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
@@ -13506,6 +13549,12 @@
       showUploadError(TEXT.museReadUnreadable);
       return true;
     }
+    if (state.profile && state.profile.museId === id) {
+      renderProfile();
+      show('profile');
+      if (story) openStoryCard();
+      return true;
+    }
     const loaded = state.digest ? uploadedSources(state.digest) : [];
     const question = loaded.length ? TEXT.museReadReplaceDeeper(firstName(opened.name), loaded.join(', ')) : TEXT.museReadReplace(firstName(opened.name));
     if (state.profile && !window.confirm(question)) {
@@ -13513,7 +13562,8 @@
       show('profile');
       return true;
     }
-    await adoptMuseRead(opened);
+    await adoptMuseRead(opened, id);
+    if (story) openStoryCard();
     return true;
   }
 

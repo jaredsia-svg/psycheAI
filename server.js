@@ -1665,6 +1665,27 @@ async function handleImportPdf(response, url) {
   response.end(pdf);
 }
 
+// A Muse Sync's PDF, for the plugin (lib/musepdf.js buildSync): the written
+// Sync and the two first names in, the PDF out, nothing kept or logged.
+async function handleImportSyncPdf(request, response) {
+  if (!museImport.authorised(request.headers.authorization)) {
+    sendJson(response, museImport.enabled() ? 401 : 404, { error: museImport.enabled() ? 'Not authorised.' : 'No such endpoint.' });
+    return;
+  }
+  const body = await readJsonBody(request);
+  const pdf = await musePdf.buildSync(body && body.report, body && body.a, body && body.b);
+  if (!pdf) {
+    sendJson(response, 422, { error: 'That Sync could not be made into a PDF.' });
+    return;
+  }
+  stats.count('muse_sync_pdf');
+  response.writeHead(200, {
+    'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Cache-Control': 'private, no-store',
+    'Content-Disposition': 'inline; filename="Psyche Sync.pdf"', 'X-Robots-Tag': 'noindex',
+  });
+  response.end(pdf);
+}
+
 async function handleImportOpen(response, url) {
   const found = await museImport.open(url.searchParams.get('id'));
   if (!found) {
@@ -2157,6 +2178,7 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/import/guide' && request.method === 'GET' ? () => handleImportGuide(request, response, url)
                   : route === '/api/import/open' && request.method === 'GET' ? () => handleImportOpen(response, url)
                   : route === '/api/import/pdf' && request.method === 'GET' ? () => handleImportPdf(response, url)
+                  : route === '/api/import/syncpdf' && request.method === 'POST' ? () => handleImportSyncPdf(request, response)
                   : route === '/api/import/status' && request.method === 'GET' ? () => handleImportStatus(request, response, url)
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
                   : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)

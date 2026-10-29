@@ -369,6 +369,12 @@
     // its own label on failure, since the visible label is a fixed word
     // ("Download"/"Share") rather than a place an error could borrow.
     cardImageError: 'Could not build the image',
+    // A Muse link with story=1 ("Share to your Story" in Muse): the card full
+    // screen with one button for the share sheet, where Instagram's Story is.
+    cardStoryShare: 'Share to Story',
+    cardStoryTip: 'Tap Share to Story, then Instagram, then Story. The caption is copied, to paste on it.',
+    // Where this browser can't share a picture (some in-app browsers).
+    cardStoryHold: 'Press and hold the picture to save it, then add it to your Story in Instagram.',
 
     cardType: 'MBTI',
     cardPatterns: 'Your patterns',
