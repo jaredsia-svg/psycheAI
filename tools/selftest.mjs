@@ -9762,7 +9762,7 @@ check('the schema requires evidence on where they align and differ',
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 18000 && !roleSetting.test(g.spec), String(g.spec.length));
+    !('system' in g) && g.spec.length < 19500 && !roleSetting.test(g.spec), String(g.spec.length));
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -9860,6 +9860,9 @@ check('the schema requires evidence on where they align and differ',
       out.guide = { status: guide.status, json: await guide.json() };
       const syncGuide = await fetch(base + '/api/import/guide?kind=sync', { headers: { Authorization: 'Bearer test-import-secret-123' } });
       out.syncGuide = { status: syncGuide.status, json: await syncGuide.json() };
+      const deepGuide = await fetch(base + '/api/import/guide?depth=deep', { headers: { Authorization: 'Bearer test-import-secret-123' } });
+      out.deepSpec = (await deepGuide.json()).spec;
+
       const id = out.ok.json.url ? new URL(out.ok.json.url).searchParams.get('m') : '';
       const open = await fetch(base + '/api/import/open?id=' + id);
       out.open = { status: open.status, json: await open.json() };
@@ -9892,6 +9895,10 @@ check('the schema requires evidence on where they align and differ',
     out.ok.status === 200 && /^https:\/\/psycheai\.io\/\?m=[\w-]{16}#[\w-]{43}$/.test(out.ok.json.url || '') && out.ok.json.expiresInDays === 7, JSON.stringify(out.ok));
   check('import: a read that fails the checks is refused with what failed', out.refused.status === 422 && out.refused.json.problems.some(p => /summary/.test(p)));
   check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.spec === 'string' && out.guide.json.schema);
+  check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
+    /## WhatsApp chats they added/.test(out.guide.json.spec) && /never the export itself/.test(out.guide.json.spec) && !/## Deep Psyche/.test(out.guide.json.spec) &&
+    /## Deep Psyche/.test(out.deepSpec || '') && /About 800,000 characters/.test(out.deepSpec || '') && /A year at a time/.test(out.deepSpec || '') &&
+    /The confidence rationale counts the chats/.test(out.guide.json.spec), String((out.deepSpec || '').length));
   check('import: ?kind=sync gives the Sync guide', out.syncGuide.status === 200 && /A PsycheAI Sync/.test(out.syncGuide.json.spec) && out.syncGuide.json.brief && out.syncGuide.json.schema);
   check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' &&
     Object.keys(out.open.json).sort().join() === 'box,iv' && !/Mei/.test(Buffer.from(out.open.json.box, 'base64url').toString('latin1')));

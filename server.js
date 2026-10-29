@@ -1632,7 +1632,7 @@ function handleImportGuide(request, response, url) {
     sendJson(response, museImport.enabled() ? 401 : 404, { error: museImport.enabled() ? 'Not authorised.' : 'No such endpoint.' });
     return;
   }
-  sendJson(response, 200, museImport.guide(url.searchParams.get('kind') === 'sync' ? 'sync' : 'read'));
+  sendJson(response, 200, museImport.guide(url.searchParams.get('kind') === 'sync' ? 'sync' : 'read', url.searchParams.get('depth') === 'deep' ? 'deep' : null));
 }
 
 // For the plugin: has this sealed read been opened yet? Yes or no, nothing else.
