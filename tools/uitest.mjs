@@ -11986,9 +11986,9 @@ try {
         // Ideas are there before any question is bought, to look through
         // and start a question with.
         await sp.click('#ask-ideas-toggle');
-        check('with no questions left, Ideas still opens its ten questions',
+        check('with no questions left, Ideas still opens its eleven questions',
           await sp.evaluate(() => !document.querySelector('#ask-ideas').hidden &&
-            [...document.querySelectorAll('#ask-ideas-list .ask-chip')].filter(b => b.getBoundingClientRect().height > 0).length === 10));
+            [...document.querySelectorAll('#ask-ideas-list .ask-chip')].filter(b => b.getBoundingClientRect().height > 0).length === 11));
         // A question of the reader's own folds them away again.
         await sp.type('#ask-input', 'W');
         check('typing a question of your own folds the ideas away',
@@ -12025,8 +12025,8 @@ try {
         // universal first and the career one last; one fills the box.
         await sp.click('#ask-ideas-toggle');
         const ideas = await sp.evaluate(() => [...document.querySelectorAll('#ask-ideas-list .ask-chip')].map(b => b.textContent));
-        check('Ideas opens ten questions to start from, the most universal first and career last',
-          ideas.length === 10 && /^Who am I when I.m not being useful/.test(ideas[0]) && /big change in my career/.test(ideas[9]),
+        check('Ideas opens eleven questions to start from, the most universal first and career last',
+          ideas.length === 11 && /^Who am I when I.m not being useful/.test(ideas[0]) && /big change in my career/.test(ideas[10]),
           JSON.stringify(ideas));
         await sp.click('#ask-ideas-list .ask-chip');
         const filled = await sp.evaluate(() => ({ value: document.querySelector('#ask-input').value, count: document.querySelector('#ask-count').textContent,
