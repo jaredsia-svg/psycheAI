@@ -9890,6 +9890,9 @@ check('the schema requires evidence on where they align and differ',
   check('import: the report\'s PDF, the page\'s own document, opens with the key its link carries and with nothing else',
     out.pdf && out.pdf.status === 200 && out.pdf.type === 'application/pdf' && out.pdf.head === '%PDF-' && out.pdf.name && /no-store/.test(out.pdf.cache) &&
     /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && out.pdfWrongKey === 404 && out.pdfNoKey === 404, JSON.stringify(out.pdf));
+  check('import: the report in short comes back for the chat, one line per section in the report\'s order',
+    JSON.stringify((out.ok.json.sections || []).map(s => s.title)) === JSON.stringify(['Overview', 'Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together', 'Appendix']) &&
+    out.ok.json.sections.every(s => typeof s.finding === 'string' && s.finding.length > 10 && s.finding.length < 600) && /Care for your people/.test(JSON.stringify(out.ok.json.sections)), JSON.stringify(out.ok.json.sections));
 }
 
 // ---------- how long a payment stays spendable ----------

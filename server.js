@@ -1619,6 +1619,8 @@ async function handleImport(request, response) {
   sendJson(response, 200, {
     url: SITE_ORIGIN + '/?m=' + sealed.id + '#' + sealed.key,
     ...(pdfKept ? { pdf: SITE_ORIGIN + '/api/import/pdf?id=' + sealed.id + '&k=' + sealed.key, pdfName: musePdf.fileName(name) } : {}),
+    // The report in short, one line per section, for Muse to show under the card.
+    sections: musePdf.summary(result.bundle.data, name),
     expiresInDays: museImport.SEALED_DAYS,
     dropped: result.dropped,
   });

@@ -375,13 +375,12 @@ async function explainStoredProfile(page) {
   if (carried) await page.evaluate(titles => { window.__titles = titles; }, carried);
 }
 
-// app.js's overlayCard, lifted from its source so the test adopts a report
-// exactly as the page does.
+// The page's overlayCard (docs/reportshape.js, shared with the server's Muse
+// PDF), so the test adopts a report exactly as the page does.
 const overlayCard = (() => {
-  const src = readFileSync(join(root, 'docs', 'app.js'), 'utf8');
-  const start = src.indexOf('  function overlayCard(full, card) {');
-  const end = src.indexOf('\n  }\n', start) + 4;
-  return new Function(src.slice(start, end) + '\nreturn overlayCard;')();
+  const box = {};
+  new Function('window', readFileSync(join(root, 'docs', 'reportshape.js'), 'utf8'))(box);
+  return box.PsycheReportShape.overlayCard;
 })();
 
 // The hub's Add / change data on an explained profile: the popout, changed
