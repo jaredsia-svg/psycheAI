@@ -9761,7 +9761,7 @@ check('the schema requires evidence on where they align and differ',
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 6000 && !roleSetting.test(g.spec), String(g.spec.length));
+    !('system' in g) && g.spec.length < 11000 && !roleSetting.test(g.spec), String(g.spec.length));
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -9777,7 +9777,12 @@ check('the schema requires evidence on where they align and differ',
   check('the spec carries the reasoning rules as standards: evidence order, subject, time, letters, thin evidence',
     /## Evidence, strongest first/.test(museImport.READ_SPEC) && /One instance is not a pattern, and the count belongs in the sentence/.test(museImport.READ_SPEC) &&
       /The author of a caption is not automatically its subject/.test(museImport.READ_SPEC) && /dormant/.test(museImport.READ_SPEC) &&
-      /E\/I follows breadth of contact/.test(museImport.READ_SPEC) && /it is never padded/.test(museImport.READ_SPEC));
+      /E\/I follows breadth of contact/.test(museImport.READ_SPEC) && /it is never padded/.test(museImport.READ_SPEC) &&
+      /## Reading plan/.test(museImport.READ_SPEC) && /the 10 to 15 conversations they write in most, not the first ones in the inbox/.test(museImport.READ_SPEC) && /across every year, not just the latest/.test(museImport.READ_SPEC));
+  check('the spec carries the wellness, attachment and ideal partner standards Psyche Pair relies on',
+    /## Wellness/.test(museImport.READ_SPEC) && /never a sleep record/.test(museImport.READ_SPEC) && /no score, index, grade or average/.test(museImport.READ_SPEC) &&
+      /never fearful-avoidant or disorganised/.test(museImport.READ_SPEC) && /About half of adults lean secure/.test(museImport.READ_SPEC) &&
+      /if a line would fit a stranger with a different attachment style, it has not used the read/.test(museImport.READ_SPEC) && /No private person is named/.test(museImport.READ_SPEC));
   check('the Sync spec keeps PsycheAI\'s tone rules', /tension, conflict, clash, friction, struggle, problem and incompatible are not used/.test(museImport.SYNC_SPEC) &&
     /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC));
 

@@ -2724,6 +2724,14 @@ rules for writing it live here, so the plugin and the site can't drift.
   Not the model prompt: the first version handed Muse `MERGED_SYSTEM` (100,000 characters opening "You are
   PsycheAI"), and Muse's safety check refused it as prompt injection. The spec is written about the document,
   never at the assistant, and the selftest checks it sets no role. Keep its hard limits in step with `MERGED_SYSTEM`.
+  Two sections were added after the first Muse reads came back thin. **A reading plan:** a feed returns its
+  newest items first, so Muse read "the first 240 stories" and "the first 20 inbox threads"; the plan spreads
+  stories across every year (about 30 a year, more for the last two), takes all their own posts and comments,
+  and reads their own side of the 10 to 15 conversations they write in most, about 30 messages each spread
+  across the conversation, with the counts stated in the confidence rationale. **Wellness, attachment and ideal
+  partner standards,** condensed from `PREMIUM_SYSTEM` and `WELLNESS_DIMENSIONS`, because those three sections
+  are what Psyche Pair matches on and the schema's field descriptions alone left them generic. The spec's
+  ceiling is 11,000 characters (it is about 9,600).
   The schema Muse is shown is `MUSE_SCHEMA`: the merged schema's shape with its wording cleaned of orders to a
   model (pointers to "the system prompt", "You are reading…", and the roast's register, now a playful, kind
   section). `checkMerged` still validates the answer against the same rules.
