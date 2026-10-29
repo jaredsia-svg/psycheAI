@@ -2755,6 +2755,9 @@ rules for writing it live here, so the plugin and the site can't drift.
   The reply is `{ url: psycheai.io/?m=<id>#<key> }`: the key is only in the fragment, so this server
   can't open what it keeps.
 - **`GET /api/import/open?id=`** returns the sealed bytes, rate limited as a link.
+- **`GET /api/import/status?id=`** (plugin only, with the import secret) answers `{ exists, opened }` and nothing
+  else: `open` sets a `museopened:<id>` flag. The plugin asks a day before the 7 days run out, and reminds
+  someone whose link is about to close unopened; an opened read lives in the browser and needs nothing.
 - **Both writes need `Authorization: Bearer $PSYCHEAI_IMPORT_SECRET`** (16+ characters, shared with the
   plugin). Without it set, the routes answer 503.
 - **On the page** (`consumeMuseRead` in `app.js`, first thing in `boot()`): the key leaves the

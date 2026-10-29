@@ -1625,6 +1625,16 @@ function handleImportGuide(request, response, url) {
   sendJson(response, 200, museImport.guide(url.searchParams.get('kind') === 'sync' ? 'sync' : 'read'));
 }
 
+// For the plugin: has this sealed read been opened yet? Yes or no, nothing else.
+async function handleImportStatus(request, response, url) {
+  if (!museImport.authorised(request.headers.authorization)) {
+    sendJson(response, museImport.enabled() ? 401 : 404, { error: museImport.enabled() ? 'Not authorised.' : 'No such endpoint.' });
+    return;
+  }
+  const found = await museImport.status(url.searchParams.get('id'));
+  sendJson(response, found ? 200 : 404, found || { error: 'No such read.' });
+}
+
 // The sealed copy of a Muse read, for the device holding its key.
 async function handleImportOpen(response, url) {
   const found = await museImport.open(url.searchParams.get('id'));
@@ -2116,6 +2126,7 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/import' && request.method === 'POST' ? () => handleImport(request, response)
                   : route === '/api/import/guide' && request.method === 'GET' ? () => handleImportGuide(request, response, url)
                   : route === '/api/import/open' && request.method === 'GET' ? () => handleImportOpen(response, url)
+                  : route === '/api/import/status' && request.method === 'GET' ? () => handleImportStatus(request, response, url)
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
                   : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)
                   : route === '/api/sync/done' && request.method === 'POST' ? () => handleSyncDone(request, response)

@@ -9806,7 +9806,11 @@ check('the schema requires evidence on where they align and differ',
     /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC));
 
   const sealed = await museImport.seal(good.bundle, 'Mei Tan', 1000);
+  const statusBefore = await museImport.status(sealed.id);
   const kept = await museImport.open(sealed.id);
+  const statusAfter = await museImport.status(sealed.id);
+  check('the plugin can ask whether a read was opened, and gets yes or no only', JSON.stringify(statusBefore) === '{"exists":true,"opened":false}' &&
+    JSON.stringify(statusAfter) === '{"exists":true,"opened":true}' && (await museImport.status('not-an-id')) === null);
   check('only the sealed copy is kept', kept && Object.keys(kept).sort().join() === 'box,iv' &&
     !/Mei|freeCard/.test(Buffer.from(kept.box, 'base64url').toString('latin1')));
   const raw = Buffer.from(kept.box, 'base64url');
