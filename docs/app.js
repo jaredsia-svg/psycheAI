@@ -45,6 +45,7 @@
   // The profile page and the PDF are two renderings of one document, so every
   // string and label they share comes from here rather than being written twice.
   const Copy = window.PsycheCopy;
+  const Shape = window.PsycheReportShape;
   const TEXT = Copy.TEXT;
   // The optional sources, in the order the Add your data popouts list them
   // (TikTok and a journal since October 2026), and what a popout collected of
@@ -608,13 +609,7 @@
    * named, or for a report written before it named any, the three highest
    * of the paid report's ten.
    */
-  function cardMotivators(report) {
-    const known = Copy.STRUCTURED.motivators;
-    const named = (report.topMotivators || []).filter(key => known[key]);
-    if (named.length) return named.slice(0, 3);
-    return ((report.motivators && report.motivators.scores) || []).filter(row => row && known[row.value])
-      .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
-  }
+  function cardMotivators(report) { return Shape.cardMotivators(report, Copy); }
 
   /** The card's signature: the site, then the Instagram handle to tag (cardFooter, set out). */
   function cardSignHtml() {
@@ -1188,16 +1183,7 @@
     return unlockedSections({ premiumAnalysis: report && report.premiumAnalysis });
   }
 
-  function unlockedSections(profile) {
-    const paid = profile && profile.premiumAnalysis;
-    if (!paid) return {};
-    const unlocked = {};
-    if (paid.wellness) unlocked.wellness = paid.wellness;
-    if (paid.attachment) unlocked.attachment = paid.attachment;
-    if (paid.idealPartner) unlocked.idealPartner = paid.idealPartner;
-    if (paid.careerAssessment) unlocked.careerAssessment = paid.careerAssessment;
-    return unlocked;
-  }
+  function unlockedSections(profile) { return Shape.unlockedSections(profile); }
 
   // ---------- the card is free; the explanation of it is paid for ----------
   //
@@ -1240,82 +1226,8 @@
    * scores, the character and the order of the lists on the card. The writing
    * underneath is the full report's own — only the labels are pinned.
    */
-  function overlayCard(full, card) {
-    if (!card) return full;
-    const out = JSON.parse(JSON.stringify(full));
-    out.essence = Object.assign({}, out.essence, {
-      character: (card.essence || {}).character || (out.essence || {}).character,
-      franchise: (card.essence || {}).franchise || (out.essence || {}).franchise,
-      icon: (card.essence || {}).icon || (out.essence || {}).icon,
-      // The character line, when the card wrote it: the first of the three
-      // the card settles (with the summary and the write-up).
-      why: (card.essence || {}).why || (out.essence || {}).why,
-    });
-    if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
-    // The Overview the reader read free under their card: kept whole.
-    if (typeof card.summary === 'string' && card.summary.trim()) out.summary = card.summary;
-    if ((card.topMotivators || []).length) out.topMotivators = card.topMotivators;
-    // The roast is the free call's, read on My Psyche before paying: the one
-    // the reader has already seen stays.
-    if (card.bonus && card.bonus.harsh) out.bonus = card.bonus;
-    // The structured paid call no longer writes the shareable card at all —
-    // it is the free one's, whole.
-    if (card.card && !out.card) out.card = card.card;
-    if (card.confidence) {
-      out.confidence = Object.assign({}, out.confidence,
-        { score: card.confidence.score, level: card.confidence.level });
-    }
-    for (const trait of Object.keys(card.bigFive || {})) {
-      const pinned = card.bigFive[trait] || {};
-      out.bigFive = out.bigFive || {};
-      out.bigFive[trait] = Object.assign({}, out.bigFive[trait], { score: pinned.score, band: pinned.band });
-    }
-    if (card.mbti) {
-      out.mbti = Object.assign({}, out.mbti,
-        { type: card.mbti.type, nickname: card.mbti.nickname || (out.mbti || {}).nickname });
-      if ((card.mbti.letters || []).length) out.mbti.letters = card.mbti.letters.map(letter => {
-        const written = ((full.mbti || {}).letters || []).find(l => l && l.axis === letter.axis) || {};
-        return Object.assign({}, written, { axis: letter.axis, choice: letter.choice, strength: letter.strength });
-      });
-    }
-    // Lists keep the card's entries in the card's order, each carrying the full
-    // report's writing about it where there is any, and then whatever further
-    // entries the full report added.
-    const pinList = (pinned, written, key) => {
-      const rows = written || [];
-      const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-      const kept = (pinned || []).map(item =>
-        Object.assign({}, rows.find(row => row && same(row[key], item[key])) || {}, item));
-      const extra = rows.filter(row => row && !(pinned || []).some(item => same(item[key], row[key])));
-      return kept.concat(extra);
-    };
-    // The structured layout's free card names the signature patterns; the
-    // full report explains them. Pinned by id, so a name the reader has seen
-    // on their card is the name the report uses.
-    if ((card.patterns || []).length) {
-      out.patterns = card.patterns.map(pinned => {
-        const written = (full.patterns || []).find(row => row && row.id === pinned.id) || {};
-        // A card with its Overview carries the evidence and where each shows
-        // up as well, and those stand too.
-        const own = (pinned.evidence || []).length
-          ? { line: pinned.line, evidence: pinned.evidence, showsUpIn: pinned.showsUpIn || written.showsUpIn || [] } : {};
-        return Object.assign({ line: pinned.line }, written, own, { id: pinned.id, name: pinned.name });
-      });
-    }
-    if (card.interests) out.interests = pinList(card.interests, full.interests, 'name');
-    if (card.values) out.values = pinList(card.values, full.values, 'value');
-    if (card.beliefs) out.beliefs = pinList(card.beliefs, full.beliefs, 'belief');
-    const love = (card.relationship && card.relationship.loveLanguages) || null;
-    if (love) {
-      const written = ((full.relationship || {}).loveLanguages) || {};
-      out.relationship = Object.assign({}, out.relationship);
-      out.relationship.loveLanguages = Object.assign({}, written, {
-        receiving: pinList(love.receiving, written.receiving, 'language'),
-        giving: pinList(love.giving, written.giving, 'language'),
-      });
-    }
-    return out;
-  }
+  // Shared with the server's Muse PDF (docs/reportshape.js).
+  function overlayCard(full, card) { return Shape.overlayCard(full, card); }
 
   /**
    * Take delivery of a bought full report.
@@ -1329,7 +1241,7 @@
   // The four premium sections arrive in the same response as the written
   // report, and are filed apart from it — under `premiumAnalysis`, where
   // PAID_SECTIONS, unlockedSections and the PDF have always looked for them.
-  const PREMIUM_KEYS = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
+  const PREMIUM_KEYS = Shape.PREMIUM_KEYS;
 
   async function adoptFullReport(result, replaceCard, savedName, readFrom) {
     if (!state.profile) return;
@@ -1498,17 +1410,7 @@
   // any stray mention in the writing.
   const OWN_PLACEHOLDER = /\bPsycheUser\b/g;
   const isPlaceholder = name => /^\s*PsycheUser\s*$/i.test(String(name || ''));
-  function withOwnName(value, real) {
-    if (!real) return value;
-    if (typeof value === 'string') return value.replace(OWN_PLACEHOLDER, real);
-    if (Array.isArray(value)) return value.map(item => withOwnName(item, real));
-    if (value && typeof value === 'object') {
-      const out = {};
-      for (const key of Object.keys(value)) out[key] = withOwnName(value[key], real);
-      return out;
-    }
-    return value;
-  }
+  function withOwnName(value, real) { return Shape.withOwnName(value, real); }
   /**
    * The other way: the reader's own name, wherever it was put back into a
    * card or report, swapped for the placeholder again before that card or
@@ -7330,18 +7232,7 @@
    * in where the call that wrote them left a gap: the motivators (a paid
    * re-run's card can come without them) and how they show care.
    */
-  function cardFieldsFrom(fields, report) {
-    const out = Object.assign({}, fields || {});
-    if (!report) return out;
-    if (!(Array.isArray(out.motivators) && out.motivators.length)) out.motivators = cardMotivators(report);
-    const love = (report.relationship && report.relationship.loveLanguages) || {};
-    for (const [key, side] of [['loveReceiving', 'receiving'], ['loveGiving', 'giving']]) {
-      const shown = (love[side] || []).slice(0, 2).filter(l => l && l.language)
-        .map(l => l.language + (l.strength ? ' (' + l.strength + ')' : ''));
-      if (shown.length > (Array.isArray(out[key]) ? out[key].length : 0)) out[key] = shown;
-    }
-    return out;
-  }
+  function cardFieldsFrom(fields, report) { return Shape.cardFieldsFrom(fields, report, Copy); }
   /** A card saved with those gaps is mended in place before its link is published. */
   async function mendCardPayload() {
     const profile = state.profile;

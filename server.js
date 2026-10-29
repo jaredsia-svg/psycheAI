@@ -29,6 +29,7 @@ const referral = require('./lib/referral');
 const askCredits = require('./lib/askcredits');
 const links = require('./lib/links');
 const museImport = require('./lib/museimport');
+const musePdf = require('./lib/musepdf');
 const syncbox = require('./lib/syncbox');
 const indexNow = require('./lib/indexnow');
 const syncSeal = require('./lib/syncseal');
@@ -1609,8 +1610,15 @@ async function handleImport(request, response) {
     return;
   }
   stats.count('muse_import');
+  // The report's PDF, the page's own (lib/musepdf.js), so Muse can hand it
+  // over in the chat. Locked with the read's key; a read is saved without it
+  // if it can't be made.
+  const name = String((body && body.name) || '').slice(0, 60);
+  const pdf = await musePdf.build(result.bundle.data, name);
+  const pdfKept = pdf ? await museImport.sealPdf(sealed.id, sealed.key, pdf) : false;
   sendJson(response, 200, {
     url: SITE_ORIGIN + '/?m=' + sealed.id + '#' + sealed.key,
+    ...(pdfKept ? { pdf: SITE_ORIGIN + '/api/import/pdf?id=' + sealed.id + '&k=' + sealed.key, pdfName: musePdf.fileName(name) } : {}),
     expiresInDays: museImport.SEALED_DAYS,
     dropped: result.dropped,
   });
@@ -1636,6 +1644,25 @@ async function handleImportStatus(request, response, url) {
 }
 
 // The sealed copy of a Muse read, for the device holding its key.
+// A Muse report's PDF, opened with the key its link carries. The key is in
+// the address here (a PDF viewer can't open it in a browser), so this is the
+// one request where the server can read the report it holds: it opens it,
+// sends it and keeps nothing. Not logged.
+async function handleImportPdf(response, url) {
+  const id = url.searchParams.get('id');
+  const pdf = await museImport.openPdf(id, url.searchParams.get('k'));
+  if (!pdf) {
+    sendJson(response, 404, { error: 'This report has expired. Ask Muse for a new one.' });
+    return;
+  }
+  stats.count('muse_pdf_opened');
+  response.writeHead(200, {
+    'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Cache-Control': 'private, no-store',
+    'Content-Disposition': 'inline; filename="Psyche Report.pdf"', 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex',
+  });
+  response.end(pdf);
+}
+
 async function handleImportOpen(response, url) {
   const found = await museImport.open(url.searchParams.get('id'));
   if (!found) {
@@ -1844,6 +1871,7 @@ const API_GUARDS = {
   // server, so they are not rate-limited per connection; opening one is a
   // read of what the id names, like /api/link.
   '/api/import/open': { limit: 'link', nonce: false },
+  '/api/import/pdf': { limit: 'link', nonce: false },
   // Sending a sync back costs a store write, so it takes a ticket; collecting
   // and clearing are the owner's own reads, keyed by their secret, like
   // /api/referral.
@@ -2126,6 +2154,7 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/import' && request.method === 'POST' ? () => handleImport(request, response)
                   : route === '/api/import/guide' && request.method === 'GET' ? () => handleImportGuide(request, response, url)
                   : route === '/api/import/open' && request.method === 'GET' ? () => handleImportOpen(response, url)
+                  : route === '/api/import/pdf' && request.method === 'GET' ? () => handleImportPdf(response, url)
                   : route === '/api/import/status' && request.method === 'GET' ? () => handleImportStatus(request, response, url)
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
                   : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)

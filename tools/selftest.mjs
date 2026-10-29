@@ -9667,7 +9667,7 @@ check('the schema requires evidence on where they align and differ',
   const guarded = Object.keys(server.API_GUARDS).sort();
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
-      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/guess', '/api/import/open', '/api/link', '/api/link/save',
+      '/api/analyse', '/api/ask', '/api/ask/buy', '/api/ask/credits', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/guess', '/api/import/open', '/api/import/pdf', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
       '/api/stats', '/api/sync/check', '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
@@ -9682,7 +9682,8 @@ check('the schema requires evidence on where they align and differ',
   // nothing and returns nothing, and a ticket per step would cost more than
   // the count.
   // /api/link opens a short link by the id the link itself names, and
-  // /api/import/open a Muse read the same way.
+  // /api/import/open a Muse read the same way, as /api/import/pdf its PDF
+  // with the key the link carries.
   // /api/guess locks a guess onto a running job by its key, as /api/result
   // reads one, and spends nothing.
   // /api/sync/inbox and /api/sync/done are the link owner's own reads and
@@ -9691,7 +9692,7 @@ check('the schema requires evidence on where they align and differ',
   // its own (October 2026) so the token cannot be guessed at speed.
   // /api/sync/check says whether a received sync's seal holds: it spends
   // nothing, keeps nothing and is asked once per sync collected.
-  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/guess', '/api/import/open', '/api/link', '/api/nonce', '/api/referral', '/api/result',
+  const TICKETLESS = ['/api/ask/credits', '/api/event', '/api/guess', '/api/import/open', '/api/import/pdf', '/api/link', '/api/nonce', '/api/referral', '/api/result',
     '/api/stats', '/api/sync/check', '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
@@ -9863,6 +9864,15 @@ check('the schema requires evidence on where they align and differ',
       const open = await fetch(base + '/api/import/open?id=' + id);
       out.open = { status: open.status, json: await open.json() };
       out.missing = (await fetch(base + '/api/import/open?id=AAAAAAAAAAAAAAAA')).status;
+      if (out.ok.json.pdf) {
+        const pdfUrl = new URL(out.ok.json.pdf);
+        const pdf = await fetch(base + pdfUrl.pathname + pdfUrl.search);
+        const bytes = Buffer.from(await pdf.arrayBuffer());
+        out.pdf = { status: pdf.status, type: pdf.headers.get('content-type'), head: bytes.subarray(0, 5).toString(), name: /Mei Tan/.test(bytes.toString('latin1')), cache: pdf.headers.get('cache-control'), file: out.ok.json.pdfName };
+        const key = pdfUrl.searchParams.get('k');
+        out.pdfWrongKey = (await fetch(base + '/api/import/pdf?id=' + pdfUrl.searchParams.get('id') + '&k=' + (key[0] === 'A' ? 'B' : 'A') + key.slice(1))).status;
+        out.pdfNoKey = (await fetch(base + '/api/import/pdf?id=' + pdfUrl.searchParams.get('id'))).status;
+      }
       server.kill();
       process.stdout.write(JSON.stringify(out));
     })().catch(e => { server.kill(); process.stdout.write(JSON.stringify({ error: String(e) })); });
@@ -9877,6 +9887,9 @@ check('the schema requires evidence on where they align and differ',
   check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' &&
     Object.keys(out.open.json).sort().join() === 'box,iv' && !/Mei/.test(Buffer.from(out.open.json.box, 'base64url').toString('latin1')));
   check('import: an expired or unknown read is a 404', out.missing === 404);
+  check('import: the report\'s PDF, the page\'s own document, opens with the key its link carries and with nothing else',
+    out.pdf && out.pdf.status === 200 && out.pdf.type === 'application/pdf' && out.pdf.head === '%PDF-' && out.pdf.name && /no-store/.test(out.pdf.cache) &&
+    /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && out.pdfWrongKey === 404 && out.pdfNoKey === 404, JSON.stringify(out.pdf));
 }
 
 // ---------- how long a payment stays spendable ----------
