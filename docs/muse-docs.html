@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PsycheAI in Muse: how it works | PsycheAI</title>
+<meta name="description" content="How the PsycheAI connector for Meta Muse works: connecting, signing in, what a user does, and every tool it offers.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://psycheai.io/muse-docs">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="PsycheAI">
+<meta property="og:url" content="https://psycheai.io/muse-docs">
+<meta property="og:title" content="PsycheAI in Muse: how it works | PsycheAI">
+<meta property="og:description" content="How the PsycheAI connector for Meta Muse works: connecting, signing in, what a user does, and every tool it offers.">
+<meta property="og:image" content="https://psycheai.io/media/og-card.jpg?v=3">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#7b3fa0">
+<link rel="apple-touch-icon" href="media/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='none' stroke='%237b3fa0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z'/><path d='M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z'/><path d='M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z'/><circle cx='70' cy='70' r='11' fill='%237b3fa0' stroke='none'/></svg>">
+</head>
+<body class="guide-page legal-page">
+<!-- PsycheAI in Muse: how it works: part of the PsycheAI plugin's pages (see docs/muse.html). Every claim
+     is about what the plugin's code does. Noindex until launch. -->
+<nav class="nav">
+  <a class="brand" href="/"><svg class="brand-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/><path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/><path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/><circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/></svg><span>PsycheAI</span></a>
+  <div class="nav-links"><a href="/">Get your free Psyche Card</a></div>
+</nav>
+<main class="container guide legal">
+  <header class="hero profile-hero guide-hero">
+    <h1>PsycheAI in Muse: how it works</h1>
+    <p class="lede">How the PsycheAI connector works: connecting, signing in, and every tool it offers.</p>
+    <p class="legal-meta">PsycheAI · Singapore · Last updated 29 October 2026 · <a href="/muse">PsycheAI in Muse</a></p>
+  </header>
+  <section class="card section-card" id="connect">
+    <h2>Connecting</h2>
+    <ul>
+      <li><b>Address:</b> <code>https://app.psycheai.io/mcp</code>, MCP over HTTP (Streamable HTTP, JSON replies, POST only).</li>
+      <li><b>Sign-in:</b> OAuth 2.1 with PKCE (S256). Hosts register themselves (RFC 7591, <code>/oauth/register</code>); a host that asks for a client ID uses <code>psycheai</code>, a public client that returns only to Meta's own hosts. Discovery: <code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code>.</li>
+      <li><b>Accounts:</b> a 6-digit email code, or Google or Apple. No password, no API key.</li>
+      <li><b>Health:</b> <code>/health</code>.</li>
+    </ul>
+  </section>
+  <section class="card section-card" id="flow">
+    <h2>What a user does</h2>
+    <ol>
+      <li><b>Start:</b> the <code>start</code> tool gives any news and a four-option menu.</li>
+      <li><b>Their read:</b> <code>get_report_guide</code> gives the format (a short spec and a JSON schema); the assistant writes the read from the user's own Instagram and publishes it with <code>publish_psyche</code>, which returns their card image and a private psycheai.io link, valid 7 days.</li>
+      <li><b>Sync:</b> two people both ask (<code>sync_with</code>); either can then see how they sync (<code>get_sync</code>).</li>
+      <li><b>Psyche Pair:</b> the user checks their card and answers what only they can (<code>save_profile</code>, <code>confirm_profile</code>); each week, a few matches above a fixed bar (<code>get_weekly_matches</code>), up to 2 picks, and a mutual yes opens a private chat or an Instagram swap.</li>
+    </ol>
+    <p>Most results end with a next step: one line and the buttons to offer.</p>
+  </section>
+  <section class="card section-card" id="tools">
+    <h2>Tools</h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Tool</th><th>Title</th><th>Kind</th><th>What it does</th></tr></thead>
+      <tbody>
+      <tr><td><code>start</code></td><td>Start PsycheAI</td><td>Read</td><td>Call this first, whenever the user connects or opens PsycheAI without saying what they want. Returns what to show them: any news, then a short menu of options to show as buttons. Read-only.</td></tr>
+      <tr><td><code>get_report_guide</code></td><td>Get the PsycheAI guide</td><td>Read</td><td>The format of the PsycheAI read the user asked for: a short specification (spec) and the JSON schema the finished read must match, for publish_psyche.</td></tr>
+      <tr><td><code>publish_psyche</code></td><td>Publish your Psyche</td><td>Writes</td><td>Publish the read you wrote (one JSON object following get_report_guide&#x27;s schema) to psycheai.io. Returns the user&#x27;s private link (valid 7 days) and their card image. If it returns problems, fix them and call again.</td></tr>
+      <tr><td><code>sync_with</code></td><td>Sync with a friend</td><td>Writes</td><td>Ask to sync with someone by Instagram handle, or say yes to their ask (same call). The first time it returns an ask for consent to keep the user&#x27;s card: show it, and call again with consent true on Yes.</td></tr>
+      <tr><td><code>get_syncs</code></td><td>See your Syncs</td><td>Read</td><td>Who wants to sync with the user (incoming), whom they asked (sent), and their Syncs with card images.</td></tr>
+      <tr><td><code>get_sync</code></td><td>Open a Sync</td><td>Read</td><td>Everything needed to write the user&#x27;s Sync with someone: PsycheAI&#x27;s Sync guide, the two card-level profiles, the derived facts and the Sync card image. Write it in the chat as the guide says.</td></tr>
+      <tr><td><code>remove_sync</code></td><td>Remove a Sync</td><td>Removes data</td><td>Say no to someone&#x27;s Sync ask, take back the user&#x27;s own, or end a Sync. The other side is not told.</td></tr>
+      <tr><td><code>get_pair_guide</code></td><td>Get the Psyche Pair guide</td><td>Read</td><td>How to run Psyche Pair for this user: the one message that sets it up, the matching fields, and what to do on every later visit. Call it when they say yes to Psyche Pair, and on later visits if you no longer have it.</td></tr>
+      <tr><td><code>get_instructions</code></td><td>Get the steps</td><td>Read</td><td>The step-by-step procedure for building this user&#x27;s Psyche Pair profile. Call it first, and follow it.</td></tr>
+      <tr><td><code>save_profile</code></td><td>Save your profile</td><td>Writes</td><td>Save a draft of the user&#x27;s matching profile (structured fields only, never post text or quotes). Returns any issues to fix. The draft is not matched until confirm_profile.</td></tr>
+      <tr><td><code>get_my_card</code></td><td>See your card</td><td>Read</td><td>The user&#x27;s own Psyche Card as an image to show in the chat, and its page: how matches will see them. Works on the saved draft before confirm_profile, for the review.</td></tr>
+      <tr><td><code>confirm_profile</code></td><td>Confirm your profile</td><td>Writes</td><td>The user has read their profile and said it is right. Makes the saved draft their live profile so it can be matched. Only call after their clear yes.</td></tr>
+      <tr><td><code>set_preferences</code></td><td>Save who you want to meet</td><td>Writes</td><td>Save who the user wants to meet: their own words (brief) plus must-haves (filters) and nice-to-haves (extra points) as rules over profile fields. Read the rules back to the user before calling. Must-haves on a field the other person left empty pass. Returns the pool size the rules leave.</td></tr>
+      <tr><td><code>add_custom_question</code></td><td>Add a must-have question</td><td>Writes</td><td>For a must-have the profile has no field for (e.g. &quot;must be okay with pet reptiles&quot;): add a yes/maybe/no question to the shared bank, or get the existing one it duplicates. Then use it in set_preferences as a must rule with field &quot;q.&lt;key&gt;&quot;. Not for sex, money, race, religion, health, looks, kids, marriage, legal status or politics.</td></tr>
+      <tr><td><code>get_pending_questions</code></td><td>Quick questions</td><td>Read</td><td>Quick questions that would sharpen this user&#x27;s matches (at most 3 a week), each with fixed options. Call at the start of each visit. Show each as a question with its options as buttons, or as a short numbered list if buttons are not available. Ask openly as matching questions; never say or hint that a particular person asked.</td></tr>
+      <tr><td><code>answer_question</code></td><td>Answer a question</td><td>Writes</td><td>Save the user&#x27;s answer to a pending question, using one of its options, or skip.</td></tr>
+      <tr><td><code>get_weekly_matches</code></td><td>See this week&#x27;s matches</td><td>Read</td><td>This week&#x27;s matches: a few people who scored above the bar, best first, each with a photo, first name, fit % and one line on what they share. The user may pick up to 2 a week.</td></tr>
+      <tr><td><code>pick_match</code></td><td>Pick a match</td><td>Writes</td><td>The user picks someone from this week&#x27;s matches. Sends that person an intro. Uses one of the user&#x27;s 2 weekly picks.</td></tr>
+      <tr><td><code>get_intros</code></td><td>See who picked you</td><td>Read</td><td>People who picked this user and are waiting for an answer (with a fuller card), intros the user sent, and mutual matches with their Instagram swap state (handles appear once both have offered).</td></tr>
+      <tr><td><code>respond_to_intro</code></td><td>Answer an intro</td><td>Writes</td><td>Answer an intro from someone who picked the user. Yes on both sides shares Instagram handles.</td></tr>
+      <tr><td><code>share_instagram</code></td><td>Swap Instagram</td><td>Writes</td><td>Offer (share: true) or withdraw (share: false) the user&#x27;s Instagram to one mutual match. Handles show to both only once both have offered. Ask the user first, for each match.</td></tr>
+      <tr><td><code>make_psyche_pdf</code></td><td>Make your PDF</td><td>Writes</td><td>Turn the user&#x27;s full private Psyche read into a private link (valid 7 days) to a page they can read and save as a PDF. This is how the read is delivered: never paste it into the chat. We keep it only encrypted, with a key that exists only in the link.</td></tr>
+      <tr><td><code>send_message</code></td><td>Send a message</td><td>Writes</td><td>Send a message in the private chat with a mutual match (no contact details shared). Under 1000 characters. Send exactly what the user wrote.</td></tr>
+      <tr><td><code>get_messages</code></td><td>Read messages</td><td>Read</td><td>With introId: the private chat with that match, to show the user word for word. Without: which matches have unread messages.</td></tr>
+      <tr><td><code>end_chat</code></td><td>End a chat</td><td>Removes data</td><td>End the private chat with a match (for example once they have swapped numbers). Deletes the messages.</td></tr>
+      <tr><td><code>log_date</code></td><td>Log a date</td><td>Writes</td><td>After a date with a mutual match: did they meet, and would they see them again (yes/maybe/no). Only these answers are saved; any reflection stays in this chat.</td></tr>
+      <tr><td><code>block_or_report</code></td><td>Block or report</td><td>Writes</td><td>Block someone so neither sees the other again, optionally reporting them with a reason. A report on a match you chat with keeps that chat for our safety team to review.</td></tr>
+      <tr><td><code>pause_matching</code></td><td>Pause matching</td><td>Writes</td><td>Pause or resume being matched (paused people get no drops and appear in none).</td></tr>
+      <tr><td><code>delete_my_data</code></td><td>Delete your data</td><td>Removes data</td><td>Permanently delete everything PsycheAI keeps about the user: their card, profile, preferences, matches, intros, chats and Syncs. Confirm with the user first.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Every tool carries MCP's hints: reads are read-only, and only removing things is destructive.</p>
+  </section>
+  <section class="card section-card" id="support">
+    <h2>Policies and support</h2>
+    <p><a href="/muse-privacy">Privacy</a> · <a href="/muse-terms">Terms</a> · <a href="/muse#safety">Safety</a> · <a href="mailto:admin@psycheai.io">admin@psycheai.io</a></p>
+  </section>
+</main>
+<footer class="footer">
+  <p><a href="/">PsycheAI</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
+    <a href="/refunds">Refunds</a> · <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> · <a href="https://www.instagram.com/psycheai.io/" target="_blank" rel="noopener noreferrer">Instagram @psycheai.io</a></p>
+  <p class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google. MBTI and Myers-Briggs are trademarks of The Myers-Briggs Company; PsycheAI is not affiliated with it and is not the official assessment.</p>
+</footer>
+</body>
+</html>

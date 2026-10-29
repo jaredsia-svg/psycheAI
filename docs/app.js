@@ -1473,6 +1473,13 @@
   // Whether a stored digest has Instagram in it: Digest.hasInstagram, here
   // because the page asks before the data readers have loaded. A digest from
   // WhatsApp chats alone (October 2026) has none.
+  /** The sources an uploaded digest was read from, by name, for the Muse question. */
+  function uploadedSources(digest) {
+    const short = Copy.STRUCTURED.hub.sourceNames;
+    return [['instagram', digestHasInstagram(digest)], ['whatsapp', Boolean(digest.whatsapp)], ['google', Boolean(digest.google)], ['facebook', Boolean(digest.facebook)]]
+      .filter(([, has]) => has).map(([key]) => short[key]);
+  }
+
   function digestHasInstagram(digest) {
     const sources = digest && digest.coverage && digest.coverage.sources;
     return !Array.isArray(sources) || !sources.length || sources.includes('instagram');
@@ -2439,7 +2446,9 @@
           '<button type="button" class="hub-change" data-hub-change data-flow="' + flow + '">' + hubIcon('redo') + '<span>' + esc(H.changeData) + '</span></button>' +
           dataNudgeHtml(score, sources, flow) +
           // The read, taken to Psyche Pair in Muse (usePairRead), once there is a report.
-          (explained ? '<button type="button" class="hub-pair" data-hub-go="pair">' + hubIcon('heart') + '<span>' + esc(H.pair) + '</span></button>' : '') +
+          // Not on a read Muse wrote with nothing added: Psyche Pair already has it.
+          (explained && !museOnly() ? '<button type="button" class="hub-pair" data-hub-go="pair">' + hubIcon('heart') + '<span>' +
+            esc(state.profile.source === 'muse' ? H.pairUpdate : H.pair) + '</span></button>' : '') +
         '</div>' +
         '<div class="hub-row hub-keep" aria-label="' + esc(H.keep) + '">' +
           '<span class="hub-keephead">' + hubTip('keep', H.keep, 'hub-rl') + '</span>' +
@@ -13597,7 +13606,9 @@
       showUploadError(TEXT.museReadUnreadable);
       return true;
     }
-    if (state.profile && !window.confirm(TEXT.museReadReplace(firstName(opened.name)))) {
+    const loaded = state.digest ? uploadedSources(state.digest) : [];
+    const question = loaded.length ? TEXT.museReadReplaceDeeper(firstName(opened.name), loaded.join(', ')) : TEXT.museReadReplace(firstName(opened.name));
+    if (state.profile && !window.confirm(question)) {
       renderProfile();
       show('profile');
       return true;

@@ -2753,9 +2753,14 @@ rules for writing it live here, so the plugin and the site can't drift.
   languages, interests, values, top motivators, character, headline, pattern names, confidence) to
   `app.psycheai.io/join` as a top-level form post, and the reader signs in there. No report text and nothing from the
   digest. The plugin maps it onto its matching profile (psyche-pair `lib/join.js`). The privacy page says so.
-- **`/muse`** (`docs/muse.html`) is the plugin's public page: how to add it to Muse, and the plugin's
-  own privacy, terms and safety sections (`#privacy`, `#terms`, `#safety`), which the plugin's old
-  addresses redirect to. Noindex and out of the sitemap until launch.
+- **The plugin's pages:** `/muse` (`docs/muse.html`: how to add it to Muse, Plus, safety, and short privacy and
+  terms sections linking on), `/muse-privacy`, `/muse-terms` and `/muse-docs` (connecting, sign-in and every tool,
+  generated from the plugin's tool list). The plugin's old addresses redirect to them. Noindex and out of the
+  sitemap until launch.
+- **A deeper read is kept unless the reader chooses otherwise.** Opening a Muse read over a read built from
+  uploaded data asks with `museReadReplaceDeeper`, naming the sources it would replace; accepting removes that
+  data too, so it can't pose as the Muse read's sources. Use for Psyche Pair is hidden on a Muse read with
+  nothing added (Psyche Pair already has it) and reads "Update my Psyche Pair profile" once data is added.
 
 ## Kept across deploys (Upstash)
 

@@ -510,6 +510,9 @@
     // Muse's own address, where "Ask in Muse" sends a Muse read's questions.
     museUrl: 'https://muse.ai/',
     museAddNeedsChats: 'Muse already read your Instagram. Add your WhatsApp chats (and Google or Facebook if you like) for a deeper read of the same card.',
+    // Said instead when the read here was built from uploaded data: the Muse
+    // read is usually thinner, so the question leads with what would be lost.
+    museReadReplaceDeeper: (name, sources) => 'You already have a deeper read here, from ' + sources + '. The read Muse just wrote for ' + (name || 'you') + ' is from Instagram only, so it is usually less detailed. Replace your deeper read and its data with it? Cancel keeps what you have.',
     museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser, and the data you loaded for them. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
@@ -1434,6 +1437,8 @@
       questionsLeft: n => n + (n === 1 ? ' question left' : ' questions left'),
       inMuse: 'In Muse',
       pair: 'Use for Psyche Pair',
+      // A read Muse wrote, with data added here: Psyche Pair already has the Muse read.
+      pairUpdate: 'Update my Psyche Pair profile',
       questionsOf: (asked, of) => asked + ' of ' + of + (of === 1 ? ' question asked' : ' questions asked'),
       freeQuestion: n => n + (n === 1 ? ' free question' : ' free questions'),
       askGo: 'Ask',

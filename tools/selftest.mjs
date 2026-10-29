@@ -9710,14 +9710,23 @@ check('the schema requires evidence on where they align and differ',
 // claims are about the plugin's code (psyche-pair README "Decisions").
 {
   const muse = readFileSync(join(root, 'docs', 'muse.html'), 'utf8');
+  const musePrivacy = readFileSync(join(root, 'docs', 'muse-privacy.html'), 'utf8');
+  const museTerms = readFileSync(join(root, 'docs', 'muse-terms.html'), 'utf8');
+  const museDocs = readFileSync(join(root, 'docs', 'muse-docs.html'), 'utf8');
   check('the Muse page has the sections the plugin redirects to, and the connector address',
     ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp'));
   check('it says what the plugin never receives or guesses, and that the read is sealed under the link\'s key',
-    /never receive your posts, captions, comments, stories or messages/.test(muse) && /never guess your religion, ethnicity, politics/.test(muse) &&
-      /key that exists only in your link/.test(muse));
+    /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
+      /key that exists only in your link/.test(musePrivacy));
   check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
     /US\$4\.99 a month or US\$29 a year/.test(muse) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(muse) &&
-      /we never see your card/.test(muse) && /Cancelling keeps Plus until the end of the period you paid for/.test(muse) && /Sync, 2 picks a week/.test(muse));
+      /we never see your card/.test(musePrivacy) && /Cancelling keeps Plus until the end of the period you paid for/.test(museTerms) && /Sync, 2 picks a week/.test(muse));
+  check('the plugin\'s privacy, terms and docs stand on their own pages, linked from /muse, out of search and the sitemap',
+    [musePrivacy, museTerms, museDocs].every(h => /<meta name="robots" content="noindex">/.test(h) && /class="footer-note"/.test(h)) &&
+      ['/muse-privacy', '/muse-terms', '/muse-docs'].every(p => muse.includes('href="' + p + '"') && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes(p)) &&
+      /<link rel="canonical" href="https:\/\/psycheai\.io\/muse-privacy">/.test(musePrivacy));
+  check('the docs page lists every tool, with the sign-in and the public client id', /<code>start<\/code>/.test(museDocs) && /<code>publish_psyche<\/code>/.test(museDocs) &&
+    /<code>delete_my_data<\/code>/.test(museDocs) && /<code>psycheai<\/code>/.test(museDocs) && /PKCE \(S256\)/.test(museDocs));
   check('the site lets "Use for Psyche Pair" post to the plugin, and nowhere else', /"form-action 'self' https:\/\/app\.psycheai\.io"/.test(readFileSync(join(root, 'server.js'), 'utf8')));
   check('it stays out of search until launch, with the usual footer note',
     /<meta name="robots" content="noindex">/.test(muse) && /class="footer-note"/.test(muse) && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes('/muse'));
@@ -9765,6 +9774,10 @@ check('the schema requires evidence on where they align and differ',
       JSON.stringify(keysOf(museImport.MUSE_SCHEMA)) === JSON.stringify(keysOf(prompts.MERGED_SCHEMA)) &&
         !/\byou are\b|system prompt|roast|least charitable|second drink|unkind/i.test(shown));
   }
+  check('the spec carries the reasoning rules as standards: evidence order, subject, time, letters, thin evidence',
+    /## Evidence, strongest first/.test(museImport.READ_SPEC) && /One instance is not a pattern, and the count belongs in the sentence/.test(museImport.READ_SPEC) &&
+      /The author of a caption is not automatically its subject/.test(museImport.READ_SPEC) && /dormant/.test(museImport.READ_SPEC) &&
+      /E\/I follows breadth of contact/.test(museImport.READ_SPEC) && /it is never padded/.test(museImport.READ_SPEC));
   check('the Sync spec keeps PsycheAI\'s tone rules', /tension, conflict, clash, friction, struggle, problem and incompatible are not used/.test(museImport.SYNC_SPEC) &&
     /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC));
 

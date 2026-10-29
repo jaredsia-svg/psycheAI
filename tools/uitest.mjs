@@ -15063,24 +15063,8 @@ try {
         await mp.evaluate(() => { const d = document.querySelector('#ask-dialog'); if (d.open) d.close(); });
       }
 
-      // Use for Psyche Pair: after a yes, the card-level part of the read is
-      // posted to the plugin, and nothing else.
-      {
-        await mp.evaluate(() => {
-          window.__posted = null;
-          window.confirm = () => true;
-          HTMLFormElement.prototype.submit = function () { window.__posted = { action: this.action, method: this.method, read: this.querySelector('input[name="read"]').value }; };
-        });
-        await mp.click('#profile-body .hub-card [data-hub-go="pair"]');
-        const posted = await mp.evaluate(() => window.__posted);
-        const read = posted ? JSON.parse(posted.read) : {};
-        const keys = Object.keys(read).sort().join();
-        check('Use for Psyche Pair posts the card-level read to the plugin\'s /join, and nothing else',
-          posted && posted.action === 'https://app.psycheai.io/join' && posted.method === 'post' && read.name === 'Mei' &&
-            keys === 'attachment,bigFive,card,confidence,essence,interests,mbti,name,patterns,relationship,topMotivators,values' &&
-            typeof read.bigFive.openness.score === 'number' && !('reading' in read.bigFive.openness) && !/Mock (detail|reading|evidence)|harsh|summary paragraph/i.test(posted.read),
-          posted ? posted.read.slice(0, 300) : 'nothing posted');
-      }
+      // A read Muse wrote, with nothing added: Psyche Pair already has it, so no button.
+      check('a Muse-only read has no Use for Psyche Pair button', !(await mp.locator('#profile-body .hub-card [data-hub-go="pair"]').count()));
 
       // Opened again over a card already here: asked first, and nothing replaced on No.
       let asked = '';
@@ -15103,10 +15087,12 @@ try {
         await mp.evaluate(() => {
           localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram', 'google'] }, google: { counts: {} } }));
           localStorage.setItem('psycheai_report_digest', '{"old":true}');
-          window.confirm = () => true;
         });
+        let deeperAsk = '';
+        const onAsk = dialog => { if (dialog.type() === 'confirm') deeperAsk = dialog.message(); dialog.accept().catch(() => {}); };
+        mp.removeAllListeners('dialog');
+        mp.on('dialog', onAsk);
         await mp.goto(link, { waitUntil: 'load' });
-        await mp.evaluate(() => { window.confirm = () => true; });
         await mp.waitForFunction(() => !localStorage.getItem('psycheai_digest'), null, { timeout: 30000 }).catch(() => {});
         await mp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 30000 });
         const after = await mp.evaluate(() => ({
@@ -15115,8 +15101,32 @@ try {
           google: Boolean(document.querySelector('#profile-body .hub-chip[data-hub-source="google"]:not(.is-add)')),
           ask: (document.querySelector('#profile-body .hub-tile[data-hub="ask"]') || {}).textContent || '',
         }));
+        check('over an uploaded read, the question says a deeper read from its sources would be replaced', /deeper read here, from Instagram, Google/.test(deeperAsk) && /Cancel keeps what you have/.test(deeperAsk), deeperAsk);
+        mp.removeListener('dialog', onAsk);
+        mp.on('dialog', d => (d.type() === 'beforeunload' ? d.accept() : d.dismiss()).catch(() => {}));
         check('a Muse read accepted over a card replaces it and drops the old card\'s data: Ask goes to Muse',
           after.digest === null && after.reportDigest === null && after.kept !== 'kept' && !after.google && /Ask in Muse/.test(after.ask), JSON.stringify(after));
+      }
+
+      // Data added to a Muse read: the button updates Psyche Pair, posting the
+      // card-level part of the read after a yes, and nothing else.
+      {
+        await mp.evaluate(() => localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['whatsapp'] }, whatsapp: { chats: [] } })));
+        await mp.reload({ waitUntil: 'load' });
+        await mp.waitForSelector('#profile-body .hub-card [data-hub-go="pair"]', { timeout: 30000 });
+        await mp.evaluate(() => {
+          window.__posted = null;
+          window.confirm = () => true;
+          HTMLFormElement.prototype.submit = function () { window.__posted = { action: this.action, method: this.method, read: this.querySelector('input[name="read"]').value }; };
+        });
+        const label = await mp.locator('#profile-body .hub-card [data-hub-go="pair"]').innerText();
+        await mp.click('#profile-body .hub-card [data-hub-go="pair"]');
+        const posted = await mp.evaluate(() => window.__posted);
+        const read = posted ? JSON.parse(posted.read) : {};
+        check('with data added, the button updates Psyche Pair with the card-level read, and nothing else',
+          /Update my Psyche Pair profile/.test(label) && posted && posted.action === 'https://app.psycheai.io/join' && posted.method === 'post' &&
+            Object.keys(read).sort().join() === 'attachment,bigFive,card,confidence,essence,interests,mbti,name,patterns,relationship,topMotivators,values' &&
+            !/Mock (detail|reading|evidence)|harsh|summary paragraph/i.test(posted.read), label + ' ' + (posted ? posted.read.slice(0, 200) : 'nothing posted'));
       }
 
       // A link with the wrong key opens nothing and says so.
