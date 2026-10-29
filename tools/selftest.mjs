@@ -9718,6 +9718,7 @@ check('the schema requires evidence on where they align and differ',
   check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
     /US\$4\.99 a month or US\$29 a year/.test(muse) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(muse) &&
       /we never see your card/.test(muse) && /Cancelling keeps Plus until the end of the period you paid for/.test(muse) && /Sync, 2 picks a week/.test(muse));
+  check('the site lets "Use for Psyche Pair" post to the plugin, and nowhere else', /"form-action 'self' https:\/\/app\.psycheai\.io"/.test(readFileSync(join(root, 'server.js'), 'utf8')));
   check('it stays out of search until launch, with the usual footer note',
     /<meta name="robots" content="noindex">/.test(muse) && /class="footer-note"/.test(muse) && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes('/muse'));
 }

@@ -15097,6 +15097,28 @@ try {
       const kept = await mp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
       check('a Muse read over a card already here asks first, and No keeps the card', /replaces the card and report/.test(asked) && kept === 'kept', asked + ' / ' + kept);
 
+      // Opened again and accepted: the card is replaced, and the data loaded
+      // for the old card goes with it, so it can't pose as this read's.
+      {
+        await mp.evaluate(() => {
+          localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram', 'google'] }, google: { counts: {} } }));
+          localStorage.setItem('psycheai_report_digest', '{"old":true}');
+          window.confirm = () => true;
+        });
+        await mp.goto(link, { waitUntil: 'load' });
+        await mp.evaluate(() => { window.confirm = () => true; });
+        await mp.waitForFunction(() => !localStorage.getItem('psycheai_digest'), null, { timeout: 30000 }).catch(() => {});
+        await mp.waitForSelector('#view-profile:not([hidden]) #profile-body .hub-card', { timeout: 30000 });
+        const after = await mp.evaluate(() => ({
+          digest: localStorage.getItem('psycheai_digest'), reportDigest: localStorage.getItem('psycheai_report_digest'),
+          kept: (JSON.parse(localStorage.getItem('psycheai_profile')) || {}).createdAt,
+          google: Boolean(document.querySelector('#profile-body .hub-chip[data-hub-source="google"]:not(.is-add)')),
+          ask: (document.querySelector('#profile-body .hub-tile[data-hub="ask"]') || {}).textContent || '',
+        }));
+        check('a Muse read accepted over a card replaces it and drops the old card\'s data: Ask goes to Muse',
+          after.digest === null && after.reportDigest === null && after.kept !== 'kept' && !after.google && /Ask in Muse/.test(after.ask), JSON.stringify(after));
+      }
+
       // A link with the wrong key opens nothing and says so.
       await mp.evaluate(() => localStorage.clear());
       const id = new URL(link).searchParams.get('m');

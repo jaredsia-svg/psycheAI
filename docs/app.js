@@ -13564,6 +13564,14 @@
   async function adoptMuseRead(opened) {
     const result = opened.bundle;
     const name = String(opened.name || '').trim();
+    // The uploaded data on this device belonged to the card being replaced:
+    // kept, it would show as this read's sources and Ask PsycheAI would answer
+    // from evidence the read was not written from. It goes with that card
+    // (the question before this said so); Add / change data brings it back.
+    for (const key of [KEYS.digest, KEYS.deepDigest, KEYS.reportDigest, KEYS.reportDigestNext]) store.remove(key);
+    state.digest = null;
+    state.signals = null;
+    state.chats = null;
     await adoptProfile(Object.assign({}, result, { data: result.data.freeCard }), name, { notARun: true });
     await adoptFullReport(result, false, name);
     state.profile.source = 'muse';

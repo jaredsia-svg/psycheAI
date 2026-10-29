@@ -1907,7 +1907,9 @@ const CSP = [
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // "Use for Psyche Pair" posts the card-level read to the plugin's /join
+  // (app.js usePairRead); nothing else leaves by form.
+  "form-action 'self' https://app.psycheai.io",
 ].join('; ');
 
 function applySecurityHeaders(request, response) {

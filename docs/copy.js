@@ -510,7 +510,7 @@
     // Muse's own address, where "Ask in Muse" sends a Muse read's questions.
     museUrl: 'https://muse.ai/',
     museAddNeedsChats: 'Muse already read your Instagram. Add your WhatsApp chats (and Google or Facebook if you like) for a deeper read of the same card.',
-    museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser. Save a backup first if you want to keep them.',
+    museReadReplace: name => 'Open the read Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser, and the data you loaded for them. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
