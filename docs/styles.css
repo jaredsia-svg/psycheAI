@@ -5628,3 +5628,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The FAQ's one warning, set apart by colour, not weight (only the questions are bold there). */
 .faq-warn { padding: .55rem .8rem; border-left: 3px solid var(--warn, #b4572a); border-radius: 0 10px 10px 0;
   background: color-mix(in srgb, var(--warn, #b4572a) 9%, var(--bg-alt)); color: var(--ink); }
+
+/* A message to copy into Muse: one tap selects all of it (muse.html). */
+.paste { white-space: pre-wrap; word-break: break-word; -webkit-user-select: all; user-select: all; cursor: text; background: var(--bg-alt); border: 1.5px dashed var(--line); border-radius: 12px; padding: .7rem .8rem; margin: .5rem 0 .2rem; font: inherit; }

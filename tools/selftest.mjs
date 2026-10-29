@@ -9714,7 +9714,7 @@ check('the schema requires evidence on where they align and differ',
   const museTerms = readFileSync(join(root, 'docs', 'muse-terms.html'), 'utf8');
   const museDocs = readFileSync(join(root, 'docs', 'muse-docs.html'), 'utf8');
   check('the Muse page has the sections the plugin redirects to, and the connector address',
-    ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp') && /if Muse asks for a <b>Client ID<\/b>, type <code>psycheai<\/code>/.test(muse));
+    ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp') && /<pre class="paste">Add a custom connector: https:\/\/app\.psycheai\.io\/mcp\. If it asks for a Client ID, use psycheai\. Once it's connected, open PsycheAI\.<\/pre>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(muse));
   check('it says what the plugin never receives or guesses, and that the read is sealed under the link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
       /key that exists only in your link/.test(musePrivacy));
