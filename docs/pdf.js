@@ -2041,8 +2041,12 @@
           if (facet.confidence) out.body(TEXT.wellnessConfidence + facet.confidence, { size: 7.8, color: SOFT, leading: 11 });
         }, { fill: tone.wash, bar: tone.ink, padTop: 4 });
       }));
-      if (wellness.overall) out.note(wellness.overall, TEXT.wellnessOverall);
-      out.fineprint(S.wellnessNote);
+      // The closing line goes with the read above it, never onto a page of its
+      // own (a page holding only this line, before 02 starts a page of its own).
+      out.keep(() => {
+        if (wellness.overall) out.note(wellness.overall, TEXT.wellnessOverall);
+        out.fineprint(S.wellnessNote);
+      });
     }
 
     // 02: what drives you.
