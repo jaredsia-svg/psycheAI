@@ -513,7 +513,7 @@
     // Said instead when the read here was built from uploaded data: the Muse
     // read is usually thinner, so the question leads with what would be lost.
     museReadReplaceDeeper: (name, sources) => 'You already have a deeper read here, from ' + sources + '. The read Muse just wrote for ' + (name || 'you') + ' is from Instagram only, so it is usually less detailed. Replace your deeper read and its data with it? Cancel keeps what you have.',
-    museReadReplace: name => 'Open the Psyche Card and Report Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser, your Ask PsycheAI answers about them, and the data you loaded for them. Save a backup first if you want to keep them.',
+    museReadReplace: name => 'Open the Psyche Card and Report Muse just wrote for ' + (name || 'you') + '? It replaces the card and report saved in this browser, the Syncs and Ask PsycheAI answers made from them, and the data you loaded for them. Save a backup first if you want to keep them.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',

@@ -13589,8 +13589,10 @@
     // (the question before this said so); Add / change data brings it back.
     // Ask PsycheAI's answers were about the report being replaced, and the PDF
     // prints them: kept, a Muse report carried another report's type and
-    // evidence in its appendix. They go too (a backup keeps them).
-    for (const key of [KEYS.digest, KEYS.deepDigest, KEYS.reportDigest, KEYS.reportDigestNext, KEYS.ask]) store.remove(key);
+    // evidence in its appendix. The Syncs were worked out from the replaced
+    // card too, and My Syncs showed them under the new one. Both go (a backup
+    // keeps them).
+    for (const key of [KEYS.digest, KEYS.deepDigest, KEYS.reportDigest, KEYS.reportDigestNext, KEYS.ask, KEYS.history]) store.remove(key);
     state.digest = null;
     state.signals = null;
     state.chats = null;

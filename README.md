@@ -2742,6 +2742,16 @@ rules for writing it live here, so the plugin and the site can't drift.
   where the evidence puts them. And the guide now carries `rubric` (`mbtiScore.rubricText()`): ledger rows must
   use its ids, and Muse had to guess them ("the guide didn't supply the rubric"), so `cleanLedger` dropped rows
   and the letters came out weak.
+  **A second report, read for gaps (29 Oct 2026).** Much deeper, with dated moments throughout, but one theme
+  (debating) anchored about ten sections, the plan held the same action twice (two "cap a debate" for this week;
+  a shelter enquiry this week and this quarter), and a "holds you back" item restated the one above it and said
+  so. The Depth section now asks for range (no theme anchoring more than three sections) and a check of the
+  plan before saving. On the page: Signal strength listed every source as "Not added" for a Muse read (it has
+  no digest here), so Instagram now shows as read, by Muse. Adopting a Muse read over a card now clears what was
+  made from that card: Ask PsycheAI's answers (the new PDF's appendix printed one about the old report) and the
+  Syncs (My Syncs showed them under the new card); the confirm says so, and a backup keeps them. And the roast
+  kept its "deliberately harsh" labels over writing Muse is asked to keep playful, so a Muse read gets
+  `TEXT.museRoast`: "A friendly roast".
   **Text only:** the read is written from words and dates (captions, comments, messages, the bio, any text
   added on top of a story or post, typed, pasted or in a sticker, and posting times). Muse can see images, so the spec says the photos and videos themselves are not
   analysed (no faces, bodies, looks, clothes, surroundings or who is in them), and a story with no words counts
