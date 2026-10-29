@@ -35,16 +35,30 @@
     <p class="lede">Your free Psyche Card and Report, written by Muse from your own Instagram. And, if you want it, Psyche Pair: a few strong matches a week, from who you really are.</p>
     <p class="legal-meta">PsycheAI · Singapore · Last updated 28 October 2026</p>
   </header>
-  <section class="card section-card" id="add">
-    <h2>Add it to Muse</h2>
-    <ol>
-      <li>Copy this message (tap it to select it all), paste it into Muse and send it:
-        <pre class="paste">Add a custom connector: https://app.psycheai.io/mcp. If it asks for a Client ID, use psycheai. Once it's connected, open PsycheAI.</pre></li>
-      <li>If Muse shows <b>Secure credentials store</b> with a <b>Client ID</b> box, type <code>psycheai</code> and tap <b>Add</b>.</li>
-      <li>Tap <b>Connect</b>, then <b>Back to Muse</b>: there's nothing to sign up for. PsycheAI opens by itself; if it doesn't, say <b>"Open PsycheAI"</b>.</li>
+  <section class="card section-card install-card" id="add">
+    <div class="install-head">
+      <span class="install-icon"><svg class="install-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/><path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/><path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/><circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/></svg></span>
+      <div><h2>PsycheAI</h2><p class="install-kind">Personality · Muse skill</p></div>
+    </div>
+    <p class="install-what">Your Psyche Card and full Psyche Report, written from your own Instagram and sent to you in Muse, with the report as a PDF. Then Ask PsycheAI about yourself, and Sync with friends.</p>
+    <div class="install-facts">
+      <div><p class="install-label">Sign-in</p><p>None. On first use the skill makes your private account: no sign-in box, nothing to type.</p></div>
+      <div><p class="install-label">Connects to</p><p><code>app.psycheai.io</code> (PsycheAI) and <code>psycheai.io</code> (your report)</p></div>
+    </div>
+    <p class="install-label">Install prompt</p>
+    <pre class="paste" id="install-prompt">Install the PsycheAI skill: https://app.psycheai.io/skill/SKILL.md
+Fetch it, download every file in its Files list from the same folder, and save them under ~/workspace/skills/psycheai/, keeping the paths.
+Then make my Psyche Card and Report from my Instagram, including my own side of my messages.</pre>
+    <div class="install-actions">
+      <button type="button" class="btn install-copy" data-copy="install-prompt" data-done="Copied: paste it into Muse">Copy install prompt</button>
+      <a class="btn install-secondary" href="/muse-docs">How it works</a>
+      <a class="btn install-secondary" href="mailto:admin@psycheai.io?subject=PsycheAI%20in%20Muse%3A%20an%20issue">Report an issue</a>
+    </div>
+    <ol class="install-steps">
+      <li>Paste the prompt into Muse and send it.</li>
+      <li>Muse installs PsycheAI and starts on your Psyche Card and Report straight away: about 5 to 10 minutes. Want posts and stories only? Change the last line to say so.</li>
     </ol>
-    <p>Or add it yourself in <b>Settings → Connectors → Add custom connector</b>, with the address <code>https://app.psycheai.io/mcp</code> and the Client ID <code>psycheai</code>.</p>
-    <p>Muse may say it hasn't reviewed this connector. Until Meta's review, PsycheAI runs as a custom connector you add yourself.</p>
+    <p class="install-note">Prefer a connector? Paste <code>Add a custom connector: https://app.psycheai.io/mcp. If it asks for a Client ID, use psycheai. Once it's connected, open PsycheAI.</code> If Muse shows <b>Secure credentials store</b> with a <b>Client ID</b> box, type <code>psycheai</code> and tap <b>Add</b>. Something broken? Tap <b>Report an issue</b> and tell us what happened. Every report is read.</p>
   </section>
   <section class="card section-card">
     <h2>Know yourself, free</h2>
@@ -82,5 +96,6 @@
     <a href="/refunds">Refunds</a> · <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> · <a href="https://www.instagram.com/psycheai.io/" target="_blank" rel="noopener noreferrer">Instagram @psycheai.io</a></p>
   <p class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google. MBTI and Myers-Briggs are trademarks of The Myers-Briggs Company; PsycheAI is not affiliated with it and is not the official assessment.</p>
 </footer>
+<script src="copybutton.js"></script>
 </body>
 </html>
