@@ -2718,9 +2718,12 @@ The PsycheAI plugin for Meta Muse (the psyche-pair repo, at `app.psycheai.io`) l
 itself from the user's Instagram. PsycheAI checks it and hands the user a private link to it. The
 rules for writing it live here, so the plugin and the site can't drift.
 
-- **`GET /api/import/guide`** returns `{ system, schema }`: `MERGED_SYSTEM` with a Muse preface
-  (`lib/museimport.js` `GUIDE_PREFACE`: read Instagram as the evidence, never other people,
-  confidence 65–79 for Instagram alone) and `MERGED_SCHEMA`.
+- **`GET /api/import/guide`** returns `{ spec, schema }`: a short specification of the read (`READ_SPEC`:
+  sources, standards, hard limits, confidence 65–79 for Instagram alone) and `MERGED_SCHEMA`, whose field
+  descriptions carry the field rules. `?kind=sync` gives `SYNC_SPEC`, PsycheAI's Sync brief and its schema.
+  Not the model prompt: the first version handed Muse `MERGED_SYSTEM` (100,000 characters opening "You are
+  PsycheAI"), and Muse's safety check refused it as prompt injection. The spec is written about the document,
+  never at the assistant, and the selftest checks it sets no role. Keep its hard limits in step with `MERGED_SYSTEM`.
 - **`POST /api/import`** takes `{ answer, name }`. It runs the same `checkMerged` as a provider's
   answer (422 with the problems if it fails), splits it with `splitMerged`, scores the type, and seals
   the bundle with AES-GCM under a fresh key. Only the sealed bytes are stored (`muse:<id>`, 7 days).

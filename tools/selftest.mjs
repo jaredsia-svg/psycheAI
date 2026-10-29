@@ -9745,16 +9745,20 @@ check('the schema requires evidence on where they align and differ',
   check('an answer that is not an object is refused', !museImport.bundleFrom(null).ok && !museImport.bundleFrom('text').ok);
 
   const g = museImport.guide();
-  check('the guide is the merged prompt with the Muse preface, and the merged schema',
-    g.system.startsWith(museImport.GUIDE_PREFACE) && g.system.endsWith(prompts.MERGED_SYSTEM) && g.schema === prompts.MERGED_SCHEMA);
   const sg = museImport.guide('sync');
-  check('the Sync guide is PsycheAI\'s Sync prompt with a Muse preface, its brief and its schema',
-    sg.system.startsWith(museImport.SYNC_PREFACE) && sg.system.endsWith(prompts.COMPATIBILITY_SYSTEM) && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
-      sg.brief.includes(prompts.briefFor().brief) && /whatever their relationship/.test(sg.brief));
-  check('and it keeps the Sync to card-level profiles, with the evidence kept back unless asked',
-    /card-level profile \(no report, no posts\)/.test(museImport.SYNC_PREFACE) && /Keep the evidence to yourself unless they ask why/.test(museImport.SYNC_PREFACE));
-  check('the preface keeps PsycheUser and other people out', /Write `PsycheUser` wherever/.test(museImport.GUIDE_PREFACE) &&
-    /Never use, quote or describe what anyone else wrote/.test(museImport.GUIDE_PREFACE));
+  // A host reads a tool result that sets its role or overrides it as prompt
+  // injection (Muse refused the old one, PsycheAI's 100,000-character model
+  // prompt): the guide is a short specification of the document instead.
+  const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
+  check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === prompts.MERGED_SCHEMA &&
+    !('system' in g) && g.spec.length < 6000 && !roleSetting.test(g.spec), String(g.spec.length));
+  check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
+    sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
+  check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
+    /never therapy, treatment or a diagnosis/.test(museImport.READ_SPEC) && /sexual orientation, health, immigration status, political affiliation, religion/.test(museImport.READ_SPEC) &&
+    /never about romance or dating/.test(museImport.READ_SPEC) && /65 to 79/.test(museImport.READ_SPEC));
+  check('the Sync spec keeps PsycheAI\'s tone rules', /tension, conflict, clash, friction, struggle, problem and incompatible are not used/.test(museImport.SYNC_SPEC) &&
+    /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC));
 
   const sealed = await museImport.seal(good.bundle, 'Mei Tan', 1000);
   const kept = await museImport.open(sealed.id);
@@ -9818,8 +9822,8 @@ check('the schema requires evidence on where they align and differ',
   check('import: a good read gives a psycheai.io link with the key after the #',
     out.ok.status === 200 && /^https:\/\/psycheai\.io\/\?m=[\w-]{16}#[\w-]{43}$/.test(out.ok.json.url || '') && out.ok.json.expiresInDays === 7, JSON.stringify(out.ok));
   check('import: a read that fails the checks is refused with what failed', out.refused.status === 422 && out.refused.json.problems.some(p => /summary/.test(p)));
-  check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.system === 'string' && out.guide.json.schema);
-  check('import: ?kind=sync gives the Sync guide', out.syncGuide.status === 200 && /writing this Sync through Muse/.test(out.syncGuide.json.system) && out.syncGuide.json.brief && out.syncGuide.json.schema);
+  check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.spec === 'string' && out.guide.json.schema);
+  check('import: ?kind=sync gives the Sync guide', out.syncGuide.status === 200 && /A PsycheAI Sync/.test(out.syncGuide.json.spec) && out.syncGuide.json.brief && out.syncGuide.json.schema);
   check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' &&
     Object.keys(out.open.json).sort().join() === 'box,iv' && !/Mei/.test(Buffer.from(out.open.json.box, 'base64url').toString('latin1')));
   check('import: an expired or unknown read is a 404', out.missing === 404);
