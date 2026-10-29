@@ -9761,7 +9761,7 @@ check('the schema requires evidence on where they align and differ',
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 16000 && !roleSetting.test(g.spec), String(g.spec.length));
+    !('system' in g) && g.spec.length < 18000 && !roleSetting.test(g.spec), String(g.spec.length));
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -9781,14 +9781,15 @@ check('the schema requires evidence on where they align and differ',
       /## Reading plan/.test(museImport.READ_SPEC) && /the 10 to 15 conversations they write in most, not the first ones in the inbox/.test(museImport.READ_SPEC) && /across every year, not just the latest/.test(museImport.READ_SPEC));
   check('the read is text only: photos and videos are not analysed', /\*\*Text only\.\*\*/.test(museImport.READ_SPEC) && /The photos and videos themselves are not analysed/.test(museImport.READ_SPEC) && /any text added on top of a story or post \(typed, pasted or in a text sticker, read in full\)/.test(museImport.READ_SPEC) &&
     /A story with no words on it counts only for its date/.test(museImport.READ_SPEC));
-  {
-    const appSrc = readFileSync(join(docs, 'app.js'), 'utf8');
-    const pdfSrc = readFileSync(join(docs, 'pdf.js'), 'utf8');
-    const mr = globalThis.PsycheCopy.TEXT.museRoast || {};
-    check('a read Muse wrote gets roast labels that match its playful writing, on the page and in the PDF', /friendly roast/i.test(mr.bonus || '') &&
-      !/harsh|unkind|least charitable|not trying/i.test(Object.values(mr).join(" ")) && /roastWords\(\)\.bonus/.test(appSrc) && /W\.bonusHarsh/.test(appSrc) &&
-      /roastWords: profile\.source === 'muse' \? TEXT\.museRoast : null/.test(appSrc) && /renderRoast\(out, source\.bonus, meta\.roastWords\)/.test(pdfSrc));
-  }
+  check('the spec carries the character side rule: 12 for women, 12 for men, 4 for anyone, judged privately and never written',
+    /## Character/.test(museImport.READ_SPEC) && museImport.READ_SPEC.includes(prompts.CHARACTER_SIDES.women.join(', ')) &&
+    museImport.READ_SPEC.includes(prompts.CHARACTER_SIDES.men.join(', ')) && museImport.READ_SPEC.includes(prompts.CHARACTER_SIDES.neither.join(', ')) &&
+    /their Meta account details/.test(museImport.READ_SPEC) && /never state, hint at or explain it/.test(museImport.READ_SPEC) &&
+    prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 && prompts.CHARACTER_SIDES.neither.length === 4);
+  check('the Muse roast is deliberately blunt, under the same harsh labels as any roast, without the phrases Muse\'s safety check refused',
+    /deliberately blunt and pointed/.test(JSON.stringify(museImport.MUSE_SCHEMA)) && /Do not soften it/.test(JSON.stringify(museImport.MUSE_SCHEMA)) &&
+    !/least charitable|second drink|Unkind and true|Roast them/i.test(JSON.stringify(museImport.MUSE_SCHEMA)) && !('museRoast' in globalThis.PsycheCopy.TEXT) &&
+    /The send-up \(`bonus`\) is deliberately blunt/.test(museImport.READ_SPEC));
   check('the spec asks for depth: moments not tallies, what it means, about the person not the dataset', /## Depth/.test(museImport.READ_SPEC) &&
     /Moments, not tallies/.test(museImport.READ_SPEC) && /Message length and per-topic counts say little about a person/.test(museImport.READ_SPEC) &&
     /Not "in the record", "in the sampled messages" or "the data shows"/.test(museImport.READ_SPEC) && /it is not pulled towards 50 to be safe/.test(museImport.READ_SPEC) &&

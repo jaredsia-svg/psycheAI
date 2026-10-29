@@ -1055,11 +1055,10 @@
    * fineprint, then each half in a card of its own — the unkind read edged in
    * pink under a large open quote, the honest friend's advice edged in green.
    */
-  function renderRoast(out, roast, words) {
+  function renderRoast(out, roast) {
     const doc = out.doc;
-    const W = Object.assign({}, TEXT, words || {});
-    out.sectionTitle(W.bonus, W.bonusSub);
-    out.note(W.bonusCaveat);
+    out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
+    out.note(TEXT.bonusCaveat);
     const half = (label, text, color) => out.boxed(() => {
       const top = doc.y;
       // A large open quote in the card's corner, faint, as the half's mark.
@@ -1068,7 +1067,7 @@
       doc.y = top + 20;
       out.body(text, { size: 10.2, leading: 15.6, width: out.w - 30 });
     }, { bar: color, pad: 16, padTop: 14, gap: 12 });
-    if (roast.harsh) half(W.bonusHarsh, roast.harsh, ACCENT_2);
+    if (roast.harsh) half(TEXT.bonusHarsh, roast.harsh, ACCENT_2);
     if (roast.advice) half(TEXT.bonusAdvice, roast.advice, GOOD);
   }
 
@@ -2300,7 +2299,7 @@
     if (source.bonus) {
       out.page();
       out.eyebrow(numeral('appendix') + '  ' + S.ask.appendixPrefix(roasted ? 1 : 0).replace(/: $/, ''), ACCENT_2);
-      renderRoast(out, source.bonus, meta.roastWords);
+      renderRoast(out, source.bonus);
     }
     const asked = (stamp.asked || []).filter(item => item && item.q && item.a);
     if (asked.length) {

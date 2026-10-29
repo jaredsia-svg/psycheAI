@@ -2898,14 +2898,11 @@
 
   // The caveat as a soft note with its own mark, then the two halves, each
   // a panel of its own under an icon: the roast, and the honest friend.
-  // The roast's labels: a read Muse wrote has gentler ones (TEXT.museRoast).
-  const roastWords = () => Object.assign({}, TEXT, state.profile && state.profile.source === 'muse' ? TEXT.museRoast : {});
   function bonusBodyHtml(analysis) {
-    const W = roastWords();
     return '<p class="fineprint bonus-caveat"><span class="bonus-caveat-mark" aria-hidden="true">' + Copy.lineIcon('🧂') + '</span>' +
-      '<span>' + esc(W.bonusCaveat) + '</span></p>' +
+      '<span>' + esc(TEXT.bonusCaveat) + '</span></p>' +
       '<div class="roast-half roast-harsh"><h3><span class="roast-half-icon" aria-hidden="true">' + Copy.lineIcon('🔥') + '</span>' +
-        esc(W.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) + '</div>' +
+        esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) + '</div>' +
       '<div class="roast-half roast-advice"><h3><span class="roast-half-icon" aria-hidden="true">' + Copy.lineIcon('💬') + '</span>' +
         esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice) + '</div>';
   }
@@ -2956,15 +2953,14 @@
   // glowing reveal as on My Psyche, under the appendix's own title.
   function secretRoastHtml(bonus, options) {
     if (!bonus || !bonus.harsh) return '';
-    const muse = state.profile && state.profile.source === 'muse';
-    const R = Object.assign({}, TEXT.secretRoast, muse ? { lede: TEXT.museRoast.lede, warn: TEXT.museRoast.warn } : {});
+    const R = TEXT.secretRoast;
     const appendix = Boolean(options && options.appendix);
     const titleId = appendix ? 'appendix-roast-title' : 'secret-roast-title';
     return '<section class="card section-card bonus-card secret-roast' + (appendix ? ' roast-appendix" data-appendix="roast"' : ' screen-only"') +
       ' aria-labelledby="' + titleId + '">' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
-      '<h2 id="' + titleId + '" class="secret-roast-title">' + esc((options && options.title) || roastWords().bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
+      '<h2 id="' + titleId + '" class="secret-roast-title">' + esc((options && options.title) || TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
       '<div class="bonus-cover secret-roast-cover">' +
       '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
       '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
@@ -8473,7 +8469,7 @@
     // current). Each under the same section header as every other section.
     if (hasAppendix(report, ownPage)) {
       const roast = report.bonus && report.bonus.harsh
-        ? secretRoastHtml(report.bonus, { appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + roastWords().bonus }) : '';
+        ? secretRoastHtml(report.bonus, { appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
       html += partCardHtml('appendix', roast + (askable ? '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>' : ''), false);
     }
     return html;
@@ -9344,8 +9340,6 @@
       history: store.read(KEYS.history, []),
       // The questions asked of PsycheAI, for the PDF's appendix.
       asked: askThread().map(item => ({ q: item.q, a: item.a, steps: item.steps || [] })),
-      // A read Muse wrote: the roast's gentler labels (TEXT.museRoast).
-      roastWords: profile.source === 'muse' ? TEXT.museRoast : null,
       // The roast prints only for the reader who bought it. Unpaid, the key is
       // absent and the section does not exist in the file at all.
       unlocked: unlockedSections(profile),

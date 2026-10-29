@@ -608,18 +608,6 @@
     bonusBadge: 'Bonus',
     // My Psyche's roast, under the card: a free secret bonus that comes with
     // every Psyche Card. See secretRoastHtml() in docs/app.js.
-    // The roast's words on a read Muse wrote. Muse writes that section
-    // playful and kind (lib/museimport.js MUSE_SCHEMA: Muse's safety check
-    // refused "least charitable" and "unkind"), so the labels say so rather
-    // than promising a harshness the writing doesn't have.
-    museRoast: {
-      bonus: 'A friendly roast',
-      bonusSub: 'Candid and on your side: the habits a close friend would tease you about.',
-      bonusCaveat: 'Playful, not an assessment and not a diagnosis. If any of it lands heavier than that, talk to someone you trust or a professional.',
-      bonusHarsh: 'What a close friend would tease you about',
-      lede: 'Your card is the polished version. This is the teasing one: the habits a close friend would rib you about.',
-      warn: 'Candid but kind, and just for you. It is not on your card and is never in your link.',
-    },
     secretRoast: {
       badge: 'Secret bonus unlocked',
       lede: 'Your card is the nice version. This is the other one: what your data says when nobody is being polite.',

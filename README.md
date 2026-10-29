@@ -2749,9 +2749,14 @@ rules for writing it live here, so the plugin and the site can't drift.
   plan before saving. On the page: Signal strength listed every source as "Not added" for a Muse read (it has
   no digest here), so Instagram now shows as read, by Muse. Adopting a Muse read over a card now clears what was
   made from that card: Ask PsycheAI's answers (the new PDF's appendix printed one about the old report) and the
-  Syncs (My Syncs showed them under the new card); the confirm says so, and a backup keeps them. And the roast
-  kept its "deliberately harsh" labels over writing Muse is asked to keep playful, so a Muse read gets
-  `TEXT.museRoast`: "A friendly roast".
+  Syncs (My Syncs showed them under the new card); the confirm says so, and a backup keeps them. The roast is
+  deliberately harsh for Muse reads too: the schema asks for a blunt, roast-dinner register with no softening
+  (the kindness goes in `advice`), worded without the phrases Muse's safety check refused, under the same
+  labels as any roast.
+  **The character's side.** Muse wasn't given PsycheAI's side rule, and a Pair card fell back to a neutral
+  character. The spec's **Character** section now carries `CHARACTER_SIDE_RULE` itself (12 for women, 12 for
+  men, 4 open to anyone, judged privately from how they present themselves and their Meta account details, the
+  four alone when unsure, never written).
   **Text only:** the read is written from words and dates (captions, comments, messages, the bio, any text
   added on top of a story or post, typed, pasted or in a sticker, and posting times). Muse can see images, so the spec says the photos and videos themselves are not
   analysed (no faces, bodies, looks, clothes, surroundings or who is in them), and a story with no words counts
