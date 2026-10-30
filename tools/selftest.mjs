@@ -9895,6 +9895,16 @@ check('the schema requires evidence on where they align and differ',
     out.ok.status === 200 && /^https:\/\/psycheai\.io\/\?m=[\w-]{16}#[\w-]{43}$/.test(out.ok.json.url || '') && out.ok.json.expiresInDays === 7, JSON.stringify(out.ok));
   check('import: a read that fails the checks is refused with what failed', out.refused.status === 422 && out.refused.json.problems.some(p => /summary/.test(p)));
   check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.spec === 'string' && out.guide.json.schema);
+  {
+    const C = globalThis.PsycheCopy;
+    check('J/P evidence shows its area as a label ("Travel · …"), and "Not yet using:" runs on in lower case unless the headline starts with a name or an acronym',
+      C.shownEvidence('travel: You take trips') === 'Travel · You take trips' && C.shownEvidence('plans with friends: x') === 'Plans with friends · x' && C.shownEvidence('You plan') === 'You plan' &&
+      C.afterPrefix('A circle you do not call on') === 'a circle you do not call on' && C.afterPrefix('AI tools') === 'AI tools' && C.afterPrefix('Hong Kong network') === 'Hong Kong network' &&
+      /if \(i === facets\.length - 1\) closing\(\)/.test(readFileSync(join(root, 'docs', 'pdf.js'), 'utf8')));
+  }
+  check('import: the read guide keeps E/I to real signals (who starts things, groups, recharge) and never the sample size, a private account or a close circle; no year outweighs the rest',
+    /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close/.test(out.guide.json.spec) &&
+    /no single year more than about a quarter of the sample/.test(out.guide.json.spec));
   check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
     /## WhatsApp chats they added/.test(out.guide.json.spec) && /never the export itself/.test(out.guide.json.spec) && !/## Deep Psyche/.test(out.guide.json.spec) &&
     /## Deep Psyche/.test(out.deepSpec || '') && /About 800,000 characters/.test(out.deepSpec || '') && /A year at a time/.test(out.deepSpec || '') &&

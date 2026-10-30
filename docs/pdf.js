@@ -2009,7 +2009,7 @@
     if (mbti) {
       const axes = (mbti.letters || []).filter(Boolean);
       const axisCard = letter => out.boxed(() =>
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, null, null, { structured: true, evidence: letter.evidence }),
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, null, null, { structured: true, evidence: (letter.evidence || []).map(Copy.shownEvidence) }),
       { padTop: 6 });
       out.keep(() => {
         out.sectionTitle('MBTI', def('mbti'));
@@ -2030,7 +2030,15 @@
     }));
     const wellness = unlocked.wellness;
     if (wellness) {
-      Copy.WELLNESS_FACETS.filter(([, key]) => wellness[key]).forEach(([label, key], i) => out.keep(() => {
+      const facets = Copy.WELLNESS_FACETS.filter(([, key]) => wellness[key]);
+      // The closing line goes with the last read above it, in one block, so it
+      // never lands on a page of its own (a page holding only "Taken together"
+      // and the note, before 02 starts a page of its own: 30 October 2026).
+      const closing = () => {
+        if (wellness.overall) out.note(wellness.overall, TEXT.wellnessOverall);
+        out.fineprint(S.wellnessNote);
+      };
+      facets.forEach(([label, key], i) => out.keep(() => {
         if (!i) out.sectionTitle(S.titles.wellness, def('wellness'));
         const facet = wellness[key];
         const tone = bandTone(facet.band);
@@ -2040,13 +2048,9 @@
           evidence(facet.evidence, WHITE);
           if (facet.confidence) out.body(TEXT.wellnessConfidence + facet.confidence, { size: 7.8, color: SOFT, leading: 11 });
         }, { fill: tone.wash, bar: tone.ink, padTop: 4 });
+        if (i === facets.length - 1) closing();
       }));
-      // The closing line goes with the read above it, never onto a page of its
-      // own (a page holding only this line, before 02 starts a page of its own).
-      out.keep(() => {
-        if (wellness.overall) out.note(wellness.overall, TEXT.wellnessOverall);
-        out.fineprint(S.wellnessNote);
-      });
+      if (!facets.length) out.keep(closing);
     }
 
     // 02: what drives you.
@@ -2182,7 +2186,7 @@
       }
     });
     const strengths = (career.strengths || []).concat(coaching && coaching.underused
-      ? [{ title: S.notYetUsing + coaching.underused.headline, detail: coaching.underused.detail }] : []);
+      ? [{ title: S.notYetUsing + Copy.afterPrefix(coaching.underused.headline), detail: coaching.underused.detail }] : []);
     // Two at most, and no separate "where it goes wrong" — the page's list.
     const holding = [].concat(
       coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],

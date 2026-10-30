@@ -225,6 +225,23 @@
     },
   };
 
+  // A J/P ledger note opens with its area for the scorer ("travel: You take
+  // trips…", lib/mbtiScore.js JP_AREAS); shown, the area is a label: "Travel ·
+  // You take trips…". The lowercase "travel:" read as a typo (30 October 2026).
+  function shownEvidence(text) {
+    return String(text || '').replace(/^(work and money|travel|plans with friends|day to day):\s*/i,
+      (m, area) => area.charAt(0).toUpperCase() + area.slice(1).toLowerCase() + ' · ');
+  }
+
+  // "Not yet using: " runs into a headline: its first letter goes lower case,
+  // unless it's an acronym or a name ("Not yet using: a circle you…").
+  function afterPrefix(text) {
+    const t = String(text || '');
+    const first = t.split(/\s/)[0];
+    const plainWord = /^[A-Z][a-z]*$/.test(first) && first !== 'I';
+    return plainWord && !/^[A-Z][a-z]+ [A-Z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+  }
+
   /** Fills the `{name}` slot in a stance label. */
   function stanceText(template, name) {
     return String(template || '').replace('{name}', String(name || 'them'));
@@ -2025,7 +2042,7 @@
 
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, leadSentence, planPick, PLAN_STEPS, CARD_ICONS,
-    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
+    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, shownEvidence, afterPrefix, BRAND_MARK, TEXT, STRUCTURED,
     CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, CHARACTER_SYNCS, MARKETING_SYNCS, syncsOf, cardSyncs, LINE_ICONS, lineIcon, iconHtml, gentleAttachment,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

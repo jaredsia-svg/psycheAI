@@ -7651,7 +7651,7 @@
         (letter.why ? '<p class="trait-reading">' + esc(letter.why) + '</p>' : '') +
         // The behaviours that put the letter here (October 2026), as the
         // Big Five's evidence once was: the paragraph above weighs them.
-        evidence(letter.evidence) +
+        evidence((letter.evidence || []).map(Copy.shownEvidence)) +
         '</div></div>';
     }).join('') + '</div>';
   }
@@ -7899,7 +7899,7 @@
     // are not using is an untapped strength, not a cost, so it closes the
     // strengths side rather than joining the list of costs.
     const strengths = (career.strengths || []).concat(coaching && coaching.underused
-      ? [{ title: S.notYetUsing + coaching.underused.headline, detail: coaching.underused.detail }] : []);
+      ? [{ title: S.notYetUsing + Copy.afterPrefix(coaching.underused.headline), detail: coaching.underused.detail }] : []);
     html += '<div class="paired-lists work-pair">' + pairedListsHtml(
       { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, items: strengths },
       { title: S.whatHoldsYouBack, items: holding }) + '</div>';

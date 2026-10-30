@@ -12769,7 +12769,7 @@ try {
         await sp.evaluate(() => {
           const work = document.querySelector('#profile-body .work-card');
           const good = Array.from(work.querySelectorAll('.work-pair .partner-need .partner-items strong')).map(dt => dt.textContent);
-          return good[good.length - 1] === 'Not yet using: Your organising, unseen' &&
+          return good[good.length - 1] === 'Not yet using: your organising, unseen' &&
             !/What you are not using/.test(work.textContent);
         }));
       check('structured: How you work holds what holds them back as one short list, two at most, with no "where it goes wrong"',
