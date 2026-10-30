@@ -10010,3 +10010,23 @@ for numbers, links and handles and holds a read that quotes six words in a row f
 "Threads, never quoted"). WhatsApp chats added through the skill keep each reply's context the same way, as the site's own WhatsApp reader does.
 A first Muse read now aims for about 110,000 characters instead of 80,000, to make room for that context: posts
 and stories about 35,000, their own messages about 50,000, and what those reply to about 25,000.
+
+### A Muse read measures its conversations, and says what it read accurately
+
+A Muse read took the ten newest threads, in the order Instagram lists them, instead of the busiest, and came back
+at about 50,000 characters against 110,000; its "Read from" called 239 feed posts "highlight captions", said there
+were no feed posts, and left out the interests and totals. `READ_SPEC` now says to measure before choosing (the
+inbox lists newest first) and to read past the first ten until the messages target is reached, with its
+per-conversation targets matching the skill's (9,000 and 2,300). `basedOn` follows the digest header's counts and
+labels and misses no source the digest holds, said once under Confidence instead of in three places. The guide
+was tightened to stay under its length cap: the read takes about 7 to 10 minutes, and duplicated lines went.
+
+### The guide's examples are made up
+
+Successive Muse reads for the same reader came back with the same pattern names, values and evidence, word for
+word, because the read guide's own examples had been taken from that reader's earlier reports ("Argue it with
+evidence", "The future, tested first", "Investing and private markets", "Mercy should outrank keeping score", a
+comment about a crash report). Every reader was sent them as the model answer, and the guide is public (the
+plugin serves it as `skill/guide.json`), so they also published one reader's words. They are now invented
+examples that match nobody ("Fixes it before anyone asks", "Restoring old film cameras", a caption about a first
+half-marathon), and a selftest keeps real readers' phrases out. Examples in a guide should always be made up.

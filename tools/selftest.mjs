@@ -9958,10 +9958,13 @@ check('the schema requires evidence on where they align and differ',
       C.afterPrefix('A circle you do not call on') === 'a circle you do not call on' && C.afterPrefix('AI tools') === 'AI tools' && C.afterPrefix('Hong Kong network') === 'Hong Kong network' &&
       /if \(i === facets\.length - 1\) closing\(\)/.test(readFileSync(join(root, 'docs', 'pdf.js'), 'utf8')));
   }
+  check('the Muse read guide carries no real reader\'s words: its examples are made up, since every reader is sent them and the guide is public',
+    !/Argue it with evidence|The future, tested first|Mercy should outrank keeping score|Investing and private markets|pedal data|driverless|crash report/i.test(out.guide.json.spec) &&
+    /Fixes it before anyone asks/.test(out.guide.json.spec) && /Restoring old film cameras/.test(out.guide.json.spec));
   check('import: the read guide keeps E/I to real signals (who starts things, groups, recharge) and never the sample size, a private account or a close circle; no year outweighs the rest',
     /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close/.test(out.guide.json.spec) &&
     /no single year more than about a quarter of the sample/.test(out.guide.json.spec) && /counts when it is measured against everyone they message/.test(out.guide.json.spec) &&
-    /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 6 to 8 minutes/.test(out.guide.json.spec) && /the 4 busiest are paged back as far as their target reaches/.test(out.guide.json.spec));
+    /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 7 to 10 minutes/.test(out.guide.json.spec) && /the 4 busiest are paged back as far as their target reaches/.test(out.guide.json.spec));
   check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
     /## WhatsApp chats they added/.test(out.guide.json.spec) && /never the export itself/.test(out.guide.json.spec) && !/## Deep Psyche/.test(out.guide.json.spec) &&
     /## Deep Psyche/.test(out.deepSpec || '') && /About 800,000 characters/.test(out.deepSpec || '') && /A year at a time/.test(out.deepSpec || '') &&
