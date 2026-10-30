@@ -9775,6 +9775,32 @@ check('the schema requires evidence on where they align and differ',
       JSON.stringify(keysOf(museImport.MUSE_SCHEMA)) === JSON.stringify(keysOf(prompts.MERGED_SCHEMA)) &&
         !/\byou are\b|system prompt|roast|least charitable|second drink|unkind/i.test(shown));
   }
+  check('a Muse read is sent back when its E/I rests on a close circle or a private account, or two plan actions are the same step; real signals and distinct steps pass', (() => {
+    const ei = why => museImport.eiProblems({ mbti: { letters: [{ choice: 'I', why, evidence: [] }] } });
+    const plan = (x, y) => museImport.planProblems({ wellness: { suggestions: [x] }, careerAssessment: { actions: [y] } });
+    return /loyalty rather than energy/.test(ei('Your setting is small and familiar: family gatherings, close friends, and a circle you return to across years').join(' ')) &&
+      /account is private is not a reason/.test(ei('Your account is private, so you share with few.').join(' ')) &&
+      !ei('You choose small familiar groups rather than big rooms of strangers, and start most plans').length && !ei('about 10 of your 140 threads run for years').length &&
+      /are the same step/.test(plan({ title: 'Close one loop a week', detail: 'Pick one open plan or project each week, and send the single message that closes it: a date, a decision or a no.' },
+        { title: 'Close one open project loop', detail: 'Pick the side project with the most open threads, and send one message that decides its next step: a date, a scope or a pause.' }).join(' ')) &&
+      !plan({ title: 'Take one idea for a walk with a friend', detail: 'Invite one close friend for a walk or a game, and talk about a new idea without a screen.' },
+        { title: 'Finish one project to usable', detail: 'Name the single next step that would make it usable by someone else, and do it before you start anything new.' }).length &&
+      museImport.bundleFrom(answer).ok === true;
+  })());
+  check('the Muse schema\'s shortened descriptions each keep their opening sentence (a split at "e.g." once dropped it), and a literal "Kind of work:" is sent back to fix', (() => {
+    const lost = [];
+    const walk = (a, b, k) => {
+      if (!a || typeof a !== 'object') return;
+      if (typeof a.description === 'string' && !['harsh', 'advice'].includes(k) && !a.description.replace(/\s+/g, ' ').startsWith(b.description.slice(0, 30))) lost.push(k);
+      for (const kk of Object.keys(a)) if (a[kk] && typeof a[kk] === 'object') walk(a[kk], b[kk], kk);
+    };
+    walk(prompts.MERGED_SCHEMA, museImport.MUSE_SCHEMA, '');
+    return !lost.length && /^Three kinds of work that would suit them best/.test(museImport.MUSE_SCHEMA.properties.careerAssessment.properties.fit.properties.suits.description);
+  })() && ((copy) => {
+    copy.careerAssessment.fit.suits[0] = 'Kind of work: building a product in a small team, because you test ideas.';
+    const out = museImport.bundleFrom(copy);
+    return out.ok === false && /careerAssessment\.fit\.suits: each item starts with the kind of work itself/.test(out.problems.join(' ')) && museImport.bundleFrom(answer).ok === true;
+  })(JSON.parse(JSON.stringify(answer))));
   check('the spec carries the reasoning rules as standards: evidence order, subject, time, letters, thin evidence',
     /## Evidence, strongest first/.test(museImport.READ_SPEC) && /One instance is not a pattern, and the count belongs in the sentence/.test(museImport.READ_SPEC) &&
       /The author of a caption is not automatically its subject/.test(museImport.READ_SPEC) && /dormant/.test(museImport.READ_SPEC) &&
