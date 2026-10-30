@@ -2714,7 +2714,7 @@ you…"). Disclaimers ("not a diagnosis", "Is it therapy? No.") are untouched. T
 
 ## Reads from Muse (the PsycheAI plugin, October 2026)
 
-The PsycheAI plugin for Meta Muse (the psyche-pair repo, at `app.psycheai.io`) lets Muse write a read
+The PsycheAI plugin for Meta Muse (the psycheai-app repo, at `app.psycheai.io`) lets Muse write a read
 itself from the user's Instagram. PsycheAI checks it and hands the user a private link to it. The
 rules for writing it live here, so the plugin and the site can't drift.
 
@@ -2792,7 +2792,7 @@ rules for writing it live here, so the plugin and the site can't drift.
   goes, the page posts the card-level part of the read (type and letters, Big Five scores, attachment style, love
   languages, interests, values, top motivators, character, headline, pattern names, confidence) to
   `app.psycheai.io/join` as a top-level form post, and the reader signs in there. No report text and nothing from the
-  digest. The plugin maps it onto its matching profile (psyche-pair `lib/join.js`). The privacy page says so.
+  digest. The plugin maps it onto its matching profile (psycheai-app `lib/join.js`). The privacy page says so.
 - **The plugin's pages:** `/muse` (`docs/muse.html`: how to add it to Muse, Plus, safety, and short privacy and
   terms sections linking on), `/muse-privacy`, `/muse-terms` and `/muse-docs` (connecting, sign-in and every tool,
   generated from the plugin's tool list). The plugin's old addresses redirect to them. Noindex and out of the
@@ -2829,7 +2829,7 @@ rules for writing it live here, so the plugin and the site can't drift.
 
 **Share to your Story from Muse (29 Oct 2026).** Muse can't post a Story (Instagram lets no outside app post one to a personal account), and the card it shows in the chat was a picture with no way on to Instagram but saving it by hand. So the read's link takes `story=1` (`?m=<id>&story=1#<key>`), which Muse gives as "Share to your Story": the read opens as always (`consumeMuseRead`, the key out of the address bar at once), then the card goes full screen (`openStoryCard`) with one button, "Share to Story", and a line on how (`cardStoryTip`). The button is the card's own share (`shareCardImage`): the caption to the clipboard, then the picture, the site's own 1080×1920 card, to the share sheet, where Instagram's Story is. For a Story it shares the picture alone, with no text: some phones leave Instagram's Story out of the sheet when text comes with it. Where the browser can't share a picture (some in-app browsers can't, and Muse opens links in Meta's), the card is laid over itself as a picture (`showStoryPicture`) with "Press and hold the picture to save it…" (`cardStoryHold`). Download is hidden there, to leave one thing to tap.
 
-**The install prompt is one line (29 Oct 2026).** /muse's prompt was three long lines (where SKILL.md is, where to save its files, how to compile, what to make), hard to copy or pass on. It's now "Install the skill at app.psycheai.io/p and generate my Psyche": the plugin serves SKILL.md at that address with how to install itself, quietly, and Muse asks the one thing the line doesn't say, messages or posts and stories only, as two buttons (psyche-pair README "One short line to install").
+**The install prompt is one line (29 Oct 2026).** /muse's prompt was three long lines (where SKILL.md is, where to save its files, how to compile, what to make), hard to copy or pass on. It's now "Install the skill at app.psycheai.io/p and generate my Psyche": the plugin serves SKILL.md at that address with how to install itself, quietly, and Muse asks the one thing the line doesn't say, messages or posts and stories only, as two buttons (psycheai-app README "One short line to install").
 
 **The install link reads as one (30 Oct 2026).** `app.psycheai.io/p` looked like a throwaway short link, so /muse now shows "Install the skill at app.psycheai.io/install and generate my Psyche". The plugin still answers `/p` for prompts already passed on.
 
@@ -6740,10 +6740,10 @@ tokens, so `FREE_FIXED_INPUT_TOKENS` went to 11,300 and `FREE_COST_CAP` to $0.07
 
 ### Who a caption is about
 
-Reported from real output: *"Finance professional turned vibe coding guru @mokkzy casually lecturing a
+Reported from real output (handles and a detail changed): *"Finance professional turned vibe coding guru @jaxcodes casually lecturing a
 group of software engineers on his next SaaS startup"* came back as evidence that the **reader** was a
-founder. *"Toyota 1987 MR2 Supercharger, prob the only one in sg today, owned by prolific vintage car
-collector @yuhanchong"* made them a car collector. In both the caption states outright whose job and
+founder. *"Toyota 1987 MR2 Supercharger, kept like new, owned by prolific vintage car
+collector @rivetandrust"* made them a car collector. In both the caption states outright whose job and
 whose car it is, and in both the reader is the person who was in the room and wrote it down.
 
 The prompt had invited this. It said their own words are the strongest signal and never distinguished
@@ -9927,3 +9927,13 @@ The promo video's closing link ("Link in bio" today, the site's address later) i
 Not a validated psychometric instrument, not a diagnosis, not a background check. A language model
 reading behavioural traces is a mirror and a conversation starter. A low compatibility score is a
 list of things worth talking about, not a reason to walk away — and a high one is not a promise.
+
+### No real people in the repo
+
+The repo is public, and some test data and notes had come from real reads: three friends' handles in
+the privacy scrubber's comment and tests, two more in the fixture's captions and the live test, and a
+caption detail that pointed at one person's car. All are made up now (zaraquill, jaywren, jaxcodes,
+rivetandrust, Zara Quill), and README quotes from real output say when their handles were changed. The
+selftest reads every text file word by word and fails on any word known to name a real person; the list
+is kept only as the start of each word's SHA-256, so the test doesn't name them. The same check runs in
+the plugin repo. Use made-up names in fixtures, tests and notes, never ones from a real read.

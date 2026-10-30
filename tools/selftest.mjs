@@ -2594,7 +2594,7 @@ for (const [label, needle] of [
     /\[P1\] is the ex-banker, the coach and the founder/],
   // Worked examples use invented markers and figures, never a real reader's
   // handles or counts, which went out with every request (18 Oct 2026).
-  ['carries no real handle or real reader\'s figure in its examples', /^(?![\s\S]*(?:@mokkzy|@yuhanchong|378 Instagram|64,000|86,000))/],
+  ['carries no real handle or real reader\'s figure in its examples', /^(?![\s\S]*(?:@jaxcodes|@rivetandrust|378 Instagram|64,000|86,000))/],
   ['carries the worked example of a misattributed possession',
     /The reader does not own it and is not a collector/],
   ['refuses to let the correction become "ignore those captions"',
@@ -3020,7 +3020,7 @@ check('digest samples captions', digest.samples.captions.length > 0 && digest.sa
 // captions that trigger it never survive sampling, and it has a 4-character
 // floor and a half-recent/half-longest selection in front of it. Both of the
 // reported shapes have to actually reach the model, next to the username that
-// is the only thing letting it tell @mokkzy from the account holder.
+// is the only thing letting it tell @jaxcodes from the account holder.
 // Other people reach it as numbered markers rather than handles — see
 // pseudonymiseHandles — so the captions still have to be there, carrying them.
 check('captions about other people reach the model, or the rule guards nothing',
@@ -3037,7 +3037,7 @@ check('captions about other people reach the model, or the rule guards nothing',
 //
 // Other people's handles stay exactly as they were, which is not an oversight:
 // the prompt's hardest rule turns on telling one from the other, and the whole
-// value of a caption about @mokkzy is that it is evidence about @mokkzy.
+// value of a caption about @jaxcodes is that it is evidence about @jaxcodes.
 check('the reader\'s own handle is replaced with a placeholder',
   digest.profile.username === 'PsycheUser', JSON.stringify(digest.profile.username));
 // Deliberately built with the handle planted in the body text, because the
@@ -3144,13 +3144,13 @@ check('the reader\'s own handle is replaced with a placeholder',
     /ownSide\(list, owner, \{ blankOwnText: true \}\)/.test(readFileSync(join(root, 'docs', 'instagram.js'), 'utf8')));
 }
 check('other people\'s handles are replaced by numbered markers, never sent',
-  !JSON.stringify(Digest.forModel(digest)).includes('@mokkzy') && !JSON.stringify(Digest.forModel(digest)).includes('@yuhanchong') &&
+  !JSON.stringify(Digest.forModel(digest)).includes('@jaxcodes') && !JSON.stringify(Digest.forModel(digest)).includes('@rivetandrust') &&
     digest.samples.captions.some(c => /\[P\d+\]/.test(c)));
 {
   const people = Digest.build({
     ...signals,
-    captions: [{ text: 'dinner with @mokkzy and @yuhanchong tonight', ts: 1700000000 },
-      { text: 'out again with @Mokkzy, then the long walk home', ts: 1700000100 },
+    captions: [{ text: 'dinner with @jaxcodes and @rivetandrust tonight', ts: 1700000000 },
+      { text: 'out again with @Jaxcodes, then the long walk home', ts: 1700000100 },
       { text: 'emailed someone@example.com about it', ts: 1700000200 }],
   }, { includeMessages: false });
   const text = people.samples.captions.join(' | ');
@@ -3160,7 +3160,7 @@ check('other people\'s handles are replaced by numbered markers, never sent',
   check('an email address is not taken for a handle',
     !/someone\[P/.test(text), text);
   check('and the numbering stays on the device: no handle is in what is sent',
-    !/mokkzy|yuhanchong/i.test(sent) && !('__people' in Digest.forModel(people)));
+    !/jaxcodes|rivetandrust/i.test(sent) && !('__people' in Digest.forModel(people)));
   check('the evidence tells the model what the markers are',
     Digest.renderEvidence(Digest.forModel(people)).includes('[P1], [P2] … stand for other people'));
 }
@@ -6909,33 +6909,33 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
 // ---------- private names out of a finished report ----------
 //
 // The prompts forbid naming private individuals and a real report did it
-// anyway — "such as bryanfooooo x28, yuhanchong x23, and gweesx x22", copied
+// anyway — "such as zaraquill x28, rivetandrust x23, and jaywren x22", copied
 // straight off the ranked lists. lib/privacy.js checks after the model has
 // written. These are the shapes that leak, and the ones that must survive.
 {
   const privacy = await import('../lib/privacy.js').then(m => m.default || m);
   const leakDigest = {
-    mostEngagedWith: [{ name: 'bryanfooooo', count: 28 }, { name: 'yuhanchong', count: 23 },
-      { name: 'gweesx', count: 22 }, { name: 'travel', count: 5 }],
+    mostEngagedWith: [{ name: 'zaraquill', count: 28 }, { name: 'rivetandrust', count: 23 },
+      { name: 'jaywren', count: 22 }, { name: 'travel', count: 5 }],
     mostLikedAccounts: [{ name: 'bob_99', count: 3 }, { name: 'PsycheUser', count: 1 }],
     samples: { captions: ['[2020] the MR2 owned by @carcollector. love to travel'], comments: [] },
     instagramTopics: [{ name: 'Travel' }],
-    facebook: { friends: ['Bryan Foo', 'Ann'] },
+    facebook: { friends: ['Zara Quill', 'Ann'] },
   };
   const names = privacy.namesIn(leakDigest);
   check('the names a digest supplies are its ranked accounts, the @handles in their writing, and full names of friends',
-    ['bryanfooooo', 'yuhanchong', 'gweesx', 'travel', 'bob_99', 'carcollector'].every(h => names.handles.includes(h)) &&
-    !names.handles.includes('PsycheUser') && names.people.join() === 'Bryan Foo',
+    ['zaraquill', 'rivetandrust', 'jaywren', 'travel', 'bob_99', 'carcollector'].every(h => names.handles.includes(h)) &&
+    !names.handles.includes('PsycheUser') && names.people.join() === 'Zara Quill',
     JSON.stringify(names));
   check('a handle the digest\'s own text uses as a word is recognised as one',
     names.words.join() === 'travel', JSON.stringify(names.words));
 
   const report = {
-    activity: { diet: 'Your engagement focuses on a trusted circle (such as bryanfooooo x28, yuhanchong ×23, ' +
-      'and gweesx x22). Later gweesx again; Gweesx at a sentence start.' },
+    activity: { diet: 'Your engagement focuses on a trusted circle (such as zaraquill x28, rivetandrust ×23, ' +
+      'and jaywren x22). Later jaywren again; Jaywren at a sentence start.' },
     roast: { harsh: 'You love travel, and travel x5 likes you back. @carcollector lent you nothing. bob_99 liked it.' },
-    attachment: { why: 'A message to Bryan Foo, sent at 2am.' },
-    untouched: ['Email PsycheUser at me@gweesx.com', 'CNBC x653 and All-In x246 are channels', 7, null],
+    attachment: { why: 'A message to Zara Quill, sent at 2am.' },
+    untouched: ['Email PsycheUser at me@jaywren.com', 'CNBC x653 and All-In x246 are channels', 7, null],
   };
   const { data: clean, removed } = privacy.scrub(report, leakDigest);
   const all = JSON.stringify(clean);
@@ -6943,7 +6943,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
     clean.activity.diet.startsWith('Your engagement focuses on a trusted circle (such as an account x28, an account ×23, and an account x22).'),
     clean.activity.diet);
   check('once a handle is used as a name, its bare uses go too, whatever the case',
-    !/gweesx/i.test(clean.activity.diet), clean.activity.diet);
+    !/jaywren/i.test(clean.activity.diet), clean.activity.diet);
   check('an @handle from their own writing, and a handle with a digit or underscore, come out bare',
     !all.includes('carcollector') && !all.includes('bob_99'), clean.roast.harsh);
   check('a friend\'s full name comes out of quoted evidence',
@@ -6953,7 +6953,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('the reader\'s own marker, an email address, public channels and non-strings are left alone',
     JSON.stringify(clean.untouched) === JSON.stringify(report.untouched), JSON.stringify(clean.untouched));
   check('and the count of removals is reported, never the names', removed === 9, String(removed));
-  check('the report passed in is not modified', report.activity.diet.includes('bryanfooooo'));
+  check('the report passed in is not modified', report.activity.diet.includes('zaraquill'));
 
   // Story likes are mostly close friends' accounts, and WhatsApp and
   // Messenger tags are tags too.
@@ -6966,7 +6966,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   const result = { data: report, usage: { input: 1 }, model: 'm' };
   const scrubbedResult = privacy.scrubResult(result, leakDigest);
   check('scrubResult cleans an engine result and keeps its usage and model',
-    scrubbedResult !== result && !JSON.stringify(scrubbedResult.data).includes('yuhanchong') &&
+    scrubbedResult !== result && !JSON.stringify(scrubbedResult.data).includes('rivetandrust') &&
     scrubbedResult.usage === result.usage && scrubbedResult.model === 'm');
   const nothing = { data: { a: 'Nothing private here.' } };
   check('a clean report is returned as it came',
@@ -9708,7 +9708,7 @@ check('the schema requires evidence on where they align and differ',
 
 // ---------- the plugin's public page ----------
 // docs/muse.html: what the plugin's old addresses redirect to. Its privacy
-// claims are about the plugin's code (psyche-pair README "Decisions").
+// claims are about the plugin's code (psycheai-app README "Decisions").
 {
   const muse = readFileSync(join(root, 'docs', 'muse.html'), 'utf8');
   const musePrivacy = readFileSync(join(root, 'docs', 'muse-privacy.html'), 'utf8');
@@ -10622,6 +10622,32 @@ console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
   heavy.coverage.sampling.captions.shown + '/' + heavy.coverage.sampling.captions.available + ' captions');
 console.log('  QR payload        : ' + cardPayload.length + ' chars');
 console.log('  stills counted    : ' + withPhotos.coverage.stillsInArchive + ' (none sent)');
+
+
+// ---------- no real people in the repo ----------
+//
+// Test data and design notes have come from real reads (README "No real
+// people in the repo"). Words known to name a real person are listed only as
+// the start of their SHA-256, so this file doesn't name them either; add one by
+// hashing it lowercased. Every text file is checked, word by word.
+{
+  const { createHash } = await import('node:crypto');
+  const PRIVATE = new Set(['1f5c9a8d07af85c2b8992d6e', '23eb127b3caf920d3dd72f83', '369e7b487eb86f9c8dd5b65c', 'f9a9c990d42b12aacb52c5b1',
+    '3f28dff1805f44c307cdff6a', '76d24e823b5a446d0c2c089d', 'b28623d7457d535874ee73a4']);
+  const found = [];
+  const walk = dir => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (['.git', 'node_modules', '.cache', 'screenshots'].includes(e.name)) continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.(js|mjs|cjs|py|md|json|html|css|xml|txt|yaml|yml|svg)$/.test(e.name)) continue;
+      const words = new Set(readFileSync(p, 'utf8').toLowerCase().match(/[a-z0-9_]+/g) || []);
+      for (const w of words) if (PRIVATE.has(createHash('sha256').update(w).digest('hex').slice(0, 24))) found.push(p.slice(root.length + 1));
+    }
+  };
+  walk(root);
+  check('no word known to name a real person is anywhere in the repo (listed here only as hashes)', !found.length, [...new Set(found)].join(', '));
+}
 
 if (failures.length) {
   console.error('\n' + failures.length + ' failed, ' + passed + ' passed:');

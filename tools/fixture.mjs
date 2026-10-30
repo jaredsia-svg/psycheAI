@@ -233,10 +233,10 @@ function buildExport(options) {
     // possessions to the account holder and every check still passed. The
     // grammatical shape is what matters: a named @handle carrying the noun
     // phrase, with the author present only as the person who wrote it down.
-    'Finance professional turned vibe coding guru @mokkzy casually lecturing a group of ' +
+    'Finance professional turned vibe coding guru @jaxcodes casually lecturing a group of ' +
       'software engineers on his next SaaS startup',
-    'Toyota 1987 MR2 Supercharger, prob the only one in sg today, owned by prolific ' +
-      'vintage car collector @yuhanchong',
+    'Toyota 1987 MR2 Supercharger, kept like new, owned by prolific ' +
+      'vintage car collector @rivetandrust',
   ];
 
   // Every third post is wordless. The selector used to favour exactly these,

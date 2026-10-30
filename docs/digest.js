@@ -2320,7 +2320,7 @@
 
   /**
    * Other people's @handles in the reader's own text, and in the posts they
-   * liked, replaced by a number: "@yuhanchong" becomes "[P1]", the same number
+   * liked, replaced by a number: "@rivetandrust" becomes "[P1]", the same number
    * for the same person everywhere in the digest. Their handles never leave
    * the device, and the model can still see that one person is tagged in
    * eight posts and messaged about in three. The ranked account lists keep

@@ -238,8 +238,8 @@ if (runFree) {
   // reader's own doing — naming them at all in a report they may hand to
   // somebody drags in a person who never agreed to any of this.
   check('neither third party is named anywhere in the report',
-    !whole.includes('mokkzy') && !whole.includes('yuhanchong'),
-    (/.{60}(mokkzy|yuhanchong).{60}/.exec(whole) || ['no match'])[0]);
+    !whole.includes('jaxcodes') && !whole.includes('rivetandrust'),
+    (/.{60}(jaxcodes|rivetandrust).{60}/.exec(whole) || ['no match'])[0]);
   // The empty group-chat count again, across the whole report rather than the
   // one evidence list — an absence read as a finding tends to surface as a line
   // of prose in the behaviour section rather than as a cited number.
@@ -403,8 +403,8 @@ if (runPaid) {
     // Third parties are barred from the paid call as firmly as the free one.
     const paidWhole = JSON.stringify(premium).toLowerCase();
     check('no third party from the fixture is named in the paid sections',
-      !paidWhole.includes('mokkzy') && !paidWhole.includes('yuhanchong'),
-      (/.{60}(mokkzy|yuhanchong).{60}/.exec(paidWhole) || ['no match'])[0]);
+      !paidWhole.includes('jaxcodes') && !paidWhole.includes('rivetandrust'),
+      (/.{60}(jaxcodes|rivetandrust).{60}/.exec(paidWhole) || ['no match'])[0]);
   }
 }
 

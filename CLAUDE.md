@@ -55,7 +55,7 @@ There is no build step, bundler or linter. `docs/` is served as-is.
   - Syncs sent back to a link's owner: `lib/syncbox.js`;
   - the encrypted short-link blobs: `lib/links.js` (AES-GCM; the key is only in the URL fragment);
   - promo uses and rate limits.
-- **Muse reads:** `lib/museimport.js` serves `/api/import/guide`, `/api/import` and `/api/import/open` for the PsycheAI plugin (psyche-pair repo), behind `PSYCHEAI_IMPORT_SECRET`. The read is sealed under a key only the link carries; `app.js` `consumeMuseRead` opens it. README "Reads from Muse".
+- **Muse reads:** `lib/museimport.js` serves `/api/import/guide`, `/api/import` and `/api/import/open` for the PsycheAI plugin (psycheai-app repo), behind `PSYCHEAI_IMPORT_SECRET`. The read is sealed under a key only the link carries; `app.js` `consumeMuseRead` opens it. README "Reads from Muse".
 - **Results cache:** finished reports are held in memory only (`lib/results.js`, about 4h) so a dropped connection is not charged twice.
 - **`/api/status`:** deliberately exposes only `ready`, `mock`, `freeAnalyses`, `minWriting`, `shortLinks`, `firstRun` and `build.version`. A selftest pins the exact key set.
 
