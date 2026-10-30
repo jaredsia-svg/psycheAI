@@ -1718,7 +1718,7 @@
     sourceWhatsAppHint: 'Up to 3 chats with close connections are recommended.',
     sourceLoaded: 'Loaded',
     // A read Muse wrote: Instagram was read there, posts and messages both.
-    sourceViaMuse: 'Read by Muse from your Instagram: posts, stories and highlights, and your own side of your messages if you included them',
+    sourceViaMuse: 'Read by Muse from your Instagram: posts, stories and highlights, and your message threads if you included them',
     sourcesFreeNote: 'Adding or changing data comes with the Psyche Report (US$5).',
     // "Read from": what the model actually read of each source, beside what
     // it only counted — "180 of 9,741 of your messages read", "623 stories

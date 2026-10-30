@@ -9996,3 +9996,17 @@ weight (`weak`, one point), and like every row it counts once however often it h
 weekly does not out-score their own words about their energy or the settings they choose. `reach-out` (people
 beyond the usual circle) stays the stronger, medium row. The Muse guide's E/I line says the same in place of
 "counts for neither letter".
+
+### A Muse read reads threads, never quotes them
+
+A Muse read kept only the reader's own side of their messages, so a reply ("yes, let's do it") lost what it
+answered and could be misread. It now keeps, before each reply, what it answers as "> " lines in the digest,
+everyone else as "Friend": context for reading the reply, never counted as the reader's words, never quoted,
+described or judged in the read. The website's own reads already keep one de-identified message per reply
+(`ctx`, `docs/instagram.js`); a Muse read may keep a little more where a reply needs it. `READ_SPEC` says so in
+place of "their own side", and the Muse pages say it plainly: "your message threads … with names removed and
+never quoted". PsycheAI still receives none of it, only the finished read. The Muse skill checks the context lines
+for numbers, links and handles and holds a read that quotes six words in a row from them (psycheai-app README
+"Threads, never quoted"). WhatsApp chats added through the skill keep each reply's context the same way, as the site's own WhatsApp reader does.
+A first Muse read now aims for about 110,000 characters instead of 80,000, to make room for that context: posts
+and stories about 35,000, their own messages about 50,000, and what those reply to about 25,000.
