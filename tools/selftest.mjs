@@ -10624,6 +10624,21 @@ console.log('  QR payload        : ' + cardPayload.length + ' chars');
 console.log('  stills counted    : ' + withPhotos.coverage.stillsInArchive + ' (none sent)');
 
 
+// ---------- the Muse skill's pinned guide ----------
+//
+// The skill carries its own signed copy of the Muse guides (psycheai-app
+// skill/guide.json, its README "The guide is signed"). With that repo beside
+// this one, a guide changed here without re-pinning there fails.
+{
+  const app = ['psycheai-app', 'psyche-pair'].map(n => join(root, '..', n, 'skill', 'guide.json')).find(p => existsSync(p));
+  if (app) {
+    const museImport = (await import('../lib/museimport.js')).default;
+    const r = museImport.guide('read'), dp = museImport.guide('read', 'deep'), sy = museImport.guide('sync');
+    check('the Muse skill\'s pinned guide is this guide (in psycheai-app: node tools/pin-guide.mjs, then sign the skill)',
+      readFileSync(app, 'utf8').trim() === JSON.stringify({ read: { spec: r.spec, rubric: r.rubric, schema: r.schema }, deepSpec: dp.spec.slice(r.spec.length), sync: { spec: sy.spec, brief: sy.brief, schema: sy.schema } }, null, 1));
+  }
+}
+
 // ---------- no real people in the repo ----------
 //
 // Test data and design notes have come from real reads (README "No real

@@ -9937,3 +9937,12 @@ rivetandrust, Zara Quill), and README quotes from real output say when their han
 selftest reads every text file word by word and fails on any word known to name a real person; the list
 is kept only as the start of each word's SHA-256, so the test doesn't name them. The same check runs in
 the plugin repo. Use made-up names in fixtures, tests and notes, never ones from a real read.
+
+### The Muse skill carries its own guide
+
+The guide \`/api/import/guide\` serves (\`lib/museimport.js\` guide()) is also pinned, signed, inside the
+Muse skill (psycheai-app \`skill/guide.json\`), and the skill uses that copy rather than one fetched live, so a
+server someone got into can't change what Muse is asked to write. A guide change here only reaches skill
+users once it's pinned and signed there (\`node tools/pin-guide.mjs\`, then \`node tools/sign-skill.mjs\`). The
+selftest fails while the copy beside this repo differs. The checks on save (\`bundleFrom\`) keep running here,
+so a skill on an older guide still gets told what to fix.
