@@ -25,7 +25,7 @@
       button.href = url;
       button.download = 'Psyche Report.pdf';
       button.hidden = false;
-      status.textContent = 'Your report is ready.';
+      status.textContent = 'Your report is open. To keep a copy, save it.';
       location.href = url;
     })
     .catch(err => fail(/404/.test(String(err && err.message)) ? 'This report has expired. Ask Muse for a new one.' : 'This report could not be opened. Open the link again from your Muse chat.'));
