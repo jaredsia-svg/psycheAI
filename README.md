@@ -9987,3 +9987,12 @@ guide's E/I paragraph said "plans proposed" and "gatherings they organise" count
 with says is neither letter (`convenes-known-circle`). `READ_SPEC` now points E/I at the rubric's rows, their own
 words about their energy and the settings they choose first, and adds message volume and when they are active to
 what is never E/I evidence; the paragraph is shorter than it was.
+
+### Initiating gatherings leans very slightly E
+
+`convenes-known-circle` (organising dinners, sport or trips for a familiar circle) counted neither way. Starting
+gatherings is a small outward signal even among the same friends, so the row now points to E at the lightest
+weight (`weak`, one point), and like every row it counts once however often it happens: a reader who organises
+weekly does not out-score their own words about their energy or the settings they choose. `reach-out` (people
+beyond the usual circle) stays the stronger, medium row. The Muse guide's E/I line says the same in place of
+"counts for neither letter".
