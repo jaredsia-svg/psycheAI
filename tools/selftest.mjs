@@ -9762,7 +9762,7 @@ check('the schema requires evidence on where they align and differ',
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 22000 && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
+    !('system' in g) && g.spec.length < 23000 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
