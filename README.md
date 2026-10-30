@@ -9969,3 +9969,13 @@ listed as what an evidence item never is, with a test (still true without its da
 each pattern carrying two years, one before the latest two, once the digest spans three, or else being a
 phase. All three are repeated in "Before saving", the pass Muse already makes. No check was added on save:
 each failed check costs a rewrite and minutes, and these are judgement calls a word list would get wrong.
+
+### A Muse read's confidence follows the rubric
+
+A Muse read from Instagram alone (stories, comments and 10 conversations) scored 82, "high". The rubric every
+provider follows (`CONFIDENCE_SCORING` in `lib/prompts.js`) puts Instagram alone, its messages included, at 65 to
+79, and above 80 needs a second strong source; the Muse guide's own line said "65 to 79 … higher only if their own
+messages were read too", which Muse took as leave to go past 79. `READ_SPEC`'s Confidence section now states the
+rubric for the sources a Muse read can have: Instagram 65–79; with Facebook or WhatsApp chats 72–86; with both
+76–90; never above 90; `level` from the score; never lowered for how much was sampled. The Muse skill checks the
+cap and the level on save (psycheai-app README "Confidence follows the rubric").
