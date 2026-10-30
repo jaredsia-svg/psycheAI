@@ -9781,10 +9781,15 @@ check('the schema requires evidence on where they align and differ',
     return /loyalty rather than energy/.test(ei('Your setting is small and familiar: family gatherings, close friends, and a circle you return to across years').join(' ')) &&
       /account is private is not a reason/.test(ei('Your account is private, so you share with few.').join(' ')) &&
       !ei('You choose small familiar groups rather than big rooms of strangers, and start most plans').length && !ei('about 10 of your 140 threads run for years').length &&
-      /are the same step/.test(plan({ title: 'Close one loop a week', detail: 'Pick one open plan or project each week, and send the single message that closes it: a date, a decision or a no.' },
+      /make the same point/.test(plan({ title: 'Close one loop a week', detail: 'Pick one open plan or project each week, and send the single message that closes it: a date, a decision or a no.' },
         { title: 'Close one open project loop', detail: 'Pick the side project with the most open threads, and send one message that decides its next step: a date, a scope or a pause.' }).join(' ')) &&
       !plan({ title: 'Take one idea for a walk with a friend', detail: 'Invite one close friend for a walk or a game, and talk about a new idea without a screen.' },
         { title: 'Finish one project to usable', detail: 'Name the single next step that would make it usable by someone else, and do it before you start anything new.' }).length &&
+      /make the same point/.test(museImport.planProblems({ wellness: { suggestions: [{ title: 'Close one loop this week', detail: 'Pick one open plan or project from your messages and confirm it, finish it, or say no to it, so it stops taking up space.' }] }, development: { develop: [{ actions: [{ title: 'Confirm, finish or decline one open plan from your messages.' }] }] } }).join(' ')) &&
+      /careerAssessment\.holdingBack: "Too many open threads" and "Spreads across interests" make the same point/.test(museImport.listProblems({ careerAssessment: { holdingBack: [
+        { title: 'Too many open threads', detail: 'You start AI, investing, sport, food and building projects together, and you confirm plans late.' },
+        { title: 'Spreads across interests', detail: 'You run AI, investing, sport, food and building projects together, and the breadth can slow the one project that matters most.' }] } }).join(' ')) &&
+      !museImport.listProblems({ careful: [{ title: 'A partner who needs constant reassurance', detail: 'Your blunt debate and late replies could be read as distance.' }, { title: 'A partner who avoids all conflict', detail: 'You raise issues directly, so a partner who goes quiet would leave you guessing.' }] }).length &&
       museImport.bundleFrom(answer).ok === true;
   })());
   check('the Muse schema\'s shortened descriptions each keep their opening sentence (a split at "e.g." once dropped it), and a literal "Kind of work:" is sent back to fix', (() => {
