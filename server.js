@@ -1618,7 +1618,7 @@ async function handleImport(request, response) {
   const pdfKept = pdf ? await museImport.sealPdf(sealed.id, sealed.key, pdf) : false;
   sendJson(response, 200, {
     url: SITE_ORIGIN + '/?m=' + sealed.id + '#' + sealed.key,
-    ...(pdfKept ? { pdf: SITE_ORIGIN + '/api/import/pdf?id=' + sealed.id + '&k=' + sealed.key, pdfName: musePdf.fileName(name) } : {}),
+    ...(pdfKept ? { pdf: SITE_ORIGIN + '/report-pdf?m=' + sealed.id + '#' + sealed.key, pdfName: musePdf.fileName(name) } : {}),
     // The report in short, one line per section, for Muse to show under the card.
     sections: musePdf.summary(result.bundle.data, name),
     expiresInDays: museImport.SEALED_DAYS,
@@ -1650,9 +1650,25 @@ async function handleImportStatus(request, response, url) {
 // the address here (a PDF viewer can't open it in a browser), so this is the
 // one request where the server can read the report it holds: it opens it,
 // sends it and keeps nothing. Not logged.
-async function handleImportPdf(response, url) {
+// A read's PDF (README "The PDF's key stays out of the address"). With raw=1,
+// only the locked copy, for /report-pdf to open in the browser with the key
+// after its #. Otherwise the PDF itself, for the Muse skill, which sends the
+// key in X-Psyche-Key: a header, so the key is never in an address or a log.
+// A ?k= link, as links were made until 30 Oct 2026, still opens until the
+// last of those expires (7 days).
+async function handleImportPdf(request, response, url) {
   const id = url.searchParams.get('id');
-  const pdf = await museImport.openPdf(id, url.searchParams.get('k'));
+  if (url.searchParams.get('raw') === '1') {
+    const sealed = await museImport.sealedPdf(id);
+    if (!sealed) {
+      sendJson(response, 404, { error: 'This report has expired. Ask Muse for a new one.' });
+      return;
+    }
+    response.setHeader('Cache-Control', 'private, no-store');
+    sendJson(response, 200, sealed);
+    return;
+  }
+  const pdf = await museImport.openPdf(id, request.headers['x-psyche-key'] || url.searchParams.get('k'));
   if (!pdf) {
     sendJson(response, 404, { error: 'This report has expired. Ask Muse for a new one.' });
     return;
@@ -2177,7 +2193,7 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/import' && request.method === 'POST' ? () => handleImport(request, response)
                   : route === '/api/import/guide' && request.method === 'GET' ? () => handleImportGuide(request, response, url)
                   : route === '/api/import/open' && request.method === 'GET' ? () => handleImportOpen(response, url)
-                  : route === '/api/import/pdf' && request.method === 'GET' ? () => handleImportPdf(response, url)
+                  : route === '/api/import/pdf' && request.method === 'GET' ? () => handleImportPdf(request, response, url)
                   : route === '/api/import/syncpdf' && request.method === 'POST' ? () => handleImportSyncPdf(request, response)
                   : route === '/api/import/status' && request.method === 'GET' ? () => handleImportStatus(request, response, url)
                   : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)

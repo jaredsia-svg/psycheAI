@@ -9946,3 +9946,14 @@ server someone got into can't change what Muse is asked to write. A guide change
 users once it's pinned and signed there (\`node tools/pin-guide.mjs\`, then \`node tools/sign-skill.mjs\`). The
 selftest fails while the copy beside this repo differs. The checks on save (\`bundleFrom\`) keep running here,
 so a skill on an older guide still gets told what to fix.
+
+### The PDF's key stays out of the address
+
+A Muse read's PDF link was \`/api/import/pdf?id=…&k=<key>\`: the key sat in the address, where any access
+log in front of the server (Render's request logs among them) could keep it, and a log plus the database
+opens the PDF. The link is now \`/report-pdf?m=<id>#<key>\`. The part after the # is never sent in a
+request, so no server or log sees it: \`docs/report-pdf.html\` fetches only the locked copy
+(\`/api/import/pdf?raw=1&id=…\`, \`museImport.sealedPdf\`), unlocks it with WebCrypto as \`consumeMuseRead\`
+does the read, and opens it as a file in the browser. The Muse skill fetches the PDF itself with the key in
+an \`X-Psyche-Key\` header, which isn't logged. A \`?k=\` link made before 30 Oct 2026 still opens until the
+last of them expires, 7 days on; after that the \`k\` parameter can go.

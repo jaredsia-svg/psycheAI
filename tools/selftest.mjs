@@ -9903,13 +9903,30 @@ check('the schema requires evidence on where they align and differ',
       out.open = { status: open.status, json: await open.json() };
       out.missing = (await fetch(base + '/api/import/open?id=AAAAAAAAAAAAAAAA')).status;
       if (out.ok.json.pdf) {
+        // The link is /report-pdf?m=<id>#<key>: the key only after the #, which no request carries.
         const pdfUrl = new URL(out.ok.json.pdf);
-        const pdf = await fetch(base + pdfUrl.pathname + pdfUrl.search);
+        const pdfId = pdfUrl.searchParams.get('m'), key = pdfUrl.hash.slice(1);
+        out.pdfLink = { path: pdfUrl.pathname, query: [...pdfUrl.searchParams.keys()].join(), keyInHash: /^[A-Za-z0-9_-]{43}$/.test(key) };
+        // The skill sends the key in a header.
+        const pdf = await fetch(base + '/api/import/pdf?id=' + pdfId, { headers: { 'X-Psyche-Key': key } });
         const bytes = Buffer.from(await pdf.arrayBuffer());
         out.pdf = { status: pdf.status, type: pdf.headers.get('content-type'), head: bytes.subarray(0, 5).toString(), name: /Mei Tan/.test(bytes.toString('latin1')), cache: pdf.headers.get('cache-control'), file: out.ok.json.pdfName };
-        const key = pdfUrl.searchParams.get('k');
-        out.pdfWrongKey = (await fetch(base + '/api/import/pdf?id=' + pdfUrl.searchParams.get('id') + '&k=' + (key[0] === 'A' ? 'B' : 'A') + key.slice(1))).status;
-        out.pdfNoKey = (await fetch(base + '/api/import/pdf?id=' + pdfUrl.searchParams.get('id'))).status;
+        // The page gets only the locked copy, and opens it with the key after the #.
+        const raw = await fetch(base + '/api/import/pdf?raw=1&id=' + pdfId);
+        const sealedPdf = await raw.json();
+        const crypto = await import('node:crypto');
+        const box = Buffer.from(sealedPdf.box, 'base64url');
+        const d = crypto.createDecipheriv('aes-256-gcm', Buffer.from(key, 'base64url'), Buffer.from(sealedPdf.iv, 'base64url'));
+        d.setAuthTag(box.subarray(box.length - 16));
+        out.pdfRaw = { status: raw.status, keys: Object.keys(sealedPdf).sort().join(), cache: raw.headers.get('cache-control'), locked: !/%PDF|Mei/.test(box.toString('latin1')),
+          opens: Buffer.concat([d.update(box.subarray(0, box.length - 16)), d.final()]).equals(bytes) };
+        const page = await fetch(base + '/report-pdf?m=' + pdfId);
+        const pageHtml = await page.text();
+        out.pdfPage = { status: page.status, script: pageHtml.includes('<script src="/report-pdf.js'), noindex: pageHtml.includes('<meta name="robots" content="noindex">') };
+        out.pdfLegacy = (await fetch(base + '/api/import/pdf?id=' + pdfId + '&k=' + key)).status;
+        out.pdfWrongKey = (await fetch(base + '/api/import/pdf?id=' + pdfId, { headers: { 'X-Psyche-Key': (key[0] === 'A' ? 'B' : 'A') + key.slice(1) } })).status;
+        out.pdfNoKey = (await fetch(base + '/api/import/pdf?id=' + pdfId)).status;
+        out.pdfRawMissing = (await fetch(base + '/api/import/pdf?raw=1&id=AAAAAAAAAAAAAAAA')).status;
       }
       const syncBody = JSON.stringify({ a: 'Mei', b: 'Ana', report: { mode: 'platonic', summary: 'Mei brings the plan and Ana the spark.',
         align: [{ title: 'Love of a plan', detail: 'You both like a plan.', evidence: ['both high conscientiousness'] }, { title: 'Kindness first', detail: 'Both put others first.', evidence: [] }],
@@ -9952,6 +9969,11 @@ check('the schema requires evidence on where they align and differ',
   check('import: the report\'s PDF, the page\'s own document, opens with the key its link carries and with nothing else',
     out.pdf && out.pdf.status === 200 && out.pdf.type === 'application/pdf' && out.pdf.head === '%PDF-' && out.pdf.name && /no-store/.test(out.pdf.cache) &&
     /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && out.pdfWrongKey === 404 && out.pdfNoKey === 404, JSON.stringify(out.pdf));
+  check('import: the PDF link keeps its key after the #, never in the address a server or log sees: /report-pdf gets the locked copy and opens it in the browser, the skill sends the key in a header, and an older ?k= link still opens',
+    out.pdfLink && out.pdfLink.path === '/report-pdf' && out.pdfLink.query === 'm' && out.pdfLink.keyInHash &&
+    out.pdfRaw.status === 200 && out.pdfRaw.keys === 'box,iv' && /no-store/.test(out.pdfRaw.cache) && out.pdfRaw.locked && out.pdfRaw.opens &&
+    out.pdfPage.status === 200 && out.pdfPage.script && out.pdfPage.noindex && out.pdfLegacy === 200 && out.pdfRawMissing === 404,
+    JSON.stringify({ link: out.pdfLink, raw: out.pdfRaw, page: out.pdfPage, legacy: out.pdfLegacy }));
   check('import: a Muse Sync comes back as the site\'s own Sync PDF, for the secret only, kept nowhere',
     out.syncPdf && out.syncPdf.status === 200 && out.syncPdf.type === 'application/pdf' && out.syncPdf.head === '%PDF-' && out.syncPdf.names && /no-store/.test(out.syncPdf.cache) &&
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
