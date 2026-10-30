@@ -9718,7 +9718,9 @@ check('the schema requires evidence on where they align and differ',
     ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp') && muse.includes('<pre class="paste" id="install-prompt">Install the skill at app.psycheai.io/install and generate my Psyche</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(muse));
   check('it says what the plugin never receives or guesses, and that the read is sealed under the link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
-      /key that exists only in your link/.test(musePrivacy));
+      /key that exists only in your link/.test(musePrivacy) &&
+      /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
+      /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy));
   check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
     /US\$4\.99 a month or US\$29 a year/.test(muse) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(muse) &&
       /we never see your card/.test(musePrivacy) && /Cancelling keeps Plus until the end of the period you paid for/.test(museTerms) && /Sync, 2 picks a week/.test(muse));
