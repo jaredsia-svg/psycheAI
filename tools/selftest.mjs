@@ -9762,7 +9762,7 @@ check('the schema requires evidence on where they align and differ',
   // prompt): the guide is a short specification of the document instead.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 19500 && !roleSetting.test(g.spec), String(g.spec.length));
+    !('system' in g) && g.spec.length < 21500 && !roleSetting.test(g.spec), String(g.spec.length));
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -9904,7 +9904,8 @@ check('the schema requires evidence on where they align and differ',
   }
   check('import: the read guide keeps E/I to real signals (who starts things, groups, recharge) and never the sample size, a private account or a close circle; no year outweighs the rest',
     /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close/.test(out.guide.json.spec) &&
-    /no single year more than about a quarter of the sample/.test(out.guide.json.spec));
+    /no single year more than about a quarter of the sample/.test(out.guide.json.spec) && /counts when it is measured against everyone they message/.test(out.guide.json.spec) &&
+    /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 10 minutes/.test(out.guide.json.spec));
   check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
     /## WhatsApp chats they added/.test(out.guide.json.spec) && /never the export itself/.test(out.guide.json.spec) && !/## Deep Psyche/.test(out.guide.json.spec) &&
     /## Deep Psyche/.test(out.deepSpec || '') && /About 800,000 characters/.test(out.deepSpec || '') && /A year at a time/.test(out.deepSpec || '') &&
