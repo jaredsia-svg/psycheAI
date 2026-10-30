@@ -9905,7 +9905,7 @@ check('the schema requires evidence on where they align and differ',
   check('import: the read guide keeps E/I to real signals (who starts things, groups, recharge) and never the sample size, a private account or a close circle; no year outweighs the rest',
     /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close/.test(out.guide.json.spec) &&
     /no single year more than about a quarter of the sample/.test(out.guide.json.spec) && /counts when it is measured against everyone they message/.test(out.guide.json.spec) &&
-    /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 10 minutes/.test(out.guide.json.spec));
+    /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 6 to 8 minutes/.test(out.guide.json.spec) && /The 4 they write in most are paged back to their first year/.test(out.guide.json.spec));
   check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
     /## WhatsApp chats they added/.test(out.guide.json.spec) && /never the export itself/.test(out.guide.json.spec) && !/## Deep Psyche/.test(out.guide.json.spec) &&
     /## Deep Psyche/.test(out.deepSpec || '') && /About 800,000 characters/.test(out.deepSpec || '') && /A year at a time/.test(out.deepSpec || '') &&
