@@ -9979,3 +9979,11 @@ messages were read too", which Muse took as leave to go past 79. `READ_SPEC`'s C
 rubric for the sources a Muse read can have: Instagram 65–79; with Facebook or WhatsApp chats 72–86; with both
 76–90; never above 90; `level` from the score; never lowered for how much was sampled. The Muse skill checks the
 cap and the level on save (psycheai-app README "Confidence follows the rubric").
+
+### E/I follows the rubric in a Muse read
+
+A Muse read argued Introversion from tennis plans with familiar friends and from when it was most active. The
+guide's E/I paragraph said "plans proposed" and "gatherings they organise" count, which the MBTI rubric it ships
+with says is neither letter (`convenes-known-circle`). `READ_SPEC` now points E/I at the rubric's rows, their own
+words about their energy and the settings they choose first, and adds message volume and when they are active to
+what is never E/I evidence; the paragraph is shorter than it was.
