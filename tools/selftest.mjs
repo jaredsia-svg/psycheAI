@@ -9721,7 +9721,7 @@ check('the schema requires evidence on where they align and differ',
       /key that exists only in your link/.test(musePrivacy) &&
       /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&
-      /other skills you install in the same workspace could read them/.test(musePrivacy) && /never installs an older release over a newer one/.test(musePrivacy) &&
+      /other skills you install in the same workspace could read them/.test(musePrivacy) && /never installs an older release over a newer one/.test(musePrivacy) && /is public at <a href="https:\/\/github\.com\/jaredsia-svg\/psycheai-app">/.test(musePrivacy) &&
       /PsycheAI installs only from app\.psycheai\.io, and every update is signed/.test(muse));
   check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
     /US\$4\.99 a month or US\$29 a year/.test(muse) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(muse) &&
