@@ -9957,3 +9957,15 @@ request, so no server or log sees it: \`docs/report-pdf.html\` fetches only the 
 does the read, and opens it as a file in the browser. The Muse skill fetches the PDF itself with the key in
 an \`X-Psyche-Key\` header, which isn't logged. A \`?k=\` link made before 30 Oct 2026 still opens until the
 last of them expires, 7 days on; after that the \`k\` parameter can go.
+
+### Three rules said plainly
+
+A Muse report missed three things the guide already asked for: its career section described the reader's
+work as traits ("analytical, high-stakes") though their chats named the field outright; some evidence lines
+described the reading ("across 140 conversations") rather than a moment; and a pattern's evidence all came
+from one year. Each rule is now concrete in \`READ_SPEC\`: the field named first in a stranger's words, with
+\`fit.suits\` starting in or beside it and messages counting as much as captions; the reading's own phrases
+listed as what an evidence item never is, with a test (still true without its date? then it's a summary); and
+each pattern carrying two years, one before the latest two, once the digest spans three, or else being a
+phase. All three are repeated in "Before saving", the pass Muse already makes. No check was added on save:
+each failed check costs a rewrite and minutes, and these are judgement calls a word list would get wrong.

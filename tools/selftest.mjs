@@ -9764,9 +9764,11 @@ check('the schema requires evidence on where they align and differ',
   // A host reads a tool result that sets its role or overrides it as prompt
   // injection (Muse refused the old one, PsycheAI's 100,000-character model
   // prompt): the guide is a short specification of the document instead.
+  // 24,000: raised from 23,000 for three rules said plainly (README "Three
+  // rules said plainly"), about 150 tokens more to read.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 23000 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
+    !('system' in g) && g.spec.length < 24000 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -10645,6 +10647,23 @@ console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
 console.log('  QR payload        : ' + cardPayload.length + ' chars');
 console.log('  stills counted    : ' + withPhotos.coverage.stillsInArchive + ' (none sent)');
 
+
+// ---------- three things Muse reads kept missing ----------
+//
+// A Muse report on a reader whose chats showed their field plainly still
+// described their work as traits; evidence lines counted conversations
+// instead of citing a moment; a pattern rested on one year. Each was already
+// a rule, so each is now said concretely and repeated in "Before saving",
+// which Muse runs through anyway: no new check on save, so no extra round
+// trip (README "Three rules said plainly").
+{
+  const spec = (await import('../lib/museimport.js')).default.READ_SPEC;
+  check('the read guide says plainly: name their field, cite moments not the reading, and give each pattern more than one year, each again in Before saving',
+    /it names that field first, in plain words a stranger would use/.test(spec) && /the first kind of work under `fit\.suits` is in or beside that field/.test(spec) &&
+    /"across 140 conversations", "the digest shows"/.test(spec) && /If an item would still be true with the date taken out, it is a summary/.test(spec) &&
+    /Each pattern's evidence items carry at least two different years, one of them before the latest two/.test(spec) &&
+    ((before) => /\*\*Their field, by name\.\*\*/.test(before) && /\*\*Every evidence item is a dated moment of theirs,\*\*/.test(before) && /\*\*Each pattern spans the years:\*\*/.test(before))(spec.slice(spec.indexOf('## Before saving'))));
+}
 
 // ---------- the Muse skill's pinned guide ----------
 //
