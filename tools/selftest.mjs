@@ -9984,6 +9984,15 @@ check('the schema requires evidence on where they align and differ',
   check('import: a Muse Sync comes back as the site\'s own Sync PDF, for the secret only, kept nowhere',
     out.syncPdf && out.syncPdf.status === 200 && out.syncPdf.type === 'application/pdf' && out.syncPdf.head === '%PDF-' && out.syncPdf.names && /no-store/.test(out.syncPdf.cache) &&
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
+  check('import: the whole report comes back for the chat\'s widget as scores and one-line readings, never the evidence, the "why" paragraphs or the caveats',
+    ((v) => v && v.overview.patterns.length === 3 && v.overview.patterns.every(p => p.name && p.line) &&
+      v.whoYouAre.mbti.length === 4 && v.whoYouAre.mbti.every(l => /^[EINSTFJP]$/.test(l.letter) && l.line) &&
+      v.whoYouAre.bigFive.length === 5 && v.whoYouAre.bigFive.every(t => Number.isInteger(t.score) && t.line && !('band' in t)) &&
+      v.whatDrivesYou.motivators.length === 10 && v.whatDrivesYou.motivators.every(m => Number.isInteger(m.score) && m.meaning && !('line' in m)) &&
+      v.howYouConnect.loveLanguages.receiving.length && v.howYouConnect.loveLanguages.giving.length &&
+      v.puttingItTogether.plan.length === 3 && Number.isInteger(v.confidence.score) &&
+      !/"(evidence|why|caveat|ledger|derivedFrom|harsh|advice)"/.test(JSON.stringify(v)) && !/Mock evidence|evidence line/i.test(JSON.stringify(v)) &&
+      JSON.stringify(v).length < 12000)(out.ok.json.view), JSON.stringify(out.ok.json.view).slice(0, 600));
   check('import: the report in short comes back for the chat, one line per section in the report\'s order',
     JSON.stringify((out.ok.json.sections || []).map(s => s.title)) === JSON.stringify(['Overview', 'Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together', 'Appendix']) &&
     out.ok.json.sections.every(s => typeof s.finding === 'string' && s.finding.length > 10 && s.finding.length < 1500 && Array.isArray(s.points) && s.points.length && s.points.join(' ') === s.finding) && /Care for your people/.test(JSON.stringify(out.ok.json.sections)) && ((who) => who && /^MBTI: /.test(who.points[0]) && who.points.some(x => /^Big Five: /.test(x)))(out.ok.json.sections.find(s => s.title === 'Who you are')), JSON.stringify(out.ok.json.sections));

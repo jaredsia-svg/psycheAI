@@ -1621,6 +1621,8 @@ async function handleImport(request, response) {
     ...(pdfKept ? { pdf: SITE_ORIGIN + '/report-pdf?m=' + sealed.id + '#' + sealed.key, pdfName: musePdf.fileName(name) } : {}),
     // The report in short, one line per section, for Muse to show under the card.
     sections: musePdf.summary(result.bundle.data, name),
+    // The whole report for Muse's one widget: scores and one-line readings, never the evidence.
+    view: musePdf.chatView(result.bundle.data, name),
     expiresInDays: museImport.SEALED_DAYS,
     dropped: result.dropped,
   });
