@@ -9984,12 +9984,17 @@ check('the schema requires evidence on where they align and differ',
   check('import: a Muse Sync comes back as the site\'s own Sync PDF, for the secret only, kept nowhere',
     out.syncPdf && out.syncPdf.status === 200 && out.syncPdf.type === 'application/pdf' && out.syncPdf.head === '%PDF-' && out.syncPdf.names && /no-store/.test(out.syncPdf.cache) &&
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
+  check('import: the chat\'s one-line readings lose their dated moments ("…, as in March 2026"), since a date is evidence',
+    await (async () => { const u = (await import('../lib/musepdf.js')).default.undated;
+      return u('You stay steady, with spikes when a debate turns personal, as in March 2026.') === 'You stay steady, with spikes when a debate turns personal.' &&
+        u('You plan trips (three in 2025) and book them late.') === 'You plan trips and book them late.' && u('You run every week since 2023.') === 'You run every week.' &&
+        u('You argue with evidence.') === 'You argue with evidence.' && u('New ideas, from cave systems in 2023 to driverless cars in 2026.') === 'New ideas, from cave systems to driverless cars.'; })());
   check('import: the whole report comes back for the chat\'s widget as scores and one-line readings, never the evidence, the "why" paragraphs or the caveats',
     ((v) => v && v.overview.patterns.length === 3 && v.overview.patterns.every(p => p.name && p.line) &&
       v.whoYouAre.mbti.length === 4 && v.whoYouAre.mbti.every(l => /^[EINSTFJP]$/.test(l.letter) && l.line) &&
       v.whoYouAre.bigFive.length === 5 && v.whoYouAre.bigFive.every(t => Number.isInteger(t.score) && t.line && !('band' in t)) &&
       v.whatDrivesYou.motivators.length === 10 && v.whatDrivesYou.motivators.every(m => Number.isInteger(m.score) && m.meaning && !('line' in m)) &&
-      v.howYouConnect.loveLanguages.receiving.length && v.howYouConnect.loveLanguages.giving.length &&
+      v.howYouConnect.loveLanguages.receiving.length && v.howYouConnect.loveLanguages.giving.length && v.howYouConnect.loveLanguages.receiving.every(l => l.icon && l.strength) &&
       v.puttingItTogether.plan.length === 3 && Number.isInteger(v.confidence.score) &&
       !/"(evidence|why|caveat|ledger|derivedFrom|harsh|advice)"/.test(JSON.stringify(v)) && !/Mock evidence|evidence line/i.test(JSON.stringify(v)) &&
       JSON.stringify(v).length < 12000)(out.ok.json.view), JSON.stringify(out.ok.json.view).slice(0, 600));
