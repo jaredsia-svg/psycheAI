@@ -1,0 +1,31 @@
+{
+  "_comment": "Which public-domain backup takes which studio character's slot in the catalogue (lib/prompts.js), in case one has to go. Scenes and emblems are in tools/reserve/art-*.mjs. null: no backup chosen yet. WALL-E's slot went to The Tin Man, now live.",
+  "women": {
+    "Elsa": "Belle",
+    "Moana": "Alice",
+    "Judy Hopps": "Gretel",
+    "Joy": "Heidi",
+    "Wonder Woman": "Joan of Arc",
+    "Hermione Granger": "Athena",
+    "Princess Peach": "Cinderella",
+    "Sailor Moon": "Dorothy",
+    "Hello Kitty": "Snow White",
+    "Kuromi": "Goldilocks"
+  },
+  "men": {
+    "Simba": "Hercules",
+    "Nick Wilde": "Robin Hood",
+    "Buzz Lightyear": "Sinbad",
+    "Captain America": "King Arthur",
+    "Spider-Man": "Aladdin",
+    "Hulk": "Atlas",
+    "Shrek": "The Beast",
+    "Po": "Sun Wukong",
+    "Hiccup": "Merlin"
+  },
+  "neither": {
+    "Baymax": "The Tortoise",
+    "Remy": "The Ant",
+    "Pikachu": "The Gingerbread Man"
+  }
+}

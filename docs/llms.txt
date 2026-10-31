@@ -1,0 +1,42 @@
+# PsycheAI
+
+> A free personality reading from your own Instagram data or two or three WhatsApp chats, with no questionnaire. Your browser reads your Instagram data download or chat exports, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+
+Every page below is also plain Markdown at the same address with .md on the end.
+
+## Start here
+- [PsycheAI](https://psycheai.io/): make your free Psyche Card
+- [FAQ](https://psycheai.io/faq.md): privacy, pricing and how it works
+- [Sample report](https://psycheai.io/sample-report.md): what a reading looks like
+- [Download your Instagram data](https://psycheai.io/download-instagram-data.md): the steps, in JSON format
+
+## Guides
+- [instagram personality test](https://psycheai.io/instagram-personality-test.md)
+- [compatibility test](https://psycheai.io/compatibility-test.md)
+- [mbti test no questions](https://psycheai.io/mbti-test-no-questions.md)
+- [psyche personality test](https://psycheai.io/psyche-personality-test.md)
+- [ai personality coach](https://psycheai.io/ai-personality-coach.md)
+- [love language test](https://psycheai.io/love-language-test.md)
+- [big five personality test](https://psycheai.io/big-five-personality-test.md)
+- [what instagram knows about you](https://psycheai.io/what-instagram-knows-about-you.md)
+- [instagram data download help](https://psycheai.io/instagram-data-download-help.md)
+- [best friend compatibility test](https://psycheai.io/best-friend-compatibility-test.md)
+- [best free personality tests](https://psycheai.io/best-free-personality-tests.md)
+- [best ai life coach apps](https://psycheai.io/best-ai-life-coach-apps.md)
+- [best friendship compatibility tests](https://psycheai.io/best-friendship-compatibility-tests.md)
+- [am i in the wrong job](https://psycheai.io/am-i-in-the-wrong-job.md)
+- [what will i regret when im old](https://psycheai.io/what-will-i-regret-when-im-old.md)
+- [why do we fight over small things](https://psycheai.io/why-do-we-fight-over-small-things.md)
+- [instagram chat analyzer](https://psycheai.io/instagram-chat-analyzer.md)
+- [whatsapp chat analysis](https://psycheai.io/whatsapp-chat-analysis.md)
+- [mbti test from instagram chats](https://psycheai.io/mbti-test-from-instagram-chats.md)
+- [personality report from google takeout](https://psycheai.io/personality-report-from-google-takeout.md)
+- [personality read from your exports](https://psycheai.io/personality-read-from-your-exports.md)
+- [chatgpt tell me about myself](https://psycheai.io/chatgpt-tell-me-about-myself.md)
+
+## Characters and types
+- [Which character are you?](https://psycheai.io/characters.md)
+- [The 16 MBTI types](https://psycheai.io/mbti-types.md)
+
+## Policies
+- [Privacy](https://psycheai.io/privacy), [Terms](https://psycheai.io/terms), [Refunds](https://psycheai.io/refunds)

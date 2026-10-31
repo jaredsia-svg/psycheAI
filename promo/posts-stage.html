@@ -1,0 +1,195 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* Instagram story highlights (promo/stories.mjs): still 1080x1920 slides for "Start here" and "Privacy". Every
+   privacy line is the site's own FAQ, shortened, so each stays literally true. Text is kept clear of the top 220px
+   and bottom 300px, where Instagram puts its own bars. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+body { font-family: Inter, sans-serif; background: #111; }
+.slide { position: relative; width: 1080px; height: 1920px; overflow: hidden; color: #fff;
+  background: radial-gradient(120% 80% at 50% 0%, #3b1556 0%, #1d0b30 55%, #12061f 100%); }
+.slide.light { color: #2a1238; background: radial-gradient(130% 90% at 50% 0%, #ffe3f0 0%, #fdf7fc 55%, #f1e6ff 100%); }
+.blob { position: absolute; border-radius: 50%; filter: blur(110px); }
+.b1 { width: 760px; height: 760px; left: -260px; top: -180px; background: rgba(170,80,230,.55); }
+.b2 { width: 720px; height: 720px; right: -260px; bottom: -160px; background: rgba(240,90,140,.42); }
+.light .b1 { background: rgba(255,170,210,.6); } .light .b2 { background: rgba(200,170,255,.55); }
+.in { position: absolute; left: 80px; right: 80px; top: 250px; bottom: 300px; display: flex; flex-direction: column; }
+.kicker { font-size: 34px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; color: #ffb3d1; }
+.light .kicker { color: #c2407a; }
+h1 { margin-top: 26px; font-size: 104px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.02; }
+h2 { margin-top: 22px; font-size: 80px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; }
+.lede { margin-top: 34px; font-size: 46px; font-weight: 600; line-height: 1.32; color: rgba(255,255,255,.86); }
+.light .lede { color: #4a2366; }
+.grad { background: linear-gradient(90deg, #ffb36b, #ff7a9c 45%, #c79bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.light .grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.q { margin-top: 30px; align-self: flex-end; max-width: 92%; padding: 30px 40px; border-radius: 48px 48px 14px 48px; font-size: 50px; font-weight: 850;
+  line-height: 1.15; background: linear-gradient(135deg, #7b3fe4, #c2407a); box-shadow: 0 30px 80px rgba(120,50,200,.4); }
+.a { margin-top: 40px; padding: 44px 46px; border-radius: 44px; background: #fff; color: #2a1238; box-shadow: 0 40px 100px rgba(0,0,0,.35); }
+.a .yes { font-size: 76px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; }
+.a p { margin-top: 20px; font-size: 42px; font-weight: 600; line-height: 1.32; }
+.a p b { color: #c2407a; font-weight: 850; }
+.a ul { margin: 22px 0 0; padding: 0; list-style: none; }
+.a li { position: relative; padding-left: 58px; margin-top: 18px; font-size: 40px; font-weight: 650; line-height: 1.28; }
+.a li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 26px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #8a3fd0, #e0457b); }
+.chip { display: inline-block; margin: 0 12px 14px 0; padding: 10px 22px; border-radius: 999px; font-size: 32px; font-weight: 750; background: #f3e8fb; color: #5b2a86; }
+.steps { margin-top: 44px; display: flex; flex-direction: column; gap: 26px; }
+.step { display: flex; gap: 30px; align-items: flex-start; padding: 32px 36px; border-radius: 38px; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.14); }
+.light .step { background: #fff; border: 0; box-shadow: 0 24px 60px rgba(90,40,120,.14); }
+.num { flex: none; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font-size: 40px; font-weight: 900; color: #fff;
+  background: linear-gradient(135deg, #ff7a45, #e0457b 55%, #8a3fd0); }
+.step b { display: block; font-size: 44px; font-weight: 850; line-height: 1.15; }
+.step span { display: block; margin-top: 8px; font-size: 34px; font-weight: 600; line-height: 1.3; opacity: .8; }
+.foot { position: absolute; left: 0; right: 0; bottom: 330px; text-align: center; font-size: 36px; font-weight: 800; letter-spacing: .02em; opacity: .75; }
+.pill { display: inline-block; padding: 30px 70px; border-radius: 999px; font-size: 60px; font-weight: 900; color: #fff;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 70px rgba(224,69,123,.5); }
+.card { align-self: center; margin-top: 40px; width: 520px; border-radius: 30px; box-shadow: 0 0 90px rgba(255,120,170,.45), 0 40px 90px rgba(0,0,0,.45); }
+.apps { margin-top: 46px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.app { display: flex; align-items: center; gap: 26px; padding: 26px 30px; border-radius: 36px; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.14); }
+.app b { font-size: 40px; font-weight: 850; } .app small { display: block; font-size: 28px; font-weight: 650; opacity: .7; margin-top: 4px; }
+.ic { position: relative; flex: none; width: 110px; height: 110px; border-radius: 30px; }
+.ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+.ig::before { content: ''; position: absolute; inset: 24px; border: 8px solid #fff; border-radius: 22px; }
+.ig::after { content: ''; position: absolute; left: 40px; top: 40px; width: 30px; height: 30px; border: 8px solid #fff; border-radius: 50%; box-sizing: border-box; }
+.wa { background: #25d366; }
+.wa::before { content: ''; position: absolute; left: 23px; top: 20px; width: 64px; height: 64px; border: 8px solid #fff; border-radius: 50%; box-sizing: border-box; }
+.wa::after { content: ''; position: absolute; left: 20px; top: 74px; width: 0; height: 0; border-left: 14px solid transparent; border-top: 18px solid #fff; transform: rotate(18deg); }
+.gg { background: #fff; }
+.gg::before { content: 'G'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 76px/1 Inter, sans-serif;
+  background: conic-gradient(from -45deg, #ea4335 0 25%, #4285f4 0 50%, #34a853 0 75%, #fbbc05 0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.fb { background: #1877f2; }
+.fb::before { content: 'f'; position: absolute; left: 0; right: 0; bottom: -8px; text-align: center; font: 900 104px/1 Inter, sans-serif; color: #fff; }
+.mark { width: 150px; height: 150px; }
+.big-icon { font-size: 150px; line-height: 1; }
+/* "How it works", as the guide post on the account: the taps, each button named as a chip. */
+.brandline { display: flex; align-items: center; gap: 18px; font-size: 40px; font-weight: 850; color: #2a1238; }
+.brandline .bm { width: 62px; height: 62px; color: #7b3fa0; }
+.gtitle { margin-top: 34px; font-size: 76px; line-height: 1.04; }
+.gcard { margin-top: 40px; padding: 36px 36px 34px; border-radius: 40px; background: rgba(255,255,255,.92); box-shadow: 0 24px 60px rgba(90,40,120,.14); }
+.ghead { display: flex; align-items: center; gap: 20px; font-size: 44px; font-weight: 900; letter-spacing: -0.02em; }
+.gnum { flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; font-weight: 900; color: #fff;
+  background: linear-gradient(135deg, #8a3fd0, #e0457b); }
+.gsteps { margin: 18px 0 0; padding: 0; list-style: none; }
+.gsteps li { position: relative; padding-left: 50px; margin-top: 14px; font-size: 33px; font-weight: 550; line-height: 1.5; }
+.gsteps li i { position: absolute; left: 0; font-style: normal; font-weight: 850; color: #8a3fd0; }
+.guide em { font-style: normal; font-weight: 800; color: #6b2fa8; background: #efe2f9; padding: 2px 14px; border-radius: 999px; white-space: nowrap; }
+.guide strong { font-weight: 850; color: #d6336c; }
+.gp { margin-top: 16px; font-size: 34px; font-weight: 550; line-height: 1.55; }
+.gbtn { margin-top: 44px; padding: 30px; border-radius: 999px; text-align: center; font-size: 52px; font-weight: 900; color: #fff;
+  background: linear-gradient(90deg, #f2705a, #e0457b 45%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.35); }
+/* Q&A slides sit in the middle of the screen, larger. */
+.qa .in { justify-content: center; }
+.qa .q { font-size: 58px; }
+.qa .a .yes { font-size: 88px; }
+.qa .a p { font-size: 48px; }
+.qa .a li { font-size: 46px; }
+.qa .kicker { font-size: 38px; }
+/* Two or three Q&As to a story. */
+.qa2 .q { margin-top: 28px; font-size: 42px; padding: 22px 32px; }
+.qa2 .a { margin-top: 18px; padding: 26px 36px; }
+.qa2 .a .yes { font-size: 52px; }
+.qa2 .a p { margin-top: 10px; font-size: 35px; }
+.qa2 .a li { margin-top: 10px; font-size: 34px; }
+.qa2 .a li::before { width: 36px; height: 36px; font-size: 22px; }
+.qa2 h2 { font-size: 70px; }
+.guide .gtitle { margin-top: 24px; font-size: 68px; }
+.guide .gcard { margin-top: 28px; padding: 30px 32px 28px; }
+.guide .ghead { font-size: 40px; }
+.guide .gsteps li { margin-top: 10px; font-size: 31px; line-height: 1.45; }
+.guide .gp { font-size: 32px; line-height: 1.5; }
+.guide .gbtn { margin-top: 32px; padding: 26px; font-size: 48px; }
+.guide .brandline { font-size: 36px; }
+.qa2[data-name="privacy-2"] .q, .qa2[data-name="privacy-3"] .q { margin-top: 34px; font-size: 48px; padding: 26px 36px; }
+.qa2[data-name="privacy-2"] .a, .qa2[data-name="privacy-3"] .a { padding: 32px 40px; }
+.qa2[data-name="privacy-2"] .a .yes, .qa2[data-name="privacy-3"] .a .yes { font-size: 62px; }
+.qa2[data-name="privacy-2"] .a p, .qa2[data-name="privacy-3"] .a p { font-size: 40px; }
+/* The card, large, its key parts named beside it with a line to each. */
+.callout { position: absolute; left: 710px; right: 36px; transform: translateY(-50%); min-height: 84px; display: flex; align-items: center; gap: 14px; padding: 0 22px 0 18px;
+  border-radius: 26px; background: #fff; box-shadow: 0 18px 44px rgba(90,40,120,.18); color: #2a1238; }
+.callout span { font-size: 36px; }
+.callout b { font-size: 30px; font-weight: 850; line-height: 1.15; padding: 16px 0; }
+.callout i { position: absolute; right: 100%; top: 50%; width: 90px; height: 4px; margin-top: -2px; background: linear-gradient(90deg, #e0457b, #8a3fd0); border-radius: 2px; }
+.callout i::before { content: ''; position: absolute; left: -7px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #e0457b; box-shadow: 0 0 0 5px rgba(224,69,123,.25); }
+.guide .gtitle { font-size: 96px; }
+.guide .ghead { font-size: 44px; }
+.guide .gsteps li { margin-top: 10px; font-size: 34px; line-height: 1.45; }
+.guide .gp { font-size: 36px; }
+.guide .gbtn { font-size: 54px; }
+/* ChatGPT against PsycheAI, on the last privacy story. */
+.vs { margin-top: 26px; padding: 30px 36px; border-radius: 40px; }
+.vs h3 { font-size: 50px; font-weight: 900; letter-spacing: -0.02em; }
+.vs ul { margin: 14px 0 0; padding: 0; list-style: none; }
+.vs li { position: relative; padding-left: 58px; margin-top: 16px; font-size: 38px; font-weight: 600; line-height: 1.3; }
+.vs li::before { position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 24px; font-weight: 900; color: #fff; }
+.vs.bad { background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.18); }
+.vs.bad li::before { content: '✕'; background: #6b6b78; }
+.vs.good { background: #fff; color: #2a1238; box-shadow: 0 40px 100px rgba(0,0,0,.35); }
+.vs.good li::before { content: '✓'; background: linear-gradient(135deg, #8a3fd0, #e0457b); }
+.vs.good b { color: #c2407a; }
+
+/* Feed posts (promo/posts.mjs): 1080x1350, the stories' look; a carousel of two, Instagram then WhatsApp. */
+.slide.post { height: 1350px; }
+.post .in { top: 70px; bottom: 70px; }
+.post .gtitle { font-size: 78px; margin-top: 26px; line-height: 1.02; }
+.post .gcard { margin-top: 30px; padding: 30px 32px 26px; }
+.post .ghead { font-size: 42px; }
+.post .gsteps li { margin-top: 8px; font-size: 31px; line-height: 1.42; }
+.post .gp { font-size: 32px; line-height: 1.45; }
+.post .gbtn { margin-top: 30px; padding: 22px; font-size: 50px; }
+.swipe { margin-top: 22px; text-align: center; font-size: 32px; font-weight: 800; color: #6b2fa8; }
+.swipe b { color: #d6336c; }
+.waicon { display: inline-block; transform: scale(.56); margin: -24px; }
+</style></head>
+<body>
+
+<section class="slide light guide post" data-name="start-ig">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="in" style="justify-content:center">
+    <div class="brandline"><svg class="bm" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/><path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/><path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/><circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/></svg><span>PsycheAI</span></div>
+    <h2 class="gtitle">A full personality study.<br><span class="grad">No questions asked.</span></h2>
+    <div class="gcard">
+      <div class="ghead"><span class="gnum">1</span>Request your Instagram data</div>
+      <ol class="gsteps">
+        <li><i>a.</i>Open the Instagram app and go to your <em>Profile</em></li>
+        <li><i>b.</i>Tap ≡ top right, then <em>Accounts Centre</em></li>
+        <li><i>c.</i>Tap <em>Your information and permissions</em></li>
+        <li><i>d.</i>Tap <em>Export your information</em>, then <em>Create export</em></li>
+        <li><i>e.</i>Choose your Instagram account, then <em>Export to device</em></li>
+        <li><i>f.</i>Set Date range <strong>All time</strong>, Format <strong>JSON</strong>, Media quality <strong>Lower</strong></li>
+        <li><i>g.</i>Tap <em>Start export</em> and enter your password</li>
+      </ol>
+    </div>
+    <div class="gcard">
+      <div class="ghead"><span class="gnum">2</span>Load it at psycheai.io</div>
+      <p class="gp">Instagram emails you a link in about 2 hours. Download the .zip, tap <em>Load my data</em> and get your Psyche Card.</p>
+    </div>
+    <div class="gbtn">psycheai.io</div>
+    <p class="swipe">No time to wait? Swipe for <b>WhatsApp</b> →</p>
+  </div>
+</section>
+
+<section class="slide light guide post" data-name="start-wa">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="in" style="justify-content:center">
+    <div class="brandline"><div class="ic wa waicon"></div><span>No time to wait?</span></div>
+    <h2 class="gtitle">Use <span class="grad">2 WhatsApp chats</span> instead.</h2>
+    <div class="gcard">
+      <div class="ghead"><span class="gnum">1</span>Export 2–3 chats</div>
+      <ol class="gsteps">
+        <li><i>a.</i>In WhatsApp, open a chat with a close friend</li>
+        <li><i>b.</i><strong>iPhone:</strong> tap the contact’s name, then scroll down<br><strong>Android:</strong> tap <em>⋮</em> then <em>More</em></li>
+        <li><i>c.</i>Tap <em>Export chat</em>, then <em>Without media</em></li>
+        <li><i>d.</i><strong>iPhone:</strong> tap <em>Save to Files</em><br><strong>Android:</strong> tap <em>Drive</em> (Google Drive), Dropbox, OneDrive, or email it to yourself</li>
+      </ol>
+    </div>
+    <div class="gcard">
+      <div class="ghead"><span class="gnum">2</span>Load them at psycheai.io</div>
+      <p class="gp">Tap <em>Load my data</em>, pick them all, and get your Psyche Card in minutes.</p>
+    </div>
+    <div class="gbtn">psycheai.io</div>
+    <p class="swipe">Have both? Load them together for the <b>fullest</b> read.</p>
+  </div>
+</section>
+
+</body></html>

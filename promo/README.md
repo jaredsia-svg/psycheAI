@@ -1,0 +1,511 @@
+# PsycheAI promo video
+
+A 9:16 video (about 53 seconds) for Instagram Reels and Stories, built entirely from this folder:
+the voice, the music and every frame. The website version also plays at the top of the front page.
+
+```
+npm run promo
+```
+
+It makes two versions from the same voiceover, set in `config.json`:
+
+| Version | Ends with | Files |
+| --- | --- | --- |
+| `reel`, for Instagram | "Your first Psyche Card is free! Try it at PsycheAI dot io." (button: psycheai.io) | `out/PsycheAI-reel.mp4` (1080×1920, post this), `out/PsycheAI-reel-music-only.mp4`, `out/PsycheAI-reel-cover.jpg` |
+| `site`, for the front page | "Your first Psyche Card is free! Try it below." | `out/PsycheAI-site.mp4` (720 wide, about 4 MB) and its poster, **also copied into `docs/media/`**, which is what the front page plays |
+
+`npm run promo -- site` builds only the named version (the voiceover is always remade).
+After building `site`, commit `docs/media/` so the site serves the new video.
+
+The first run sets up Python in `promo/.cache` and downloads the voice and a speech recogniser
+(about 700 MB, kept for later runs). A full build takes about ten minutes, most of it rendering
+frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright).
+
+## Changing the ending, the link or the colours
+
+Each version in `promo/config.json` has three settings:
+
+```json
+{
+  "reel": { "button": "psycheai.io ↗", "spoken": "Try it at {B} dot I O.", "theme": "light" },
+  "site": { "button": "Try it below ↓", "spoken": "Try it below.", "theme": "light" }
+}
+```
+
+- `button` is the text on the last screen's button, arrow included. A long one shrinks to fit.
+- `spoken` is what the voice says after "Your first Psyche Card is free!". Write `{B}` wherever it
+  should say **PsycheAI**: that is the only way it is pronounced right (see below). Spell an address
+  the way it is said, as the reel's `"Try it at {B} dot I O."` does. A longer ending makes the
+  video a little longer. "Link in bio" is `"button": "Link in bio ↗"`, `"spoken": "Link in bio."`.
+- `theme` is `"light"` (pastel, plum text) or `"dark"` (deep purple, white text).
+
+A version with any other name is built too, into `out/PsycheAI-<name>.mp4`.
+
+## How it is made
+
+1. **`vo.py`** speaks each line with the [LJSpeech](https://keithito.com/LJ-Speech-Dataset/) Piper
+   voice (US English, public domain). The voice varies from take to take, so it speaks every line up
+   to 24 times, has the speech recogniser transcribe each take, and keeps the first one that comes
+   back word for word. Each line prints its score (1.0 is word for word).
+   **PsycheAI** is given as sounds, SY-kee AY EYE, rather than spelling: written as "Psyche AI"
+   the voice ran it into "Psychete AI", and as "Psyche, A. I." it ended a sentence on each letter.
+   The card and report lines, which are lists, are spoken one phrase at a time so the highlights
+   land on the words; `build/vo/marks.json` records where each phrase starts. A second recogniser
+   (a Zipformer transducer, which reports when each word begins) times every word of every line, and
+   the on-screen words are matched to the spoken ones so each pops in as the voice says it.
+2. **`audio.py`** lays one version's lines out into scenes (`build/<version>/timeline.json`), writes an original
+   118 BPM track for them, and mixes the two with the music ducked under the voice.
+3. **`render.mjs`** draws `stage.html` frame by frame in Chromium at 30 fps and encodes it with
+   the mix. The brand mark comes from `docs/copy.js`, so it matches the site.
+
+The script itself (what each scene says) is in `vo.py` (`LINES`) and `stage.html` (the on-screen
+words). Change both together.
+
+The ten scenes, as of October 2026:
+
+| # | Scene | What changed then |
+| --- | --- | --- |
+| 0–2 | The hook: no questionnaire; it is ripped up and *No questions asked.* lands | was "0 questions", now the site's headline |
+| 3 | Digital footprint | |
+| 4 | The data sources fly into the mark | WhatsApp added: four files, two by two |
+| 5 | The Psyche Card, part by part | ends on "and who you sync with", highlighting *Most in sync with* |
+| 6 | The Psyche Report | was "full report"; all five parts, *How you work* its own (a compass). The voice names 01 and 02 together as "the full explanations" (of what the card just showed) and lights them as one, then 03, 04 and 05 in turn |
+| 7 | Psyche Sync | new: "Then sync with a friend to see what clicks." Two friends' cards, *Psyche Sync* in the gradient over a ring closing on a tick (Sync has no score, so none is shown). The full beat carries on through it |
+| 8 | Privacy | |
+| 9 | Your first Psyche Card is free | first a carousel of characters sliding slowly across (the last fifteen before her), easing to a stop on the sample card's Mulan, her name appearing under her |
+
+`audio.py` counts nine shared lines and a closing one (`SHARED`); `BREAK` and `FINAL` in both it and
+`stage.html` are scene 8 and 9. The roll and the Sync scene's two characters use the site's own
+character strip, `docs/media/cast-sprite.webp` and its `.json` (`tools/cast-sprite.mjs`), which
+`render.mjs` passes in as `CAST`, so a new character joins the roll by itself.
+
+## The privacy reel
+
+A second, short reel (about 28 seconds) walks through the privacy page's five steps:
+
+```
+npm run promo:privacy            # after a first npm run promo, which sets up .cache
+npm run promo:privacy -- --vo    # remake its voice too
+.cache/venv/bin/python promo/privacy.py --calm && node promo/render.mjs privacy-calm --video <ffmpeg>
+                                 # the calmer alternative it was compared with, build/privacy-calm
+```
+
+`out/PsycheAI-privacy.mp4` (post this), `out/PsycheAI-privacy-music-only.mp4` and `out/PsycheAI-privacy-cover.jpg`.
+It also writes the privacy page's copy, `docs/media/psycheai-privacy.mp4` (720 wide) and its poster
+`psycheai-privacy-poster.webp` (the cover's frame); commit `docs/media/` after a rebuild.
+`privacy.py` speaks its six lines with the same voice (it imports `vo.py`, whose own lines only run
+when it is run itself), lays them out and writes the music and mix. `privacy-stage.html` draws it, and
+`render.mjs privacy` renders it. The script and scenes:
+
+| Line | On screen |
+| --- | --- |
+| What happens when you load your Instagram file onto PsycheAI? | the Instagram file lands large in the middle, the WhatsApp, Google and Facebook files smaller around it |
+| Your files are loaded on your phone, not uploaded. | Step 1: they land in a phone |
+| Only a short summary is made, with names and handles removed. | Step 2: the same words; they fold into a summary, drawn as the ChatGPT reel's (26 October 2026: *YOUR SUMMARY · de-identified*, a gradient border, four rows), *100–200 KB of text* comes in on "short summary", and on "with names and handles removed" (which appears then) the name is blacked out, *Sarah Kim* becomes *[N1]* and *@jamie.k* *[P1]*, and the email is struck out, *removed* |
+| You review it, leave out any year or topic, and switch off any type of data. | Step 3, the sheet in miniature as the app lays it out (26 October 2026; before, a topic and a chat): *Which years*, a bar a year with *All · 3 yrs · 1 yr*, where '19 and '20 go grey on "year" (*'19, '20 left out*); from "topic" *diagnosis* then *medication* are typed into *Leave out anything mentioning*, each becoming a chip; *What's included*, three types of data least personal first, a scale down its left edge, where *Your searches* switches off on "type"; then *Direct messages* opens and *Jordan Lee [t2]* switches off (the step held a second past its line for it); then *Send this* is pressed. The heading's third part (`.later2`) comes in with the third phrase |
+| The summary is sent encrypted to Google Vertex AI, which never trains on it. | Step 4: *The summary is sent encrypted*; it flies up locked to *Google Vertex AI enterprise*; *Never used to train AI* |
+| Your results come back to you, and PsycheAI keeps none of your data on its server. Even if a hack occurs, there's no data to steal. | Step 5: the sample card and the sample report (`assets/report.png`) come back down; *PsycheAI keeps none of your data on its server*, then *Hacked? No data to steal* (26 October 2026: "no copy" became "none of your data on its server", and "It needs no account" went from the voice and the screen. Not "nothing on its server": it keeps one-way codes and counts, never the reader's data) |
+| See for yourself at PsycheAI dot io. | the mark, *See for yourself*, the reel's button, *The code is public*, *No sign-up · No cookies · No trackers* |
+
+Through Steps 1 to 3 the phone's own screen says *No internet needed* (light green; it no longer
+says *On your phone*), gone as the summary leaves at Step 4: the privacy page's two zones, said where the phone already
+is (a tag above the step label was tried and dropped). The Instagram post (`post-privacy.html`) draws the
+two zones round its cards, their labels in front of the cards.
+
+Steps 1 to 3 happen on the phone, so once the files are in it grows to 1.4 times its size to fill the
+frame, and settles back as Step 4 starts, to leave room for the Vertex AI panel above it. It grows again in Step 5,
+once the panel has gone, with the card and the report inside it.
+
+Each line's take is kept (`build/privacy/p<hash>.wav`, named from its words and pace), so adding or
+changing a line records only that one and the approved takes stay; `--vo` records them all again.
+Each line is said in one take at the main video's pace (0.92, its privacy line's). A first cut
+recorded phrases one by one and sped up to fit 20 seconds, and sounded clipped and robotic; "Where
+does your data go?" came out oddly on "data go", and "It's sent encrypted…" sounded off; it now
+starts "The summary is sent…". An ending on "PsycheAI takes your data privacy very seriously" was
+tried and dropped for "See for yourself".
+
+**Since 25 October 2026 its music is the ChatGPT reel's second half, the groove** (chosen over the launch video's
+track, a lo-fi of its own, and the relationship reel's music set a step up, which `privacy.py --calm` still builds
+into build/privacy-calm): D minor, B flat, F, C at 120, built up over the steps: electric piano, a soft pad and bass
+under the hook; the kick from Step 1; from Step 3 claps on two and four, hats, offbeat stabs, the octave-bouncing
+bass and the plucked hook; a held electric-piano chord to close. Its pad is soft pure tones, slowly swelling and
+filtered low, in place of the ChatGPT reel's sawtooth strings, which were "a bit too jarring" here. Step 5 shrinks the phone and rises it, so its three points (*keeps no
+copy*, *No account needed*, *Hacked? No data to steal*) sit clear under it. The opening says "your data", not "your
+Instagram file". What follows describes the first music, kept for the record.
+The music is the main video's own track, so the two sound like one brand: it opens on the privacy
+break (pads, plucks and bells, no drums), a soft kick and then hats come in under the steps with a
+swoosh into each, and the last card gets the main video's ending (riser, hit, full beat, the bells
+louder with an octave above, and the music swelling on the hit). The words pop in a line at a time
+rather than word by word: on "It's sent encrypted to Google Vertex AI" the word timer lost its place.
+
+## The short reels
+
+```
+npm run promo:shorts             # notes, mbti and coach; or name them: npm run promo:shorts -- coach-misunderstood
+```
+
+Short reels of 20 to 25 seconds for reach, `out/PsycheAI-notes.mp4` and `out/PsycheAI-mbti.mp4` (and a
+cover each), from `shorts.py` (voice, timeline, music) and one stage, `shorts-stage.html`:
+
+| Reel | Lines | On screen |
+| --- | --- | --- |
+| `notes` | Your Instagram has been taking notes on you for years. / It knows you're the one who organises every plan, you give more attention than you ask for, and you're the first to check on a friend who's gone quiet. / So I let PsycheAI read it. / I got Mulan. The organiser with a warm centre. / Comment card, and I'll send you the link. | a phone with a scrolling feed; three habits pop as they are said (Mulan's own patterns, so the reveal is earned; trivia like "saves recipes, never cooks" was tried first, and "goes quiet to recharge", which read as an introvert beside her ENFJ) and are drawn into the phone as it is read; the sample card flips in on the hit; *Comment "CARD"* |
+| `mbti` | I took the MBTI test three times, and got three different answers. / So I loaded my Instagram data instead. / No questions asked. Just what my online patterns actually show. / I got Odysseus. ENTP, with the evidence. / What does yours say? Comment your type. | three test results (INFJ, ESTP, INTP) and a "?"; Instagram on the phone; three of his own signature patterns as his card evidences them (*Rescues every plan with a plan B*, *Talks every group round*, *Same few friends hear it all first*); the Odysseus sample card (`assets/card-odysseus.png`) with its MBTI ringed; the sixteen types scrolling |
+
+| `coach` | Some questions are hard to ask anyone. / What am I most insecure about? / What do I keep trying to prove, and to whom? / What would I regret most, when I'm old? / PsycheAI answers from what your own data shows. / A coach that already knows you. / Ask yours at PsycheAI dot io. | the hook typed out as said, then each question alone on a dusk-plum ground, held for a breath (the regret one longer); the ground warms and, as the voice says PsycheAI answers from your own data, Instagram, Google and WhatsApp fly into the phone and a *Reading your data…* bar fills with its dots flickering, so the claim is seen (added in October 2026, in the voice's own second person rather than the career reel's "So I asked"); then Ask PsycheAI answers the regret question, typed in, in plain words (*You'll wish you'd spent more time with your parents and friends.* … *Don't wait. Call home. Message them. Book the trip.*: a sample reader's, from the kinds of evidence the app reads); *Ask yours*, the address, and last *Your first question is free* |
+
+The music is the main video's instruments in a different key and feel each: `notes` in A minor
+(Am F C G) at 112, curious then bright; `mbti` in D (D A Bm G) at 124, with early claps and swung plucks.
+Both end like the main video: riser, hit, the full beat. `coach-misunderstood` is the same reel opening on *What do people misunderstand about me?*: the gentler first cut, kept to post a few days apart and compare (insecure, then prove, then regret, reads as one story but is heavier). `coach` has a piece of its own, hopeful: E minor to G (Em C G D) at 88, a rolling piano with an echo and strings swelling through the questions, lifting into a light beat and bells as the answer types, ending on a bright chord. (A slower, sombre version in D minor, with the narration at 1.0, was tried first.)
+
+### The roast reel
+
+```
+npm run promo:shorts -- roast    # out/PsycheAI-roast.mp4, about 31 s
+```
+
+Built by `shorts.py` like the others, but with a stage of its own, `roast-stage.html`, and music of its own.
+It sells the free roast under every card (`secretRoast` in `docs/copy.js`): the card is nice, then *Reveal my roast*.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | My Psyche Card was so nice. / Then I clicked, reveal my roast. | Sherlock's sample card (Daniel Okafor, `assets/card-sherlock.png`) on a warm sand ground with an orange glow round it and *so nice* in orange (pink read as too sweet for a man's reel), then the site's roast cover; a finger presses the button |
+| 1 | You've saved three hundred cooking videos. / Your most cooked dish is instant noodles. | a saved grid of recipes counting to 300, greyed out under a *#1 most cooked 🍜* stamp |
+| 2 | You've viewed fifty eight apartments. / You still live with your parents. | apartment listings scrolling past, each *Viewed*, the count climbing to 58; at the punchline the rest dim and *Mum and Dad's: your room since 1999 · rent $0 · Still here* lands, hidden until then |
+| 3 | You've searched, is it too late to, twenty three times. / You're only twenty seven. | a search bar typing *is it too late to* as it is said, then *…move abroad*, *…change careers*, *…start over* dropping in under it as the count runs to 23; at the punchline they go dark and *You're only 27.* lands large |
+| 4 | Then it tells you what an honest friend would. | *What an honest friend would tell you* (the report's `bonusAdvice`), typed in: *You're not lazy. You're scared of choosing wrong.* *Chasing the perfect choice is what keeps you stuck in analysis paralysis.* *Thinking it through feels like progress. It isn't.* *It's not too late. It just gets later every time you search.* *Pick one. Start badly. Start today.* |
+| 5 | Your roast is free with every card. Comment roast, if you're brave. | *Comment "ROAST"*, the address |
+
+Burns 1 to 3 are ash and ember rather than the brand's colours: a charcoal ground lit red from below, charcoal
+panels, desaturated pictures, a dark-red ROAST #n badge; the set-up shows whole as it is said, and the punchline
+slams in, in ember red, with a red flash in from the edges and a shake (a first cut in the brand's pinks and
+purples read as too friendly). The honest friend, by contrast, is in the brand's colours, but only its words:
+*an honest friend* and the card's heading in the gradient, the card edged in it, on a dark plum ground (a full
+gradient background was too loud); the ask goes back to the brand's dusk.
+
+The three burns are one person (24 October 2026): the chronic overthinker who saves instead of doing, compares
+instead of choosing, and ends up asking whether it is too late. Each escalates the last, from a laugh (noodles)
+to a life (27). The endings of "is it too late to" are shown, not said, so the hardest beat stays short;
+"move abroad" rather than "further my studies" (Singapore and British) or "go back to school" (American), so
+it reads the same everywhere. Replaced: "k." sent 214 times and 47 people left on read, including your dad.
+The cover is *You're only 27.* just after it lands. "Only" (24 October) turns the punchline: the fear is absurd at 27, which sets up the honest friend's *It's not too late*.
+
+The burns are a made-up sample, written to the roast prompt's own rules: behaviour, never looks, health or
+romance, and simple enough to get on one hearing. Earlier ones were cut: "your thumb has never been in better
+shape" and "combined revenue: the likes" were too clever by half; 600 workout videos was too trivial (a skill
+everyone wants, cooking, replaced it); "you never like theirs back" gave way to temper. The honest friend is
+what is under all three burns, not the burns turned round (a first cut ticked off one tip per burn). Sherlock
+rather than Mulan or the Tin Man: his card's late-night saves and small circle set the burns up, where the Tin
+Man's checking in on quiet friends would contradict "left 47 people on read"; and the start has no hearts or
+sparkles, only a glow, for a reel in a man's voice.
+
+The voice is Piper's Ryan (`en_US-ryan-high`, `voice` in its entry, passed to `vo.py` as `PROMO_VOICE`; download
+it into `.cache/voices` like the others), at 0.85. LJSpeech, then a British voice (Alan), then a darker one were
+tried: too light against Sherlock, then too deep. "Read" is written "red", or the voice says it in the present.
+
+Each burn is recorded as set-up and punchline apart (`punch` in its entry): `shorts.py` puts silence before the
+punchline so it starts on a beat. The music is brass house, F major (F Dm Bb C) at 124: piano stabs and a soft
+kick under the nice card; a reversed crash and riser into four on the floor, open hats on the offbeat, a funky
+octave bass and a bright brass hook; the drums drop out for the beat before each punchline and a horn hit lands
+on it. From the honest friend to the end, a soft crash and then the breakdown: the same chords held, a pad, the
+piano on the one, the bass held, no drums; at the very end a reversed cymbal and a swell rise gently into a last
+held F, with nothing struck under it. (Endings tried and dropped: a horn hit and a struck piano chord, which
+landed as a bang; an anthem over a house beat, which kept the roast's energy; and a new calm piano piece, which
+broke from the rest of the reel.) The punchlines land gently (24 October 2026): a soft reverse swell into a piano chord with the bass under it, where a
+horn hit, a crash and a boom were too harsh; and from the honest friend to the end the music is a third louder
+(`music_lift`). Two earlier pieces were dropped: B flat at
+132 with a music box (too childish) and C minor trap at 140 (too sombre).
+
+### The career reel
+
+```
+npm run promo:shorts -- career   # out/PsycheAI-career.mp4, about 38 s
+```
+
+Its own stage, `career-stage.html`, and Ryan's voice, as the roast.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | I finally got the promotion I'd been chasing for years. … But I dread work even more today. | typed out on a dusk ground as said, the second sentence after a one-second beat, when the voice reaches it; a rising chart |
+| 1 | I kept wondering why. … Was I chasing the wrong thing? | only a search bar: the two doubts typed in as said, piling up as recent searches (searches are among what the app reads) |
+| 2 | So I asked PsycheAI, and it answered from my own data. | the ground warms; the dots after *PsycheAI* flicker while Instagram, Google and WhatsApp fly into the phone and a *Reading your data…* bar fills; Ask PsycheAI, the question asked |
+| 3 | The promotion took you away from what you love. … You don't need a bigger title. You need a role where helping people grow is the job. | the answer typed in, the evidence in the voice's pause and the advice as it is said: your longest messages are you getting a laid-off friend hired through your connections, or talking someone through a move at 1am; now your days are managing up and down, politics, and meetings for show; *You don't need a bigger title. You need a role where helping people grow is the job.* (a sample reader's) |
+| 4 | Your Psyche Report goes further. What drives you, your edge at work, what holds you back, and careers that suit you. | four cards from the report as each is named: *What drives you* (the top two and the bottom one of the ten motivations as bars, *Care for your people* 92, *Self-direction* 74, *Influence (status, control)* 18, with *ENFJ* beside the title: a promotion mostly rewards influence, so the number backs the answer and shows the report measures); *Your edge*, *What's holding you back*, *Careers that suit you* with *Suits you best* and *Likely to drain you* |
+| 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
+
+**The promotion script** (28 October 2026). The first script (*Struggling with your job? … You don't hate your
+job. You hate the routine parts of it.*) asked what everyone asks and answered what anyone could say. This one
+opens on a story with a twist, the promotion that made work worse: the arrival fallacy, and the person promoted out
+of the work they were good at. The answer says why from something only their messages show (the friend helped
+into a job, the 1am talk), against what the promotion brought (managing up and down, politics, meetings for
+show). The report's cards follow it: *Your edge* is explaining hard things, *What's holding you back* is chasing
+titles that take them further from people, and *Likely to drain you* lists admin-heavy management.
+
+The answer is held a second and a half once it is fully typed. "Your edge," on its own came out garbled, so it is said "your edge at work,". The first answer, "you hate
+following a plan you didn't help make", was hard to follow and did not match the evidence under it. The music:
+B minor (Bm G D A) at 96 for the questions, a muffled piano and a slow pulse; a swell into D major (D A Bm G) for
+the answer, with a light beat of kick, snaps and shaker, a warm bass and a plucked tune; fuller for the report;
+a D chord to close, rolled softly up the piano a note at a time over a swelling pad (struck all at once, it
+landed as a bang).
+
+### The relationship reel
+
+```
+npm run promo:shorts -- relationship   # out/PsycheAI-relationship.mp4, about 42 s
+```
+
+Its own stage, `relationship-stage.html` (the career reel's, reworked), and its own voice: Piper's HFC female
+(`en_US-hfc_female-medium`), at 0.85, chosen from five.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | We fought about the dishes. Again. | on an evening dusk, a plate, the line typed out, *…again.* in pink |
+| 1 | Different topic. Same fight. | first, with music only (`lead` in its entry), the fights that keep coming back as messages, one after another: *You always put your parents before me.* … *You don't listen to me.*; then they blur as the voice names them |
+| 2 | So I asked PsycheAI why we keep fighting over small things, and it answered from my own data. | the career reel's loading: Instagram, Google and WhatsApp fly into the phone, *Reading your data…*, the dots flickering |
+| 3 | It's not the dishes. It's wanting him to notice without being told. … Saying what you need helps a relationship grow. Tell him, and give him the chance to get it right. | the answer typed in, the evidence in the voice's pause and the advice as it is said: to her, telling him makes it count less; she has asked friends "should I really have to tell him?"; her messages go short before a fight, then long two days later; the advice as said (a sample reader's; 28 October 2026, replacing *feeling like you come second*, which read as a line anyone could say) |
+| 4 | Your Psyche Report shows how you love, your attachment style, how you handle conflict, and what you need from the person you love. | four cards, each as it is named: *How you show love* (you give acts of service / you need words of affirmation), *Attachment style*, *How you deal with conflict*, *What you need in a partner* (*Someone who notices without being told*) |
+| 5 | A coach that already knows you. Try it at PsycheAI dot I O. | the line, the address, *Your first Psyche Card is free* |
+
+Only her data is read, so nothing speaks for him or for the couple: the report line was "how to better relate to
+each other" until that was seen to promise a reading of both (Psyche Sync is friends-only). The fights are ones
+that recur; a towel on the floor and the thermostat were cut as too trivial. The music: F sharp minor to A (F#m D A
+E) at 84 on an electric piano with a slow tremolo and a pad; a low pulse under the fights that tightens into
+eighths; the piano alone for the asking; a soft groove for the answer (brushed snare, rim, bass, a vibraphone
+tune); a last A chord rolled softly up the electric piano.
+
+### The comparison reel
+
+```
+npm run promo:shorts -- compare   # out/PsycheAI-compare.mp4, about 30 s
+```
+
+The same question asked of ChatGPT and of PsycheAI, on one screen: ChatGPT's panel above, PsycheAI's below, each
+lit while it answers and dimmed while the other does. Its own stage, `compare-stage.html`; Ryan's voice, as the
+career reel. The music is the relationship reel's electric piano groove in A minor to C, chosen from three tried
+under the same video: a low pulse tightens under ChatGPT's answer, a soft brushed groove with a vibraphone tune
+comes in for PsycheAI's, and its ending stays in its own key, F then G home to a rolled C (the relationship reel's
+ending, in A, sounded like a change of key here).
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | I asked ChatGPT and PsycheAI the same question. What would I regret most about my life when I'm old? | the line, then both panels, the question typed into both at once as the voice reads it out, a little slower than the rest |
+| 1 | ChatGPT gave me a list that could fit anyone. | ChatGPT's real answer, trimmed only: its opening line cut to its two ends (*You might regret the things you kept postponing because you thought you had more time.*) and three of the five headings of its list (*Working too hard*, its *Trading too much of your life for approval or achievement* put plainly, *Being too afraid to try*, *Not being present for your own life*), set larger (24 October 2026: the full list read as a wall); being reworded, the caption no longer says unedited; a grey *Could be anyone* stamp; held about two seconds after the voice, to read it |
+| 2 | PsycheAI read my data first. (written "red", for the past tense) | Instagram, Google and WhatsApp fly into PsycheAI's panel; *Reading your data…* |
+| 3 | And it told me exactly why. | four excerpts of PsycheAI's real answers, typed in at reading pace; an *Only me* stamp in the gradient |
+| 4 | Same question. Only one of them actually knew me. | both panels lit, with their stamps |
+| 5 | Your personal AI coach. Try it at PsycheAI dot I O. | first, before the voice, one complete thought: *Other AI coaches wait for you to describe yourself. PsycheAI already knew you from the start.*; then *Your personal AI coach* and the address |
+
+The camera moves in on each panel while its answer comes in (ChatGPT's, then PsycheAI's as its data loads), and
+back out as the verdict lands on the beat. The groove carries the close until a bar of F and G leads it home
+to the last chord. The point is generic against specific, not good against bad: ChatGPT's answer is thoughtful,
+and the reel says
+only that it could fit anyone. Both answers are the asker's real ones, quoted and trimmed with an ellipsis, never
+reworded, and labelled in plain text rather than with ChatGPT's logo. Run it past someone for comparative
+advertising before paying to promote it. The voice says "Chat G P T"; written as one word it came out
+"chatgbke". The address is `{PsycheAIdotIO}` in `vo.py`, seven even syllables with "Psyche"
+said as "sigh key": given the brand's own sounds, Ryan ran the A and I together.
+
+
+**The second comparison, `compare-insecure`** (24 October 2026): *What am I most insecure about?* The same stage
+(its question and answers are in `CONTENT`, picked by the reel's name), music and close. ChatGPT's answer says
+of itself *I don't know whether this truly describes you. I'm drawing a hypothesis*, so that line is highlighted,
+its stamp is *Just a guess*, and the voice says *ChatGPT admitted it was guessing*. PsycheAI's answer is cut to
+three plain excerpts (left behind; the acts of service it saw in the data, chores and accommodating others; *someone might
+simply stop choosing you*), and both answers are set larger than the first reel's, having fewer words. About 34 s. Two phrases are reworded for a general audience
+(24 October): *contrarian banter* became *cheerful disposition*, and *vetting lease terms* became *handling all
+the logistics*, so this one's caption says the answers are trimmed and lightly reworded, not unedited. It is a woman's answer, so it
+is in a woman's voice (the relationship reel's, `en_US-hfc_female-medium`), and *offering rides* became
+*doing all the chores, always accommodating others* (*handling all the logistics* before it); nothing else in it is gendered.
+
+## The privacy post
+
+`node promo/post.mjs` writes `out/PsycheAI-privacy-post.png`, an Instagram post (1080 x 1350, the
+feed's 4:5) of the privacy page's diagram: the five steps in their two zones and *The code is
+public · psycheai.io*. Its words are the page's, shortened to fit (`post-privacy.html`); change both
+together.
+
+## Keeping the voice on the music
+
+`audio.py` puts every cut on the beat grid (`SNAP`): the half beat in the hook, the beat from the
+data scene on. Each line then
+starts a pickup (`LEAD`, 0.2 s) after its cut. Scenes used to start wherever the last line ended,
+which put the transition hits off the beat. Only the two big moments, the data going in and the end
+card, get the riser and the hit now; the card and report cuts get a soft swoosh into them. The beat
+carries on through Sync with nothing at its cut, and privacy follows on the next beat after Sync's
+line (a pause there, stretched to a whole bar, left the music running on alone and dragging). The
+privacy break is the original drop-out (pads, plucks, bass and bells, no drums), and the ending the
+original riser and hit into the end card, then a fade. (A slower half-time break, a sub-drop into it
+and a big closing chord were tried in October 2026 and dropped: they felt worse.)
+
+## Words the voice says oddly
+
+Write them the way the voice says them right, and check the result with the recogniser:
+**PsycheAI** is given as sounds (`{B}`); **Whatsapp** is spelled with a small *a*, because
+"WhatsApp" is read as two words, slowly, stressed on "app", and said a fifth quicker than the rest of
+its line, in a phrase with "Google" (a phrase may carry its own pace: `('Whatsapp, Google,', 0.8)`); a list of single words is recorded in
+longer phrases, since a word on its own ("Google,") comes out garbled; and a line that should fall at
+its end ends on a full stop ("see how you sync.", where "sync," before "for free" rose).
+
+## When the Psyche Card changes
+
+The card in the video is a picture of the sample card, `assets/card.png`, with where each part
+sits in `assets/card-parts.json`. After changing the card's design, recapture both:
+
+```
+npm run promo:card
+```
+
+It starts the app in mock mode on its own port, opens the sample card full screen, saves the
+picture and measures each part with the same selectors the card guide uses (`syncs` included, for
+the *Most in sync with* highlight). It also saves the sample report's opening, `assets/report.png`,
+for the privacy reel.
+
+## Checking a scene without rendering it all
+
+```
+node promo/render.mjs site --stills '[18.3, 27.4]'
+```
+
+writes `build/site/still-18_3.png` and `build/site/still-27_4.png` from that version's current
+timeline (after a build, or after `vo.py` and `audio.py site`).
+
+## Licences
+
+The voice (LJSpeech) is public domain. The font is Inter (`assets/inter-LICENSE.txt`, SIL Open Font
+Licence). The music is generated by `audio.py`. Mulan appears only as the app's own sword emblem
+and her name, never Disney's artwork.
+
+### The mirror reel
+
+```
+npm run promo:shorts -- mirror   # out/PsycheAI-mirror.mp4, about 23 s
+```
+
+*Who I think I am against what my data says* (24 October 2026). Its own stage, `mirror-stage.html`, and its own
+music; Ryan's voice. Told as a confession: *I always thought I was…, until…*. It opens straight on the first claim
+and goes from the last straight to the close (the hook, and the card with its three lines, were cut; the stage
+keeps them as scenes that never come, `NEVER`).
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | I always thought I was a great listener. / Until PsycheAI put me in my place. | *What I thought* as a chat bubble over *What my data says*: a friend's bad day and his answers to it, five of his to each of theirs; on the punchline the bubble is struck through, *5 : 1* lands, and in text only, *5 messages sent for every 1 received* |
+| 1 | I always thought I was easygoing, and chill. / Until my data showed me otherwise. | *just to confirm* typed into a search of his messages, one from every chat, counting to 96×; *"Just to confirm" 96 times* |
+| 2 | I thought I was over my ex. / Apparently not. | Instagram's recent searches, the same blurred profile row after row, counting to 63×; *Searched her profile 63 times this year* |
+| 3 | You're not who you think you are. / Understand yourself better at psycheai.io (said quickly, as `{PsycheAIdotIOquick}`: the usual form ran the A and I together here). | the two lines, *Your personal AI coach*, the address |
+
+The numbers are shown, never said: the voice only admits it. Each claim is a trait a little less flattering than
+the speaker would admit, answered with something the app reads (his messages, and Instagram's search history).
+Earlier cuts: a lighter set read as quirks (a morning person most active at 1:12 am; spontaneous, searching
+Tokyo); then the data said the numbers aloud (*Three messages sent, for each one received*), which made it a list
+rather than a confession. ("Hmm" is said "ugh" by this voice; the line is now just *Apparently not*.)
+
+The music: lo-fi chill hop in D minor (Dm7 Bbmaj7 Gm7 A7) at 84, swung, from the first word: a warm electric
+piano over a soft pad, a soft boom-bap beat, a bouncing bass (root and fifth on the swung eighths) and vinyl
+crackle. It rolls on smoothly under every *until*, with only a soft accent on the punchline; for the close it opens
+into F major with a bell tune, ending on a held Fmaj9. Tried and dropped (24 October 2026): pizzicato over a
+half-time 808 with a record scratch; this piece with a tape stop on each *until*, which broke the groove; a
+cool-jazz trio with a muted-trumpet wah-wah. The cover is the first number, just after it lands.
+
+### The character reel
+
+```
+npm run promo:shorts -- character   # out/PsycheAI-character.mp4, about 29 s
+```
+
+*Which character are you?* (24 October 2026). Its own stage, `character-stage.html`, and its own music; Ryan's
+voice. Made for viewers to answer with their own card.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | I let PsycheAI read eleven years of my Instagram. / Then it told me which character I am. | the two lines |
+| 1 | Twenty eight characters. / One match. | a slot machine with lights, all 28 scenes spinning past twice with no names, slowing until the last few crawl by, *28 characters. 1 match.* above it |
+| 2 | The Tin Man. | it lands on the Tin Man with a flash and sparkles; his name and *The Wonderful Wizard of Oz* |
+| 3 | Big hearted builder, who shows love by showing up. / Checks in on the quiet ones. / Most in sync with Mulan. | Noah Bennett's Tin Man card (`assets/card-tinman.png`) rises in whole, then the camera moves to each part as it is said, ringed and named (*You are most like*, *Your patterns*, *Most in sync with*), and stays on the syncs |
+| 4 | Who's your Mulan? / Tag them. | Mulan's face ringed and pulsing; *Who's your Mulan? Tag them* |
+| 5 | Which character are you? / Find out at psycheai.io. | the question and the address (*Comment yours* was dropped) |
+
+After the reveal it tours the card and ends on a tag (24 October 2026): a first cut gave three pieces of evidence
+(*"I can fix that" sent 64 times*, birthday messages, saved posts) as chips, which read as a list; the tour shows
+what a reader gets, and *Most in sync with* gives the viewer a friend to tag. The camera's stops come from
+`assets/card-tinman-parts.json`, measured by `capture.mjs` as `card-parts.json` is.
+
+The slot shows all 28 of the catalogue, without names (the owner's choice, 24 October 2026, over the rule that
+the marketing shows only public-domain characters; a first cut spun the six public-domain ones). Their scenes are
+the app's own (`docs/character-art.js`, cropped to the subject by `characterArt`), loaded by the stage from `docs/`.
+The site has no Tin Man sample, so `capture.mjs` adds one (Noah Bennett, written to the card's rules) to the
+gallery in its own browser for the picture only. The spin follows one curve in both the stage and the music
+(`spin` tiles, 58, eased out by `spin_ease`, 2, so the last three or four crawl past and it lands as the reveal
+starts; at 4 it stopped a second and a half early): the music ticks once per tile passing, so the ticks slow as it
+does; then a riser and a
+hit as it lands, a sparkle of bells, and bright pop in C major (C G Am F at 108) to the end.
+
+**Four more characters** (24 October 2026), on the same stage and music: `character-rapunzel`,
+`character-mulan`, `character-odysseus`, `character-sherlock` (`npm run promo:shorts -- character-rapunzel`, and so
+on). The stage takes its character, card, stops and tag from `WHO`, by the reel's name; a reel of five scenes has no
+tag and goes from the card to the close.
+
+| Reel | Voice | The card | Its stops |
+| --- | --- | --- | --- |
+| Rapunzel | HFC (female) | Sofia Reyes (`card-rapunzel.png`) | headline, patterns (*Hope that outlasts the setback*), most in sync with, then *Who's your Sherlock? Tag them* |
+| Mulan | HFC (female) | Emily Carter (`card-char-mulan.png`) | headline, *What motivates you* (care for my people), *Shows care as* (acts of service) |
+| Odysseus | Ryan | Lucas Moreau (`card-char-odysseus.png`) | headline, what motivates you, MBTI (*MBTI of ENTP*, spelled out letter by letter as `{MBTIofENTP}`: as text it was said "ANTP") |
+| Sherlock | Ryan | Daniel Okafor (`card-char-sherlock.png`) | headline, Big Five (openness 86), values and beliefs (look closely before you decide) |
+
+Mulan, Odysseus and Sherlock never show *Most in sync with*, and each highlights parts the others do not. Their
+cards are captured afresh as `card-char-*.png` with their `-parts.json`, so the older reels keep the pictures they
+were made with. A name longer than eleven letters (Sherlock Holmes) is set smaller under the machine.
+
+### Story highlights
+
+```
+node promo/stories.mjs   # marketing/stories/start-1..5.png and privacy-1..4.png, 1080x1920
+```
+
+Still images for the Instagram highlights *Start here* and *Privacy* (25 October 2026), as few as will hold it, one
+page (`stories-stage.html`) with a `<section data-name>` per slide. *Start here* (5): what PsycheAI is, with the
+four data sources it reads; the free card (Emily Carter's Mulan card, large, its key parts named beside it from
+card-char-mulan-parts.json); what else there is (report, Ask PsycheAI,
+Psyche Sync, the roast; "free to start" once, in the heading); the guide as the account's pinned post lays it out
+(every tap, each button a chip). Then, for a reader with no time to wait for Instagram's email (26 October 2026), the same guide for two
+WhatsApp chats instead, shortened the same day to two steps: export 2–3 chats (the full taps: Android ⋮ → More,
+iPhone the contact's name then scroll down; Export chat, Without media; save the file), then load them at psycheai.io. *Privacy* (4): two questions to a story, each answered in the FAQ's own words, shortened, so every claim stays
+literally true (the file never leaves the phone; how the summary is de-identified; no one else can get at it, even
+if PsycheAI were hacked; no training on it; a password only in Instagram, no accounts, results only on the device;
+the airplane-mode check), and the last story to itself, why not ChatGPT: consumer AI against PsycheAI, said as the
+FAQ says it (may train on what you share unless you turn it off; kept until deleted, then up to 30 days more).
+The guide story is headed *Start here.* Text keeps clear of the top 220px and bottom 300px, where Instagram puts its bars.
+
+### The ChatGPT reel
+
+```
+npm run promo:shorts -- chatgpt   # out/PsycheAI-chatgpt.mp4, about 43 s
+```
+
+*Why not just upload my data to ChatGPT?* (25 October 2026): where the data goes with each, and what is kept. It
+keeps to that question: the two answers to the regret question, its first cut of scene 4, belong to *why PsycheAI
+stands out*, since someone who has uploaded their data would not get a generic answer.
+Its own stage, `chatgpt-stage.html`: dark while ChatGPT has the data (its app in dark mode, a dark storm cloud, warnings glowing
+red), then at *Now watch PsycheAI* a white flash and a burst of the brand's three colours in rings wipes the dark away
+from the centre onto the bright ground (25 October 2026: "a bigger visual contrast at the switch"). Cuts are quick:
+each scene holds 0.1 to 0.6 s after its voice, leaves in 0.12 s, and the next opens on a zoom punch. The
+comparison reel's music and Ryan's voice. Every claim about ChatGPT is the FAQ's, about its personal plans.
+
+| Scene | Lines | On screen |
+| --- | --- | --- |
+| 0 | Thinking of uploading your Instagram data to ChatGPT? / Watch this first. | a phone's ChatGPT app in dark mode, drawn generically with its name in plain text (no logo): *What can I help with?*, *instagram-export.zip* attached, the question typed out, a finger reaching for send; a red *✋ WAIT* stamp slams in as it touches. The cover is this moment |
+| 1 | Everything goes up: / your name, friends' messages, photos. | the Instagram icon (the export) with an upload bar; its contents (name, friends' private messages, handles, photos, videos; *Your searches* dropped on 25 October 2026) fly up into one smooth cloud, *ChatGPT's servers* |
+| 2 | It may train on it. / And it's kept until you delete it, then thirty days more. | two warnings under the cloud, each on a hit (25 October 2026: "unless you switch that off" dropped, at the user's ask; "may" keeps it true) |
+| 3 | Now watch PsycheAI. / Your files are read locally on your phone. | the export in a phone (*Read locally, on your phone*), a lock badge slamming onto it, then the privacy video's *✈️ No internet needed* (25 October 2026: worded as the privacy video is) |
+| 3b | On your phone, a summary is made, / your name blanked out, / friends turned into numbers, / contacts and links removed. | *A summary, made on your phone*: a *Your summary* card whose rows write in on "is made", then each cleaned on its own phrase (the FAQ's list): the name under a black bar; *Sarah Kim* → [N1] and *@tom.r* → [P1]; the email, phone and link struck out, *removed*; then, under the card for the rest of the beat, a pill *~150 KB of text · no photos or videos* (moved here from after the send, where it showed for a moment, 25 October 2026) |
+| 3c | You review it before it's sent for analysis, / leave out any year or topic, / and switch off any type of data. (Held 0.8 s longer, 26 October 2026, for a chat switched off.) | *Leave out any year, topic or type of data.*: the review sheet as the app lays it out (26 October 2026; before, a topic and a chat): a finger taps '19 and '20 off on "year" (*All* lets go, *'19, '20 left out*); *diagnosis* then *medication* are typed in, each becoming a chip; the finger switches *Your searches* off on "type" among three types of data, least personal first, then *Direct messages* opens and it switches *Jordan Lee [t2]* off, and presses *Send this* as the voice ends; the sheet shrinks into *Google Vertex AI · enterprise · never trains on it*. |
+| 4 | PsycheAI keeps no copy, and needs no account. / Even if a hack occurs, there's no data to steal. | *PsycheAI's servers*: 0 accounts, 0 reports kept ("0 exports kept" dropped on 25 October 2026), each popping in as a 0 (never another number: it counted down from 9 until 25 October); *Your card and report, saved only on your device*; a shield card for the hack line |
+| 5 | Your data stays yours. / Try it at psycheai.io (`{PsycheAIdotIO}`, the seven even syllables made for Ryan; the quick form sounded off, 25 October 2026). | the line; in the pause after it a *</> The code is public* card (*for you to inspect, on GitHub*), on screen only, not said (25 October 2026); *Your personal AI coach*, the address |
+
+The music (`mood='thriller'`, rewritten 25 October 2026: the ChatGPT half "sounded weird", and the crash at the switch
+and at the end was "a loud clash"): while ChatGPT has the data, D minor under soft strings, a plucked minor arpeggio
+and a gentle pulse, a soft hit on each warning; the last bar before *Now watch PsycheAI* builds (the arpeggio in
+sixteenths, a rising clap roll, the kick on eighths, a swell) straight into a soft bell run (no crash; an octave
+lower than first cut, which was "too piercing") and a bouncy F major groove: kick on every beat, claps on two and four, offbeat chord stabs, an
+octave-bouncing bass and a repeating syncopated plucked hook. It ends on soft strings and a low bell run, no crash. Spoken at 0.8 from the PsycheAI half on (the first three lines stay at 0.85, where they are word for word), with shorter holds: about 42 s.
+(The first cuts had a saw-wave drone and ticking clock, a low boom, then a reversed cymbal and crash.)
+

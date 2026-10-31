@@ -1,361 +1,13647 @@
-// Kindred SPA logic: view routing, profile form, QR generation, camera
-// scanning, and report rendering. All state lives in localStorage.
+// PsycheAI SPA: upload → digest → model → profile → link → compatibility.
+// All state lives in localStorage; the server holds nothing.
 (function () {
   'use strict';
-  const K = window.Kindred;
-  const $ = sel => document.querySelector(sel);
+  // The address this page was opened at, before a friend's link is read and
+  // taken out of it (consumeIncomingLink): what "Copy link" in an app's own
+  // browser has to copy, or the friend's link is lost on the way to Safari.
+  const ARRIVED_AT = location.href;
 
-  const store = {
-    get profile() { try { return JSON.parse(localStorage.getItem('kindred_profile')); } catch (e) { return null; } },
-    set profile(p) { localStorage.setItem('kindred_profile', JSON.stringify(p)); },
-    get history() { try { return JSON.parse(localStorage.getItem('kindred_history')) || []; } catch (e) { return []; } },
-    addReport(report) {
-      const h = store.history;
-      h.unshift({ when: new Date().toISOString(), report });
-      localStorage.setItem('kindred_history', JSON.stringify(h.slice(0, 50)));
+  // The data readers load on demand (loadReaders, index.html's
+  // #reader-scripts), so these are looked up when used rather than held from
+  // the start. Every path that uses them waits for loadReaders first.
+  const lazyGlobal = name => new Proxy({}, {
+    get(target, key) {
+      const found = window[name];
+      if (!found) throw new Error('The data readers are still loading. Try again in a moment.');
+      const value = found[key];
+      return typeof value === 'function' ? value.bind(found) : value;
     },
+  });
+  const IG = lazyGlobal('PsycheInstagram');
+  const Supplement = lazyGlobal('PsycheSupplement');
+  const Digest = lazyGlobal('PsycheDigest');
+  // Scripts kept in a <template> in index.html, loaded in their order once,
+  // on first asking. A failed load can be asked for again.
+  const scriptsLoading = {};
+  function loadScripts(id) {
+    if (scriptsLoading[id]) return scriptsLoading[id];
+    const holder = document.getElementById(id);
+    const sources = holder ? [...holder.content.querySelectorAll('script')].map(node => node.getAttribute('src')) : [];
+    scriptsLoading[id] = sources.reduce((ready, src) => ready.then(() => new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => { delete scriptsLoading[id]; reject(new Error('Part of the page could not be loaded. Check your connection and try again.')); };
+      document.head.appendChild(script);
+    })), Promise.resolve());
+    return scriptsLoading[id];
+  }
+  /** The data readers (zip, Instagram, Google/Facebook, WhatsApp, the digest). */
+  const loadReaders = () => (window.PsycheDigest && window.PsycheInstagram ? Promise.resolve() : loadScripts('reader-scripts'));
+  window.PsycheLoadReaders = loadReaders;
+  const Card = window.PsycheCard;
+  const LLM = window.PsycheLLM;
+  // The profile page and the PDF are two renderings of one document, so every
+  // string and label they share comes from here rather than being written twice.
+  const Copy = window.PsycheCopy;
+  const Shape = window.PsycheReportShape;
+  const TEXT = Copy.TEXT;
+  // The optional sources, in the order the Add your data popouts list them
+  // (TikTok and a journal since October 2026), and what a popout collected of
+  // them: each source's reader output, where one was loaded.
+  const OPTIONAL_SOURCES = ['google', 'facebook', 'tiktok', 'journal'];
+  const loadedSupplements = (collected, keys) => Object.fromEntries(keys
+    .filter(key => collected && typeof collected[key] === 'object' && collected[key]).map(key => [key, collected[key]]));
+  // "Jared", from "Jared Tan": a friend is named by first name on their link.
+  const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
+  // The friend's link a sync was started from, until it lands (adoptComparison).
+  let syncingInvite = null;
+  // Which page of the reader's own report is on screen once it is unlocked:
+  // 'hub' (My Psyche: the card and what to do next) or 'report' (My Report:
+  // Parts 00-04 and the roast). Structured layout only; see renderProfile.
+  let profilePage = 'hub';
+  const TRAIT_LABELS = Copy.TRAIT_LABELS;
+  const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
+  const CARD_ICONS = Copy.CARD_ICONS;
+  const axisLabel = Copy.axisLabel;
+  // Prices in the reader's own currency where docs/prices.js has one — a
+  // rounded local price in the major markets, USD everywhere else. The copy is
+  // written in USD; each "US$5" and "US$2" in it becomes the local price once,
+  // here, before anything is drawn, and the payment is taken in the same
+  // currency (the server charges only the table's amount for it).
+  const Prices = window.PsychePrices;
+  const CURRENCY = Prices.currencyFor(Prices.guessCountry());
+  (function localisePrices() {
+    if (CURRENCY === Prices.DEFAULT_CURRENCY) return;
+    const unlock = Prices.label(CURRENCY, 'unlock');
+    const analysis = Prices.label(CURRENCY, 'analysis');
+    const swap = text => text.replace(/US\$5\b/g, unlock).replace(/US\$2\b/g, analysis);
+    const walk = node => {
+      for (const key of Object.keys(node)) {
+        const value = node[key];
+        if (typeof value === 'string') node[key] = swap(value);
+        else if (value && typeof value === 'object') walk(value);
+      }
+    };
+    walk(Copy.TEXT);
+    walk(Copy.STRUCTURED);
+    document.querySelectorAll('[data-price]').forEach(node => {
+      node.textContent = Prices.label(CURRENCY, node.getAttribute('data-price'));
+    });
+  })();
+
+  const $ = sel => document.querySelector(sel);
+  const KEYS = {
+    profile: 'psycheai_profile',
+    digest: 'psycheai_digest',
+    // A second, wider digest that uploads used to build and keep beside the
+    // standard one. Nothing writes it now — the premium read starts from the
+    // standard digest (see premiumDigestFrom) — and one left over from an
+    // older visit is removed at start-up. Listed so Delete everything does too.
+    deepDigest: 'psycheai_digest_deep',
+    history: 'psycheai_history',
+    // Written the moment a payment clears and before the analysis is asked
+    // for, so a reader who closes the tab, loses signal or runs out of battery
+    // mid-generation comes back to "fetch what you paid for" rather than to a
+    // price. It holds the authorisation, never the report: see the note on
+    // `unlockReceipt` below. Listed here so `clearAll()` covers it — Delete
+    // everything has to take the receipt with the report.
+    unlock: 'psycheai_unlock',
+    // The same idea as `unlock` above, for the two purchases it does not
+    // cover. `unlock` works because premium sections are *detectably* missing:
+    // a receipt with no paid sections beside it means the reader paid and
+    // never collected. Neither of the other two products can be spotted that
+    // way. A paid re-run that never landed leaves the previous report sitting
+    // there looking complete, and a compatibility report that never landed
+    // leaves nothing at all — so the fact that one was paid for has to be
+    // written down before the call and cleared when it arrives.
+    //
+    // It holds the authorisation and the few things needed to ask again. Never
+    // a report: this is the record of an unfinished purchase, not a cache.
+    pending: 'psycheai_pending',
+    // An analysis running on the server right now, by the key the server
+    // handed back when it started.
+    //
+    // This is what turns "I closed the app" from a loss into a pause. The work
+    // does not live in this tab any more — it lives on the server, which was
+    // always true and used to be useless, because the only thing that knew how
+    // to collect it was a closure inside a page that had just been discarded.
+    // Written down, the next page to open picks the job back up and waits for
+    // it, whether that is thirty seconds later or two hours.
+    //
+    // A key and a timestamp, and for a paid run the authorisation needed to
+    // ask again if the server has forgotten. Never a report.
+    job: 'psycheai_job',
+    // Which actions in the structured report's development plan the reader has
+    // ticked off, by a hash of the action's wording. Nothing but those hashes,
+    // and it goes with Delete everything like the rest.
+    plan: 'psycheai_plan',
+    // Set once the full report's PDF has been downloaded, so the note saying
+    // the report lives only on this device stops asking. A new full report
+    // clears it (adoptFullReport).
+    pdfSaved: 'psycheai_pdf_saved',
+    // Someone else's card, from a compatibility link opened before this reader had
+    // one of their own. A friend who taps the link usually has no Instagram
+    // export yet, and Instagram takes hours to email one, so the invite has to
+    // outlive the tab: kept here for INVITE_DAYS and spent on the first
+    // profile this device makes. It was in sessionStorage, which a closed tab
+    // empties, and so lost almost every time.
+    invite: 'psycheai_invite',
+    // The campaign code in the address this reader arrived on (?via=ava), if
+    // any, kept for VIA_DAYS so it survives the wait for an export. Sent with
+    // the analysis and counted by the server as a daily total, never stored
+    // there with anything else. See lib/stats.js.
+    via: 'psycheai_via',
+    // A promo code that came in the address (?promo=AVA), kept for
+    // LINK_PROMO_DAYS so it survives the wait for an export, and applied when
+    // the reader opens the full report's payment sheet. See linkPromo().
+    linkPromo: 'psycheai_link_promo',
+    // The invite-friends code: a random secret, and the public code in the
+    // reader's links (the first 12 hex of the secret's SHA-256). See
+    // lib/referral.js.
+    referral: 'psycheai_referral',
+    // The friend's code this browser arrived on (?ref=), for 60 days.
+    referredBy: 'psycheai_referred_by',
+    // A one-way code of this reader's Instagram account (SHA-256 of the
+    // username and the time of their earliest message or post: accountKeys),
+    // so the server can keep the free card to one per account without ever
+    // seeing the username. Kept so a re-run after a reload still carries it.
+    account: 'psycheai_account',
+    // The same code for a reader who started from WhatsApp chats with no
+    // Instagram (accountKeys): the first one this browser made, sent for any
+    // later chats-only read here too, so new chats on the same device are not
+    // a second free read. A cheap guard, not a proof (README "WhatsApp chats
+    // alone"); Delete everything takes it with the rest.
+    chatsAccount: 'psycheai_chats_account',
+    // The one-way code of each WhatsApp chat in the last read made here
+    // (chatCodes), so a retry after a reload still sends them.
+    chatCodes: 'psycheai_chat_codes',
+    // Which journey steps this browser has already reported today.
+    steps: 'psycheai_steps',
+    // The short personal link (lib/links.js): its lock key — which travels
+    // only in the link, after the # — the id the server answered with, and
+    // which card it was last saved for.
+    link: 'psycheai_link',
+    // A free full report someone gifted this reader (?gift=), and the gift
+    // links this reader has made for others.
+    gift: 'psycheai_gift',
+    // The character a reader guessed before their first card, and how it went.
+    guess: 'psycheai_guess',
+    // Friends' links opened before the latest one, still waiting to sync.
+    invitesMore: 'psycheai_invites_more',
+    // The sync bar's ✕: the friends' links waiting when it was closed.
+    syncBarClosed: 'psycheai_sync_bar_closed',
+    // A gift or won report's banner put away (its token), and a friend's
+    // invite banner put away (its payload). Neither is spent by closing.
+    giftBannerClosed: 'psycheai_gift_banner_closed',
+    inviteBannerClosed: 'psycheai_invite_banner_closed',
+    gifts: 'psycheai_gifts_made',
+    // Set once the server says this account has had its first report, so the
+    // free first-report unlock is never offered again on this device.
+    firstUsed: 'psycheai_first_used',
+    // When a backup was last saved, for the hub.
+    lastBackup: 'psycheai_last_backup',
+    // The reading whose "add more data" tip under Your Data was tapped or
+    // closed (its premiumAt or createdAt), so the tip shows once per reading.
+    dataNudge: 'psycheai_data_nudge',
+    // No longer written (the hub's Ask count once kept a high-water mark here);
+    // listed so Delete everything still clears what an earlier visit left.
+    askOf: 'psycheai_ask_of',
+    // Ask PsycheAI: every question and answer, kept in this browser only (the
+    // server keeps none), newest last; and a payment for questions that was
+    // made but not yet credited, to credit on the next open (openAsk).
+    ask: 'psycheai_ask',
+    // Thumbs up or down on each finding of the reader's own report, with an
+    // optional line of what is closer (October 2026): kept here only, for the
+    // report they were made on (its createdAt), and passed to Ask PsycheAI.
+    marks: 'psycheai_marks',
+    askPending: 'psycheai_ask_pending',
+    // The digest the latest Psyche Report was written from, exactly as it was
+    // sent (Digest.forModel: no numbering, no names), so the report's own
+    // evidence stays on the device beside it. Written as `reportDigestNext`
+    // just before the call and promoted when the report lands, here or in a
+    // tab that rejoins the job (keepReportDigest).
+    reportDigest: 'psycheai_report_digest',
+    reportDigestNext: 'psycheai_report_digest_next',
   };
 
-  function esc(s) {
-    const d = document.createElement('div');
-    d.textContent = String(s);
-    return d.innerHTML;
-  }
-
-  // ---------- view routing ----------
-
-  const views = ['welcome', 'pending', 'edit', 'dashboard', 'scan', 'report'];
-  function show(view) {
-    stopCamera();
-    views.forEach(v => { $('#view-' + v).hidden = v !== view; });
-    window.scrollTo(0, 0);
-  }
-
-  document.addEventListener('click', e => {
-    const nav = e.target.closest('[data-nav]');
-    if (!nav) return;
-    e.preventDefault();
-    const target = nav.dataset.nav;
-    if (target === 'home' || target === 'dashboard') {
-      if (store.profile) { renderDashboard(); show('dashboard'); } else show('welcome');
-    } else if (target === 'edit') { renderForm(); show('edit'); }
-    else if (target === 'scan') {
-      if (!store.profile) { renderForm(); show('edit'); } else renderScan();
+  // The app stored under kindred3_* before the rename. Carry anything left
+  // behind over on first load, so an existing profile survives — there is no
+  // server copy to fall back on.
+  try {
+    for (const [name, key] of Object.entries(KEYS)) {
+      const old = localStorage.getItem('kindred3_' + name);
+      if (old !== null && localStorage.getItem(key) === null) localStorage.setItem(key, old);
+      if (old !== null) localStorage.removeItem('kindred3_' + name);
     }
-  });
+  } catch (error) { /* storage disabled — nothing to migrate */ }
 
-  // ---------- profile form ----------
-
-  function likertFieldset(id, text, checked, lowLabel, highLabel) {
-    let opts = '';
-    for (const v of K.LIKERT) {
-      opts += '<label class="likert-opt"><input type="radio" name="' + id + '" value="' + v + '" required' +
-        (String(checked) === String(v) ? ' checked' : '') + '><span>' + v + '</span></label>';
-    }
-    return '<fieldset class="likert"><legend>' + esc(text) + '</legend>' +
-      '<div class="likert-opts">' + opts + '</div>' +
-      '<div class="likert-ends"><span>' + lowLabel + '</span><span>' + highLabel + '</span></div></fieldset>';
-  }
-
-  function renderForm() {
-    const p = store.profile || {};
-    const ans = p.answers || {};
-    const lls = ans.love_languages || [];
-    const interests = p.interests || [];
-    $('#edit-title').textContent = store.profile ? 'Edit your profile' : 'Build your compatibility profile';
-
-    let html = '<div class="card"><h2>1 · About you</h2>' +
-      '<label>Your first name <input name="name" required maxlength="40" value="' + esc(p.name || '') + '" placeholder="Alex"></label>' +
-      '</div>';
-
-    html += '<div class="card"><h2>2 · Your online presence</h2>' +
-      '<p class="muted">Paste any public text you\'ve written about yourself — Instagram bio, LinkedIn ' +
-      '"about" section, favourite posts. Kindred mines it for interests and personality signals. ' +
-      'It never leaves your browser.</p>' +
-      '<label>Bios / posts / about sections <textarea name="social_text" rows="6" maxlength="20000">' + esc(p.socialText || '') + '</textarea></label></div>';
-
-    html += '<div class="card"><h2>3 · Personality</h2><p class="muted">How much do you agree with each statement?</p>';
-    for (const item of K.BIG_FIVE_ITEMS.concat(K.ATTACHMENT_ITEMS)) {
-      html += likertFieldset(item.id, item.text, ans[item.id], 'Strongly disagree', 'Strongly agree');
-    }
-    html += '</div>';
-
-    html += '<div class="card"><h2>4 · What matters to you</h2><p class="muted">How important is each of these in your life?</p>';
-    for (const v of K.VALUES) {
-      html += likertFieldset('val_' + v.id, v.label, ans['val_' + v.id], 'Not important', 'Essential');
-    }
-    html += '</div>';
-
-    html += '<div class="card"><h2>5 · How you feel loved</h2><p class="muted">Pick your top two love languages.</p><div class="check-grid" id="love-langs">';
-    for (const l of K.LOVE_LANGUAGES) {
-      html += '<label class="check-tag"><input type="checkbox" name="love_languages" value="' + l.id + '"' +
-        (lls.includes(l.id) ? ' checked' : '') + '><span>' + l.label + '</span></label>';
-    }
-    html += '</div></div>';
-
-    html += '<div class="card"><h2>6 · Lifestyle</h2>';
-    for (const q of K.LIFESTYLE) {
-      html += '<fieldset class="likert"><legend>' + q.text + '</legend><div class="choice-row">';
-      for (const opt of q.options) {
-        html += '<label class="check-tag"><input type="radio" name="' + q.id + '" value="' + opt.value + '" required' +
-          (ans[q.id] === opt.value ? ' checked' : '') + '><span>' + opt.label + '</span></label>';
-      }
-      html += '</div></fieldset>';
-    }
-    html += '</div>';
-
-    html += '<div class="card"><h2>7 · Your interests</h2><p class="muted">Pick everything that\'s genuinely you. (We\'ll also add interests detected in your pasted text.)</p><div class="check-grid">';
-    for (const t of K.INTEREST_TAGS) {
-      html += '<label class="check-tag"><input type="checkbox" name="interests" value="' + t + '"' +
-        (interests.includes(t) ? ' checked' : '') + '><span>' + t + '</span></label>';
-    }
-    html += '</div></div>';
-
-    html += '<button class="btn btn-lg" type="submit">Save my profile</button>';
-    $('#profile-form').innerHTML = html;
-
-    const ll = $('#love-langs');
-    ll.addEventListener('change', () => {
-      const checked = ll.querySelectorAll('input:checked');
-      ll.querySelectorAll('input:not(:checked)').forEach(i => { i.disabled = checked.length >= 2; });
-    });
-    ll.dispatchEvent(new Event('change'));
-  }
-
-  $('#profile-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const answers = {};
-    for (const item of K.BIG_FIVE_ITEMS.concat(K.ATTACHMENT_ITEMS)) answers[item.id] = fd.get(item.id);
-    for (const v of K.VALUES) answers['val_' + v.id] = fd.get('val_' + v.id);
-    for (const q of K.LIFESTYLE) answers[q.id] = fd.get(q.id);
-    answers.love_languages = fd.getAll('love_languages').slice(0, 2);
-
-    const socialText = String(fd.get('social_text') || '');
-    const analysis = K.analyzeSocialText(socialText);
-    const traits = K.blendTraits(K.scoreAnswers(answers), analysis);
-    const chosen = fd.getAll('interests').filter(t => K.INTEREST_TAGS.includes(t));
-    const interests = Array.from(new Set(chosen.concat(analysis.interests)));
-
-    store.profile = {
-      name: String(fd.get('name') || '').trim().slice(0, 40) || 'Me',
-      answers, socialText, traits, interests,
-      updated: new Date().toISOString(),
-    };
-
-    // If they arrived via someone's QR link, go straight to the report.
-    const pending = sessionStorage.getItem('kindred_pending');
-    if (pending) {
-      sessionStorage.removeItem('kindred_pending');
-      if (runMatch(pending)) return;
-    }
-    renderDashboard();
-    show('dashboard');
-  });
-
-  // ---------- dashboard ----------
-
-  function profileUrl(payload) {
-    return location.origin + location.pathname + '#p=' + payload;
-  }
-
-  function renderDashboard() {
-    const p = store.profile;
-    if (!p) return;
-    $('#dash-greeting').textContent = 'Hi, ' + p.name + ' 👋';
-
-    const payload = K.encodeProfile(p);
-    QRCode.toCanvas($('#qr-canvas'), profileUrl(payload), {
-      width: 260, margin: 2, color: { dark: '#3b2050', light: '#ffffff' },
-    });
-
-    const bf = p.traits.bigFive;
-    const rows = [['openness', 'Openness'], ['conscientiousness', 'Conscientiousness'],
-      ['extraversion', 'Extraversion'], ['agreeableness', 'Agreeableness'], ['neuroticism', 'Emotional sensitivity']];
-    let html = '<div class="trait-bars">';
-    for (const r of rows) {
-      html += '<div class="trait-row"><span class="trait-label">' + r[1] + '</span>' +
-        '<div class="bar"><div class="bar-fill" style="width:' + (bf[r[0]] || 0) + '%"></div></div>' +
-        '<span class="trait-num">' + (bf[r[0]] || 0) + '</span></div>';
-    }
-    html += '</div><p><strong>Attachment style:</strong> <span class="pill">' + p.traits.attachment.style + '</span></p>';
-    if (p.interests.length) {
-      html += '<p class="tag-row">' + p.interests.slice(0, 12).map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</p>';
-    }
-    $('#dash-traits').innerHTML = html;
-
-    const h = store.history;
-    $('#dash-history').innerHTML = !h.length
-      ? '<p class="muted">No matches yet. Scan someone\'s QR code to get your first compatibility report.</p>'
-      : '<table class="match-table"><thead><tr><th>With</th><th>Score</th><th>When</th><th></th></tr></thead><tbody>' +
-        h.map((m, i) => {
-          const other = m.report.attachmentStyles.find(x => x.name !== p.name);
-          return '<tr><td>' + esc(other ? other.name : '?') + '</td>' +
-            '<td><span class="score-pill s' + Math.floor(m.report.total / 20) + '">' + m.report.total + '</span></td>' +
-            '<td class="muted">' + new Date(m.when).toLocaleString() + '</td>' +
-            '<td><a href="#" data-report="' + i + '">View report →</a></td></tr>';
-        }).join('') + '</tbody></table>';
-  }
-
-  $('#dash-history').addEventListener('click', e => {
-    const a = e.target.closest('[data-report]');
-    if (!a) return;
-    e.preventDefault();
-    const m = store.history[Number(a.dataset.report)];
-    if (m) { renderReport(m.report); show('report'); }
-  });
-
-  $('#copy-link').addEventListener('click', () => {
-    const url = profileUrl(K.encodeProfile(store.profile));
-    navigator.clipboard.writeText(url).then(
-      () => { $('#copy-link').textContent = 'Copied! ✓'; setTimeout(() => { $('#copy-link').textContent = 'Copy my profile link'; }, 2000); },
-      () => { prompt('Copy this link:', url); }
-    );
-  });
-
-  // ---------- scanning & matching ----------
-
-  function extractPayload(text) {
-    const s = String(text || '').trim();
-    const m = s.match(/#p=([A-Za-z0-9_-]+)/);
-    return m ? m[1] : s.replace(/\s+/g, '');
-  }
-
-  function runMatch(rawTextOrPayload) {
-    const me = store.profile;
-    const other = K.decodeProfile(extractPayload(rawTextOrPayload));
-    if (!other) return false;
-    const report = K.buildReport(me.name, other.name, me.traits, other.traits, me.interests, other.interests);
-    store.addReport(report);
-    renderReport(report);
-    show('report');
-    return true;
-  }
-
-  function renderScan() {
-    $('#scan-alert').innerHTML = '';
-    $('#paste-input').value = '';
-    $('#scan-status').textContent = '';
-    const btn = $('#start-scan');
-    btn.disabled = false;
-    btn.textContent = 'Start camera';
-    show('scan');
-  }
-
-  $('#paste-form').addEventListener('submit', e => {
-    e.preventDefault();
-    if (!runMatch($('#paste-input').value)) {
-      $('#scan-alert').innerHTML = '<div class="alert">That doesn\'t look like a valid Kindred code or link. Ask them to copy the link from their dashboard.</div>';
-    }
-  });
-
-  let stream = null, scanning = false;
-
-  function stopCamera() {
-    scanning = false;
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  }
-
-  $('#start-scan').addEventListener('click', async () => {
-    if (scanning) return;
-    const status = $('#scan-status');
+  const store = {
+    read(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (error) { return fallback; }
+    },
+    write(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { return false; }
+      if (key === KEYS.profile) keepStorage();
+      return true;
+    },
+    remove(key) { try { localStorage.removeItem(key); } catch (error) { /* nothing to drop */ } },
+    clearAll() { for (const key of Object.values(KEYS)) { try { localStorage.removeItem(key); } catch (error) { /* blocked */ } } },
+  };
+  // Once there is a card to lose, the browser is asked to keep this site's
+  // storage through a phone running low on space (26 October 2026). Chrome and
+  // Safari answer quietly, granting it to a site the reader uses or has
+  // installed; Firefox would ask out loud, so it is not asked there. It does
+  // not survive the reader clearing site data, which only a backup does.
+  let storageKept = false;
+  function keepStorage() {
+    if (storageKept) return;
+    storageKept = true;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    } catch (err) {
-      status.textContent = 'Camera unavailable (' + err.name + '). Use the paste box instead.';
+      const s = navigator.storage;
+      if (!s || typeof s.persist !== 'function' || /Firefox\//.test(navigator.userAgent)) return;
+      Promise.resolve(typeof s.persisted === 'function' ? s.persisted() : false)
+        .then(kept => kept || s.persist()).catch(() => {});
+    } catch (error) { /* not offered here */ }
+  }
+  if (store.read(KEYS.profile, null)) keepStorage();
+  store.remove(KEYS.deepDigest);
+
+  // ---------- how many analyses this browser has already had ----------
+  //
+  // Deliberately NOT in KEYS, which is the whole point of it: `clearAll()`
+  // iterates KEYS, so anything listed there is wiped by "Delete everything" —
+  // and "delete everything, then upload again" was exactly the free way round
+  // the allowance. Kept apart, with this comment, so nobody tidies it into
+  // KEYS later and quietly reopens that door.
+  //
+  // What it is not: enforcement on its own. Clearing site data, a private
+  // window or a different browser all reset it; what the server holds is one
+  // free card per Instagram account (lib/referral.js), by a one-way code of
+  // the username. The
+  // real ceiling on spend is server-side and global — lib/budget.js — and this
+  // is a fair-use allowance that keeps honest readers honest and tells them
+  // plainly what the next run costs. The README says so in the same words.
+  const RUNS_KEY = 'psycheai_runs';
+  // Overridden by /api/status so the number here and the number the server
+  // reasons about cannot drift; this is only the value used before status
+  // lands, and on a server too old to report one.
+  let freeAnalyses = 1;
+
+  function runCount() {
+    const raw = store.read(RUNS_KEY, 0);
+    const count = typeof raw === 'number' ? raw : Number(raw && raw.count);
+    return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  }
+
+  function recordRun() {
+    store.write(RUNS_KEY, runCount() + 1);
+  }
+
+  /**
+   * Persist the digest, and say so when it does not fit.
+   *
+   * `store.write` swallows a quota failure and returns false. The profile's
+   * own write has always checked that and warned; the digest's four did not,
+   * which is the one way a browser ends up holding a report whose evidence is
+   * gone — the two are separate localStorage entries, and the report is
+   * written first. What the reader saw afterwards was a confidence card
+   * claiming Instagram was loaded and a re-run button that threw when pressed.
+   *
+   * Both halves of that are fixed elsewhere (the sources list reads the digest
+   * for the Instagram row now; rerunWithAdditionalData asks for the export
+   * back instead of dereferencing null). This is the half that says it at the
+   * moment it happens, rather than leaving the reader to find out later.
+   *
+   * #profile-alert rather than a per-caller slot: all four callers land on the
+   * report a moment later — two through runAnalysis, two as the premium dialog
+   * closes — and renderProfile does not clear that element, so a message
+   * written here survives the navigation and is read where it makes sense.
+   */
+  function writeDigest(digest) {
+    if (store.write(KEYS.digest, digest)) return true;
+    flash('#profile-alert', TEXT.digestTooLarge);
+    return false;
+  }
+
+  /** True when the next analysis is past this browser's free allowance. */
+  function mustPayForAnalysis() {
+    return runCount() >= freeAnalyses;
+  }
+
+  const state = {
+    profile: store.read(KEYS.profile, null),
+    digest: store.read(KEYS.digest, null),
+    // The parsed Instagram export itself, in memory only and only for as long
+    // as this page lives. It is what "Add / change data & re-run analysis"
+    // needs to add a Google or Facebook export without asking for the
+    // Instagram one again, and it is exactly the raw material this app's
+    // privacy story says never touches a disk. A reload loses it, and the
+    // re-run then asks for the archive back — see rerunWithAdditionalData.
+    signals: null,
+    // The WhatsApp chats a digest was built from when there was no Instagram
+    // (Digest.buildFromSupplements), in memory only like `signals`: the
+    // reader's name as the chats show it, and each chat's title, for their
+    // own name on the card and the one-way code of a chats-only read.
+    chats: null,
+    // The parsed chat files themselves, in memory only (October 2026): the
+    // last set the data popout summarised, so a chat added later in the same
+    // visit joins them rather than starting a new set.
+    waChats: null,
+    server: { ready: false, mock: false, model: null },
+  };
+
+  // ---------- html helpers ----------
+
+  function esc(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /**
+   * Applies the styles that cannot be written as markup.
+   *
+   * Three things in this app are positioned from data rather than from CSS: a
+   * trait bar's width, the confidence meter's width, and the compatibility
+   * ring's --pct. All three used to travel as style="" attributes inside
+   * generated HTML, and all three stopped working the moment the CSP dropped
+   * 'unsafe-inline' from style-src — silently, because a refused inline style
+   * is not an error. Removing this function and watching what happens is worth
+   * doing once: the bars do not vanish, they all render *full*. Width falls
+   * back to the fill's natural size inside its track, so every trait reads 100
+   * next to a number saying 44, while the ring falls the other way — --pct
+   * defaults to 0 and it draws empty next to a score of 66. Wrong in two
+   * directions at once, and neither looks broken enough to notice.
+   *
+   * CSSOM writes are not governed by style-src, so the value rides over as a
+   * data attribute and is applied here once the markup is in the document.
+   * Anything that writes innerHTML which might contain one of these has to
+   * call this afterwards, which is why the assignments go through setHtml
+   * below rather than being written out individually.
+   */
+  function applyDataStyles(root) {
+    const scope = root || document;
+    scope.querySelectorAll('[data-fill]').forEach(node => {
+      node.style.width = Number(node.getAttribute('data-fill') || 0) + '%';
+    });
+    // The structured layout's bipolar bars place a band and a marker along the
+    // track, which is a position rather than a width.
+    scope.querySelectorAll('[data-left]').forEach(node => {
+      node.style.left = Number(node.getAttribute('data-left') || 0) + '%';
+    });
+    scope.querySelectorAll('[data-pct]').forEach(node => {
+      node.style.setProperty('--pct', String(Number(node.getAttribute('data-pct') || 0)));
+    });
+  }
+
+  /** innerHTML, plus the styles that had to be left out of it. */
+  function setHtml(element, html) {
+    element.innerHTML = html;
+    applyDataStyles(element);
+    return element;
+  }
+
+  function paragraphs(text) {
+    return String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
+      .map(p => '<p>' + esc(p) + '</p>').join('');
+  }
+
+  function list(items, className) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '';
+    return '<ul class="' + (className || '') + '">' + values.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
+  }
+
+  // The chips under a Big Five bar, reused wherever a claim has to show what
+  // put it there. Compatibility claims carry these; profile points do not, so
+  // this returns nothing rather than an empty row when there is no evidence.
+  function evidence(items) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '';
+    return '<p class="trait-evidence">' +
+      values.map(e => '<span class="ev">' + esc(e) + '</span>').join('') + '</p>';
+  }
+
+  function points(items) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '<p class="muted">' + esc(TEXT.pointsEmpty) + '</p>';
+    return '<dl class="points">' + values.map(item =>
+      '<dt>' + esc(item.title) + '</dt><dd>' + esc(item.detail) +
+      evidence(item.evidence) + '</dd>').join('') + '</dl>';
+  }
+
+  function tags(items) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '';
+    return '<p class="tag-row">' + values.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</p>';
+  }
+
+  // The model is asked for exactly one emoji, but a model asked for one emoji
+  // will occasionally send a word, a sentence, or three. Keep it only if it is
+  // plausibly a pictograph: no ASCII, and short once ZWJ sequences and skin
+  // tone modifiers are accounted for.
+  function safeIcon(value) {
+    const glyphs = Array.from(String(value || '').trim());
+    if (!glyphs.length || glyphs.length > 8) return '✳️';
+    if (glyphs.some(g => g.codePointAt(0) < 0x2000)) return '✳️';
+    return glyphs.join('');
+  }
+
+  // `noun` is what this field was called when it held an abstract noun rather
+  // than a character, so a profile saved before that change still renders.
+  const essenceName = essence => (essence && (essence.character || essence.noun)) || '';
+
+  // ---------- the psyche card ----------
+  //
+  // The report at a glance, above the writing. Everything on it is read off the
+  // same `report` the sections below render, so the two cannot disagree — there
+  // is no second copy of any of this to keep in sync.
+  //
+  // It is laid out at one fixed size and then scaled to fit, rather than reflowed
+  // responsively. A card that reflows fits every screen and looks composed on
+  // none of them, and the requirement here is the opposite: one screen, no
+  // scrolling, on a phone and on a laptop alike. Fixed geometry plus a scale
+  // factor gives that on both, and keeps a single layout to reason about.
+  // Width is fixed so the design is stable — the same three columns, the same
+  // type sizes, on every screen. Height is *measured* rather than fixed, because
+  // a real report's titles run longer than any number typed here would allow
+  // for, and a card with a hardcoded height silently clips the last row when
+  // they do. That is exactly what the first version of this did.
+  const CARD_W = 1000;
+
+  // How much vertical room the inline preview may take on the page.
+  const PREVIEW_MAX_H = 460;
+  // Height set aside at the foot of the full-screen view for the download bar.
+  const CARD_BAR_SPACE = 84;
+
+  // Four of the five traits, in a fixed order rather than picked out by
+  // score — extraversion is left off deliberately, since the MBTI block
+  // above already carries the E/I letter and showing it a second time here
+  // would be the same finding stated twice on one card.
+  const BIG_FIVE_CARD_KEYS = ['openness', 'conscientiousness', 'agreeableness', 'neuroticism'];
+  // "Conscientiousness" is one solid word with no space for the browser to
+  // wrap at, so at this column's width it ran past the card edge rather than
+  // dropping to a second line the way "Openness to experience" does. The card
+  // is a compact summary rather than the full report, so it trims the trait
+  // to "Conscientious" here instead. TRAIT_LABELS itself is left alone, since
+  // the full written report has room for the whole word.
+  const CARD_LABEL_OVERRIDES = { conscientiousness: 'Conscientious' };
+
+  // The mark as inline SVG, from the same path data the nav, the PDF and the QR
+  // label draw. `currentColor` so the one markup works on the card's light
+  // header without a second copy in a different colour.
+  function brandMarkSvg(className) {
+    const mark = Copy.BRAND_MARK;
+    return '<svg class="' + className + '" viewBox="0 0 ' + mark.viewBox + ' ' + mark.viewBox + '" ' +
+      'fill="none" stroke="currentColor" stroke-width="' + mark.strokeWidth + '" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      mark.paths.map(d => '<path d="' + d + '"/>').join('') +
+      (mark.dot ? '<circle cx="' + mark.dot.cx + '" cy="' + mark.dot.cy + '" r="' + mark.dot.r +
+        '" fill="currentColor" stroke="none"/>' : '') +
+      '</svg>';
+  }
+
+  const cardLab = (icon, label) =>
+    '<p class="pc-lab"><span class="pc-lab-icon" aria-hidden="true">' + esc(icon) + '</span>' +
+    '<span class="pc-lab-text">' + esc(label) + '</span></p>';
+
+  // Split on a sentence-ending mark followed by whitespace, keeping the mark
+  // with the sentence it closes.
+  function splitSentences(text) {
+    return String(text || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+  }
+  const firstSentence = text => splitSentences(text)[0] || '';
+
+  // One sentence off the strongest thing the report found. The `detail` runs
+  // two or three sentences and the first carries the finding; the `title` is
+  // a headline rather than a sentence, so it is only a fallback and gets a
+  // full stop put on it.
+  function strengthSentence(rows) {
+    const top = (rows || []).find(row => row && (row.detail || row.title));
+    if (!top) return '';
+    const detail = String(top.detail || '').trim();
+    if (detail) return firstSentence(detail);
+    const title = String(top.title || '').trim();
+    return title ? title.replace(/[.!?]*$/, '') + '.' : '';
+  }
+
+  // Four sentences written by the model as their own field — see
+  // cardHighlights in lib/prompts.js — condensing the two paragraphs of
+  // report.summary specifically for the card: the first two sentences summarize
+  // the first paragraph, the next two summarize the second. Genuine
+  // summarizing, from the model that wrote those paragraphs, rather than an
+  // excerpt assembled at read time.
+  //
+  // Two fallbacks exist only for a report saved before this field existed,
+  // oldest first: the previous approach — the opening two sentences of
+  // report.summary itself, plus one dedicated relationship strength and one
+  // dedicated career strength, read straight off relationship.strengths and
+  // career.strengths — and finally report.card.summary, the QR-coded card's
+  // own two-sentence line, if even that stitching finds nothing.
+  function cardBlurb(report) {
+    const highlights = String((report && report.cardHighlights) || '').trim();
+    if (highlights) return highlights;
+    const summary = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
+    const opening = splitSentences(summary).slice(0, 2);
+    const relationship = strengthSentence(report && report.relationship && report.relationship.strengths);
+    const career = strengthSentence(report && report.career && report.career.strengths);
+    const sentences = [...opening, relationship, career].filter(Boolean);
+    if (sentences.length) return sentences.join(' ');
+    return String((report && report.card && report.card.summary) || '').trim();
+  }
+
+  const titlesOf = (rows, limit) => (rows || []).slice(0, limit)
+    .map(row => (row && (row.title || row.name || row.value || row.belief)) || '')
+    .filter(Boolean);
+
+  /**
+   * The card's markup, from a full report.
+   *
+   * Deliberately omits two things the written report carries, and the studio
+   * ("Marvel", "Pixar"), which neither shows: the comparison is to the
+   * character's temperament and naming the studio invites the reader to check
+   * the costume instead. Attachment style is dropped because this is the surface most likely
+   * to be shown to somebody else, and it is the most intimate line in the
+   * report. The QR code is dropped because this is the reader's own page, where
+   * they already have one.
+   */
+  function psycheCardHtml(report, options) {
+    if (!report) return '';
+    const own = Boolean(options && options.own);
+    return psycheStoryHtml(report, own);
+  }
+
+  // ---------- the structured layout's card: one portrait canvas ----------
+  //
+  // 1080 x 1920, the size of a phone story, on screen and in the export alike,
+  // so there is one card and one image rather than a layout that changes
+  // shape with the screen. Read top to bottom the way a phone is held: who
+  // you are most like, your three patterns, your type and your traits side by
+  // side, what you stand for and what you are into, then how you give and
+  // want care. Bars and rings are inline SVG with their sizes as attributes,
+  // so the exported image draws them without the page's script.
+  // The height, 1920, is fixed in the stylesheet (.psyche-card.pc-story).
+  const STORY_W = 1080;
+
+  function storyBar(value) {
+    const v = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    return '<svg class="pc-sbar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">' +
+      '<rect class="pc-sbar-track" width="100" height="10" rx="5"/>' +
+      (v ? '<rect class="pc-sbar-fill" width="' + Math.max(6, v) + '" height="10" rx="5"/>' : '') + '</svg>';
+  }
+
+  function storyRing(value) {
+    const v = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    const c = 2 * Math.PI * 26;
+    return '<svg class="pc-ring" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<circle class="pc-ring-track" cx="32" cy="32" r="26"/>' +
+      '<circle class="pc-ring-fill" cx="32" cy="32" r="26" stroke-dasharray="' + (c * v / 100).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 32 32)"/>' +
+      '<text class="pc-ring-text" x="32" y="38" text-anchor="middle">' + v + '</text></svg>';
+  }
+
+  /**
+   * The three motivators the summary card shows: the ones the free call
+   * named, or for a report written before it named any, the three highest
+   * of the paid report's ten.
+   */
+  function cardMotivators(report) { return Shape.cardMotivators(report, Copy); }
+
+  /** The card's signature: the site, then the Instagram handle to tag (cardFooter, set out). */
+  function cardSignHtml() {
+    const S = Copy.STRUCTURED;
+    return '<span class="pc-sign-site">' + esc(S.cardSite) + '</span><span class="pc-sign-dot" aria-hidden="true"></span>' +
+      '<span class="pc-sign-tag">' + esc(S.cardTagLead) + '</span><span class="pc-sign-handle">' + esc(S.cardHandle) + '</span>';
+  }
+
+  function psycheStoryHtml(report, own) {
+    const S = Copy.STRUCTURED;
+    const card = report.card || {};
+    const essence = report.essence || {};
+    const name = essenceName(essence);
+    const mbti = report.mbti || {};
+    const five = report.bigFive || {};
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const patterns = signaturePatterns(report);
+    const confidence = Number(card.confidence) || Number(report.confidence && report.confidence.score) || 0;
+    const headline = String(card.headline || '').trim();
+    // Two sentences on why they are like the character — what the structured
+    // card call writes. A report from before that, with the four-sentence
+    // portrait, shows its first two, which open on the same comparison.
+    const blurb = splitSentences(cardBlurb(report)).slice(0, 2).join(' ');
+    const emblem = Copy.emblemSvg(name, 'pc-emblem');
+    // A full scene in place of the medallion, where the character has one.
+    const art = Copy.characterArt(name, 'pc-art');
+    // How firmly each letter was picked, in words: slight, moderate, clear.
+    const strengthWord = strength => (strength
+      ? '<span class="pc-sstrength pc-sstrength-' + esc(strength) + '">' + esc(strength) + '</span>' : '');
+    const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1)).slice(0, 4);
+    const into = titlesOf(report.interests, 3);
+    const syncs = name ? Copy.cardSyncs(report, name) : [];
+    const motives = cardMotivators(report);
+    const chips = list => '<div class="pc-schips">' + list.map(item => '<span>' + esc(item) + '</span>').join('') + '</div>';
+    const loveList = side => (side || []).slice(0, 2).filter(l => l && l.language).map(l =>
+      '<li><span aria-hidden="true">' + esc(LOVE_LANGUAGE_ICONS[l.language] || '💗') + '</span>' + esc(l.language) + '</li>').join('');
+    const label = (icon, text) => '<p class="pc-slab"><span aria-hidden="true">' + esc(icon) + '</span>' + esc(text) + '</p>';
+
+    return '<div class="pc-story-in">' +
+      '<div class="pc-stop">' +
+        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
+        (card.name ? '<span class="pc-sowner">' + esc(card.name) + '</span>' : '<span></span>') +
+        (confidence ? '<span class="pc-sconf" title="' + esc(TEXT.cardConfidence) + '">' + storyRing(confidence) + '</span>' : '<span></span>') +
+      '</div>' +
+      '<div class="pc-shero' + (art ? ' pc-has-art' : '') + '">' + art +
+        // A card shared by a long link carries no character (see cardFace).
+        (name ? '<p class="pc-skicker">' + esc(TEXT.essenceLabel) + '</p>' +
+        '<div class="pc-sname">' + (art ? '' : '<span class="pc-smedal" aria-hidden="true">' + (emblem || esc(safeIcon(essence.icon))) + '</span>') +
+          // No studio beside the name: the card is the image people post, and a
+          // studio's name there reads as co-branding. Only the sample carries a
+          // source (the Ballad of Mulan, the legend her story comes from).
+          '<div><h2>' + esc(name) + '</h2>' +
+          (essence.source ? '<p class="pc-ssource">' + esc(essence.source) + '</p>' : '') +
+          '</div></div>' : '') +
+        (headline ? '<p class="pc-sheadline">' + esc(headline) + '</p>' : '') +
+        (blurb ? '<p class="pc-sblurb">' + esc(blurb) + '</p>' : '') +
+      '</div>' +
+      // The patterns by name on the left, what motivates them on the right.
+      ((patterns.length || motives.length) ? '<div class="pc-sgrid">' +
+        (patterns.length ? '<div class="pc-spanel">' + label(CARD_ICONS.patterns, TEXT.cardPatterns) +
+          '<ol class="pc-spatterns">' + patterns.map(p =>
+            '<li class="pc-pat-' + esc(p.id) + '"><span class="pc-snum">' + esc(patternNumber(p.id)) + '</span>' +
+            '<b>' + esc(p.name) + '</b></li>').join('') + '</ol></div>' : '') +
+        (motives.length ? '<div class="pc-spanel">' + label(CARD_ICONS.motivators, S.titles.motivators) +
+          '<ol class="pc-smotives">' + motives.map(key =>
+            '<li><span class="pc-snum">' + (motives.indexOf(key) + 1) + '</span><b>' + esc(S.motivators[key].label) + '</b></li>').join('') +
+          '</ol></div>' : '') +
+      '</div>' : '') +
+      '<div class="pc-sgrid">' +
+        '<div class="pc-spanel">' + label(CARD_ICONS.type, TEXT.cardType) +
+          '<ul class="pc-sletters">' + (mbti.letters || []).map(l => {
+            const pole = axisLabel(l.choice, l.axis);
+            return '<li><b>' + esc(l.choice || '') + '</b><span>' + esc(pole.name) + '</span>' + strengthWord(l.strength) + '</li>';
+          }).join('') + '</ul></div>' +
+        '<div class="pc-spanel">' + label(CARD_ICONS.bigFive, TEXT.cardBigFive) +
+          // Four traits: extraversion is the E/I letter beside it.
+          '<ul class="pc-straits">' + Object.keys(TRAIT_LABELS).filter(t => five[t] && t !== 'extraversion').map(t =>
+            '<li><span class="pc-strait">' + esc(S.cardTraitShort[t] || TRAIT_LABELS[t]) + '</span>' +
+            storyBar(five[t].score) + '<b>' + Math.round(Number(five[t].score) || 0) + '</b></li>').join('') + '</ul></div>' +
+      '</div>' +
+      '<div class="pc-sgrid">' +
+        (standFor.length ? '<div class="pc-spanel">' + label(CARD_ICONS.values, S.cardStandFor) + chips(standFor) + '</div>' : '') +
+        (into.length ? '<div class="pc-spanel">' + label(CARD_ICONS.interests, S.cardInto) + chips(into) + '</div>' : '') +
+      '</div>' +
+      // How they show care, then the three characters theirs is most in sync
+      // with, each in its own box: the cast on every card, and a reason for a
+      // friend who is one of them to make their own. Receiving stays in the
+      // report. A card with no catalogue character (a long link, a retired
+      // one) keeps receiving and giving read across in one panel instead.
+      (syncs.length ? '<div class="pc-sgrid pc-sbottom">' +
+        '<div class="pc-spanel pc-slove-panel">' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) +
+          '<ul class="pc-slove">' + loveList(Copy.givingLove(love.giving)) + '</ul></div>' +
+        '<div class="pc-spanel pc-ssync-panel">' + label(CARD_ICONS.syncs, TEXT.cardSyncs) +
+          '<ul class="pc-ssyncs">' + syncs.map(other => '<li><span class="pc-ssync-art">' +
+            (Copy.characterArt(other, 'pc-ssync-scene', true) || Copy.emblemSvg(other, 'pc-ssync-emblem')) +
+            '</span><b>' + esc(other) + '</b></li>').join('') + '</ul></div>' +
+      '</div>' :
+      '<div class="pc-spanel pc-slove-panel">' +
+        '<div>' + label(CARD_ICONS.loveIn, TEXT.cardLoveIn) + '<ul class="pc-slove">' + loveList(love.receiving) + '</ul></div>' +
+        '<div>' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) + '<ul class="pc-slove">' + loveList(Copy.givingLove(love.giving)) + '</ul></div>' +
+      '</div>') +
+      // On the reader's own card the foot carries the QR code for their link
+      // once it is saved (fillCardQr), and the line moves in beside it.
+      (own ? '<div class="pc-qr-slot"></div>' : '') +
+      '<p class="pc-sfoot">' + cardSignHtml() + '</p>' +
+      '</div>';
+  }
+
+  // ---------- the QR code on the reader's own card ----------
+  //
+  // The reader's one link, so any copy of their card — the image posted to a
+  // story, a screenshot of a screenshot — leads back to it: scanning it opens
+  // what tapping the link does, and counts as their invite. The short link
+  // only. A long one is ~800 characters, far too dense to scan, so without
+  // a short link there is no code. Drawn as SVG squares, so the exported
+  // image carries it crisp at any size.
+  function cardQrSvg(url) {
+    try {
+      const qr = QRCode.create(url, { errorCorrectionLevel: 'M' });
+      const size = qr.modules.size;
+      const cells = qr.modules.data;
+      let d = '';
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) if (cells[y * size + x]) d += 'M' + x + ' ' + y + 'h1v1h-1z';
+      }
+      const box = size + 4;
+      return '<svg class="pc-qr" viewBox="-2 -2 ' + box + ' ' + box + '" shape-rendering="crispEdges" ' +
+        'role="img" aria-label="' + esc(TEXT.cardQrLabel) + '">' +
+        '<rect x="-2" y="-2" width="' + box + '" height="' + box + '" fill="#ffffff"/>' +
+        '<path fill="#241a2e" d="' + d + '"/></svg>';
+    } catch (error) {
+      return '';
+    }
+  }
+  const SHORT_LINK = /^https?:\/\/[^/]+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/;
+  /** Puts the reader's QR code in their card's foot, or takes it out when there is no short link. */
+  function fillCardQr() {
+    const url = SHORT_LINK.test(shortLink) ? shortLink : '';
+    const svg = url ? cardQrSvg(url) : '';
+    for (const card of [$('#psyche-card'), $('#psyche-card-full')]) {
+      const slot = card && card.querySelector('.pc-qr-slot');
+      if (!slot) continue;
+      slot.innerHTML = svg ? svg + '<div class="pc-qr-text"><p class="pc-qr-call">' + esc(TEXT.cardQrCall) + '</p>' +
+        '<p class="pc-qr-site">' + cardSignHtml() + '</p></div>' : '';
+      card.classList.toggle('pc-has-qr', Boolean(svg));
+    }
+  }
+
+  // Scale-to-fit, measured rather than assumed: the card is laid out at
+  // CARD_W x CARD_H and shrunk by whichever axis runs out first, so it lands
+  // whole on a phone and on a laptop without a scrollbar on either.
+  /**
+   * The story is a fixed 1080 x 1920, and a report with long pattern names or
+   * many chips can run past it. Rather than clip, the contents are scaled down
+   * just enough to fit — on screen and, since the clone carries the inline
+   * style, in the exported image too.
+   */
+  // The same card markup goes into more than one place (the page and its full
+  // screen copy), and a character's scene finds its gradients by id. Two
+  // copies would share them, and a browser that resolves the id to the copy
+  // in a closed dialog draws the art with nothing. Each inserted copy gets
+  // ids of its own.
+  let artCopies = 0;
+  function freshArtIds(root) {
+    if (!root) return;
+    for (const svg of root.querySelectorAll('svg.pc-art')) {
+      svg.innerHTML = svg.innerHTML.replace(/pc-art-[a-z0-9]+(?=-)/g, 'pc-art-c' + (++artCopies));
+    }
+  }
+
+  function fitStoryContent(el) {
+    const inner = el.querySelector('.pc-story-in');
+    if (!inner) return;
+    inner.style.transform = '';
+    inner.style.width = '';
+    inner.style.height = '';
+    // A card stretched taller than the story (full screen on a tall phone,
+    // fitGuidedCard) may draw its contents larger, up to this, rather than
+    // leave the extra height empty.
+    const grow = Number(el.dataset.grow) || 1;
+    if (!inner.clientHeight || (grow <= 1 && inner.scrollHeight <= inner.clientHeight + 1)) return;
+    // A search rather than one division: scaling widens the box the text
+    // wraps in, so the content gets shorter as it gets smaller, and a single
+    // ratio over-shrinks it and leaves the foot of the story empty. Eight
+    // halvings land within a fraction of a percent of the largest scale that
+    // still fits.
+    const apply = r => {
+      inner.style.transformOrigin = 'top left';
+      inner.style.transform = 'scale(' + r.toFixed(4) + ')';
+      inner.style.width = (100 / r).toFixed(3) + '%';
+      inner.style.height = (100 / r).toFixed(3) + '%';
+      return inner.scrollHeight <= inner.clientHeight + 1;
+    };
+    let lo = 0.5;
+    let hi = 1;
+    if (grow > 1 && apply(1)) { lo = 1; hi = grow; }
+    for (let i = 0; i < 8; i++) {
+      const mid = (lo + hi) / 2;
+      if (apply(mid)) lo = mid; else hi = mid;
+    }
+    apply(lo);
+  }
+
+  function fitCard(el, availableWidth, availableHeight, options) {
+    if (!el) return;
+    // The card is one fixed portrait canvas, the same on every screen and in
+    // the export, so it never switches to a narrow form.
+    el.classList.add('pc-story');
+    const width = STORY_W;
+    el.style.width = width + 'px';
+    fitStoryContent(el);
+    // offsetHeight is a layout value and ignores the transform already on the
+    // element, so this is the card's natural height at CARD_W whatever scale it
+    // is currently drawn at — no need to reset the transform to measure.
+    const naturalHeight = el.offsetHeight;
+    if (!naturalHeight) return;
+    const scale = Math.min(availableWidth / width, availableHeight / naturalHeight);
+    el.style.transform = 'scale(' + scale + ')';
+    const frame = el.parentElement;
+    if (frame) {
+      frame.style.width = width * scale + 'px';
+      frame.style.height = naturalHeight * scale + 'px';
+    }
+  }
+
+  function essenceBlock(essence) {
+    const name = essenceName(essence);
+    if (!name) return '';
+    // The emoji stands in for the character rather than depicting them: the
+    // actual artwork is somebody else's, and not ours to ship.
+    // The catalogue character's emblem; anything else keeps its emoji.
+    const emblem = Copy.emblemSvg(name, 'essence-emblem');
+    return '<div class="essence">' +
+      '<span class="essence-icon' + (emblem ? ' has-emblem' : '') + '" role="img" aria-label="' + esc(name) + '">' +
+      (emblem || esc(safeIcon(essence.icon))) + '</span>' +
+      '<div><p class="essence-label">' + esc(TEXT.essenceLabel) + '</p>' +
+      // No studio beside the name, as on the card. Only the sample carries a
+      // source (the Ballad of Mulan). Siblings rather than one nested in the
+      // other: the gradient clip on the name would swallow it, and the print
+      // suite only measures elements that have no element children.
+      '<div class="essence-name"><p class="essence-noun">' + esc(name) + '</p>' +
+      (essence.source ? '<span class="essence-source">' + esc(essence.source) + '</span>' : '') +
+      '</div>' +
+      '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
+  }
+
+  function loveLanguageColumn(title, blurb, items) {
+    const rows = (items || []).filter(item => item && item.language);
+    if (!rows.length) return '';
+    return '<div><h3>' + title + '</h3>' + (blurb ? '<p class="muted love-blurb">' + blurb + '</p>' : '') +
+      rows.map(item =>
+        '<div class="love-row love-' + esc(item.strength || 'secondary') + '">' +
+        '<span class="love-icon">' + (LOVE_LANGUAGE_ICONS[item.language] || '💗') + '</span>' +
+        '<div><h4>' + esc(item.language) +
+        '<span class="pill pill-' + esc(item.strength || 'secondary') + '">' + esc(item.strength || '') + '</span></h4>' +
+        '<p>' + esc(item.inPractice) + '</p>' +
+        '<p class="love-why">' + esc(item.why) + '</p></div></div>').join('') + '</div>';
+  }
+
+  function loveLanguageBlock(languages, options) {
+    if (!languages) return '';
+    const withCaveat = !options || options.caveat !== false;
+    // The structured layout's boxes need no line under each heading saying what it means.
+    const blurbs = !options || options.blurbs !== false;
+    const columns =
+      loveLanguageColumn(TEXT.loveReceiving, blurbs ? TEXT.loveReceivingBlurb : '', languages.receiving) +
+      loveLanguageColumn(TEXT.loveGiving, blurbs ? TEXT.loveGivingBlurb : '', Copy.givingLove(languages.giving));
+    if (!columns) return '';
+    return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3><div class="split love-split">' + columns + '</div>' +
+      (withCaveat && languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
+  }
+
+  // Every section opens the same way: a glyph, a title and a line saying what
+  // the section is for. It gives a long page a rhythm to scroll through
+  // instead of a wall of identical cards. Module-level because both the
+  // profile page and the scan page's QR-contents block use it.
+  // `collapsible` turns the heading into a disclosure control for the card
+  // below it — see collapseSections(). The button lives *inside* the `<h2>`
+  // rather than replacing it or wrapping the whole row: that is the canonical
+  // disclosure pattern, it gives the control its accessible name from the
+  // section title for free, and it leaves the document outline intact, which
+  // wrapping the row in a button would not (a heading is not valid button
+  // content). The whole row stays clickable anyway — the delegated handler
+  // listens on `.card-head-toggle`, so a click on the button bubbles to the
+  // same place a click on the title does, and toggles once either way.
+  // `result` is a one-line takeaway, shown in the head so a shut section
+  // still says what it found.
+  function sectionHead(icon, title, sub, collapsible, result) {
+    const chevron = '<span class="card-chevron" aria-hidden="true"></span>';
+    return '<div class="card-head' + (collapsible ? ' card-head-toggle' : '') + '">' +
+      '<span class="card-icon">' + Copy.iconHtml(icon) + '</span>' +
+      '<div><h2>' +
+      (collapsible
+        ? '<button class="card-toggle" type="button" aria-expanded="true">' +
+          '<span class="card-toggle-text">' + title + '</span>' + chevron + '</button>'
+        : title) +
+      '</h2>' +
+      (sub ? '<p class="card-sub">' + sub + '</p>' : '') +
+      (result ? '<p class="card-result">' + result + '</p>' : '') + '</div></div>';
+  }
+
+  /**
+   * Shuts every collapsible section in `root`, and is what actually makes the
+   * report open compact rather than as one long scroll.
+   *
+   * Done here, right after the markup is written, rather than baked into the
+   * markup itself: `is-collapsed` is a *state*, and the same section HTML is
+   * also what the sample dialog renders and what a freshly-paid unlock splices
+   * back in — one function that closes whatever is currently there beats
+   * threading a "start closed" flag through every builder. It runs in the same
+   * synchronous task as the `innerHTML` that precedes it, so nothing is ever
+   * painted expanded first.
+   *
+   * `aria-expanded` starts `true` in the markup and is corrected here, so the
+   * one place that decides the state is the one place that announces it.
+   */
+  function collapseSections(root) {
+    // Found through the heads rather than with `.section-card:has(...)`: the
+    // set is identical, and this asks nothing of the browser that the rest of
+    // this file does not already assume.
+    for (const head of root.querySelectorAll('.card-head-toggle')) {
+      const card = head.closest('.section-card');
+      if (card) setSectionOpen(card, card.hasAttribute('data-start-open'));
+    }
+  }
+
+  function setSectionOpen(card, open) {
+    card.classList.toggle('is-collapsed', !open);
+    const toggle = card.querySelector('.card-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', String(open));
+  }
+
+  // What the compatibility link actually carries — the compact card, not the
+  // full report. Lives on the compatibility page rather than the profile
+  // page: it is about the link someone is about to send or has just sent,
+  // which is the context that page is for.
+  function linkContentsBlock(card) {
+    if (!card) return '';
+    // The fields, named; not this reader's own values.
+    return '<div class="link-contents-card"><p class="link-fields-label">' + esc(TEXT.linkContents) + '</p>' +
+      '<ul class="link-fields">' + TEXT.linkContentsFields.map(field => '<li>' + esc(field) + '</li>').join('') + '</ul></div>';
+  }
+
+  // ---------- mental wellness ----------
+  //
+  // Free, in the main report, rendered from `report.wellness`. Six
+  // behavioural dimensions, a prose overall read and some suggestions.
+  //
+  // What this deliberately does not draw: a number. Every other scored thing
+  // in this report gets `bar()` and a 0-100, and this one gets a word from a
+  // four-value band instead — because a progress bar under "Emotional
+  // processing" would read as a measurement of something that was never
+  // measured, and the notation is most of what makes a claim look
+  // authoritative. There is no composite either: `overall` is a paragraph,
+  // not an average. See the comment on the wellness schema in
+  // lib/prompts.js.
+  //
+  // `not enough evidence` is styled as a neutral state rather than a low one
+  // for the same reason it exists in the enum at all: on a dimension like
+  // physical activity it is the honest and frequent answer, and a reader
+  // should not read "we could not tell" as "you scored badly".
+  function wellnessBand(band) {
+    const value = String(band || '');
+    return '<span class="pill wellness-pill wellness-' +
+      esc(value.replace(/\s+/g, '-').toLowerCase()) + '">' + esc(value) + '</span>';
+  }
+
+  function wellnessBodyHtml(wellness) {
+    let html = '<div class="wellness-grid">';
+    for (const [label, key] of Copy.WELLNESS_FACETS) {
+      const facet = wellness[key];
+      if (!facet) continue;
+      // `.wellness-label` rather than reusing `.facet-label`: that class
+      // belongs to the behaviour grid above, and a check counts it across the
+      // whole of #profile-body to assert that section is exactly four facets.
+      // Sharing the class made this section silently break that check.
+      html += '<div class="wellness-facet">' +
+        '<div class="wellness-head"><span class="wellness-label">' + label + '</span>' +
+        wellnessBand(facet.band) + '</div>' +
+        '<p>' + esc(facet.reading) + '</p>' +
+        evidence(facet.evidence) +
+        '<p class="wellness-confidence">' + esc(TEXT.wellnessConfidence) + esc(facet.confidence) + '</p>' +
+        '</div>';
+    }
+    html += '</div>';
+
+    if (wellness.overall) {
+      html += '<div class="callout"><h3>' + esc(TEXT.wellnessOverall) + '</h3>' +
+        paragraphs(wellness.overall) + '</div>';
+    }
+    html += '<h3>' + esc(TEXT.wellnessSuggestions) + '</h3>' + points(wellness.suggestions);
+    // Fixed app copy, never read from the model — same rule as the roast's
+    // caveat, and the section with the most reason to carry it.
+    html += '<p class="fineprint wellness-caveat">' + esc(TEXT.wellnessCaveat) + '</p>';
+    return html;
+  }
+
+  // ---------- attachment style ----------
+  //
+  // Its own section now, below the wellness read. It spent most of this app's
+  // life as a callout inside "In relationships", competing with the love
+  // languages for attention in a card that already carried strengths and
+  // weaknesses — and it is the single most-quoted finding in the report, so
+  // it was the wrong thing to bury. The markup is the same callout it always
+  // was, lifted into a card of its own; the style itself still leads the
+  // heading, since that is the part a reader is looking for.
+  function attachmentBodyHtml(source) {
+    const attachment = gentleAttachmentOf(source);
+    return '<div class="callout"><h3>' + esc(TEXT.attachmentPrefix) + esc(attachment.style) + '</h3>' +
+      // What the style is good at, directly under the name of it. Deliberately
+      // first: the four names carry a lot of received meaning, and a reader who
+      // has just been told they are anxious or fearful-avoidant reads the next
+      // paragraph through whatever they already believe that means. One warm,
+      // specific sentence in that position does more for how the section lands
+      // than any amount of care further down. Optional, so a report generated
+      // before this field existed still renders.
+      (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
+      '<p>' + esc(attachment.why) + '</p>' +
+      (attachment.conflict ? '<p class="essence-label">' + esc(TEXT.attachmentConflict) + '</p><p>' + esc(attachment.conflict) + '</p>' : '') +
+      ((attachment.derivedFrom || []).length
+        ? '<p class="essence-label">' + esc(TEXT.readFrom) + '</p>' +
+          '<p class="trait-evidence">' + attachment.derivedFrom
+            .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
+        : '') +
+      ((attachment.implications || []).length
+        ? '<p class="essence-label">' + esc(TEXT.attachmentPractice) + '</p>' + points(attachment.implications)
+        : '') +
+      '<p class="fineprint">' + esc(attachment.caveat) + '</p></div>';
+  }
+
+  // ---------- ideal partner traits ----------
+  //
+  // Sits between the attachment read and the career assessment, both in
+  // PAID_SECTIONS and in the schema this reads from — it argues directly off
+  // the attachment section immediately above it rather than off a fresh
+  // pass over the digest, so the two have to stay adjacent on the page too.
+  function idealPartnerBodyHtml(idealPartner) {
+    return '<h3>' + esc(TEXT.idealPartnerNeeds) + '</h3>' + points(idealPartner.needs) +
+      '<h3>' + esc(TEXT.idealPartnerCarefulOf) + '</h3>' + points(idealPartner.carefulOf) +
+      '<h3>' + esc(TEXT.idealPartnerSummary) + '</h3>' + paragraphs(idealPartner.summary);
+  }
+
+  // ---------- career assessment ----------
+  //
+  // The coach's read, distinct from "At work" higher up: that section
+  // describes how somebody works, this one says what to do about it. Two
+  // career headings in one report only earns its place if the second is
+  // actionable, so the actions carry a horizon and the edge carries evidence
+  // — without those this is just the first section again in the imperative.
+  function careerActions(actions) {
+    const values = (actions || []).filter(Boolean);
+    if (!values.length) return '<p class="muted">' + esc(TEXT.pointsEmpty) + '</p>';
+    // Grouped by horizon rather than shown in whatever order they arrived, so
+    // "this week" is read first — the model is told at least one action must
+    // be startable now, and burying it under a yearly ambition wastes that.
+    const labels = TEXT.careerHorizons;
+    let html = '<dl class="points career-actions">';
+    for (const horizon of Object.keys(labels)) {
+      for (const item of values.filter(a => a.horizon === horizon)) {
+        html += '<dt><span class="pill horizon-pill horizon-' +
+          esc(horizon.replace(/\s+/g, '-')) + '">' + esc(labels[horizon]) + '</span>' +
+          esc(item.title) + '</dt><dd>' + esc(item.detail) + '</dd>';
+      }
+    }
+    // Anything with an unrecognised horizon still gets shown rather than
+    // silently dropped: a missing action is worse than an unlabelled one.
+    for (const item of values.filter(a => !Object.prototype.hasOwnProperty.call(labels, a.horizon))) {
+      html += '<dt>' + esc(item.title) + '</dt><dd>' + esc(item.detail) + '</dd>';
+    }
+    return html + '</dl>';
+  }
+
+  function careerFacet(label, facet) {
+    if (!facet) return '';
+    return '<div class="career-facet"><span class="career-label">' + esc(label) + '</span>' +
+      '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p>' +
+      evidence(facet.evidence) + '</div>';
+  }
+
+  function careerAssessmentBodyHtml(assessment) {
+    let html = '';
+    if (assessment.situation) {
+      html += '<h3>' + esc(TEXT.careerSituation) + '</h3>' + paragraphs(assessment.situation);
+    }
+    // The edge is the finding the section exists for, so it gets the callout
+    // treatment rather than sitting level with the two beside it.
+    if (assessment.edge) {
+      html += '<div class="callout career-edge"><span class="career-label">' + esc(TEXT.careerEdge) + '</span>' +
+        '<h3>' + esc(assessment.edge.headline) + '</h3><p>' + esc(assessment.edge.detail) + '</p>' +
+        evidence(assessment.edge.evidence) + '</div>';
+    }
+    html += '<div class="career-grid">' +
+      careerFacet(TEXT.careerUnderused, assessment.underused) +
+      careerFacet(TEXT.careerHoldingBack, assessment.holdingBack) + '</div>';
+    html += '<h3>' + esc(TEXT.careerActions) + '</h3>' + careerActions(assessment.actions);
+    return html;
+  }
+
+  // ---------- the paywall: four sections behind one US$5 unlock ----------
+  //
+  // The wellness read, the attachment read, the career coaching and the roast
+  // are all generated by a single paid call (lib/prompts.js's PREMIUM_SCHEMA)
+  // and unlocked together. `state.profile.premiumAnalysis` holds that call's
+  // result once there is one — its mere presence *is* "unlocked"; there is no
+  // separate boolean that could drift out of sync with whether real content
+  // actually exists.
+  //
+  // The writing is NOT in the markup before it is paid for. Blurring it with
+  // CSS would look the same and protect nothing: select-all copies it, a
+  // screen reader reads it out, and view-source hands it over. The server does
+  // not even run the paid model call until it has independently verified a
+  // real payment (lib/stripe.js's verifyPaid) or a valid promo code, so there
+  // is nothing for a page saved or view-sourced before that point to give
+  // away — the covers ship alone, and the report is drawn again with the
+  // writing once a real result has actually arrived.
+
+  /**
+   * The paid sections, in the order they appear in the report. This table is
+   * the whole rule: `reportSectionsHtml` walks it and `unlockedSections`
+   * keys off it, so adding a paywalled section later means adding one entry
+   * here (plus where buildStructured in docs/pdf.js prints it) and nothing
+   * else.
+   *
+   * `body` is deliberately the *inner* HTML only — the card shell, the section
+   * head and the cover are `paidCard`'s job. That split is what stops a new
+   * paid section quietly rendering itself without a cover, which is the one
+   * mistake in this area that would look fine and charge nobody.
+   */
+  const PAID_SECTIONS = [
+    {
+      key: 'wellness', icon: '☀️', cardClass: 'wellness-card',
+      title: () => TEXT.wellness, sub: () => TEXT.wellnessSub,
+      coverTitle: () => TEXT.wellnessCoverTitle, coverBlurb: () => TEXT.wellnessCoverBlurb,
+      body: wellnessBodyHtml,
+    },
+    {
+      key: 'attachment', icon: '🔗', cardClass: 'attachment-card',
+      title: () => TEXT.attachment, sub: () => TEXT.attachmentSub,
+      coverTitle: () => TEXT.attachmentCoverTitle, coverBlurb: () => TEXT.attachmentCoverBlurb,
+      body: attachmentBodyHtml,
+    },
+    {
+      key: 'idealPartner', icon: '💘', cardClass: 'ideal-partner-card',
+      title: () => TEXT.idealPartner, sub: () => TEXT.idealPartnerSub,
+      coverTitle: () => TEXT.idealPartnerCoverTitle, coverBlurb: () => TEXT.idealPartnerCoverBlurb,
+      body: idealPartnerBodyHtml,
+    },
+    {
+      // Not 🎯: the confidence card at the foot of every report already uses
+      // that one, and two sections wearing the same icon reads as a rendering
+      // mistake rather than as two different things. 🪜 is the one image in
+      // reach that says "career" without colliding with 💼 ("How you work",
+      // the free section) or 🧭 (the MBTI block) either.
+      key: 'careerAssessment', icon: '🪜', cardClass: 'career-card',
+      title: () => TEXT.careerAssessment, sub: () => TEXT.careerAssessmentSub,
+      coverTitle: () => TEXT.careerCoverTitle, coverBlurb: () => TEXT.careerCoverBlurb,
+      body: careerAssessmentBodyHtml,
+    },
+  ];
+
+  /**
+   * What this profile has actually paid for, keyed by `PAID_SECTIONS` keys —
+   * the same names docs/pdf.js uses. One paid call fills all four, so this is
+   * really asking "did that call come back", but it is written per-section so
+   * a partial response degrades to missing sections rather than to a card
+   * whose cover is gone and whose body is blank.
+   *
+   */
+  /** The sample's own premium sections (sample.json), shown as a paid report shows them. */
+  function sampleUnlocked(report) {
+    return unlockedSections({ premiumAnalysis: report && report.premiumAnalysis });
+  }
+
+  function unlockedSections(profile) { return Shape.unlockedSections(profile); }
+
+  // ---------- the card is free; the explanation of it is paid for ----------
+  //
+  // A free run returns the summary card and nothing else: the type, the
+  // scores, the character, the lists — the conclusions — with none of the
+  // writing that explains them. Every explanation is part of the US$5 unlock,
+  // written by a second call that is handed the card and told to explain it
+  // rather than to decide it again (server.js's handleAnalyse, `anchor`).
+  //
+  // The same rule as PAID_SECTIONS above applies, and for the same reason:
+  // the explanations are not in the page before they are bought because the
+  // server never wrote them. There is nothing behind the locked block to
+  // view-source.
+
+  /**
+   * Whether this profile carries the written report, not just its card.
+   *
+   * `explained` is set when a bought full report is adopted. The second test is
+   * for a profile saved before the card was split from its explanation, when
+   * every free run returned the whole report: that reader has the writing
+   * already, and taking it away from them on a reload would be a strange way
+   * to introduce a paywall.
+   */
+  function hasExplanations(profile) {
+    if (!profile || !profile.report) return false;
+    if (profile.explained) return true;
+    // Since October 2026 the free card writes the Overview's summary too, so
+    // a summary alone no longer marks a whole report: one of those old full
+    // free runs carries its sections as well.
+    const r = profile.report;
+    return typeof r.summary === 'string' && r.summary.trim().length > 0 && Boolean(r.career || r.relationship && r.relationship.strengths);
+  }
+
+  /**
+   * The full report, with the card's conclusions laid back over it.
+   *
+   * The second call is told to keep every one of them, and nearly always does.
+   * This is what makes "nearly" into "always" for the parts the reader has
+   * already seen and may already have shared: the type, the letters, the
+   * scores, the character and the order of the lists on the card. The writing
+   * underneath is the full report's own — only the labels are pinned.
+   */
+  // Shared with the server's Muse PDF (docs/reportshape.js).
+  function overlayCard(full, card) { return Shape.overlayCard(full, card); }
+
+  /**
+   * Take delivery of a bought full report.
+   *
+   * `replaceCard` is for the one case where the card should move: the reader
+   * added a source on the way to paying, so the full report was written from
+   * more evidence than the card was, without an anchor, and its own
+   * conclusions are the better ones. Otherwise the card stays exactly as it
+   * was — its QR payload included — and the writing is laid under it.
+   */
+  // The four premium sections arrive in the same response as the written
+  // report, and are filed apart from it — under `premiumAnalysis`, where
+  // PAID_SECTIONS, unlockedSections and the PDF have always looked for them.
+  const PREMIUM_KEYS = Shape.PREMIUM_KEYS;
+
+  async function adoptFullReport(result, replaceCard, savedName, readFrom) {
+    if (!state.profile) return;
+    store.remove(KEYS.pdfSaved);
+    // How much of each source the full report actually read: the premium read
+    // when data was added at the unlock (WhatsApp at its full share, where the
+    // standard digest beside it holds only a few lines), or nothing to say
+    // when it read the standard digest itself. See readView.
+    if (readFrom !== undefined) {
+      if (readFrom) state.profile.readFrom = readFrom;
+      else delete state.profile.readFrom;
+    }
+    const written = withOwnName(Object.assign({}, result.data), ownNameFrom(savedName));
+    const premium = {};
+    for (const key of PREMIUM_KEYS) {
+      if (written[key]) premium[key] = written[key];
+      delete written[key];
+    }
+    if (Object.keys(premium).length) {
+      state.profile.premiumAnalysis = premium;
+      state.profile.premiumModel = result.model || '';
+      state.profile.premiumAt = new Date().toISOString();
+    }
+    // A structured report written without a card to anchor it decides the
+    // card first and sends it back beside the report, which then leaves out
+    // everything the card pins — so the card is laid over it here, the same
+    // as on the ordinary path. See cardThenFull in server.js.
+    const freshCard = written.freeCard || null;
+    delete written.freeCard;
+    result = Object.assign({}, result, { data: written });
+    // The paid call writes no roast: the one the card call wrote, and the
+    // reader may already have read on My Psyche, is the one they keep.
+    const roast = (state.profile.report || {}).bonus;
+    if (replaceCard) {
+      let cardFields = Object.assign({}, (freshCard || result.data).card);
+      if (isPlaceholder(cardFields.name) && ownNameFrom(savedName)) cardFields.name = ownNameFrom(savedName);
+      state.profile.report = freshCard ? overlayCard(result.data, freshCard) : result.data;
+      if (!state.profile.report.bonus && roast) state.profile.report.bonus = roast;
+      cardFields = cardFieldsFrom(cardFields, state.profile.report);
+      if (freshCard) state.profile.freeReport = freshCard;
+      state.profile.card = Card.shape(cardFields);
+      state.profile.payload = await Card.encodeCard(cardFields);
+      state.profile.model = result.model;
+      state.profile.createdAt = new Date().toISOString();
+    } else {
+      const card = state.profile.freeReport || state.profile.report;
+      state.profile.freeReport = card;
+      state.profile.report = overlayCard(result.data, card);
+    }
+    state.profile.explained = true;
+    store.write(KEYS.profile, state.profile);
+  }
+
+  /**
+   * The reader's proof that they already paid, kept on their device.
+   *
+   * The paid call takes minutes, and until now everything about it lived in
+   * one page's memory: close the tab while it ran and the payment was real,
+   * the analysis was gone, and the cover was back to asking for US$5. The
+   * server has always allowed a handful of generations per PaymentIntent
+   * (lib/premiumLedger.js) for exactly this, but the browser had no way to
+   * know it was entitled to one.
+   *
+   * What is stored is the authorisation and nothing else — a PaymentIntent id
+   * or a promo code, both of which the server re-verifies on every use. Not
+   * the report: the report belongs in `psycheai_profile` with the rest of it,
+   * and duplicating it here would be a second copy of somebody's roast on
+   * their disk for no reason.
+   *
+   * Deliberately *not* a server-side cache of the finished analysis, which
+   * would be the faster answer. This app's whole shape is that the server
+   * keeps no reader's data; holding generated reports there to survive a
+   * closed tab would trade that promise for a convenience the ledger already
+   * covers. The cost is that resuming re-runs the model call. That cost falls
+   * on whoever runs the server, which is the right person to carry it.
+   */
+  function unlockReceipt() {
+    const saved = store.read(KEYS.unlock, null);
+    if (!saved || typeof saved !== 'object') return null;
+    if (typeof saved.paymentIntentId === 'string' && saved.paymentIntentId) {
+      return { paymentIntentId: saved.paymentIntentId };
+    }
+    if (typeof saved.promoCode === 'string' && saved.promoCode) return { promoCode: saved.promoCode };
+    return null;
+  }
+
+  function rememberUnlock(auth) {
+    store.write(KEYS.unlock, { ...auth, at: Date.now() });
+  }
+
+  /**
+   * Record a purchase whose result has not arrived yet.
+   *
+   * Written *before* the call and cleared when the result is in hand, which is
+   * the only ordering that survives the case it exists for: a phone closed,
+   * backgrounded or out of battery during the minutes a generation takes. A
+   * record written on success would be written exactly when nobody needs one.
+   *
+   * `kind` is 'analysis' or 'compatibility'. `context` carries whatever asking
+   * again requires — for a comparison, the other person's card and the basis
+   * chosen, since neither is stored anywhere else.
+   */
+  function rememberPending(kind, auth, context) {
+    store.write(KEYS.pending, { kind, auth, at: Date.now(), ...(context || {}) });
+  }
+
+  function clearPending() {
+    store.remove(KEYS.pending);
+  }
+
+  /**
+   * Write down a generation that is running on the server right now.
+   *
+   * `kind` says what the result is, because collecting one is not the same as
+   * collecting another: a free report replaces the profile wholesale, paid
+   * sections attach to the profile already on screen, and a compatibility read
+   * renders a comparison and belongs to no profile at all. A single resume
+   * path that guessed would eventually put one in the place of another.
+   *
+   * `context` carries whatever the collecting step needs and cannot rebuild —
+   * for a comparison, the other person's card and the basis it was run on,
+   * which exist nowhere else once the tab is gone.
+   *
+   * Only ever keys, kinds and small context: never a report, and never a
+   * digest, which is already stored under its own key and is far too big to
+   * want a second copy of in a quota this app has already run up against.
+   */
+  /**
+   * The reader's real Instagram handle, while the archive that carries it is
+   * still in memory.
+   *
+   * Read from `state.signals` rather than from the stored digest, because the
+   * digest no longer has it — Digest.build replaces it with a placeholder
+   * before anything is sent. This is only ever used to scrub it out of a
+   * supplement being merged in; it never travels anywhere itself.
+   */
+  function ownHandle() {
+    return (state.signals && state.signals.profile && state.signals.profile.username) || '';
+  }
+
+  // Whether a stored digest has Instagram in it: Digest.hasInstagram, here
+  // because the page asks before the data readers have loaded. A digest from
+  // WhatsApp chats alone (October 2026) has none.
+  /** The sources an uploaded digest was read from, by name, for the Muse question. */
+  function uploadedSources(digest) {
+    const short = Copy.STRUCTURED.hub.sourceNames;
+    return [['instagram', digestHasInstagram(digest)], ['whatsapp', Boolean(digest.whatsapp)], ['google', Boolean(digest.google)], ['facebook', Boolean(digest.facebook)]]
+      .filter(([, has]) => has).map(([key]) => short[key]);
+  }
+
+  function digestHasInstagram(digest) {
+    const sources = digest && digest.coverage && digest.coverage.sources;
+    return !Array.isArray(sources) || !sources.length || sources.includes('instagram');
+  }
+
+  /** What to call the reader on their own card, from the archive rather than the digest. */
+  function ownDisplayName() {
+    const profile = (state.signals && state.signals.profile) || {};
+    return String(profile.name || profile.username || (!state.signals && state.chats && state.chats.owner) || '').trim();
+  }
+
+  // The reader's name and handle reach the model as this placeholder and never
+  // as themselves (docs/digest.js). Whatever comes back carrying it is given the
+  // real name here, on the device, before it is stored, shown, put in a QR code
+  // or printed: the card's name, the page's "…'s psyche", the PDF's header, and
+  // any stray mention in the writing.
+  const OWN_PLACEHOLDER = /\bPsycheUser\b/g;
+  const isPlaceholder = name => /^\s*PsycheUser\s*$/i.test(String(name || ''));
+  function withOwnName(value, real) { return Shape.withOwnName(value, real); }
+  /**
+   * The other way: the reader's own name, wherever it was put back into a
+   * card or report, swapped for the placeholder again before that card or
+   * report goes to the server as something to explain (an unlock's
+   * `anchor`). The model never had the name, and the anchor is not where it
+   * should first meet it (October 2026). The card's name and its first word,
+   * the display name and the handle, each as a whole word, longest first.
+   */
+  function withPlaceholderName(value, profile) {
+    const card = (profile && profile.card) || {};
+    const full = String(card.name || '').trim();
+    const names = [full, full.split(/\s+/)[0], ownDisplayName(), String(ownHandle() || '').replace(/^@+/, '')]
+      .map(n => String(n || '').trim()).filter(n => n.length >= 2 && !isPlaceholder(n))
+      .filter((n, i, all) => all.indexOf(n) === i).sort((a, b) => b.length - a.length);
+    if (!names.length || !value) return value;
+    const escaped = names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp('(?<![\\p{L}\\p{N}_@])@?(?:' + escaped.join('|') + ')(?![\\p{L}\\p{N}_])', 'giu');
+    const walk = item => typeof item === 'string' ? item.replace(pattern, 'PsycheUser')
+      : Array.isArray(item) ? item.map(walk)
+        : item && typeof item === 'object' ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, walk(v)])) : item;
+    return walk(value);
+  }
+  // The real name from wherever it can still be had: the archive in memory, the
+  // job record written when the work started (for a page that rejoined it), or
+  // the card the reader already has, if that one was named properly.
+  function ownNameFrom(saved) {
+    const card = state.profile && state.profile.card;
+    return ownDisplayName() || String(saved || '').trim() || (card && !isPlaceholder(card.name) ? String(card.name || '').trim() : '');
+  }
+
+  /**
+   * Puts the real name back on a profile stored before this was fixed: a card
+   * replaced by a paid report said "PsycheUser", and so did the page and PDF
+   * headers. The name is gone from what was stored, so this waits for the
+   * archive to be read again on this device, then mends the card, its QR code
+   * and the writing in place, without running anything again.
+   */
+  async function repairOwnName(signals) {
+    const own = (signals && signals.profile) || {};
+    const real = String(own.name || own.username || '').trim() || ownDisplayName();
+    const profile = state.profile;
+    if (!real || !profile || !/PsycheUser/.test(JSON.stringify(profile))) return;
+    for (const key of ['report', 'freeReport', 'premiumAnalysis']) {
+      if (profile[key]) profile[key] = withOwnName(profile[key], real);
+    }
+    const cardFields = cardFieldsFrom(withOwnName(Object.assign({}, (profile.report && profile.report.card) || profile.card), real), profile.report);
+    if (isPlaceholder(cardFields.name)) cardFields.name = real;
+    profile.card = Card.shape(cardFields);
+    profile.payload = await Card.encodeCard(cardFields);
+    store.write(KEYS.profile, profile);
+    if (!$('#view-profile').hidden) renderProfile();
+  }
+
+  // The job a call in this very tab is waiting on. Coming back to the tab
+  // must not rejoin it a second time (see resumeRunningJob): that restarted
+  // the seconds counter at zero and started a second poll on the same job.
+  let liveJobKey = null;
+  function rememberJob(key, kind, auth, context) {
+    liveJobKey = key;
+    const ownName = ownNameFrom();
+    store.write(KEYS.job, {
+      key,
+      kind: kind || 'analysis',
+      auth: auth || null,
+      at: Date.now(),
+      // So a page that rejoins this job, with the archive no longer in memory,
+      // can still give the card its real name (see withOwnName).
+      ...(ownName ? { ownName } : {}),
+      ...(context || {}),
+    });
+  }
+
+  function clearJob() {
+    liveJobKey = null;
+    store.remove(KEYS.job);
+  }
+
+  /**
+   * The job still worth rejoining, if there is one.
+   *
+   * Bounded by the server's own result window rather than by a guess: past it
+   * the server has forgotten the job, and an offer to rejoin one would sit
+   * there polling for something that no longer exists. Kept a little under
+   * four hours so the browser gives up slightly before the server does, which
+   * is the right way round — a page that stops looking is a page that offers
+   * the reader a button, and a page that keeps looking at nothing is a
+   * spinner that never ends.
+   */
+  const JOB_WINDOW_MS = 3.5 * 60 * 60 * 1000;
+  function runningJob() {
+    const saved = store.read(KEYS.job, null);
+    if (!saved || typeof saved !== 'object' || typeof saved.key !== 'string' || !saved.key) return null;
+    if (!(Date.now() - Number(saved.at || 0) < JOB_WINDOW_MS)) {
+      clearJob();
+      return null;
+    }
+    return saved;
+  }
+
+  /**
+   * The unfinished purchase, if there is one and it is still redeemable.
+   *
+   * Bounded by the payment's own life rather than by a guess: verifyPaid stops
+   * honouring an intent thirty days after it was created, so an offer to
+   * collect something older than that would fail at the server having promised
+   * at the browser. A promo run carries no payment and no such limit, but the
+   * same window is applied — an offer to finish something from six weeks ago
+   * is confusing whether or not it would work.
+   */
+  const PENDING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  function pendingWork() {
+    const saved = store.read(KEYS.pending, null);
+    if (!saved || typeof saved !== 'object' || !saved.kind || !saved.auth) return null;
+    if (!(Date.now() - Number(saved.at || 0) < PENDING_WINDOW_MS)) {
+      clearPending();
+      return null;
+    }
+    return saved;
+  }
+
+  /** True once there is something to fetch but nothing fetched yet. */
+  function hasUnfetchedUnlock() {
+    // Either half of the purchase still owed: the written report behind the
+    // card, or the four sections after it.
+    return Boolean(unlockReceipt()) &&
+      (!Object.keys(paidAnalysis()).length || !hasExplanations(state.profile));
+  }
+
+  function paidAnalysis() {
+    return unlockedSections(state.profile);
+  }
+
+  // Every paid section carries the same "Premium" badge — it is what marks a
+  // section as behind the paywall, not a label specific to any one of them.
+  // The badge is unescaped HTML spliced onto an already-escaped title —
+  // sectionHead just concatenates whatever it is handed into the <h2>, so
+  // this is the one call site that hands it a title with markup in it rather
+  // than plain text, same trick .mode-title uses beside "Coming soon".
+  //
+  // `options.sample` renders the same cover a real report shows — same title,
+  // same blurb — but with a plain "Unlock" button that is `disabled` rather
+  // than priced or wired to anything. A disabled button never dispatches a
+  // click event at all, in any browser, so the delegated `.premium-unlock`
+  // listener never sees it fire; that is what actually keeps a demo report
+  // from opening a real payment dialog, not a scope check on the listener.
+  // Shared by paidCard and fullReportLockedHtml, so the two never say
+  // different things about the same button. A reader who already paid is
+  // never shown the price again — the receipt is the difference between
+  // "buy this" and "collect what you bought", and showing US$5 to somebody
+  // mid-resume reads as being charged twice, the single worst thing this
+  // button could imply.
+  function premiumUnlockLabel(sample) {
+    return sample
+      ? esc(TEXT.premiumSampleUnlockLabel)
+      : (hasUnfetchedUnlock()
+        ? esc(TEXT.premiumResumeLabel)
+        : esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel));
+  }
+
+  function paidCard(section, unlocked, options) {
+    const sample = Boolean(options && options.sample);
+    const data = unlocked[section.key];
+    // `flat` is the structured layout's: a section inside a part, so no
+    // toggle of its own and no Premium badge on its heading.
+    const flat = Boolean(options && options.flat);
+    const badge = flat ? '' : ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
+    return '<div class="card section-card paid-card ' + section.cardClass +
+      '" data-paid="' + esc(section.key) + '">' +
+      sectionHead(section.icon, esc(options && options.title ? options.title : section.title()) + badge,
+        esc(options && options.sub ? options.sub : section.sub()), !flat,
+        !flat && data && options && options.result ? options.result(data) : '') +
+      '<div class="premium-cover"' + (data ? ' hidden' : '') + '>' +
+      '<h3>' + esc(section.coverTitle()) + '</h3>' +
+      '<p>' + esc(section.coverBlurb()) + '</p>' +
+      '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(data) + '"' +
+      (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button></div>' +
+      '<div class="premium-body"' + (data ? '' : ' hidden') + '>' +
+      (data ? ((options && options.body) || section.body)(data) + ((options && options.extra) || '') : '') + '</div></div>';
+  }
+
+  /** Under the unlock button: the promo code from the reader's link, if one came with it. */
+  function linkPromoNoteHtml() {
+    const code = linkPromo();
+    return code && !hasUnfetchedUnlock() ? '<p class="premium-link-promo">' + esc(TEXT.linkPromoNote(code)) + '</p>' : '';
+  }
+
+  /**
+   * What the unlock explains, in the order the written report runs. The
+   * other half of the offer to PAID_SECTIONS: those are four sections the
+   * card does not touch, these are the writing behind what the card shows.
+   * Titles come from the same TEXT keys the report's own section heads use,
+   * so the offer and the thing bought cannot name a section differently.
+   */
+  const EXPLAINED_SECTIONS = [
+    { icon: '👤', title: () => TEXT.whoYouAre, blurb: () => TEXT.explainWho },
+    { icon: '📊', title: () => TEXT.bigFive, blurb: () => TEXT.explainBigFive },
+    { icon: '🧭', title: () => TEXT.explainTypesTitle, blurb: () => TEXT.explainTypes },
+    { icon: '✨', title: () => TEXT.explainListsTitle, blurb: () => TEXT.explainLists },
+    { icon: '💞', title: () => TEXT.explainPeopleTitle, blurb: () => TEXT.explainPeople },
+    { icon: '📱', title: () => TEXT.activity, blurb: () => TEXT.explainActivity },
+  ];
+
+  /**
+   * What the unlock explains and adds, in the order the report runs. The
+   * structured layout's list is its own: the overview, then each part's
+   * sections with the paid ones where they sit in the report (wellbeing ends
+   * Part 1, attachment and partner join Part 3, the coach's read is Part 4), then the
+   * plan — and no digital footprint, which that report has not
+   * got. Each row carries its own blurb, so the paid ones need no second list.
+   */
+  function explainedSections() {
+    const S = Copy.STRUCTURED;
+    const paidRow = key => {
+      const section = PAID_SECTIONS.find(row => row.key === key);
+      return { icon: section.icon, title: key === 'wellness' ? () => S.titles.wellness : section.title,
+        blurb: section.coverBlurb };
+    };
+    const own = title => EXPLAINED_SECTIONS.find(row => row.title() === title);
+    return [
+      own(TEXT.whoYouAre),
+      { icon: '🧵', title: () => S.titles.patterns, blurb: () => S.explainPatterns },
+      { icon: '🧭', title: () => S.explainTypeTitle, blurb: () => S.explainType },
+      own(TEXT.bigFive),
+      paidRow('wellness'),
+      { icon: '🧲', title: () => S.titles.motivators, blurb: () => S.explainMotivators },
+      { icon: '✨', title: () => S.explainListsTitle, blurb: () => TEXT.explainLists },
+      own(TEXT.explainPeopleTitle),
+      paidRow('attachment'),
+      paidRow('idealPartner'),
+      paidRow('careerAssessment'),
+      { icon: '🌱', title: () => S.titles.development, blurb: () => S.explainDevelopment },
+    ];
+  }
+
+  /**
+   * The same offer, by the report's numbered parts: what each part holds, then its
+   * sections. The overview's summary and patterns open Part 1, the part they
+   * lead into, so the offer has the report's five numbered parts and no more.
+   */
+  function explainedParts() {
+    const S = Copy.STRUCTURED;
+    const rows = explainedSections();
+    const by = title => rows.find(row => row.title() === title);
+    return [
+      // MBTI and the Big Five as one row: both are the reading of the scores
+      // on the card, and four rows read better than five.
+      // Who you are and the signature patterns are the free Overview's,
+      // already on the page, so the unlock does not list them.
+      { key: 'who', rows: [{ icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
+      { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
+      // Two rows each: relationships with who suits them and attachment
+      // with conflict; then work and the career assessment.
+      { key: 'connect', rows: S.offerConnect.map(([icon, title, blurb]) => ({ icon, title: () => title, blurb: () => blurb })) },
+      { key: 'career', rows: S.offerCareer.map(([icon, title, blurb]) => ({ icon, title: () => title, blurb: () => blurb })) },
+      // No secret bonus beside the plan any more: the roast is free, on My
+      // Psyche, so the unlock cannot promise it.
+      { key: 'together', rows: [by(S.titles.development)] },
+    ].map((part, i) => Object.assign(part, { number: String(i + 1).padStart(2, '0'), rows: part.rows.filter(Boolean) }));
+  }
+
+  // The five parts, compact (late October 2026): two columns on a laptop,
+  // each a small gradient numeral, its title, and its sections as one plain
+  // line under it, with a small lock. The front page's shape, smaller; "See
+  // sample report" in the head shows what each one holds.
+  const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  function unlockPartsHtml() {
+    const S = Copy.STRUCTURED;
+    return '<ol class="unlock-parts">' + explainedParts().map(part =>
+      '<li class="unlock-part">' +
+        '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
+        '<h4>' + esc(S.parts[part.key].title) + '</h4>' +
+        // Locked: the Overview above is the free part of the report.
+        '<span class="unlock-part-lock" aria-hidden="true">' + LOCK_ICON + '</span></div>' +
+        '<ul class="unlock-chips">' + part.rows.map(row =>
+          '<li class="premium-tier-item"><strong>' + esc(row.title()) + '</strong></li>').join('<li class="unlock-dot" aria-hidden="true">·</li>') + '</ul>' +
+      '</li>').join('') + '</ol>';
+  }
+
+  /**
+   * Everything under a free card: one block, one button, naming every
+   * explanation and every premium section the unlock opens. Built on the same
+   * `.premium-tier` look as the four-section block, and the button is the same
+   * `.premium-unlock`, so the purchase it starts is the one purchase there is.
+   */
+  /**
+   * Invite two connections, get the full report free. Filled in by
+   * refreshReferral once the server says where this reader's code stands.
+   */
+  /**
+   * "Your Referral": how many opened it, made a card and synced, and the
+   * credits that earns: one for every friend's card. A credit is
+   * spent on a gift today (Gift a Psyche Report), premium features later.
+   * The free first report a single friend's card unlocks is offered on the
+   * unlock panel and the payment sheet instead (unlockShareHtml).
+   */
+  function referralCardHtml(paid) {
+    const R = TEXT.referral;
+    // Four purple boxes: opens of the link first, then friends who made a
+    // card and synced with the reader, then the credits left to spend. A small Copy
+    // link at the head's right does what the card's own Copy link does: the
+    // share message with the link. "Use it" and "Gift it" appear only once a
+    // free report is earned.
+    // The number and its label, no icon: the small ones could not be seen.
+    const stat = (key, label) => '<li class="referral-stat' + (key === 'credits' ? ' referral-stat-credits' : '') + '">' +
+      '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
+    return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
+      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">' + Copy.lineIcon('🔗') + '</span><div>' +
+        '<div class="referral-title-row"><h3 class="referral-title">' + esc(R.title) + '</h3>' +
+        '<button class="btn btn-sm btn-outline referral-copy" type="button" title="' + esc(R.copyLinkTip) + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+        '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>' +
+        '<span>' + esc(R.copyLink) + '</span></button></div>' +
+        '<p class="referral-blurb">' + esc(R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
+      '<ul class="referral-stats">' + stat('opens', R.opens) + stat('friends', R.cards) + stat('syncs', R.syncs) + stat('credits', R.credits) + '</ul>' +
+      '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
+        '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
+      '<p class="referral-status" role="status" hidden></p>' +
+      '<div class="referral-gifts"></div>' +
+    '</section>';
+  }
+
+  // Where this reader's link stands, from the server; null when it cannot be
+  // reached. Cached for the payment sheet's offer, and asked at most once a
+  // minute: the report page redraws often.
+  let referralStatus = null;
+  let referralAskedAt = 0;
+  async function fetchReferralStatus(fresh) {
+    if (!fresh && referralStatus && Date.now() - referralAskedAt < 60000) return referralStatus;
+    const mine = await ensureReferral();
+    if (!mine) return null;
+    referralAskedAt = Date.now();
+    try {
+      const account = await accountKey().catch(() => null);
+      const response = await fetch('api/referral', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ secret: mine.secret }, account ? { account } : {})),
+      });
+      referralStatus = response.ok ? await response.json() : referralStatus;
+      // This account has had a full report: no free first one to offer.
+      if (referralStatus && referralStatus.first && referralStatus.first.used && !store.read(KEYS.firstUsed, false)) {
+        markFirstUsed();
+      }
+    } catch (error) { /* keep what we had */ }
+    return referralStatus;
+  }
+  /** The gift links this reader has made, newest first, while they can still be used. */
+  function giftsMade() {
+    const list = store.read(KEYS.gifts, []);
+    const fresh = (Array.isArray(list) ? list : []).filter(g => g && /^[0-9a-f]{48}$/.test(g.token || '') &&
+      Date.now() - Number(g.at) < GIFT_DAYS * 86400000);
+    return fresh;
+  }
+  const GIFT_DAYS = 60;
+  const giftUrl = token => location.origin + '/?gift=' + token;
+  function giftsHtml() {
+    const gifts = giftsMade();
+    if (!gifts.length) return '';
+    const R = TEXT.referral;
+    return '<p class="referral-gifts-head">' + esc(R.giftsHead) + '</p><ul class="referral-gift-list">' +
+      gifts.map(g => '<li><code>' + esc(giftUrl(g.token).replace(/^https?:\/\//, '')) + '</code>' +
+        '<button class="btn btn-outline referral-gift-copy" type="button" data-token="' + esc(g.token) + '">' + esc(R.copyShort) + '</button></li>').join('') +
+      '</ul>';
+  }
+  async function refreshReferral() {
+    // The unlock panel's share-first offer reads the same status.
+    if (document.querySelector('#profile-body .unlock-share')) {
+      fetchReferralStatus().then(refreshUnlockShare).catch(() => {});
+      watchUnlockShare();
+    }
+    const cards = document.querySelectorAll('.referral-card');
+    if (!cards.length) return;
+    for (const card of cards) card.querySelector('.referral-gifts').innerHTML = giftsHtml();
+    const status = await fetchReferralStatus();
+    if (!status) return;
+    const R = TEXT.referral;
+    for (const card of cards) {
+      for (const key of ['opens', 'friends', 'syncs']) {
+        const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
+        if (n) n.textContent = String(Number(status[key]) || 0);
+      }
+      const credits = card.querySelector('.referral-n[data-stat="credits"]');
+      if (credits) credits.textContent = String(Number(status.available) || 0);
+      const row = card.querySelector('.referral-ready-row');
+      row.hidden = !(status.available > 0);
+      card.querySelector('.referral-ready').textContent = status.available > 0 ? R.ready(status.available) : '';
+    }
+  }
+  function referralSay(card, message) {
+    const line = card && card.querySelector('.referral-status');
+    if (!line) return;
+    line.textContent = message;
+    line.hidden = !message;
+  }
+  async function shareOrCopy(card, text, url, copied) {
+    if (navigator.share) {
+      try { await navigator.share({ title: 'PsycheAI', text, url }); return; }
+      catch (error) { if (error && error.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(url); referralSay(card, copied); }
+    catch (error) { referralSay(card, url); }
+  }
+  document.addEventListener('click', async event => {
+    const card = event.target.closest && event.target.closest('.referral-card');
+    if (!card) return;
+    // Before anything is awaited, so the copy still counts as the tap's own.
+    if (event.target.closest('.referral-copy')) { copyShareMessage(event.target.closest('.referral-copy')); return; }
+    const R = TEXT.referral;
+    const mine = await ensureReferral();
+    if (event.target.closest('.referral-gift-copy')) {
+      const link = giftUrl(event.target.closest('.referral-gift-copy').dataset.token);
+      try { await navigator.clipboard.writeText(link); referralSay(card, R.giftCopied); }
+      catch (error) { referralSay(card, link); }
+    } else if (event.target.closest('.referral-gift')) {
+      // Spent now, as a grant someone else can use: the link is the gift.
+      if (!mine) return;
+      const button = event.target.closest('.referral-gift');
+      button.disabled = true;
+      try {
+        const answer = await LLM.postWithTicket('api/referral/claim', { secret: mine.secret, gift: true });
+        referralStatus = answer && answer.status ? answer.status : referralStatus;
+        if (!answer || !/^[0-9a-f]{48}$/.test(answer.grant || '')) throw new Error(R.claimFailed);
+        store.write(KEYS.gifts, [{ token: answer.grant, at: Date.now() }].concat(giftsMade()).slice(0, 20));
+        await refreshReferral();
+        await shareOrCopy(card, R.giftShareText, giftUrl(answer.grant), R.giftCopied);
+      } catch (error) {
+        referralSay(card, (error && error.message) || R.claimFailed);
+      } finally {
+        button.disabled = false;
+      }
+    }
+  });
+
+  // ---------- a gifted free full report ----------
+  //
+  // ?gift=<grant> on arrival: kept on this device and taken out of the
+  // address. The unlock's sheet then offers it; it is cleared once a full
+  // report has been written with it.
+  function giftWaiting() {
+    const gift = store.read(KEYS.gift, null);
+    if (!gift || !/^[0-9a-f]{48}$/.test(gift.token || '')) return null;
+    if (!(Date.now() - Number(gift.at) < GIFT_DAYS * 86400000)) { store.remove(KEYS.gift); return null; }
+    return gift;
+  }
+  (function captureGift() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('gift')) return;
+      const token = String(params.get('gift') || '').trim().toLowerCase();
+      if (/^[0-9a-f]{48}$/.test(token)) store.write(KEYS.gift, { token, at: Date.now() });
+      params.delete('gift');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage: the gift link can be opened again */ }
+  })();
+  // Shown on the welcome page (make your card first) and on the report
+  // (unlock it now), by the same banner in each.
+  // A report won by guessing is told in its own popout (sayGuessOutcome), so
+  // it has no banner as well; a gifted one does.
+  const giftBannerShowing = () => {
+    const gift = giftWaiting();
+    return Boolean(gift) && !gift.won && store.read(KEYS.giftBannerClosed, null) !== gift.token;
+  };
+  function refreshGiftBanner() {
+    const gift = giftBannerShowing() ? giftWaiting() : null;
+    for (const banner of document.querySelectorAll('.gift-banner')) {
+      banner.hidden = !gift;
+      if (!gift) continue;
+      const own = banner.closest('#view-profile');
+      // Won by guessing the character, not given: said as a win.
+      const guess = gift.won ? guessMade() : null;
+      banner.querySelector('.gift-banner-title').textContent = guess ? TEXT.guessWonTitle : TEXT.referral.giftArrivedTitle;
+      banner.querySelector('.gift-banner-text').textContent = guess ? TEXT.guessWonText(guess.name)
+        : own ? TEXT.referral.giftArrivedHave : TEXT.referral.giftArrivedNew;
+      banner.querySelector('.gift-banner-go').textContent = guess ? TEXT.guessWonUse : own ? TEXT.referral.giftUse : TEXT.inviteStart;
+    }
+  }
+  // Its ✕: the banner goes, the report stays offered on the unlock's sheet.
+  document.addEventListener('click', event => {
+    if (!(event.target.closest && event.target.closest('.gift-banner-close'))) return;
+    const gift = giftWaiting();
+    if (gift) store.write(KEYS.giftBannerClosed, gift.token);
+    refreshGiftBanner();
+    refreshReportPromo();
+  });
+  document.addEventListener('click', event => {
+    const go = event.target.closest && event.target.closest('.gift-banner-go');
+    if (!go) return;
+    if (!go.closest('#view-profile')) {
+      $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
       return;
     }
-    const video = $('#scan-video');
-    video.srcObject = stream;
-    await video.play();
-    scanning = true;
-    $('#start-scan').disabled = true;
-    $('#start-scan').textContent = 'Scanning…';
-    status.textContent = 'Looking for a QR code…';
-
-    const canvas = $('#scan-canvas');
-    (function tick() {
-      if (!scanning) return;
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const result = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-        if (result && result.data) {
-          stopCamera();
-          if (!runMatch(result.data)) {
-            $('#scan-alert').innerHTML = '<div class="alert">That QR code isn\'t a Kindred profile.</div>';
-            $('#start-scan').disabled = false;
-            $('#start-scan').textContent = 'Start camera';
-          }
-          return;
-        }
-      }
-      requestAnimationFrame(tick);
-    })();
+    const target = document.querySelector('#profile-body .premium-unlock');
+    if (target) target.click();
   });
 
-  // ---------- report rendering ----------
-
-  function renderReport(r) {
-    const names = r.attachmentStyles;
-    let html = '<div class="match-hero card"><p class="muted">Compatibility report</p>' +
-      '<h1>' + esc(names[0].name) + ' <span class="accent">×</span> ' + esc(names[1].name) + '</h1>' +
-      '<div class="score-ring" style="--pct:' + r.total + '"><div class="score-inner">' +
-      '<span class="score-big">' + r.total + '</span><span class="score-sub">/ 100</span></div></div>' +
-      '<p class="band">' + r.band.emoji + ' <strong>' + r.band.label + '</strong></p>' +
-      '<p class="summary">' + esc(r.summary) + '</p></div>';
-
-    html += '<div class="card"><h2>Where the score comes from</h2><div class="trait-bars">';
-    for (const d of r.dimensions) {
-      html += '<div class="trait-row"><span class="trait-label">' + d.label + ' <span class="muted">(' + d.weight + '%)</span></span>' +
-        '<div class="bar"><div class="bar-fill" style="width:' + d.score + '%"></div></div>' +
-        '<span class="trait-num">' + d.score + '</span></div>';
-    }
-    html += '</div><p class="muted">Attachment styles: ' +
-      names.map(x => '<span class="pill">' + esc(x.name) + ': ' + x.style + '</span>').join(' ') + '</p>';
-    if (r.sharedInterests.length) {
-      html += '<p class="tag-row">Shared interests: ' + r.sharedInterests.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</p>';
-    }
-    html += '</div>';
-
-    html += '<div class="grid-2">';
-    if (r.strengths.length) {
-      html += '<div class="card good"><h2>💪 Your strengths as a pair</h2><ul class="report-list">' +
-        r.strengths.map(s => '<li>' + esc(s) + '</li>').join('') + '</ul></div>';
-    }
-    if (r.watchouts.length) {
-      html += '<div class="card warn"><h2>⚠️ Watch out for</h2><ul class="report-list">' +
-        r.watchouts.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul></div>';
-    }
-    html += '</div>';
-
-    html += '<div class="card advice"><h2>🧭 How to be great together</h2><ul class="report-list">' +
-      r.advice.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>';
-
-    $('#report-root').innerHTML = html;
+  // ---------- the first Psyche Report, free for sharing the link ----------
+  //
+  // One connection opening the reader's link unlocks their first Psyche
+  // Report free (lib/referral.js, claimFirst); every re-run is paid. So the
+  // unlock offer, and the payment sheet behind it, lead with sharing the link,
+  // and paying US$5 is the quiet second way in. Offered only while this
+  // reader has no Psyche Report, since the server refuses it after.
+  // "Use for Psyche Pair": the card-level part of the read, and only that,
+  // posted to the PsycheAI plugin (app.psycheai.io/join, its lib/join.js) as
+  // a top-level form post once the reader agrees; they sign in there. The
+  // structured fields alone: no report text, no data, nothing from the digest.
+  function pairPayload() {
+    const r = (state.profile && state.profile.report) || {};
+    const list = (value, pick) => (Array.isArray(value) ? value.map(pick).filter(Boolean) : []);
+    const big = r.bigFive || {};
+    const love = (r.relationship && r.relationship.loveLanguages) || {};
+    return {
+      name: String((state.profile.card && state.profile.card.name) || '').split(/\s+/)[0],
+      confidence: { score: Number(r.confidence && r.confidence.score) || null },
+      essence: { character: r.essence && r.essence.character },
+      card: { headline: r.card && r.card.headline },
+      mbti: { type: r.mbti && r.mbti.type, letters: list(r.mbti && r.mbti.letters, l => ({ choice: l.choice, strength: l.strength })) },
+      bigFive: Object.fromEntries(['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']
+        .filter(k => big[k] && Number.isFinite(Number(big[k].score))).map(k => [k, { score: Number(big[k].score) }])),
+      attachment: { style: r.attachment && r.attachment.style },
+      relationship: { loveLanguages: { giving: list(love.giving, l => l.language && { language: l.language }),
+        receiving: list(love.receiving, l => l.language && { language: l.language }) } },
+      interests: list(r.interests, i => i.name && { name: i.name }).slice(0, 20),
+      values: list(r.values, v => v.value && { value: v.value }).slice(0, 6),
+      topMotivators: list(r.topMotivators || (r.card && r.card.motivators), m => String(m)).slice(0, 3),
+      patterns: list(r.patterns, p => p.name && { name: p.name }).slice(0, 3),
+    };
+  }
+  function usePairRead() {
+    if (!state.profile || !state.profile.report) return;
+    if (!window.confirm(TEXT.pairConfirm)) return;
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = TEXT.pairUrl;
+    const field = document.createElement('input');
+    field.type = 'hidden';
+    field.name = 'read';
+    field.value = JSON.stringify(pairPayload());
+    form.appendChild(field);
+    document.body.appendChild(form);
+    form.submit();
   }
 
-  // ---------- boot ----------
+  // A read Muse wrote, with no data of its own added here: there is no digest
+  // for Ask PsycheAI to answer from, so its questions go to Muse.
+  const museOnly = () => Boolean(state.profile && state.profile.source === 'muse' && !state.digest);
 
-  function boot() {
-    const m = location.hash.match(/#p=([A-Za-z0-9_-]+)/);
-    if (m) {
-      history.replaceState(null, '', location.pathname + location.search);
-      const other = K.decodeProfile(m[1]);
-      if (other) {
-        if (store.profile) { runMatch(m[1]); return; }
-        sessionStorage.setItem('kindred_pending', m[1]);
-        $('#pending-name').textContent = other.name;
-        show('pending');
+  function firstFreeOffered() {
+    return Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length &&
+      !hasUnfetchedUnlock() && !store.read(KEYS.firstUsed, false);
+  }
+  const firstFreeReady = status => Boolean(status && status.first && status.first.unlocked && !status.first.used);
+
+  /**
+   * This account has had its first report, so the free one is not for it (the
+   * server said so: firstUsed). Remembered, the share-first offer taken off
+   * the page and the payment sheet, and the sheet left on paying.
+   */
+  function markFirstUsed(message) {
+    store.write(KEYS.firstUsed, true);
+    const dialog = $('#premium-dialog');
+    if ($('#premium-share')) $('#premium-share').hidden = true;
+    if ($('#premium-pay-head')) $('#premium-pay-head').hidden = true;
+    if (dialog) dialog.classList.remove('share-first', 'is-free-run');
+    if (message) premiumStatus(message, 'bad');
+    if (state.profile && profilePage !== 'report') renderProfile();
+  }
+
+  /** The unlock panel's share-first block, before the server has said anything. */
+  function unlockShareHtml() {
+    const U = TEXT.unlockShare;
+    return '<div class="unlock-share">' +
+      '<p class="unlock-share-title">' + Copy.lineIcon('🔗') + '<span>' + esc(U.title) + '</span></p>' +
+      '<p class="unlock-share-sub">' + esc(U.sub) + '</p>' +
+      '<button class="btn unlock-share-go" type="button">' + esc(U.share) + '</button>' +
+      // Once a connection's open has unlocked it: the same sheet as paying,
+      // where the free unlock is the first thing offered.
+      '<button class="btn unlock-share-claim" type="button" hidden>' + esc(U.claim) + '</button>' +
+      '<p class="unlock-share-status" role="status" hidden></p>' +
+      '</div>' +
+      '<button class="link-btn premium-unlock unlock-pay" type="button">' + esc(U.pay) + '</button>';
+  }
+  function refreshUnlockShare(status) {
+    const U = TEXT.unlockShare;
+    for (const box of document.querySelectorAll('#profile-body .unlock-share')) {
+      const ready = firstFreeReady(status);
+      box.classList.toggle('is-ready', ready);
+      box.querySelector('.unlock-share-sub').textContent = ready ? U.subReady : U.sub;
+      box.querySelector('.unlock-share-go').hidden = ready;
+      box.querySelector('.unlock-share-claim').hidden = !ready;
+    }
+  }
+
+  // Watching for the open that unlocks it. The reader shares the link and
+  // waits on this page, so the panel asks the server again every 20 seconds
+  // while it is on screen, the tab is visible and the report is still locked,
+  // and at once when the reader comes back to the tab (from the app they
+  // shared in). It stops itself once unlocked, or after 30 minutes of asking;
+  // coming back to the tab starts it again. /api/referral allows 300 an hour.
+  const UNLOCK_POLL_MS = 20000;
+  const UNLOCK_POLL_FOR_MS = 30 * 60000;
+  let unlockPoll = null;
+  let unlockPollSince = 0;
+  function unlockShareWaiting() {
+    const box = document.querySelector('#profile-body .unlock-share');
+    return Boolean(box && !box.classList.contains('is-ready') && !$('#view-profile').hidden &&
+      document.visibilityState === 'visible');
+  }
+  async function checkUnlockShare() {
+    if (!unlockShareWaiting()) return;
+    const status = await fetchReferralStatus(true).catch(() => null);
+    if (status) refreshUnlockShare(status);
+  }
+  function watchUnlockShare() {
+    if (unlockPoll) return;
+    unlockPollSince = Date.now();
+    unlockPoll = setInterval(() => {
+      if (!document.querySelector('#profile-body .unlock-share') ||
+          document.querySelector('#profile-body .unlock-share.is-ready') || Date.now() - unlockPollSince > UNLOCK_POLL_FOR_MS) {
+        clearInterval(unlockPoll);
+        unlockPoll = null;
+        return;
+      }
+      checkUnlockShare();
+    }, UNLOCK_POLL_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!unlockShareWaiting()) return;
+    checkUnlockShare();
+    watchUnlockShare();
+  });
+
+  /** The share message with the link: the share sheet where there is one, else copied. */
+  async function shareMyLink(button, say, message) {
+    const text = message || shareMessage();
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; }
+      catch (error) { if (error && error.name === 'AbortError') return; }
+    }
+    writeClipboard(text).then(() => say(TEXT.unlockShare.copied), () => window.prompt(TEXT.linkCopyPrompt, text));
+  }
+  document.addEventListener('click', event => {
+    const claim = event.target.closest && event.target.closest('.unlock-share-claim');
+    if (claim) { openPremiumDialog(claim, 'unlock'); return; }
+    const go = event.target.closest && event.target.closest('.unlock-share-go');
+    if (!go) return;
+    const status = go.closest('.unlock-share').querySelector('.unlock-share-status');
+    shareMyLink(go, message => {
+      status.textContent = message;
+      status.hidden = !message;
+      setTimeout(() => { status.hidden = true; }, 4000);
+    });
+  });
+
+  /**
+   * On the unlock's sheet: a gifted report first, as it is someone else's
+   * present and expires; otherwise, for a first report, the share-first box
+   * above the ways to pay, with the free unlock once a connection's open has
+   * earned it.
+   */
+  function showReferralOffer(kind, rerun) {
+    const button = $('#premium-referral');
+    const box = $('#premium-share');
+    if (!button || !box) return;
+    button.hidden = true;
+    box.hidden = true;
+    $('#premium-pay-head').hidden = true;
+    $('#premium-dialog').classList.remove('share-first');
+    delete button.dataset.gift;
+    if (kind !== 'unlock') return;
+    const gift = giftWaiting();
+    if (gift) {
+      button.textContent = TEXT.referral.useGift;
+      button.dataset.gift = gift.token;
+      button.hidden = false;
+      return;
+    }
+    if (rerun || !firstFreeOffered()) return;
+    const U = TEXT.unlockShare;
+    const show = status => {
+      if (premiumKind !== 'unlock' || !firstFreeOffered()) return;
+      const ready = firstFreeReady(status);
+      $('#premium-share-title').textContent = ready ? U.sheetTitle : U.title;
+      $('#premium-share-sub').textContent = ready ? U.subReady : U.sub;
+      $('#premium-share-go').textContent = U.share;
+      $('#premium-share-go').hidden = ready;
+      $('#premium-first').textContent = U.claim;
+      $('#premium-first').hidden = !ready;
+      $('#premium-pay-head').textContent = U.payHead;
+      box.hidden = false;
+      $('#premium-pay-head').hidden = false;
+      $('#premium-dialog').classList.add('share-first');
+    };
+    show(referralStatus);
+    fetchReferralStatus(true).then(show).catch(() => {});
+  }
+  if ($('#premium-referral')) {
+    $('#premium-referral').addEventListener('click', () => {
+      const button = $('#premium-referral');
+      if (!button.dataset.gift) return;
+      button.hidden = true;
+      onPaymentAuthorised({ referralGrant: button.dataset.gift }, $('#premium-dialog'));
+    });
+  }
+  if ($('#premium-first')) {
+    $('#premium-first').addEventListener('click', async () => {
+      const button = $('#premium-first');
+      const mine = await ensureReferral();
+      if (!mine) return;
+      button.disabled = true;
+      try {
+        const { account, legacy } = await accountKeys().catch(() => ({}));
+        const answer = await LLM.postWithTicket('api/referral/claim',
+          Object.assign({ secret: mine.secret, first: true }, account ? { account } : {}, legacy ? { legacyAccount: legacy } : {}));
+        referralStatus = answer && answer.status ? answer.status : referralStatus;
+        if (!answer || !answer.grant) throw new Error(TEXT.referral.firstFailed);
+        $('#premium-share').hidden = true;
+        $('#premium-pay-head').hidden = true;
+        $('#premium-dialog').classList.remove('share-first');
+        onPaymentAuthorised({ referralGrant: answer.grant }, $('#premium-dialog'));
+      } catch (error) {
+        if (error && error.firstUsed) markFirstUsed(TEXT.referral.firstUsedPay);
+        else premiumStatus((error && error.message) || TEXT.referral.firstFailed, 'bad');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+  if ($('#premium-share-go')) {
+    $('#premium-share-go').addEventListener('click', () => {
+      shareMyLink($('#premium-share-go'), message => premiumStatus(message));
+    });
+  }
+
+  /**
+   * My Psyche once the full report is unlocked: their link under the card,
+   * what the card carries, the way into My Report, and how it was all read
+   * (with the re-run that adds data).
+   */
+  function hubSectionsHtml(report) {
+    // The way into My Report is a button under the card's tools (cardGuideHtml).
+    // The roast moved to My Report once it is unlocked (Appendix 1). Evidence
+    // and method and the referral card open from the hub now.
+    return hubHtml(report, true);
+  }
+
+  // ---------- My Psyche's hub ----------
+  //
+  // Four tiles — the report, Ask PsycheAI, the reader's syncs and their link —
+  // then their data and what to keep. Under the card once the report is
+  // unlocked; at the foot of the page before, after the Overview, the roast
+  // and the offer. The numbers that come from the server (questions left, the
+  // link's counts) are filled in by refreshHub when they arrive.
+  const HUB_ICONS = {
+    // The Psyche Card: a portrait card with a face and two lines.
+    card: '<rect x="6" y="3" width="12" height="18" rx="2.5"/><circle cx="12" cy="9.5" r="2.5"/><path d="M9 15h6M9.5 18h5"/>',
+    // Psyche Pair: a heart.
+    heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+    report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/><path d="M12 8.6l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
+    sync: '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/>',
+    spark: '<path d="M12 3l1.8 4.6L18.5 9.4l-4.7 1.8L12 16l-1.8-4.8L5.5 9.4l4.7-1.8z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
+    grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    tick: '<path d="M4.5 12.8l4.6 4.7L19.5 6.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    question: '<path d="M8.8 9a3.3 3.3 0 1 1 4.8 2.9c-1 .5-1.6 1.2-1.6 2.4v.4"/><path d="M12 18.2v.1"/>',
+    open: '<path d="M4 6.5C6.5 5 9.5 5 12 6.5v13C9.5 18 6.5 18 4 19.5zM20 6.5C17.5 5 14.5 5 12 6.5v13c2.5-1.5 5.5-1.5 8 0z"/>',
+    down: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    share: '<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>',
+    gift: '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M12 9v11M3 9h18M12 9c-1.5-3-5-4-5-1.5S12 9 12 9zM12 9c1.5-3 5-4 5-1.5S12 9 12 9z"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    history: '<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5M12 8v4.5l3 2"/>',
+    redo: '<path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 15.5"/><path d="M4 20v-4.5h4.5"/>',
+  };
+  const hubIcon = key => '<svg class="hub-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + HUB_ICONS[key] + '</svg>';
+  // A page or panel title's mark, on its left in the title's gradient: the
+  // hub's grid, the card, the report, a sync. `id` names its gradient, one per mark.
+  const titleMark = (key, id) => '<svg class="hub-svg title-mark" viewBox="0 0 24 24" fill="none" stroke="url(#' + id + ')" ' +
+    'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><defs>' +
+    '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b3fa0"/>' +
+    '<stop offset="1" stop-color="#d1477a"/></linearGradient></defs>' + HUB_ICONS[key] + '</svg>';
+  const hubDots = (n, on) => n > 0 && n <= 6 ? '<span class="hub-dots" aria-hidden="true">' +
+    Array.from({ length: n }, (_, i) => '<i' + (i < on ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
+
+  /** A past moment as "today", "yesterday", "3 days ago" or a date. */
+  function agoText(at) {
+    const then = Number(new Date(at));
+    if (!Number.isFinite(then)) return '';
+    const days = Math.floor((Date.now() - then) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return days + ' days ago';
+    return new Date(then).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+
+  // Each tile explains itself in one or two lines: its name is a button that
+  // shows the words on hover or focus, and on a tap on a phone.
+  const hubTip = (key, name, nameClass, icon, more) => {
+    const H = Copy.STRUCTURED.hub;
+    return '<button type="button" class="hub-tip" aria-expanded="false" aria-describedby="hub-tip-' + key + '">' +
+      '<span class="' + (nameClass || 'hub-name') + '">' + (icon ? '<span class="hub-ti">' + hubIcon(icon) + '</span>' : '') +
+      esc(name) + '</span></button>' +
+      '<span class="hub-tip-text" role="tooltip" id="hub-tip-' + key + '">' + esc(H.tips[key]) + (more || '') + '</span>';
+  };
+
+  // A tile: two lines. The icon, the name and its one number or state; then
+  // its buttons. Every tile in one shade; only the locked report glows.
+  function hubTile(key, opts) {
+    return '<div class="hub-tile hub-' + key + (opts.cta ? ' is-cta' : '') + '" data-hub="' + key + '">' +
+      '<div class="hub-l1">' + hubTip(opts.tip || key, opts.name, '', opts.mark, opts.made) +
+        '<span class="hub-badge" data-hub-badge' + (opts.badge ? '' : ' hidden') + '>' + esc(opts.badge || '') + '</span>' +
+        // The number explains itself in its own words (fillNumTip), on a tap, hover or focus.
+        (opts.state || '<button type="button" class="hub-num hub-numtip" data-hub-num data-numtip="' + esc(key) + '" aria-expanded="false"' +
+          ' aria-describedby="hub-tip-' + esc(key) + '-n"' + (opts.numLabel ? ' aria-label="' + esc(opts.numLabel) + '"' : '') + '>' + esc(opts.num) + '</button>' +
+          '<span class="hub-tip-text" role="tooltip" id="hub-tip-' + esc(key) + '-n"></span>') +
+      '</div>' +
+      (opts.line2 || '<div class="hub-acts">' + opts.buttons.map(([go, label, icon, extra]) =>
+        '<button type="button" class="hub-go' + (extra || '') + '" data-hub-go="' + esc(go) + '" aria-label="' + esc(label) + '">' +
+          (icon ? hubIcon(icon) : '') + '<span class="hub-go-label">' + esc(label) + '</span></button>').join('') +
+      '</div>') + '</div>';
+  }
+
+  // A ready tile's green tick, with the day it was made under it. Who made
+  // it and when is in the tile's own tooltip (hubMade), which the tick shows
+  // on hover, and on a tap on a phone, as the name does. With no date on
+  // record (a profile from before one was kept), the plain tick.
+  function hubStamp(key, at, label) {
+    const day = at ? new Date(at) : null;
+    if (!day || !Number.isFinite(day.getTime())) {
+      return '<span class="hub-ok" role="img" aria-label="' + esc(label) + '">' + hubIcon('tick') + '</span>';
+    }
+    return '<button type="button" class="hub-ok hub-stamp" aria-describedby="hub-tip-' + key + '" aria-label="' + esc(label) + '">' +
+      hubIcon('tick') + '<small>' + esc(day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })) + '</small></button>';
+  }
+  // The tooltip's last line: "Psyche Card generated by <model> on <when>."
+  function hubMade(lead, model, at) {
+    const day = at ? new Date(at) : null;
+    if (!day || !Number.isFinite(day.getTime())) return '';
+    return '<span class="hub-tip-made">' + esc(lead) + ' <b>' + esc(model || 'the model') + '</b> on ' + esc(provenanceWhen(at)) + '.</span>';
+  }
+  // "15 Oct 2026, 18:51" in the reader's own order.
+  const provenanceWhen = at => new Date(at).toLocaleString(undefined,
+    { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  // Under Your Data while the score is below 80: one line naming the sources
+  // not yet added. Gone once tapped or closed, until the next reading.
+  function dataNudgeHtml(score, sources, flow) {
+    const H = Copy.STRUCTURED.hub;
+    // Instagram too, first, for a card read from chats alone.
+    const missing = sources.filter(([, , loaded]) => !loaded).map(([key]) => H.sourceNames[key]);
+    const made = state.profile && String(state.profile.premiumAt || state.profile.createdAt || '');
+    // The bar at the top of the page says it once the report is in hand.
+    if (score >= 80 || !missing.length || store.read(KEYS.dataNudge, '') === made || signalBarOffered()) return '';
+    const names = missing.length > 1 ? missing.slice(0, -1).join(', ') + ' ' + H.nudgeOr + ' ' + missing[missing.length - 1] : missing[0];
+    return '<p class="hub-nudge"><button type="button" class="hub-nudge-go" data-hub-change data-nudge data-flow="' + flow + '">' +
+      hubIcon('spark') + '<span>' + esc(H.nudge(names)) + '</span></button>' +
+      '<button type="button" class="hub-nudge-x" data-nudge-x aria-label="' + esc(H.nudgeClose) + '" title="' + esc(H.nudgeClose) + '">×</button></p>';
+  }
+  const hideDataNudge = () => {
+    const made = state.profile && String(state.profile.premiumAt || state.profile.createdAt || '');
+    store.write(KEYS.dataNudge, made);
+    document.querySelectorAll('.hub-nudge').forEach(node => node.remove());
+  };
+
+  function hubHtml(report, explained) {
+    const H = Copy.STRUCTURED.hub;
+    const history = store.read(KEYS.history, []);
+    const syncs = Array.isArray(history) ? history.filter(entry => entry && (entry.report || entry.withName)) : [];
+    const fresh = syncs.filter(entry => entry.fresh).length;
+    const asked = (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string').length;
+    const tiles = [
+      hubTile('psyche', { icon: 'report', mark: 'card', name: H.card, tip: 'card',
+        state: hubStamp('card', state.profile && state.profile.createdAt, H.ready),
+        made: hubMade(H.madeCard, state.profile && state.profile.model, state.profile && state.profile.createdAt),
+        buttons: [['card', H.read, 'open'], ['card-download', H.download, 'down']] }),
+      explained
+        ? hubTile('report', { icon: 'report', mark: 'open', name: H.report,
+            state: hubStamp('report', state.profile && state.profile.premiumAt, H.unlocked),
+            made: hubMade(H.madeReport, state.profile && state.profile.premiumModel, state.profile && state.profile.premiumAt),
+            buttons: [['report', H.read, 'open'], ['pdf', H.download, 'down']] })
+        : hubTile('report', { icon: 'lock', mark: 'open', name: H.report, cta: true,
+            state: '<span class="hub-lockmark" role="img" aria-label="' + esc(H.locked) + '">' + hubIcon('lock') + '</span>', tip: firstFreeOffered() ? 'reportLocked' : 'reportBuy',
+            buttons: [['unlock', firstFreeOffered() ? H.unlockFree : H.unlock, '', ' is-fill']] }),
+      hubTile('syncs', { icon: 'sync', mark: 'sync', name: H.syncs, num: String(syncs.length), numLabel: H.syncsCount(syncs.length),
+        badge: fresh ? H.newCount(fresh) : '', buttons: [['syncs', H.sync, 'sync'], ['share', H.share, 'share']] }),
+      museOnly()
+        // A read Muse wrote: no count, as nothing is asked from here.
+        ? hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, tip: 'askMuse', state: '<span class="hub-state">' + esc(H.inMuse) + '</span>',
+            buttons: [['ask', Copy.STRUCTURED.ask.inMuse, 'ask']] })
+        : hubTile('ask', { icon: 'ask', mark: 'ask', name: H.ask, num: '–', numLabel: H.questionsLeft(0),
+        made: explained && asked ? esc(H.tips.askHistory) : '',
+        // With answers to look back on: History the wide button, a small "?" to
+        // ask a new one. Before any: Ask, the whole width.
+        buttons: explained && asked ? [['asked', H.askHistory, 'history'], ['ask', H.askGo, 'ask', ' is-icon']] : [['ask', H.askGo, 'ask']] }),
+    ];
+    const digest = state.digest;
+    const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
+    const short = H.sourceNames;
+    const sources = [
+      // A card read from WhatsApp chats alone has no Instagram to show loaded.
+      // A read Muse wrote read Instagram there, so it shows as loaded.
+      ['instagram', short.instagram, Boolean(digest && digestHasInstagram(digest)) || Boolean(state.profile && state.profile.source === 'muse')],
+      ['whatsapp', short.whatsapp + (chats ? ' · ' + chats : ''), Boolean(digest && digest.whatsapp)],
+      ['google', short.google, Boolean(digest && digest.google)],
+      ['facebook', short.facebook, Boolean(digest && digest.facebook)],
+    ].concat(['tiktok', 'journal'].filter(key => digest && digest[key]).map(key => [key, short[key], true]));
+    const conf = report.confidence || {};
+    const score = Math.max(0, Math.min(100, Math.round(Number(conf.score) || 0)));
+    const saved = store.read(KEYS.lastBackup, null);
+    const flow = explained ? 'rerun' : 'unlock';
+    return '<section class="card section-card hub-card screen-only" aria-labelledby="hub-title">' +
+      // The hub's own mark beside its name, in the title's gradient.
+      '<div class="hub-bar"><h2 id="hub-title">' + titleMark('grid', 'hub-title-grad').replace('title-mark', 'hub-title-mark') + esc(H.title) + '</h2></div>' +
+      '<p class="hub-intro"><span class="hint-touch">' + esc(H.intro.touch) + '</span><span class="hint-mouse">' + esc(H.intro.mouse) + '</span></p>' +
+      '<div class="hub-in">' +
+      '<div class="hub-tiles">' + tiles.join('') + '</div>' +
+      '<div class="hub-rows">' + hubLinkRowHtml(explained) +
+        '<div class="hub-row hub-data" aria-label="' + esc(H.data) + '">' +
+          // The name explains itself; the score opens Signal strength.
+          '<span class="hub-datahead">' + hubTip('data', H.signal, 'hub-rl') +
+            '<button type="button" class="hub-conf" data-hub-go="method" aria-label="' + esc(H.signalOf(score)) + '">' +
+            '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span></button></span>' +
+          '<span class="hub-chips">' + sources.map(([key, label, loaded]) =>
+            '<button type="button" class="hub-chip' + (loaded ? '' : ' is-add') + '" data-hub-source="' + key + '" data-flow="' + flow + '"' +
+            ' aria-label="' + esc(loaded ? H.sourceLoaded(label) : H.sourceAdd(label)) + '">' +
+            (loaded ? esc(label) + hubIcon('tick') : hubIcon('plus') + esc(label)) + '</button>').join('') + '</span>' +
+          // The one plain way to add a source or change what was read.
+          '<button type="button" class="hub-change" data-hub-change data-flow="' + flow + '">' + hubIcon('redo') + '<span>' + esc(H.changeData) + '</span></button>' +
+          dataNudgeHtml(score, sources, flow) +
+          // The read, taken to Psyche Pair in Muse (usePairRead), once there is a report.
+          // Not on a read Muse wrote with nothing added: Psyche Pair already has it.
+          (explained && !museOnly() ? '<button type="button" class="hub-pair" data-hub-go="pair">' + hubIcon('heart') + '<span>' +
+            esc(state.profile.source === 'muse' ? H.pairUpdate : H.pair) + '</span></button>' : '') +
+        '</div>' +
+        '<div class="hub-row hub-keep" aria-label="' + esc(H.keep) + '">' +
+          '<span class="hub-keephead">' + hubTip('keep', H.keep, 'hub-rl') + '</span>' +
+          '<button type="button" class="hub-btn" data-hub-go="backup">' + hubIcon('save') + '<span>' + esc(H.backup) + '</span>' +
+            '<span class="hub-saved' + (saved ? '' : ' is-never') + '">' + esc(saved ? H.savedAgo(agoText(saved)) : H.neverSaved) + '</span></button>' +
+          (explained
+            ? '<button type="button" class="hub-btn" data-hub-go="ai" title="' + esc(H.aiTip) + '">' + hubIcon('spark') + '<span>' + esc(H.aiProfile) + '</span></button>'
+            : '<button type="button" class="hub-btn is-locked" data-hub-go="ai-locked" title="' + esc(H.aiTip) + '">' + hubIcon('lock') + '<span>' + esc(H.aiLocked) + '</span></button>') +
+          '<button type="button" class="hub-del" data-hub-go="delete" aria-label="' + esc(H.deleteAll) + '" title="' + esc(H.deleteAll) + '">' + hubIcon('trash') + '</button>' +
+        '</div>' +
+      '</div></div>' +
+    '</section>';
+  }
+
+  // Your Link, as a row: its counts, what they earn, Copy link and Share, and
+  // once there is a credit, Gift a Psyche Report and the gift links made.
+  // Built with the referral card's own classes, so refreshReferral fills it
+  // and the referral card's handlers run its buttons; no popout.
+  function hubLinkRowHtml(paid) {
+    const H = Copy.STRUCTURED.hub;
+    const R = TEXT.referral;
+    // Each count explains itself (fillNumTip), as the tiles' numbers do.
+    const stat = (key, label) => '<li class="hub-linkstat"><button type="button" class="hub-numtip hub-statbtn" data-numtip="' + key + '"' +
+      ' aria-expanded="false" aria-describedby="hub-tip-stat-' + key + '"><b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</button>' +
+      '<span class="hub-tip-text" role="tooltip" id="hub-tip-stat-' + key + '"></span></li>';
+    return '<div class="hub-row hub-linkrow referral-card" data-paid="' + (paid ? '1' : '0') + '" aria-label="' + esc(H.link) + '">' +
+      '<span class="hub-linkhead">' + hubTip('link', H.link, 'hub-rl') +
+        '<button type="button" class="hub-copy hub-linkcopy" data-hub-go="copy" aria-label="' + esc(H.copyLink) + '" title="' + esc(H.copyLink) + '">' +
+          hubIcon('copy') + '</button></span>' +
+      '<ul class="hub-linkstats">' + stat('opens', H.statOpened) + stat('friends', H.statCards) + stat('credits', H.statCredits) + '</ul>' +
+      '<p class="hub-linknote"><button type="button" class="hub-numtip hub-notebtn" aria-expanded="false" aria-describedby="hub-tip-rule">' +
+        '<span>' + esc(H.linkNote) + '</span></button><span class="hub-tip-text" role="tooltip" id="hub-tip-rule">' + esc(H.linkRule) + '</span></p>' +
+      '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
+        '<button type="button" class="hub-btn referral-gift">' + hubIcon('gift') + '<span>' + esc(R.gift) + '</span></button></div>' +
+      '<p class="referral-status" role="status" hidden></p>' +
+      '<div class="referral-gifts"></div>' +
+    '</div>';
+  }
+
+  /** The numbers the server sends later: questions left, the link's credits. */
+  function refreshHub() {
+    const hub = document.querySelector('#profile-body .hub-card');
+    if (!hub) return;
+    const H = Copy.STRUCTURED.hub;
+    // Set through the DOM: the site's policy refuses inline style attributes.
+    const ring = hub.querySelector('.hub-ring[data-p]');
+    if (ring) ring.style.setProperty('--p', ring.dataset.p);
+    const set = (key, num, label) => {
+      const node = hub.querySelector('.hub-tile[data-hub="' + key + '"] [data-hub-num]');
+      if (!node) return;
+      node.textContent = num;
+      node.setAttribute('aria-label', label);
+    };
+    // Questions as asked/of (October 2026; left/of until then), where "of" is
+    // what is left plus what this reader has actually asked (Appendix 2's
+    // list): never asked, 0/5; after two, 2/5. Not a remembered high-water
+    // mark, which read 5/6 for a reader who had asked nothing once a link
+    // credit went on a gift instead of a question.
+    if (askCreditsNow && typeof askCreditsNow.total === 'number') {
+      const left = Math.max(0, Number(askCreditsNow.total) || 0);
+      const asked = askThread().length;
+      const of = left + asked;
+      const node = hub.querySelector('.hub-tile[data-hub="ask"] [data-hub-num]');
+      if (node) {
+        node.innerHTML = esc(String(asked)) + (of > 0 ? '<small>/' + esc(String(of)) + '</small>' : '');
+        node.setAttribute('aria-label', H.questionsOf(asked, of));
+      }
+    }
+  }
+
+  // The two popouts the hub opens: Evidence and method, and the link's credits
+  // and gifts (the referral card, whole, so its own handlers keep working).
+  function openHubDialog(id, title, html) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+    dialog.querySelector('.hub-dialog-title').textContent = title;
+    setHtml(dialog.querySelector('.hub-dialog-body'), html);
+    if (!dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
+  }
+  // A click on the backdrop closes a popout; one on its own edge does not
+  // (27 October 2026). The backdrop and the dialog's padding are both the
+  // <dialog> as the click's target, so it is told by where the click landed.
+  function clickedOutside(dialog, event) {
+    if (event.target !== dialog) return false;
+    const box = dialog.getBoundingClientRect();
+    return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+  }
+  for (const id of ['hub-link-dialog', 'hub-method-dialog', 'hub-confirm-dialog']) {
+    const dialog = document.getElementById(id);
+    if (!dialog) continue;
+    dialog.querySelector('.hub-dialog-close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => { if (clickedOutside(dialog, event)) dialog.close(); });
+  }
+
+  document.addEventListener('click', event => {
+    const chip = event.target.closest('.hub-chip');
+    if (chip) {
+      if (chip.dataset.flow === 'unlock') openPremiumDialog(chip, 'unlock');
+      else startRerun();
+      return;
+    }
+    if (event.target.closest('[data-nudge-x]')) { hideDataNudge(); return; }
+    const change = event.target.closest('[data-hub-change]');
+    if (change) {
+      if (change.hasAttribute('data-nudge')) hideDataNudge();
+      if (change.dataset.flow === 'unlock') openPremiumDialog(change, 'unlock');
+      else startRerun();
+      return;
+    }
+    const button = event.target.closest('[data-hub-go]');
+    if (!button || !button.closest('.hub-card')) return;
+    const H = Copy.STRUCTURED.hub;
+    const report = state.profile && state.profile.report;
+    switch (button.dataset.hubGo) {
+      case 'report': leaveHub(); go('full'); break;
+      case 'pdf': exportPdf(); break;
+      case 'card': openPsycheCard(); break;
+      // Without a share sheet the link is copied, and said so as Copy says it
+      // (October 2026: it called an absent callback and threw after copying).
+      // Psyche Sync's Share asks them to sync, not only to make a card.
+      case 'share': shareMyLink(button, flashCardStatus, syncShareMessage()); break;
+      case 'card-download': downloadCardImage({ currentTarget: button }); break;
+      case 'asked': leaveHub(); openAskAppendix(); break;
+      case 'unlock': openPremiumDialog(button, 'unlock'); break;
+      case 'ask': openAsk(undefined, { ideas: true }); break;
+      case 'syncs': leaveHub(); go('scan'); break;
+      // The link alone (October 2026): Share sends the message.
+      case 'copy': {
+        const text = myLinkUrl();
+        writeClipboard(text).then(() => {
+          button.innerHTML = hubIcon('tick');
+          button.classList.add('is-done');
+          flashCardStatus(TEXT.linkCopied);
+          setTimeout(() => { button.innerHTML = hubIcon('copy'); button.classList.remove('is-done'); }, 2000);
+        }, () => window.prompt(TEXT.linkCopyPrompt, text));
+        break;
+      }
+      case 'link':
+        openHubDialog('hub-link-dialog', H.linkDialogTitle, referralCardHtml(hasExplanations(state.profile)));
+        refreshReferral().catch(() => {});
+        break;
+      case 'method':
+        if (report) openMethodDialog(report);
+        break;
+      case 'backup': openHubConfirm('backup'); break;
+      case 'pair': usePairRead(); break;
+      case 'ai': openHubConfirm('ai'); break;
+      case 'ai-locked': openHubConfirm('ai', true); break;
+      case 'delete': $('#delete-profile').click(); break;
+    }
+  });
+
+  // The tips: a tap opens one (and shuts any other); a tap anywhere else, or
+  // Escape, shuts it. Hover and focus show it too, in CSS.
+  const closeHubTips = except => document.querySelectorAll('.hub-tip.is-open, .hub-numtip.is-open').forEach(tip => {
+    if (tip !== except) { tip.classList.remove('is-open'); tip.setAttribute('aria-expanded', 'false'); }
+  });
+  // A number's words, from the number as it stands now (the server fills the
+  // counts in later): "You have synced with 10 people", "1 question asked out
+  // of 5 available". Written as it is pointed at, tapped or focused.
+  function fillNumTip(button) {
+    const key = button.dataset.numtip;
+    const words = Copy.STRUCTURED.hub.numTips[key];
+    const text = button.nextElementSibling;
+    if (!words || !text) return;
+    const nums = (button.textContent.match(/\d+/g) || []).map(Number);
+    text.textContent = key === 'ask' ? words(nums[0] || 0, nums.length > 1 ? nums[1] : 0) : words(nums[0] || 0);
+  }
+  const fillFrom = event => {
+    const button = event.target.closest && event.target.closest('.hub-numtip[data-numtip]');
+    if (button) fillNumTip(button);
+  };
+  document.addEventListener('pointerover', fillFrom);
+  document.addEventListener('focusin', fillFrom);
+  document.addEventListener('click', event => {
+    // The tick under a ready tile and the lock open their tile's tooltip as
+    // its name does; a number, a count and the credit rule open their own.
+    const own = event.target.closest('.hub-numtip');
+    if (own && own.dataset.numtip) fillNumTip(own);
+    const beside = event.target.closest('.hub-l1 .hub-stamp, .hub-l1 .hub-lockmark');
+    const tip = own || event.target.closest('.hub-tip') || (beside && beside.closest('.hub-l1').querySelector('.hub-tip'));
+    closeHubTips(tip);
+    if (!tip) return;
+    const open = !tip.classList.contains('is-open');
+    tip.classList.toggle('is-open', open);
+    tip.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeHubTips(null); });
+
+  // Signal strength: the method card in a popout, cut down to what the hub
+  // needs. Every source open, one "Add / change data" link instead of one per
+  // row, and no WhatsApp advice: this is a look at what was read, not a form.
+  function openMethodDialog(report) {
+    const H = Copy.STRUCTURED.hub;
+    const explained = hasExplanations(state.profile);
+    openHubDialog('hub-method-dialog', H.methodDialogTitle, explained ? methodCardHtml(report, false) : freeMethodCardHtml(report));
+    const body = document.querySelector('#hub-method-dialog .hub-dialog-body');
+    body.querySelectorAll('.source-read-toggle[aria-controls]').forEach(toggle => {
+      toggle.setAttribute('aria-expanded', 'true');
+      const more = document.getElementById(toggle.getAttribute('aria-controls'));
+      if (more) more.hidden = false;
+    });
+    body.querySelectorAll('.source-read.is-missing').forEach(row => {
+      const none = document.createElement('span');
+      none.className = 'source-read-none';
+      none.textContent = H.notAdded;
+      row.querySelector('.source-read-action').replaceWith(none);
+    });
+    body.querySelectorAll('.source-read-action, .source-read-hint').forEach(node => node.remove());
+    const title = body.querySelector('.sources-read-title');
+    if (title) {
+      const change = document.createElement('button');
+      change.type = 'button';
+      // The hub's own filled button, a size up (October 2026; it was a small
+      // text link the eye slid past).
+      change.className = 'hub-change sources-read-change';
+      change.dataset.flow = explained ? 'rerun' : 'unlock';
+      change.innerHTML = hubIcon('redo') + '<span>' + esc(H.changeData) + '</span>';
+      title.append(change);
+    }
+  }
+  document.addEventListener('click', event => {
+    const change = event.target.closest('.sources-read-change');
+    if (!change) return;
+    document.getElementById('hub-method-dialog').close();
+    if (change.dataset.flow === 'unlock') openPremiumDialog(change, 'unlock');
+    else startRerun();
+  });
+
+  // My Report's Appendix 2, the questions already asked: open the part and
+  // bring the list into view.
+  function openAskAppendix() {
+    go('full');
+    requestAnimationFrame(() => {
+      const part = document.querySelector('#profile-body .part-card[data-part-card="appendix"]');
+      if (!part) return;
+      setSectionOpen(part, true);
+      (part.querySelector('.ask-appendix') || part).scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    });
+  }
+
+  // The card intro's paragraph, cut into clauses that each end with their
+  // button (and its comma or full stop, kept with it so neither starts a
+  // line). One plain paragraph on every screen.
+  function introClauses(text, paid) {
+    const G = Copy.STRUCTURED.cardGuide;
+    const button = key => '<a href="#" class="cx-go' + (key === 'hub' ? ' cx-hub-link' : '') + '" data-cx-go="' + key + '">' +
+      hubIcon(key === 'report' ? (paid ? 'open' : 'lock') : key === 'hub' ? 'grid' : key) +
+      '<span>' + esc(G.home.introLinks[key]) + '</span></a>';
+    const out = [];
+    let open = '';
+    for (const part of String(text).split(/(\{(?:card|report|sync|ask|hub)\}[.,]?)/)) {
+      const m = /^\{(card|report|sync|ask|hub)\}([.,]?)$/.exec(part);
+      if (!m) { open += esc(part).replace('{br}', '<br class="cx-br">'); continue; }
+      open += '<span class="cx-tail">' + button(m[1]) + esc(m[2]) + '</span>';
+      // The card's button opens the paragraph rather than ending a clause.
+      if (m[1] !== 'card') { out.push('<span class="cx-clause">' + open + '</span>'); open = ''; }
+    }
+    if (open.trim()) out.push('<span class="cx-clause">' + open + '</span>');
+    return out.join(' ');
+  }
+
+  // The card intro's five buttons: the card full size, the report (My Report
+  // once unlocked, the unlock offer before), the Sync list, Ask PsycheAI, and
+  // the hub below.
+  document.addEventListener('click', event => {
+    const link = event.target.closest('.cx-go');
+    if (!link) return;
+    event.preventDefault();
+    const where = link.dataset.cxGo;
+    if (where === 'card') { openPsycheCard(); return; }
+    if (where === 'ask') { openAsk(); return; }
+    if (where === 'sync') { go('scan'); return; }
+    if (where === 'report' && fullReportPage()) { go('full'); return; }
+    const target = document.querySelector(where === 'report' ? '#view-profile .full-report-locked' : '#profile-body .hub-card');
+    if (target) target.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+
+  // Save a backup and AI Personal Context explain themselves first: nothing
+  // downloads until the reader says so.
+  // Locked (AI Personal Context before the report): the same words, with
+  // Download greyed out and why.
+  let afterHubBackup = null;
+  const hubConfirmDialog = document.getElementById('hub-confirm-dialog');
+  if (hubConfirmDialog) hubConfirmDialog.addEventListener('close', () => { afterHubBackup = null; });
+  function openHubConfirm(kind, locked) {
+    const C = Copy.STRUCTURED.hub.confirm[kind];
+    const tick = hubIcon('tick');
+    openHubDialog('hub-confirm-dialog', C.title,
+      '<p class="hub-confirm-lede">' + esc(C.lede) + '</p>' +
+      '<ul class="hub-confirm-list">' + C.points.map(point => '<li>' + tick + '<span>' + esc(point) + '</span></li>').join('') + '</ul>' +
+      (locked ? '<p class="hub-confirm-locked">' + hubIcon('lock') + '<span>' + esc(C.locked) + '</span></p>' : '') +
+      '<div class="hub-confirm-btns"><button type="button" class="btn btn-outline" data-hub-confirm="back">' + esc(C.back) + '</button>' +
+      '<button type="button" class="btn btn-primary" data-hub-confirm="' + kind + '"' + (locked ? ' disabled' : '') + '>' +
+        hubIcon('down') + esc(C.go) + '</button></div>');
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-hub-confirm]');
+    if (!button) return;
+    const dialog = document.getElementById('hub-confirm-dialog');
+    if (button.dataset.hubConfirm === 'backup') {
+      saveBackup({ quiet: true });
+      // Opened from the report's keep note: that note goes once the file is saved.
+      if (afterHubBackup) afterHubBackup();
+    }
+    else if (button.dataset.hubConfirm === 'ai') downloadAiProfile();
+    dialog.close();
+  });
+
+  /**
+   * "AI Personal Context": a short Markdown file about the reader, made on this
+   * device from their Psyche Report, to paste into ChatGPT, Claude or Gemini
+   * so it knows who it is talking to. How to talk to them first, then who they
+   * are, what drives them, their patterns and interests, how they connect, how
+   * they work, their rhythm and what they are working on. Never the roast, the attachment style, the partner section,
+   * a raw score list or anything from the data itself.
+   */
+  function aiProfileMarkdown(profile) {
+    const r = profile.report || {};
+    const premium = Object.assign({}, profile.premiumAnalysis || {});
+    const first = String((profile.card && profile.card.name) || '').trim().split(/\s+/)[0] || 'me';
+    const names = list => (list || []).map(item => item && (item.name || item.value || item.belief || item.title || item.language)).filter(Boolean);
+    const lines = [];
+    const section = (title, body) => { if (body && body.length) lines.push('## ' + title, '', ...[].concat(body), ''); };
+    lines.push('# About ' + first, '',
+      'This is a profile of me, written from my own Instagram and other data by PsycheAI (psycheai.io). ' +
+      'Use it to tailor your answers to me: how you explain things, what you suggest, and how direct you are. ' +
+      'Some lines are written to me as "you". It is a reading of my behaviour, not a diagnosis.', '');
+    section('How to talk to me', howToTalkTo(r));
+    section('Who I am', [String(r.summary || '').trim()].filter(Boolean));
+    const trait = key => {
+      const row = (r.bigFive || {})[key];
+      return row && row.band ? TRAIT_LABELS[key] + ': ' + row.band : '';
+    };
+    section('Personality', [
+      r.mbti && r.mbti.type ? '- MBTI: ' + r.mbti.type + (r.mbti.nickname ? ' (' + r.mbti.nickname + ')' : '') : '',
+      '- Big Five: ' + ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism'].map(trait).filter(Boolean).join('; '),
+    ].filter(Boolean));
+    const motives = (r.topMotivators || []).map(key => (Copy.STRUCTURED.motivators[key] || {}).label).filter(Boolean);
+    section('What drives me', [
+      motives.length ? '- Strongest motivators: ' + motives.join(', ') : '',
+      names(r.values).length ? '- Values: ' + names(r.values).join(', ') : '',
+      names(r.beliefs).length ? '- Beliefs: ' + names(r.beliefs).join(', ') : '',
+    ].filter(Boolean));
+    section('My patterns', (r.patterns || []).filter(p => p && p.name).map(p => '- **' + p.name + '**: ' + (p.line || '')));
+    section('My interests', names(r.interests).length ? ['- ' + names(r.interests).join(', ')] : []);
+    const love = (r.relationship && r.relationship.loveLanguages) || {};
+    const strengths = names(r.relationship && r.relationship.strengths);
+    const hard = names(r.relationship && r.relationship.weaknesses);
+    const conflict = String((r.card && r.card.conflictStyle) || '').replace(/\s*\(tentative\)\s*$/i, '');
+    section('How I connect with people', [
+      names(love.receiving).length ? '- I feel cared for through: ' + names(love.receiving).join(', ') : '',
+      names(love.giving).length ? '- I show care through: ' + names(love.giving).join(', ').replace(/^Receiving gifts\b/, 'Giving gifts') : '',
+      conflict ? '- How I handle disagreement: ' + conflict : '',
+      strengths.length ? '- What I bring: ' + strengths.join(', ') : '',
+      hard.length ? '- Where it gets hard: ' + hard.join(', ') : '',
+    ].filter(Boolean));
+    const coach = premium.careerAssessment || {};
+    const workStrengths = names(r.career && r.career.strengths);
+    section('How I work', [
+      coach.edge && coach.edge.headline ? '- My edge: ' + coach.edge.headline : '',
+      workStrengths.length ? '- Strengths: ' + workStrengths.join(', ') : '',
+      coach.holdingBack && coach.holdingBack.headline ? '- What holds me back: ' + coach.holdingBack.headline : '',
+      coach.fit && (coach.fit.suits || []).length ? '- Suits me: ' + coach.fit.suits.map(s => String(s).split(':')[0]).join('; ') : '',
+      coach.fit && (coach.fit.draining || []).length
+        ? '- Drains me: ' + coach.fit.draining.map(s => String(s).split(':')[0]).join('; ') : '',
+      r.career && r.career.workStyle ? '- Work style: ' + r.career.workStyle : '',
+      r.career && r.career.watchOuts ? '- Watch out for: ' + r.career.watchOuts : '',
+    ].filter(Boolean));
+    const card = r.card || {};
+    section('My rhythm and energy', [
+      card.rhythm ? '- Rhythm: ' + card.rhythm : '',
+      card.energy ? '- Social energy: ' + card.energy : '',
+    ].filter(Boolean));
+    const dev = r.development || {};
+    section('What I am working on', [
+      ...(dev.buildOn || []).filter(item => item && item.title).map(item => '- Building on: ' + item.title),
+      ...(dev.develop || []).filter(item => item && (item.area || item.title)).map(item => '- Developing: ' + (item.area || item.title)),
+    ]);
+    lines.push('---', 'Made with PsycheAI on ' + new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) + '.');
+    return lines.join('\n').replace(/PsycheUser/g, first).replace(/\n{3,}/g, '\n\n');
+  }
+  // "How to talk to me", from the traits that are clearly high or low and the
+  // MBTI letters held with more than a slight lean: tone, pace and how much
+  // structure suits them. Middling traits say nothing, so they add no line.
+  function howToTalkTo(r) {
+    const score = key => Number(((r.bigFive || {})[key] || {}).score);
+    const high = key => score(key) >= 65;
+    const low = key => score(key) <= 35;
+    const letter = axis => ((r.mbti && r.mbti.letters) || []).find(row => row && row.axis === axis && row.strength !== 'slight');
+    const tf = letter('T/F');
+    const jp = letter('J/P');
+    const conflict = String((r.card && r.card.conflictStyle) || '').replace(/\s*\(tentative\)\s*$/i, '');
+    return [
+      high('extraversion') ? '- Be lively and conversational; I think out loud.' : '',
+      low('extraversion') ? '- Be calm and to the point, and give me room to think before I answer.' : '',
+      high('conscientiousness') ? '- Be structured: clear steps, priorities and a plan I can follow.' : '',
+      low('conscientiousness') ? '- Keep plans light and flexible; one next step beats a full schedule.' : '',
+      high('openness') ? '- New angles and big ideas are welcome; do not only give me the safe answer.' : '',
+      low('openness') ? '- Keep it concrete and practical, with examples over theory.' : '',
+      high('agreeableness') ? '- Be warm, and frame hard feedback kindly: I take it to heart.' : '',
+      low('agreeableness') ? '- Be direct and skip the cushioning.' : '',
+      high('neuroticism') ? '- When things feel uncertain, be steady and name the next step.' : '',
+      low('neuroticism') ? '- Straight talk is fine; I take hard news calmly.' : '',
+      tf && tf.choice === 'T' ? '- Lead with reasons and evidence.' : '',
+      tf && tf.choice === 'F' ? '- Start from what matters to the people involved.' : '',
+      jp && jp.choice === 'J' ? '- Give me a clear recommendation, not only options.' : '',
+      jp && jp.choice === 'P' ? '- Offer options and leave room to change course.' : '',
+      conflict ? '- My style when we disagree: ' + conflict.charAt(0).toLowerCase() + conflict.slice(1) + '.' : '',
+    ].filter(Boolean);
+  }
+  function downloadAiProfile() {
+    if (!state.profile || !hasExplanations(state.profile)) return;
+    const blob = new Blob([aiProfileMarkdown(state.profile)], { type: 'text/markdown' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const first = String((state.profile.card && state.profile.card.name) || '').trim().split(/\s+/)[0] || 'my';
+    link.download = 'PsycheAI - AI Personal Context - ' + first.replace(/[^\p{L}\p{N} _-]/gu, '') + '.md';
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+  }
+
+  function fullReportLockedHtml() {
+    return '<div class="premium-tier paid-consolidated full-report-locked">' +
+      '<div class="premium-tier-head">' +
+      '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
+      '<h3>' + esc(TEXT.fullReportTitle) + '</h3>' +
+      // The sample report, at the head's far end: what the unlock buys, to
+      // look at before paying for it.
+      '<button class="btn btn-outline tier-sample" type="button">' + esc(TEXT.fullReportSample) + '</button>' +
+      '</div>' +
+      '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
+      // One list: the explanations and the four premium sections are one
+      // purchase, and splitting them made the four read as an afterthought.
+      unlockPartsHtml() +
+      // A first report: share the link first, paying second. Otherwise (a
+      // purchase still to collect) the one button.
+      (firstFreeOffered() ? unlockShareHtml()
+        : '<button class="btn premium-unlock" type="button" aria-expanded="false">' + premiumUnlockLabel(false) + '</button>') +
+      // A code from the link this reader came in on, said before they tap.
+      linkPromoNoteHtml() +
+      '</div>';
+  }
+
+  // The caveat as a soft note with its own mark, then the two halves, each
+  // a panel of its own under an icon: the roast, and the honest friend.
+  function bonusBodyHtml(analysis) {
+    return '<p class="fineprint bonus-caveat"><span class="bonus-caveat-mark" aria-hidden="true">' + Copy.lineIcon('🧂') + '</span>' +
+      '<span>' + esc(TEXT.bonusCaveat) + '</span></p>' +
+      '<div class="roast-half roast-harsh"><h3><span class="roast-half-icon" aria-hidden="true">' + Copy.lineIcon('🔥') + '</span>' +
+        esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) + '</div>' +
+      '<div class="roast-half roast-advice"><h3><span class="roast-half-icon" aria-hidden="true">' + Copy.lineIcon('💬') + '</span>' +
+        esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice) + '</div>';
+  }
+
+  // Free, behind a cover the reader has to click through — not a paid
+  // section, so it is not in PAID_SECTIONS and shares nothing with
+  // paidCard() beyond a similar look.
+  //
+  // The writing is NOT written into the markup here. Blurring it with CSS
+  // would look the same and protect nothing: select-all copies it, a screen
+  // reader reads it out, and view-source hands it over. Somebody who has
+  // decided not to read this should not have it on their page at all, so
+  // the cover ships alone and revealRoast() injects the writing on the
+  // click, reading it from the report object rather than out of the page.
+  function roastBlock(bonus, options) {
+    if (!bonus) return '';
+    // The structured layout's appendix: the roast already waits behind its
+    // own reveal, so it is not a disclosure as well.
+    const flat = Boolean(options && options.flat);
+    // My Report's Appendix 1 names itself, under the same header every section has.
+    const title = (options && options.title) || TEXT.bonus;
+    return '<div class="card section-card bonus-card' + (options && options.appendix ? ' roast-appendix' : '') + '"' +
+      (options && options.appendix ? ' data-appendix="roast"' : '') + '>' +
+      // Same splice paidCard uses for its "Premium" badge: sectionHead
+      // concatenates whatever it is handed into the <h2>, so a title with
+      // markup in it is the one thing it is handed that is not plain text.
+      // A different class, because this badge is saying the opposite thing —
+      // see .bonus-badge in styles.css.
+      // No "Bonus" badge in My Report's appendix: no other section there has one.
+      sectionHead('🕳️', esc(title) +
+        (options && options.appendix ? '' : ' <span class="mode-badge bonus-badge">' + esc(TEXT.bonusBadge) + '</span>'),
+      esc(TEXT.bonusSub), !flat) +
+      '<div class="bonus-cover">' +
+      '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
+      '<p>' + esc(TEXT.bonusCoverBlurb) + '</p>' +
+      '<button class="btn btn-outline bonus-reveal" type="button" aria-expanded="false">' +
+      esc(TEXT.bonusReveal) + '</button></div>' +
+      '<div class="bonus-body" hidden></div></div>';
+  }
+
+  /**
+   * My Psyche's roast: the free call's, straight under the card, dressed as
+   * a secret bonus. Same cover rules as
+   * roastBlock: the writing is not in the page until "Reveal my roast", and
+   * revealRoast()/hideRoast() work it exactly the same way.
+   */
+  // My Report's Appendix 1 too (18 Oct 2026): the same frame, sparks and
+  // glowing reveal as on My Psyche, under the appendix's own title.
+  function secretRoastHtml(bonus, options) {
+    if (!bonus || !bonus.harsh) return '';
+    const R = TEXT.secretRoast;
+    const appendix = Boolean(options && options.appendix);
+    const titleId = appendix ? 'appendix-roast-title' : 'secret-roast-title';
+    return '<section class="card section-card bonus-card secret-roast' + (appendix ? ' roast-appendix" data-appendix="roast"' : ' screen-only"') +
+      ' aria-labelledby="' + titleId + '">' +
+      '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
+      '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
+      '<h2 id="' + titleId + '" class="secret-roast-title">' + esc((options && options.title) || TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
+      '<div class="bonus-cover secret-roast-cover">' +
+      '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
+      '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
+      '<button class="btn bonus-reveal secret-roast-reveal" type="button" aria-expanded="false">' +
+      '<span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span> ' + esc(R.reveal) + '</button></div>' +
+      '<div class="bonus-body" hidden></div></section>';
+  }
+
+  /** Fills a cover's sibling body with the writing it was hiding. */
+  function revealRoast(cover, bonus) {
+    const card = cover.closest('.bonus-card');
+    const body = card.querySelector('.bonus-body');
+    // No share button: the roast is for the reader alone.
+    setHtml(body, bonusBodyHtml(bonus) +
+      '<div class="btn-row bonus-actions">' +
+      '<button class="btn btn-outline bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button></div>');
+    body.hidden = false;
+    cover.hidden = true;
+    // Read in the page's own colours once opened; grey only while covered.
+    card.classList.add('is-revealed');
+  }
+
+  /** Puts the cover back, and takes the writing out of the page with it. */
+  function hideRoast(button) {
+    const card = button.closest('.bonus-card');
+    const body = card.querySelector('.bonus-body');
+    const cover = card.querySelector('.bonus-cover');
+    body.innerHTML = '';
+    body.hidden = true;
+    cover.hidden = false;
+    card.classList.remove('is-revealed');
+    const reveal = cover.querySelector('.bonus-reveal');
+    reveal.setAttribute('aria-expanded', 'false');
+    reveal.focus();
+  }
+
+  /**
+   * The premium tier block the welcome page and the sample dialog show, built
+   * from `PAID_SECTIONS` rather than written out in index.html three times.
+   *
+   * That matters more than it looks: this is marketing copy naming four
+   * sections by title and price, and marketing copy that has drifted from the
+   * product is the kind of wrong nobody notices for months. Reading the same
+   * table the report renders from means a rename in copy.js moves the landing
+   * page with it, and `coverTitle` doubles as the one-line hook here because
+   * that is exactly the job it already does on the cover itself.
+   *
+   * The sample dialog used to get its own compact variant of this block,
+   * pinned as a footer below a report with the four paid sections stripped
+   * out of it. The sections are rendered inline in the sample body now (see
+   * `paidCard`'s `sample` option), so the footer — and the compact mode that
+   * existed only for it — is gone rather than kept beside a cover that
+   * already says the same thing.
+   */
+  /**
+   * The welcome page's "What insights will I get?": the summary card first —
+   * what is on it, beside a real one drawn from the sample — then the full
+   * premium report, by the five parts it is written in, and its price. The
+   * part and section names are the report's own, so a rename there is a
+   * rename here.
+   */
+  const EXPAND_ICON = '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
+  const CHEVRON = d => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
+  /** One card in the welcome page's gallery: a button, a small card, an expand mark. */
+  function insightSlot(index, buttonId, cardId, label) {
+    return '<button type="button" class="insight-preview" data-card="' + index + '"' + (buttonId ? ' id="' + buttonId + '"' : '') +
+      ' aria-label="' + esc(label) + '">' +
+      '<span class="insight-preview-frame"><span class="psyche-card"' + (cardId ? ' id="' + cardId + '"' : '') + '></span></span>' +
+      '<span class="insight-preview-expand" aria-hidden="true">' + EXPAND_ICON + '</span></button>';
+  }
+  function galleryArrow(step, label) {
+    return '<button type="button" class="insight-deck-step" data-deck-step="' + step + '" aria-label="' + esc(label) + '">' +
+      CHEVRON(step < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7') + '</button>';
+  }
+
+  function insightsHtml() {
+    const S = Copy.STRUCTURED;
+    const I = S.insights;
+    const parts = ['who', 'drives', 'connect', 'career', 'together'];
+    const sectionsOf = {
+      who: [I.characterChip, S.titles.patterns, 'MBTI', TEXT.bigFive, S.titles.wellness],
+      drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
+      connect: [TEXT.loveHead, S.howYouAttach, S.conflictStyle, S.whoSuitsYou],
+      career: [TEXT.careerEdge, S.whatHoldsYouBack, S.careerFitTitle],
+      // No pill: "Development plan" only said the part's own line again.
+      together: [],
+    };
+    return '<div class="insight-tier insight-free">' +
+      '<div class="insight-free-copy">' +
+        // The green "Free" on the title's own line, to its right (26 October 2026; it had a line of its own).
+        '<div class="tier-head"><h3 class="tier-title">' + esc(I.freeTitle) + '</h3>' +
+          '<span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span></div>' +
+        '<p class="tier-blurb">' + esc(I.freeBlurb) + '</p>' +
+        // The name of each part of the card, and nothing under it.
+        '<ul class="card-features">' + I.cardItems.map(([icon, title]) =>
+          '<li><span class="card-feature-icon" aria-hidden="true">' + esc(icon) + '</span>' +
+          '<span><strong>' + esc(title) + '</strong></span></li>').join('') + '</ul>' +
+      '</div>' +
+      // A deck of sample cards: one at the front, a tap away from full
+      // screen, the next two stacked and fading behind it, and arrows and
+      // dots under it to bring the others forward. The first is the full
+      // sample's; the rest are added once sample-cards.json has loaded.
+      '<div class="insight-deck-wrap">' +
+        '<div class="insight-deck" id="insight-deck" role="group" aria-roledescription="carousel" aria-label="' + esc(I.galleryLabel) + '">' +
+          insightSlot(0, 'insight-card-open', 'insight-card-preview', I.previewOpen) +
+        '</div>' +
+        '<div class="insight-deck-nav">' + galleryArrow(-1, I.galleryPrev) +
+          '<span class="insight-deck-dots" id="insight-deck-dots" aria-hidden="true"></span>' +
+          galleryArrow(1, I.galleryNext) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="insight-tier insight-premium premium-tier">' +
+      // Free, as the card is: the same green badge, to the right of the title on its line.
+      '<div class="premium-tier-head tier-head">' +
+        '<h3 class="tier-title">' + esc(I.premiumTitle) + '</h3>' +
+        '<span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span>' +
+      '</div>' +
+      '<p class="tier-blurb">' + esc(I.premiumBlurb) + '</p>' +
+      '<ol class="insight-parts">' + parts.map((key, i) =>
+        '<li class="insight-part">' +
+          '<span class="insight-part-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' +
+          '<div><h4>' + esc(S.parts[key].title) + '</h4>' +
+          (I.partBlurbs[key] ? '<p class="insight-part-q">' + esc(I.partBlurbs[key]) + '</p>' : '') +
+          ((chips => chips.length ? '<p class="insight-part-chips">' + chips.map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' : '')(
+            sectionsOf[key].length ? sectionsOf[key] : (I.partChips && I.partChips[key]) || [])) +
+        '</div></li>').join('') + '</ol>' +
+      '<div class="insight-premium-foot">' +
+        // What comes with it, then the price of a re-run as a footnote under it.
+        '<div class="insight-premium-what"><ul class="insight-extras">' + I.extras.map(([icon, text]) =>
+          '<li><span aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' + esc(text) + '</li>').join('') + '</ul>' +
+        '<p class="insight-rerun">' + esc(I.premiumRerun(TEXT.premiumPriceLabel)) + '</p></div>' +
+        '<button class="btn btn-outline" id="insight-sample" type="button">' + esc(I.sampleButton) + '</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="insight-compat">' +
+      '<span class="insight-compat-icon" aria-hidden="true">' + Copy.lineIcon('🤝') + '</span>' +
+      '<div><h3>' + esc(I.compatTitle) + ' <span class="insight-free-pill">' + esc(I.compatFree) + '</span></h3><p>' + esc(I.compatBlurb) + '</p></div>' +
+    '</div>' +
+    // Ask PsycheAI, the coach, under it, with its price for five questions.
+    '<div class="insight-compat insight-ask">' +
+      '<span class="insight-compat-icon" aria-hidden="true"><span class="ask-mark"></span></span>' +
+      '<div><h3>' + esc(I.askTitle) + ' <span class="insight-price">' + esc(I.askPrice(Prices.label(CURRENCY, 'ask'))) + '</span></h3>' +
+        '<p>' + esc(I.askBlurb) + '</p></div>' +
+    '</div>';
+  }
+
+  /**
+   * Mounted synchronously at start-up rather than inside `boot()`, which
+   * awaits the server status call — the welcome page is the first thing a
+   * reader sees and should not have a block of it arrive after a round trip.
+   * The sample card beside it is drawn once the sample has loaded.
+   */
+  // The full sample first, then the other sample cards, in gallery order.
+  let insightCards = [];
+  let insightIndex = 0;
+  // ---------- guess your character ----------
+  //
+  // While a reader's first card is being written, a guess at which character
+  // it will name (October 2026: on the waiting screen, where it fills the
+  // minutes of the wait; it was a strip on the front page, which most readers
+  // never noticed). The request has gone by then, so the guess is locked onto
+  // the running job (/api/guess), beside the digest and never inside it, so
+  // the model cannot see it. The server takes it only while the card is still
+  // being written and closes the job to guesses the moment it is, then judges
+  // it against that card (lib/referral.js, judgeGuess): right, and the reply
+  // carries a credit on the reader's link. A guess picked on the front page
+  // before this changed is still sent with the request (withAttribution).
+  function guessMade() {
+    const guess = store.read(KEYS.guess, null);
+    return guess && typeof guess.name === 'string' && Object.prototype.hasOwnProperty.call(Copy.CHARACTER_SYNCS, guess.name)
+      ? guess : null;
+  }
+  // A new reader's first free run writes the card and its report together
+  // (PSYCHEAI_FIRST_RUN on the server, served as firstRun). 'card' is the
+  // path before: the card alone, the report unlocked after.
+  const firstRunMerged = () => Boolean(state.server && state.server.firstRun === 'merged');
+  // The outcome the server sent with a first card: kept with the guess (a win
+  // is a credit on the link; a token from an older server, a gift the unlock's
+  // sheet offers), and told once, in a popout
+  // (sayGuessOutcome). A guess that comes back with no answer (a paid
+  // re-run, which never carries one) is told it did not count, rather than
+  // left to wonder.
+  function takeGuessOutcome(outcome) {
+    // The answer can land before the lock's own reply does: the guess it
+    // judged is in the answer either way.
+    const guess = guessMade() || (outcome && typeof outcome.guess === 'string' ? { name: outcome.guess } : null);
+    if (!guess || guess.outcome) return;
+    const answer = outcome && typeof outcome.guess === 'string' ? outcome : { guess: guess.name, counted: false, reason: 'firstCard' };
+    const token = /^[0-9a-f]{48}$/.test(String(answer.token || '')) ? answer.token : '';
+    const counted = answer.counted !== false;
+    store.write(KEYS.guess, { name: answer.guess, at: Date.now(), job: guess.job, outcome: counted
+      ? { character: String(answer.character || ''), won: Boolean(answer.won), limited: Boolean(answer.limited),
+        credit: Boolean(answer.credit) || (Boolean(answer.won) && answer.credit === false), told: false }
+      // Not counted, but with the card's character when the server sent it:
+      // how it went is still told, with why there is no credit.
+      : { counted: false, reason: String(answer.reason || 'firstCard'), told: false,
+        character: String(answer.character || ''), won: Boolean(answer.won) } });
+    if (token && !giftWaiting()) store.write(KEYS.gift, { token, at: Date.now(), won: true });
+  }
+  // A tile of the cast image for one character, as the strip draws it.
+  function castFace(name, label) {
+    const names = Object.keys(Copy.CHARACTER_SYNCS);
+    const i = names.indexOf(name);
+    if (i < 0) return '';
+    const last = Math.max(1, names.length - 1);
+    return '<figure class="guess-face"><span class="cast-art" data-pos="' + (i / last * 100).toFixed(3) + '" data-count="' + names.length +
+      '" aria-hidden="true"></span><figcaption><span>' + esc(label) + '</span><b>' + esc(name) + '</b></figcaption></figure>';
+  }
+  // The waiting screen's game: every character as a round tile, one picked,
+  // then locked in. Open only for a free first read still being written.
+  let guessJob = '';
+  let guessPick = '';
+  let guessNote = '';
+  function drawCastArt(root) {
+    root.querySelectorAll('.cast-art').forEach(art => {
+      art.style.backgroundSize = (Number(art.dataset.count) * 100) + '% 100%, cover';
+      art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
+    });
+  }
+  // Every run that writes a card has the game (October 2026); only a free
+  // first card's can win a credit, so the rest are told it is for fun.
+  let guessForFun = false;
+  function openGuessGame(job, auth) {
+    const panel = $('#working-guess');
+    if (!panel || !job) return;
+    // A guess from an earlier card, already told, makes way for this one.
+    const before = store.read(KEYS.guess, null);
+    if (before && (before.outcome || (before.job && before.job !== job))) store.remove(KEYS.guess);
+    // Known in advance only for a paid run. A free one asks for the free card
+    // whatever this device has made before, and the server knows whether
+    // this account's guess can still win (judgeGuess says why if not).
+    guessForFun = Boolean(auth);
+    guessJob = job;
+    guessPick = '';
+    guessNote = '';
+    const names = Object.keys(Copy.CHARACTER_SYNCS);
+    const last = Math.max(1, names.length - 1);
+    $('#guess-grid').innerHTML = names.map((name, i) => '<li><button type="button" class="guess-tile" data-name="' + esc(name) +
+      '" aria-pressed="false"><span class="cast-art" data-pos="' + (i / last * 100).toFixed(3) + '" data-count="' + names.length +
+      '" aria-hidden="true"></span><span class="cast-name">' + esc(name) + '</span></button></li>').join('');
+    drawCastArt($('#guess-grid'));
+    $('#working-guess-title').textContent = TEXT.guessGameTitle;
+    panel.hidden = false;
+    drawGuessGame();
+  }
+  function closeGuessGame() {
+    guessJob = '';
+    guessPick = '';
+    const panel = $('#working-guess');
+    if (panel) panel.hidden = true;
+  }
+  function drawGuessGame() {
+    const made = guessMade();
+    const held = made && !made.outcome ? made.name : '';
+    const shut = Boolean(held) || !guessJob;
+    const pick = held || guessPick;
+    $('#working-guess').classList.toggle('is-locked', Boolean(held));
+    for (const tile of $('#guess-grid').querySelectorAll('.guess-tile')) {
+      const on = tile.dataset.name === pick;
+      tile.classList.toggle('is-picked', on);
+      tile.setAttribute('aria-pressed', String(on));
+      tile.disabled = shut;
+    }
+    const lock = $('#guess-lock');
+    lock.hidden = shut;
+    lock.disabled = !guessPick;
+    lock.textContent = guessPick ? TEXT.guessLock(guessPick) : TEXT.guessLockPick;
+    $('#working-guess-note').textContent = guessNote || (held ? TEXT.guessLocked(held) : guessForFun ? TEXT.guessGameNoteForFun : TEXT.guessGameNote);
+  }
+  $('#guess-grid').addEventListener('click', event => {
+    const tile = event.target.closest('.guess-tile');
+    if (!tile || tile.disabled) return;
+    guessPick = guessPick === tile.dataset.name ? '' : tile.dataset.name;
+    drawGuessGame();
+  });
+  $('#guess-lock').addEventListener('click', async () => {
+    const job = guessJob;
+    const name = guessPick;
+    if (!job || !name) return;
+    $('#guess-lock').disabled = true;
+    const answer = await LLM.lockGuess(job, name);
+    // The card came back meanwhile: whatever it said about the guess stands.
+    if (job !== guessJob) return;
+    if (answer.locked) {
+      const made = guessMade();
+      if (!(made && made.outcome && made.job === job)) store.write(KEYS.guess, { name: answer.guess, at: Date.now(), job });
+      guessPick = '';
+    } else if (answer.tooLate) {
+      guessJob = '';
+      guessNote = TEXT.guessTooLate;
+    } else {
+      guessNote = TEXT.guessLockFailed;
+    }
+    drawGuessGame();
+    guessNote = '';
+  });
+  function sayGuessOutcome() {
+    const guess = store.read(KEYS.guess, null);
+    const outcome = guess && guess.outcome;
+    const dialog = $('#guess-dialog');
+    if (!outcome || outcome.told || !state.profile || !dialog) return;
+    store.write(KEYS.guess, Object.assign({}, guess, { outcome: Object.assign({}, outcome, { told: true }) }));
+    // Booleans: classList.toggle reads an undefined second argument as "flip".
+    const won = Boolean(outcome.won && !outcome.limited);
+    const notCounted = outcome.counted === false;
+    // Not counted but told how it went: a run that could not win (forFun),
+    // or an account that has had its guess.
+    const told = notCounted && Boolean(outcome.character);
+    const faces = [castFace(guess.name, TEXT.guessYours)];
+    if ((!notCounted || told) && !outcome.won && outcome.character) faces.push(castFace(outcome.character, TEXT.guessCard));
+    $('#guess-faces').innerHTML = faces.join('');
+    $('#guess-faces').querySelectorAll('.cast-art').forEach(art => {
+      art.style.backgroundSize = (Number(art.dataset.count) * 100) + '% 100%, cover';
+      art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
+    });
+    $('#guess-title').textContent = told ? (outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle)
+      : notCounted ? TEXT.guessNotCountedTitle : outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle;
+    $('#guess-text').textContent = told
+      ? (outcome.won ? TEXT.guessRightForFun(guess.name) : TEXT.guessMissed(guess.name, outcome.character)) + ' ' +
+        (TEXT.guessNoCredit[outcome.reason] || TEXT.guessNoCredit.forFun)
+      : notCounted ? (TEXT.guessNotCounted[outcome.reason] || TEXT.guessNotCounted.firstCard)
+      : outcome.credit ? (won ? TEXT.guessWonCredit : TEXT.guessWonCreditLimited)(guess.name)
+      : won ? TEXT.guessWonText(guess.name) : outcome.won ? TEXT.guessWonLimited(guess.name) : TEXT.guessMissed(guess.name, outcome.character);
+    dialog.classList.toggle('is-won', won);
+    // A credit won needs nothing doing: the hub's link row already counts it.
+    const unlocks = won && !notCounted && !outcome.credit;
+    const go = $('#guess-go');
+    go.textContent = unlocks ? TEXT.guessWonUse : TEXT.guessOk;
+    $('#guess-later').textContent = TEXT.guessLater;
+    $('#guess-later-row').hidden = !unlocks;
+    go.onclick = () => {
+      dialog.close();
+      // A win goes straight to the unlock, which offers the free report.
+      if (unlocks) {
+        const target = document.querySelector('#profile-body .premium-unlock');
+        if (target) target.click();
+      }
+    };
+    $('#guess-later').onclick = () => dialog.close();
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
+  function mountInsights() {
+    for (const slot of document.querySelectorAll('[data-insights]')) setHtml(slot, insightsHtml());
+    drawInsightPreview();
+  }
+
+  /** One of the welcome page's sample cards, full screen, in the sample's own card dialog. */
+  function openInsightCard(index = 0) {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || dialog.open || !insightCards[index]) return;
+    dialog.classList.toggle('is-gallery', insightCards.length > 1);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    showInsightCard(index);
+  }
+
+  /**
+   * Puts card `index` in the full-screen view, sliding it in from the side
+   * it was stepped towards. The ends wrap round, so stepping never stops.
+   */
+  function showInsightCard(index, step = 0) {
+    const count = insightCards.length;
+    if (!count) return;
+    insightIndex = ((index % count) + count) % count;
+    const full = $('#sample-psyche-card-full');
+    full.innerHTML = psycheCardHtml(insightCards[insightIndex]);
+    freshArtIds(full);
+    guideSampleCard(insightCards[insightIndex]);
+    const counter = $('#sample-card-count');
+    if (counter) counter.textContent = (insightIndex + 1) + ' / ' + count;
+    layoutPsycheCard();
+    const frame = full.closest('.card-dialog-frame');
+    if (frame && step) {
+      frame.classList.remove('is-slide-next', 'is-slide-prev');
+      void frame.offsetWidth;
+      frame.classList.add(step > 0 ? 'is-slide-next' : 'is-slide-prev');
+    }
+  }
+
+  function stepInsightCard(step) {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || !dialog.open || !dialog.classList.contains('is-gallery')) return;
+    showInsightCard(insightIndex + step, step);
+  }
+
+  // sample.json, fetched once per page: the front page draws its preview
+  // several times as boot proceeds, and each draw used to start its own
+  // download of it. Parsed afresh for every caller, so none can change what
+  // another sees; a failed fetch is forgotten, so the next call tries again.
+  let sampleText = null;
+  let insightCardsLoad = null;
+  function loadSample() {
+    if (!sampleText) {
+      sampleText = fetch('sample.json').then(response => {
+        if (!response.ok) throw new Error('The sample could not be loaded.');
+        return response.text();
+      });
+      sampleText.catch(() => { sampleText = null; });
+    }
+    return sampleText.then(text => JSON.parse(text));
+  }
+
+  async function drawInsightPreview() {
+    const gallery = document.getElementById('insight-deck');
+    if (!gallery) return;
+    try {
+      if (!insightCards.length) {
+        // One load shared by every draw that starts before it lands.
+        insightCardsLoad = insightCardsLoad || Promise.all([
+          loadSample().catch(() => null),
+          fetch('sample-cards.json').then(response => (response.ok ? response.json() : null)).catch(() => null),
+        ]);
+        const [sample, more] = await insightCardsLoad;
+        if (!sample) { insightCardsLoad = null; return; }
+        if (!insightCards.length) insightCards = [sample].concat((more && Array.isArray(more.cards)) ? more.cards : []);
+      }
+      const target = document.getElementById('insight-deck');
+      if (!target) return;
+      const I = Copy.STRUCTURED.insights;
+      // The other cards' slots, once there is something to put in them.
+      target.querySelectorAll('.insight-preview:not(#insight-card-open)').forEach(node => node.remove());
+      target.insertAdjacentHTML('beforeend', insightCards.slice(1).map((report, i) =>
+        insightSlot(i + 1, '', '', I.previewOpenNamed.replace('{name}', (report.card && report.card.name) || ''))).join(''));
+      // Drawn only as each comes into view (arrangeDeck): the front card and
+      // the two peeking out beside it. The rest wait, empty, behind them; six
+      // cards with their scenes were the front page's heaviest part.
+      deckDrawn.clear();
+      // Fitted as soon as they are drawn, so the page never lays out a
+      // full-size card: 230px wide, or less where a phone leaves less room
+      // beside the stack. The stylesheet holds their space until then.
+      const wrap = target.closest('.insight-deck-wrap');
+      const room = wrap && wrap.clientWidth ? wrap.clientWidth : 300;
+      // As wide as the column allows, up to 320px: the cards either side
+      // peek out into the gap beside the column and the tier's padding,
+      // rather than taking width from the card in front.
+      const peek = room < 340 ? 18 : 24;
+      const width = Math.max(150, Math.min(320, room - 2 * peek + 28));
+      deckWidth = width;
+      target.style.setProperty('--peek', peek + 'px');
+      target.style.setProperty('--deck-w', Math.round(width) + 'px');
+      target.style.setProperty('--deck-h', Math.round(width * 1920 / 1080) + 'px');
+      $('#insight-deck-dots').innerHTML = insightCards.map(() => '<i></i>').join('');
+      arrangeDeck();
+    } catch (error) {
+      // A card that will not draw leaves the list beside it to say what is on one.
+    }
+  }
+
+  /**
+   * Puts the deck's cards in their places around `deckIndex`: the front one
+   * centred, the next peeking out behind it on the right and the previous on
+   * the left, and the rest out of sight behind. Only the front one can be
+   * pressed or reached by Tab.
+   */
+  let deckIndex = 0;
+  let deckWidth = 0;
+  const deckDrawn = new Set();
+  // A card of the deck drawn and fitted, the first time it is in view.
+  function drawDeckCard(slot) {
+    const i = Number(slot.getAttribute('data-card')) || 0;
+    const el = slot.querySelector('.psyche-card');
+    if (!el || deckDrawn.has(i) || !insightCards[i] || !deckWidth) return;
+    deckDrawn.add(i);
+    el.innerHTML = psycheCardHtml(insightCards[i]);
+    fitCard(el, deckWidth, deckWidth * 1920 / 1080);
+  }
+  function arrangeDeck() {
+    const deck = document.getElementById('insight-deck');
+    if (!deck) return;
+    const slots = [...deck.querySelectorAll('.insight-preview')];
+    const count = slots.length;
+    slots.forEach((slot, i) => {
+      const pos = ((i - deckIndex) % count + count) % count;
+      slot.setAttribute('data-pos', pos === 0 ? '0' : pos === 1 ? '1' : pos === count - 1 ? 'prev' : 'rest');
+      slot.classList.toggle('is-front', pos === 0);
+      slot.tabIndex = pos === 0 ? 0 : -1;
+      slot.setAttribute('aria-hidden', pos === 0 ? 'false' : 'true');
+      if (pos === 0 || pos === 1 || pos === count - 1) drawDeckCard(slot);
+    });
+    const dots = document.querySelectorAll('#insight-deck-dots i');
+    dots.forEach((dot, i) => dot.classList.toggle('is-on', i === deckIndex));
+  }
+
+  function stepDeck(step) {
+    const count = document.querySelectorAll('#insight-deck .insight-preview').length;
+    if (count < 2) return;
+    deckIndex = ((deckIndex + step) % count + count) % count;
+    arrangeDeck();
+  }
+
+  /**
+   * The one exception to sections arriving shut — see collapseSections. A
+   * reader who has just paid should be looking at what they bought, not at
+   * four more shut headings to click through to find it.
+   */
+  function openPaidSections() {
+    for (const card of document.querySelectorAll('#profile-body .paid-card')) {
+      setSectionOpen(card, true);
+    }
+  }
+
+  // The wrapper exists for print: a trait's bar, its reading and its evidence
+  // are one thought, and a page break between them looks like a mistake.
+  function bar(label, value, extra) {
+    const width = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
+    return '<div class="trait-block">' +
+      '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
+      '<div class="bar"><div class="bar-fill" data-fill="' + width + '"></div></div>' +
+      '<span class="trait-num">' + width + '</span></div>' + (extra || '') + '</div>';
+  }
+
+  // ---------- routing ----------
+
+  const VIEWS = ['welcome', 'working', 'profile', 'scan', 'report', 'about'];
+
+  // Views a reader reaches by navigating away from wherever they actually
+  // live — the nav bar's "My Compatibility" and "FAQ", a fresh scan's result,
+  // a past comparison opened from the history table. On a phone, Back is how
+  // people leave any of these the way they would close something covering the
+  // page — see navHistoryEntry's own declaration below for the fix. 'working'
+  // is deliberately not here: it is a transient step inside reaching 'report'
+  // (scan → working → report), never a place someone arrives at directly or
+  // means to leave from, so it must not trigger a push or a pop on its own.
+  const SECONDARY_VIEWS = ['scan', 'report', 'about'];
+  // Where Back actually belongs once a secondary view's entry is popped —
+  // whichever of these is real right now. Reached through go('home'), which
+  // already knows to fall back to 'welcome' for a reader who opened the FAQ
+  // before ever having a profile at all.
+  const HOME_VIEWS = ['welcome', 'profile'];
+
+  // Both links lead somewhere that redirects straight back to the upload page
+  // until a profile exists, so until then they are noise. They start hidden in
+  // the markup and appear the moment there is something to point at.
+  function syncNav() {
+    const ready = Boolean(state.profile);
+    $('#nav-profile').hidden = !ready;
+    $('#nav-scan').hidden = !ready;
+    // My Report, once there is a full report to read on its own page.
+    $('#nav-full').hidden = !(ready && fullReportPage());
+    // The page the reader is on, marked the same way on every link.
+    const current = !$('#view-profile').hidden;
+    $('#nav-profile').classList.toggle('is-current', current && !reportPageOn());
+    $('#nav-full').classList.toggle('is-current', current && reportPageOn());
+    $('#nav-scan').classList.toggle('is-current', !$('#view-scan').hidden);
+    $('#nav-about').classList.toggle('is-current', !$('#view-about').hidden);
+    for (const link of document.querySelectorAll('.nav-links a')) {
+      if (link.classList.contains('is-current')) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    }
+  }
+  /** Whether this reader's full report lives on a page of its own (My Report). */
+  function fullReportPage() {
+    return Boolean(state.profile) && hasExplanations(state.profile);
+  }
+  /** Whether My Report, rather than My Psyche, is the page drawn. */
+  function reportPageOn() {
+    return profilePage === 'report' && fullReportPage();
+  }
+
+  function show(view) {
+    // A sync's result is a popout over My Syncs, not a page of its own.
+    if (view === 'report') { openSyncDialog(); return; }
+    if (syncDialog().open) syncDialog().close();
+    // Arriving at a home view gives back the entry pushed for whichever
+    // secondary view preceded it — a nav link, a fresh scan's result, anything
+    // other than the Back press the entry exists for. Left in place, a later
+    // Back from wherever this navigation actually lands would pop a phantom
+    // state and jump to a home view unannounced. See navHistoryEntry's own
+    // declaration for why the entry exists at all, and the popstate listener
+    // below for the other half of this same guard.
+    // The main page is a home view for someone starting out, and an excursion
+    // like the FAQ for a reader who already has a card: they reached it from
+    // the logo, and Back should take them to their card rather than off the
+    // site.
+    // My Report is an excursion from My Psyche, so Back returns to the card.
+    const secondary = SECONDARY_VIEWS.includes(view) || (view === 'welcome' && Boolean(state.profile)) ||
+      (view === 'profile' && reportPageOn());
+    // Entries to give back are counted rather than popped one at a time: the
+    // Ask PsycheAI panel may hold one of its own, and two history.back()
+    // calls in a row, or one followed by the pushState below, race each other.
+    let drop = 0;
+    if (navHistoryEntry && HOME_VIEWS.includes(view) && !secondary && !closingNavFromHistory) {
+      navHistoryEntry = false;
+      drop += 1;
+    }
+    for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
+    // Ask PsycheAI goes with the reader on every page once the report is unlocked,
+    // panel and button alike.
+    refreshAskFab();
+    // The front page, kept out of sight by early.js until this choice was made.
+    document.documentElement.classList.remove('view-pending');
+    syncNav();
+    refreshReportPromo();
+    // The psyche card is scaled from the width of the column it sits in, and a
+    // hidden view measures zero — so a card rendered before its view was shown
+    // would be scaled to nothing. Re-fit here, where the width is real.
+    if (view === 'profile') { layoutPsycheCard(); layoutSideActions(); }
+    // The Start here card claims what is loaded, and what is loaded changes
+    // underneath it — a failed run, a deleted profile, a fresh session. Kept
+    // truthful on arrival rather than only at boot, since arriving is when it
+    // is read.
+    const guides = $('.footer-guides');
+    if (guides) guides.hidden = !(view === 'welcome' && !state.profile);
+    // The independence note and the release number only on the front page
+    // and the FAQ, not under a reader's own card, report or syncs.
+    const footer = $('.footer');
+    if (footer) footer.classList.toggle('is-content', view !== 'welcome' && view !== 'about');
+    if (view === 'welcome') {
+      refreshStartHere();
+      $('#view-welcome').classList.toggle('is-returning', Boolean(state.profile));
+      // The sample card is fitted to the width of its tier, and a reader who
+      // landed on their own card had this page hidden when it was first drawn —
+      // it measured nothing and was left at full size. Fitted again now that
+      // the page is on screen.
+      drawInsightPreview();
+    }
+    window.scrollTo(0, 0);
+    // One entry covers a whole excursion into any of the secondary views, not
+    // one per view — moving between them (about → scan, or scan → its own
+    // report) never stacks a second pushState behind the first. Guarded on
+    // navHistoryEntry already being false, which is also what stops this from
+    // re-firing on every one of the several show() calls a single scan →
+    // working → report sequence makes.
+    // An entry about to be given back is kept for this one instead.
+    if (secondary && !navHistoryEntry) {
+      if (drop > 0) drop -= 1;
+      else history.pushState({ psycheaiNav: true }, '');
+      navHistoryEntry = true;
+    }
+    if (drop > 0) { ownPops += 1; history.go(-drop); }
+  }
+
+  // ---- a sync's result, as a popout over My Syncs ----
+  //
+  // Opened from the Syncs list or when a sync lands; closed by its ✕, Close,
+  // Esc, a click outside it, or Back (it pushes an entry of its own, as the
+  // sample does).
+  let syncHistoryEntry = false;
+  let closingSyncFromHistory = false;
+  const syncDialog = () => $('#sync-dialog');
+  function openSyncDialog() {
+    const dialog = syncDialog();
+    if ($('#view-scan').hidden) { renderScan(); show('scan'); } else renderScan();
+    $('#view-report').hidden = false;
+    if (!dialog.open) {
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+      history.pushState({ psycheaiSync: true }, '');
+      syncHistoryEntry = true;
+    }
+    dialog.scrollTop = 0;
+  }
+  syncDialog().addEventListener('close', () => {
+    $('#view-report').hidden = true;
+    if (syncHistoryEntry && !closingSyncFromHistory) popOwnEntry();
+    syncHistoryEntry = false;
+  });
+  // A click on the backdrop lands on the dialog itself; one inside it does not.
+  syncDialog().addEventListener('click', event => { if (event.target === syncDialog()) syncDialog().close(); });
+  $('#sync-dialog-close').addEventListener('click', () => syncDialog().close());
+  $('#compat-back').addEventListener('click', () => syncDialog().close());
+
+  // ---- the sample report ----
+  //
+  // A dialog over the page rather than a view of its own. It renders the same
+  // section HTML a real report renders, because anything less than the real
+  // layout is a mockup and a mockup is what people discount — but it is
+  // something to look into and step back out of, so nothing here touches
+  // state.profile or storage, and the nav does not change underneath it.
+  //
+  // Back closes it. On a phone, back is what people reach for to dismiss
+  // something covering the page, and without an entry to pop they leave the
+  // site instead. The entry is pushed on open and popped on close; the flag
+  // stops the two paths chasing each other — a close triggered by popstate
+  // must not call history.back() a second time.
+  let sampleHistoryEntry = false;
+  let closingFromHistory = false;
+  let sampleReport = null;
+  const sampleDialog = () => $('#sample-dialog');
+
+  async function showSample(button) {
+    const dialog = sampleDialog();
+    if (dialog.open) return;
+    const label = button && button.textContent;
+    if (button) { button.disabled = true; button.textContent = 'Loading…'; }
+    try {
+      const report = await loadSample();
+      // Kept so the roast can be revealed on demand inside the sample too.
+      // Its text is deliberately not written into the markup until the
+      // reader asks for it — see roastBlock()/revealRoast().
+      sampleReport = report;
+      // No Psyche Card here: the sample opens straight on 00 and the part
+      // nav, since the front page already shows sample cards of its own. The
+      // card is still built for the full-screen copy, which other entry
+      // points open, but its section in the sample stays hidden.
+      const cardHtml = psycheCardHtml(report);
+      $('#sample-psyche-card').innerHTML = cardHtml;
+      freshArtIds($('#sample-psyche-card'));
+      // The same markup again for the full-screen copy, rather than moving the
+      // one node between two parents: fitCard scales by writing a transform on
+      // the element, and the preview and the full-screen view are scaled to
+      // different boxes at the same time.
+      $('#sample-psyche-card-full').innerHTML = cardHtml;
+      freshArtIds($('#sample-psyche-card-full'));
+      $('#sample-card-section').hidden = true;
+      $('#sample-card-title').textContent = TEXT.cardSection;
+      $('#sample-card-hint').textContent = TEXT.cardHint;
+      setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));
+      collapseSections($('#sample-body'));
+      markStructured($('#sample-sections'));
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+      // Both of these run after showModal, not before, and for the same
+      // reason: a closed <dialog> is display:none and has no layout at all.
+      //
+      // fitCard measures offsetHeight — called any earlier it reads a natural
+      // height of 0, bails out, and leaves the card unscaled and overflowing
+      // its frame. The scroll reset has exactly the same problem and was
+      // exactly the same bug: assigning scrollTop to an element that is not
+      // being rendered does nothing, so the reset was silently dropped and the
+      // sample reopened wherever the reader had left it — halfway down
+      // somebody else's report rather than at the summary card it is supposed
+      // to open on.
+      layoutSampleCard();
+      $('#sample-body').scrollTop = 0;
+      history.pushState({ psycheaiSample: true }, '');
+      sampleHistoryEntry = true;
+    } catch (error) {
+      flash('#upload-error', (error && error.message) || 'The sample could not be loaded.');
+    } finally {
+      if (button) { button.disabled = false; button.textContent = label; }
+    }
+  }
+
+  function closeSample() {
+    const dialog = sampleDialog();
+    if (dialog.open) dialog.close();
+    else if (dialog.hasAttribute('open')) dialog.removeAttribute('open');
+  }
+
+  sampleDialog().addEventListener('close', () => {
+    // Esc and the cross both land here. Drop the entry we pushed so the
+    // reader's next Back goes where it would have gone before they looked.
+    if (sampleHistoryEntry && !closingFromHistory) popOwnEntry();
+    sampleHistoryEntry = false;
+    // Emptied rather than left in place. A closed dialog is still in the
+    // document, so a whole second report's worth of markup would sit there
+    // shadowing the real one's selectors — and the sections it builds are the
+    // same ones the reader's own report uses.
+    //
+    // The two slots are emptied, not #sample-body itself: the card section's
+    // own frame is markup in index.html now rather than something showSample
+    // builds, and wiping the container would take it away for good, leaving
+    // every later open with no card at all.
+    // Closed with it, or a Back press that shuts the sample from underneath
+    // would leave the full-screen card stranded over the page with nothing
+    // behind it.
+    const full = $('#sample-card-dialog');
+    if (full && full.open) full.close();
+    $('#sample-sections').innerHTML = '';
+    $('#sample-psyche-card').innerHTML = '';
+    $('#sample-psyche-card-full').innerHTML = '';
+    $('#sample-card-section').hidden = true;
+    sampleReport = null;
+  });
+
+  // ---- the illustrated Instagram guide ----
+  //
+  // The same shape as the sample dialog above and for the same reasons, so the
+  // two share their markup classes and their history handling. Its content is
+  // static markup in index.html rather than built here: nothing in it depends
+  // on the reader's own data, so there is nothing to render and nothing to
+  // clear on close.
+  let guideHistoryEntry = false;
+  const guideDialog = () => $('#guide-dialog');
+
+  function showGuide() {
+    const dialog = guideDialog();
+    if (dialog.open) return;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    // After showModal, never before. A closed <dialog> is display:none, and
+    // scrollTop on an element that is not being rendered is a no-op — so this
+    // reset used to be dropped on the floor and the guide reopened wherever
+    // the reader had left it, which for anyone who had read to the end meant
+    // opening on step 4 rather than on "Open your Instagram app".
+    dialog.querySelector('.guide-body').scrollTop = 0;
+    history.pushState({ psycheaiGuide: true }, '');
+    guideHistoryEntry = true;
+  }
+
+  function closeGuide() {
+    const dialog = guideDialog();
+    if (dialog.open) dialog.close();
+    else if (dialog.hasAttribute('open')) dialog.removeAttribute('open');
+  }
+
+  guideDialog().addEventListener('close', () => {
+    // Same bookkeeping the sample dialog does: give back the entry that was
+    // pushed for it, unless this close *came* from a Back press, in which case
+    // the entry is already gone and popping again would take the reader off a
+    // page they were not trying to leave.
+    if (guideHistoryEntry && !closingGuideFromHistory) popOwnEntry();
+    guideHistoryEntry = false;
+  });
+
+  $('#guide-open').addEventListener('click', showGuide);
+  $('#guide-close').addEventListener('click', closeGuide);
+  // The guide's own call to action, and the welcome card's, are now the same
+  // action rather than one leading to the other. It used to scroll to the
+  // upload card, which left a reader who had just finished the walkthrough
+  // looking at a button they still had to find and press; it opens the popout
+  // directly instead.
+  //
+  // The frame juggling below is inherited from that scroll and still earns its
+  // place: closeGuide() pops the guide's history entry, and opening a second
+  // dialog before that has settled races the popstate handler — which would
+  // close the popout again as it unwinds the entry the guide left behind.
+  $('#guide-start').addEventListener('click', () => {
+    if (guideHistoryEntry) {
+      window.addEventListener('popstate',
+        () => requestAnimationFrame(() => requestAnimationFrame(startFromSources)), { once: true });
+      closeGuide();
+    } else {
+      closeGuide();
+      startFromSources();
+    }
+  });
+
+  let closingGuideFromHistory = false;
+
+  // A dialog closed by Esc or its cross gives back the history entry it
+  // pushed, and that history.back() arrives here as a popstate like any Back
+  // press. It is not one: the dialog is already shut, so the handler below
+  // would fall through and treat it as leaving whatever page sits underneath —
+  // closing the guide on the FAQ, or on the main page reached from the logo,
+  // sent the reader to their card. Counted, so each of those pops is passed
+  // over exactly once.
+  let ownPops = 0;
+  // `keepY`: the page stays where it is through the step back. Left alone,
+  // the browser's scroll restoration put back the position the entry was
+  // pushed at (minimising Ask PsycheAI after scrolling jumped the page).
+  let ownPopKeepY = null;
+  function popOwnEntry(keepY) {
+    ownPops += 1;
+    if (typeof keepY === 'number') {
+      ownPopKeepY = keepY;
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    }
+    history.back();
+  }
+
+  window.addEventListener('popstate', () => {
+    if (ownPops > 0) {
+      ownPops -= 1;
+      if (ownPopKeepY !== null) {
+        const y = ownPopKeepY;
+        ownPopKeepY = null;
+        window.scrollTo(0, y);
+        // Restoration back on only once the browser has finished the step:
+        // turned on inside this handler, it is applied straight after it.
+        setTimeout(() => {
+          window.scrollTo(0, y);
+          if (!backToHub && 'scrollRestoration' in history) history.scrollRestoration = 'auto';
+        }, 400);
+      }
+      return;
+    }
+    // The hero video, expanded over the page on a phone, is the topmost thing
+    // there can be: Back closes it first, as it would any phone video player.
+    if (collapseHeroVideo && collapseHeroVideo(true)) return;
+    // The guide is checked before the sample because it is the one that can be
+    // open on top: it is reachable from the welcome page, where the sample is
+    // reachable too, and whichever was opened last is the one a Back press is
+    // aimed at. Both are guarded on being open at all, so the order only
+    // decides which closes first when — impossibly, today — both are.
+    if (syncDialog().open) {
+      closingSyncFromHistory = true;
+      syncHistoryEntry = false;
+      syncDialog().close();
+      closingSyncFromHistory = false;
+      return;
+    }
+    if (guideDialog().open || guideDialog().hasAttribute('open')) {
+      closingGuideFromHistory = true;
+      guideHistoryEntry = false;
+      closeGuide();
+      closingGuideFromHistory = false;
+      return;
+    }
+    if (sampleDialog().open || sampleDialog().hasAttribute('open')) {
+      closingFromHistory = true;
+      sampleHistoryEntry = false;
+      closeSample();
+      closingFromHistory = false;
+      return;
+    }
+    // Falls through here only once the sample dialog (if it was even open)
+    // is out of the way — a Back press pops one history entry, and if that
+    // entry was the sample's own, whatever secondary view sits underneath it
+    // is not what this press was aimed at. A second Back, with nothing left
+    // to close, reaches this branch on its own next time. See
+    // navHistoryEntry's own declaration for why leaving a secondary view any
+    // other way must also consume this entry.
+    // Ask PsycheAI's panel: Back minimises it, as it would close any sheet
+    // over the page on a phone, rather than leaving the page under it.
+    if ($('#ask-dialog').open) {
+      askHistoryEntry = false;
+      // Where the reader is stays where it is (restoration was off for this
+      // step, see openAsk), and is turned on again once it has landed.
+      const y = window.scrollY;
+      $('#ask-dialog').close();
+      window.scrollTo(0, y);
+      setTimeout(() => {
+        window.scrollTo(0, y);
+        if (!backToHub && 'scrollRestoration' in history) history.scrollRestoration = 'auto';
+      }, 400);
+      dockAsk(false);
+      refreshAskFab();
+      return;
+    }
+    if (navHistoryEntry) {
+      closingNavFromHistory = true;
+      navHistoryEntry = false;
+      go('home');
+      closingNavFromHistory = false;
+    }
+  });
+
+  // ---- getting back to a home view ----
+  //
+  // My Compatibility, the FAQ, a fresh scan's result, a past comparison
+  // opened from the history table — every one of these is a page the reader
+  // arrived at by navigating away from their own psyche page, and on a
+  // phone, Back is how people leave any of them the way they would close
+  // something covering what they were looking at. Nothing pushed a history
+  // entry for any of them before, so Back had nowhere to go but out of the
+  // site entirely. One entry per excursion fixes that, the same way
+  // showSample() already does for its own dialog — see SECONDARY_VIEWS and
+  // show()'s own push/pop for where this actually happens; the flags live
+  // here only because show() and the popstate listener above both need them,
+  // and neither is defined yet at this point in the file.
+  let navHistoryEntry = false;
+  // Left for My Report or My Syncs from the hub: coming back to My Psyche
+  // lands on the hub, not the top of the page.
+  let backToHub = false;
+  let backToHubTimer = 0;
+  // The browser's own scroll restoration is off from here until the reader is
+  // back: left on, Back would put back the top-of-page this entry remembers.
+  function leaveHub() {
+    backToHub = true;
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  }
+  // The entry Ask PsycheAI's panel pushes while it is open, for Back to
+  // minimise it (openAsk, minimiseAsk).
+  let askHistoryEntry = false;
+  let closingNavFromHistory = false;
+
+  function go(target) {
+    closeSample();
+    if (target === 'home') { return state.profile ? go('profile') : show('welcome'); }
+    // The logo: the main page, whether or not this reader has a card yet.
+    // 'home' cannot do this — it is also where Back lands, which for a reader
+    // with a card has to be their card.
+    if (target === 'main') return show('welcome');
+    if (target === 'profile') {
+      if (!state.profile) return show('welcome');
+      profilePage = 'hub';
+      renderProfile(); show('profile');
+      // Straight to the hub, in the same frame show() put the page at its top,
+      // so the card never shows on the way. Held a moment longer: the history
+      // step a Back button may still fire renders this page a second time.
+      if (backToHub) {
+        const hub = document.querySelector('#profile-body .hub-card');
+        if (hub) hub.scrollIntoView({ behavior: 'instant', block: 'center' });
+        clearTimeout(backToHubTimer);
+        backToHubTimer = setTimeout(() => {
+          backToHub = false;
+          if ('scrollRestoration' in history) history.scrollRestoration = 'auto';
+        }, 400);
+      }
+      return;
+    }
+    // My Report: the full report on its own page, once it is unlocked.
+    if (target === 'full') {
+      if (!fullReportPage()) return go('profile');
+      profilePage = 'report';
+      renderProfile(); show('profile'); return;
+    }
+    if (target === 'scan') {
+      if (!state.profile) return showUploadError('Build your own profile first – a report needs two people.');
+      renderScan(); show('scan'); return;
+    }
+    if (target === 'about') {
+      if (backToHub && 'scrollRestoration' in history) history.scrollRestoration = 'auto';
+      backToHub = false; renderAbout(); show('about'); return;
+    }
+    show(target);
+  }
+
+  document.addEventListener('click', event => {
+    const nav = event.target.closest('[data-nav]');
+    if (!nav) return;
+    event.preventDefault();
+    // A link inside an open dialog closes it first: without this, navigating
+    // away leaves the dialog (and its backdrop) open on top of the view it
+    // just switched to.
+    const openDialog = nav.closest('dialog[open]');
+    if (openDialog) openDialog.close();
+    go(nav.dataset.nav);
+  });
+
+  function flash(selector, message) {
+    const node = $(selector);
+    if (!node) return;
+    node.textContent = message || '';
+    node.hidden = !message;
+    // A message is a warning unless its caller marks it a note again.
+    node.classList.remove('is-note');
+  }
+
+  // ══════════════ 1. upload and analysis ══════════════
+
+  // The card itself, not a box inside it — see the markup. Kept under the old
+  // name because everything below still talks about a dropzone, and it still
+  // is one; only its bounds changed.
+  const dropzone = $('.upload-card');
+  const fileInput = $('#file-input');
+
+  // The hero's primary action. It scrolls rather than jumping straight into
+  // the file picker: an OS dialog opening on a page the reader has not seen
+  // the bottom of yet is startling, and the switches above the dropzone are
+  // choices they should get to look at first.
+  // The hero's primary action lands on the how-to rather than the dropzone.
+  // Somebody pressing it on a first visit has no export yet — the file they
+  // would need is an email from Instagram that takes hours to arrive — so the
+  // useful next step is the instructions for requesting one. The upload box is
+  // directly beneath them when they come back.
+  // The stylesheet's reduced-motion block only reaches `transition` and
+  // `animation`; scrollIntoView is a JS API and sails straight past it, so a
+  // reader who asked for less motion would still get a full-page glide. Read at
+  // click time rather than at load, so changing the OS setting takes effect
+  // without a reload.
+  const scrollBehaviour = () =>
+    (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto' : 'smooth');
+
+  // ---------- holding a card still while the layout moves under it ----------
+  //
+  // The report scrolls in two different containers depending on where it is
+  // being read: the profile page scrolls the window, and the sample dialog
+  // scrolls its own body (`.sample-dialog-body` is `overflow-y: auto`). Any
+  // correction that assumed the window would silently do nothing inside the
+  // dialog, which is the kind of half-working that never gets reported.
+  function scrollHostOf(node) {
+    for (let el = node.parentElement; el; el = el.parentElement) {
+      const overflowY = getComputedStyle(el).overflowY;
+      if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+        return el;
+      }
+    }
+    return null;
+  }
+
+  /** How far down the visible area an element currently sits, in pixels. */
+  function viewportTopOf(node, host) {
+    const top = node.getBoundingClientRect().top;
+    return host ? top - host.getBoundingClientRect().top : top;
+  }
+
+  function scrollHostBy(host, delta) {
+    if (!delta) return;
+    if (host) host.scrollTop += delta;
+    else window.scrollBy(0, delta);
+  }
+
+  function visibleHeightOf(host) {
+    return host ? host.clientHeight : window.innerHeight;
+  }
+
+  // Below this much of the visible height, a heading that stayed exactly where
+  // it was would have opened its section almost entirely off-screen — so that
+  // one case gets a scroll and every other click gets none. Deliberately low:
+  // the point of anchoring is that most clicks move nothing at all, and a
+  // threshold generous enough to fire on a mid-screen heading would put the
+  // page back to sliding on nearly every toggle.
+  const REVEAL_BELOW = 0.62;
+
+  // Every place that lands back on the welcome page with something to say —
+  // a bad archive, a bad photo, a failed analysis, a stale share link — used
+  // to call show('welcome') and flash the message in the same breath. show()
+  // always scrolls to the very top of the page, so the message landed below
+  // the fold behind the hero, the how-it-works row and the instructions card,
+  // and a reader who had scrolled down to drop a file saw nothing happen.
+  // This is the one path back that keeps the reason on screen: it scrolls to
+  // the message itself once show() and flash() have both run, rather than to
+  // wherever show() happens to leave the page.
+  /**
+   * Back out of an upload and land where the reader was standing.
+   *
+   * Both abandon paths — Back at the supplement offer, Escape at the review —
+   * go through here rather than calling show() directly, so the two cannot
+   * drift apart on the one thing that makes them feel different from a
+   * failure. show() scrolls every view change to the top, which is right for
+   * arriving somewhere and wrong for backing out: the dropzone sits near the
+   * foot of a long page, and a reader who abandons an upload was standing
+   * there a second ago.
+   *
+   * The restore overrides show()'s scroll rather than suppressing it. Both run
+   * in the same synchronous task, so nothing is painted in between and there
+   * is no visible jump — and an option threaded through show() to skip its
+   * scroll would be an option no test could ever catch failing, since this
+   * line would put the reader in the right place either way.
+   *
+   * Guarded on the page still being long enough to hold that position: a
+   * shorter page would otherwise get an out-of-range scroll the browser clamps
+   * somewhere arbitrary.
+   */
+  function abandonUpload(scrollY) {
+    show('welcome');
+    const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo(0, Math.min(scrollY, limit));
+  }
+
+  // The last analysis that was actually attempted, kept so that "Try again"
+  // can repeat it exactly rather than reassemble something equivalent.
+  //
+  // Byte-identity is the whole point. The server keys its result cache on the
+  // digest, so resending this object returns the report that finished after
+  // the reader's connection died, or attaches to the one still being
+  // generated. Rebuilding the digest from the archive instead — which is what
+  // the "Continue with your data" route does — produces a digest that differs
+  // and would pay for the same analysis a second time.
+  //
+  // In memory only. A reload has the stored digest and the welcome card's own
+  // route back, and a paid run that never landed is offered by the pending
+  // banner, which is a durable record because that one is owed money.
+  let lastAttempt = null;
+
+  function showUploadError(message, opts) {
+    show('welcome');
+    // The message lives in the Start here card, which a reader who already has
+    // a card does not otherwise see on this page (.is-returning). Something
+    // they loaded has just failed, so the card comes back with it.
+    $('#view-welcome').classList.remove('is-returning');
+    // Before the message, so the card behind it already reads "your data is
+    // still here" by the time the reader looks up from the error. A failed
+    // analysis loses nothing — the digest was written to storage before the
+    // model was called — and the whole point of the line is to say so at the
+    // moment somebody is deciding whether they have to start over.
+    refreshStartHere();
+    flash('#upload-error', message);
+    // Offered only for a failed analysis, and only while the attempt it would
+    // repeat is still in hand. Every other caller of this function — an
+    // unreadable export, a digest that would not build — has nothing to retry
+    // and gets no button, because a button that reruns the thing that just
+    // failed for a reason retrying cannot fix is worse than no button.
+    const retry = $('#upload-retry');
+    if (retry) retry.hidden = !(opts && opts.retry && lastAttempt);
+    $('#upload-error').scrollIntoView({ behavior: scrollBehaviour(), block: 'center' });
+  }
+
+  /**
+   * What the "Start here" card says about data already in hand.
+   *
+   * Read from the same two places the popout seeds its ticks from, so the card
+   * and the popout cannot disagree: `state.signals` is the archive parsed this
+   * session, `state.digest` the evidence summary that survives a reload. Either
+   * one means the reader has something to analyse and nothing to re-upload.
+   */
+  function refreshStartHere() {
+    const note = $('#upload-loaded');
+    const button = $('#open-sources');
+    if (!note || !button) return;
+    const digest = state.digest;
+    const supplements = (state.signals && state.signals.supplements) || {};
+    const loaded = [];
+    if (state.signals || (digest && digestHasInstagram(digest))) loaded.push('Instagram');
+    if ((digest && digest.google) || supplements.google) loaded.push('Google');
+    if ((digest && digest.facebook) || supplements.facebook) loaded.push('Facebook');
+    if ((digest && digest.tiktok) || supplements.tiktok) loaded.push('TikTok');
+    if ((digest && digest.journal) || supplements.journal) loaded.push('your journal');
+    if ((digest && digest.whatsapp) || supplements.whatsapp) loaded.push('WhatsApp');
+    note.hidden = loaded.length === 0;
+    note.textContent = loaded.length
+      ? loaded.join(' and ') + TEXT.startLoadedSuffix
+      : '';
+    button.textContent = loaded.length ? TEXT.startContinue : TEXT.startLoad;
+  }
+
+  /**
+   * The welcome page's own way in: the same popout the report page uses to add
+   * or change a source, followed by the same review, payment and analysis a
+   * dropped file went through.
+   *
+   * Sharing the popout is what makes a failed analysis cheap. Everything a run
+   * needs is already on the device by the time it fails — `writeDigest` puts
+   * the digest in storage before the model is called — so reopening this shows
+   * Instagram and Google ticked and the reader presses Continue. Nothing is
+   * read again, and the server's result cache means a retry inside its window
+   * does not pay for the analysis twice either.
+   *
+   * Deliberately not routed through `rerunWithAdditionalData`, which does the
+   * same three steps on the report page: that one also has to decide whether a
+   * US$5 unlock is regenerating four paid sections alongside the free ones,
+   * and there is no report here for any of that to be true of. The shared
+   * thing is the popout and the review, not the pricing.
+   */
+  // Before a flow that reads or sends data: the readers, said where the reader
+  // is if they cannot be fetched. False means stop.
+  async function readersReady() {
+    try {
+      await loadReaders();
+      return true;
+    } catch (error) {
+      const message = (error && error.message) || 'Part of the page could not be loaded.';
+      if (!$('#view-profile').hidden) flash('#profile-alert', message);
+      else showUploadError(message);
+      return false;
+    }
+  }
+
+  async function startFromSources() {
+    if (!(await readersReady())) return;
+    const scrollBefore = window.scrollY;
+    let thinWarned = false;
+    for (;;) {
+      let digest = null;
+      {
+      let collected;
+      try {
+        collected = await askDataSources({
+          title: TEXT.dataSourcesFirstTitle,
+          blurb: TEXT.dataSourcesFirstBlurb,
+          // Instagram, then WhatsApp chats with close friends, Google and
+          // Facebook, all three optional (Facebook since late October 2026:
+          // it was offered only from the report page before).
+          sources: ['instagram', 'whatsapp', 'google', 'facebook', 'tiktok', 'journal'],
+          first: true,
+          // Instagram, or two or three WhatsApp chats (October 2026): either is a
+          // first read, and the popout says where the reader stands.
+          requireMinimum: true,
+          // One line a row: no sub-lines and no tags, the groups say it.
+          sublines: { instagram: '' },
+          titles: { whatsapp: TEXT.whatsappFirstTitle },
+          // Up to three chats, as on the report page.
+          whatsappMax: 3,
+        });
+      } catch (error) {
+        showUploadError((error && error.message) || 'Could not read that file.');
+        return;
+      }
+      // Back or Escape at the popout: nothing touched, and the reader is put
+      // back where they were standing rather than at the top of the page.
+      if (!collected) {
+        // Closed by a restored backup, which has already put the reader on
+        // My Psyche: nothing to go back to.
+        if (restoredBackup) { restoredBackup = false; return; }
+        abandonUpload(scrollBefore);
+        return;
+      }
+
+      // The same merge order addDataAndRerun uses, and for the same reason:
+      // a fresh Instagram read replaces `state.signals` wholesale and carries
+      // no `.supplements` of its own, so anything loaded earlier this session
+      // has to be read off the old object before it is replaced.
+      // Chats read alone on an earlier attempt (state.chats) ride along when
+      // Instagram is added on this one, as in addDataAndRerun.
+      const priorSupplements = (state.signals && state.signals.supplements) ||
+        (state.chats ? { whatsapp: state.chats } : undefined);
+      if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+      repairOwnName().catch(() => {});
+      if (state.signals) {
+        state.chats = null;
+        state.signals.supplements = Object.assign({}, priorSupplements,
+          loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp')));
+      } else if (typeof collected.whatsapp === 'object') {
+        // No Instagram: the chats are the read, and the reader is known by
+        // them (accountKeys) and called by their name in them (ownDisplayName).
+        state.chats = collected.whatsapp;
+      }
+
+      if (state.signals) {
+        digest = withStoredChats(Digest.build(state.signals, { includeMessages: true }), state.signals);
+      } else if (typeof collected.whatsapp === 'object' && !state.digest) {
+        // WhatsApp chats and no Instagram (October 2026), with Google or
+        // Facebook beside them if loaded: a digest of those alone.
+        digest = Digest.buildFromSupplements(Object.assign({ whatsapp: collected.whatsapp },
+          loadedSupplements(collected, OPTIONAL_SOURCES)));
+      } else if (state.digest) {
+        // The retry path after a reload: the archive is gone but the digest
+        // it produced is not, and the digest is the only thing the server was
+        // ever going to be sent. Copied rather than mutated so a declined
+        // review leaves the stored one exactly as it was.
+        digest = JSON.parse(JSON.stringify(state.digest));
+        const extra = loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp'));
+        // The handle so the supplement's own text can be scrubbed too — see
+        // redactOwnHandle. Undefined when the archive is gone, which is the
+        // gap that function documents rather than one worth reopening the
+        // Instagram picker for.
+        if (Object.keys(extra).length) digest = Digest.addSupplements(digest, extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
+      } else {
+        // Google or Facebook loaded with neither Instagram nor chats behind
+        // them. The popout is reopened rather than the run abandoned, because
+        // the reader is one row away from being able to continue.
+        flash('#upload-error', TEXT.startNeedsMinimum(2));
+        continue;
+      }
+
+      // Too little of their own writing: no run, only the way back to add data.
+      if (tooThin(digest)) {
+        if (await sayTooThin(digest)) continue;
+        abandonUpload(scrollBefore);
+        return;
+      }
+      // Little to read in all: said once a session, with the way back to the popout.
+      if (!thinWarned && !thinSaid() && thinDigest(digest)) {
+        thinWarned = true;
+        markThinSaid();
+        if (await sayThin(digest)) continue;
+      }
+      }
+
+      let decision;
+      try {
+        // Free to try: the server decides whether this Instagram account has
+        // had its free card (see runAnalysis's freeUsed branch).
+        decision = await askReview(digest, { paymentDue: false });
+      } catch (error) {
+        showUploadError((error && error.message) || 'Could not build your evidence summary.');
+        return;
+      }
+      // Back steps upstream to the popout with everything still loaded, which
+      // is the whole reason this is a loop; Escape abandons the attempt.
+      if (decision === REVIEW_BACK) continue;
+      if (!decision) { abandonUpload(scrollBefore); return; }
+
+      // Every first upload asks for the free card, whatever this browser
+      // has made before (late October 2026): the server knows whether this
+      // Instagram account has had it, and a second account on the same
+      // laptop is still owed one. Refused, the card and report are offered
+      // together over this same reviewed digest (runAnalysis, freeUsed).
+      applyReviewDecision(digest, decision);
+      state.digest = digest;
+      pendingDataSourceReads = {};
+      writeDigest(digest);
+      await runAnalysis(digest, null);
+      return;
+    }
+  }
+
+  // "Get my data": to the steps for getting the export. A reader who already
+  // has a card has no steps card on this page (see .is-returning), so for them
+  // it opens the illustrated guide instead.
+  $('#hero-start').addEventListener('click', () => {
+    if (state.profile) { showGuide(); return; }
+    // Already here (the hero is on this page): show() would only jump to the
+    // top and redraw the sample card first, for nothing.
+    if ($('#view-welcome').hidden) show('welcome');
+    // The request steps, Instagram's way chosen (on a phone, its tab).
+    chooseWay('instagram');
+    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+  // "Start with WhatsApp": the chats' way in Two ways to start. A reader with a
+  // card already adds chats to it from their report instead.
+  $('#hero-wa').addEventListener('click', () => {
+    if (state.profile) { go('profile'); startRerun(); return; }
+    if ($('#view-welcome').hidden) show('welcome');
+    chooseWay('whatsapp');
+    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+  // Two ways to start: on a phone, the tabs show one way at a time (on a
+  // laptop both are open side by side, and the tabs are not drawn).
+  function chooseWay(way) {
+    for (const tab of document.querySelectorAll('.ways-tab')) tab.setAttribute('aria-selected', String(tab.dataset.way === way));
+    for (const panel of document.querySelectorAll('.way')) panel.classList.toggle('is-off', panel.id !== 'way-' + way);
+  }
+  document.querySelectorAll('.ways-tab').forEach(tab => tab.addEventListener('click', () => chooseWay(tab.dataset.way)));
+  // "See below for instructions" in How it works: to the request steps, as
+  // Get my data lands — without the hash the app reads links from.
+  document.addEventListener('click', event => {
+    const below = event.target.closest('a.step-below');
+    if (!below) return;
+    event.preventDefault();
+    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+  // "Load my data": the Add your data popout, as Start here's button opens it.
+  // A reader with a card already adds to it from their report instead.
+  $('#hero-load').addEventListener('click', () => {
+    if (state.profile) { go('profile'); startRerun(); return; }
+    startFromSources();
+  });
+  // Set by initHeroVideo: closes the video if it is expanded over the page and
+  // says whether it was, so Back can close it (see the popstate listener).
+  let collapseHeroVideo = null;
+  initHeroVideo();
+  // The page's own static icons (index.html) as line icons too: written there
+  // as the emoji they stand for, so the markup still reads without this.
+  document.querySelectorAll('.card-icon, .mode-icon, .gift-banner-icon, .deid-icon, .more-data-icon').forEach(node => {
+    const svg = Copy.lineIcon(node.textContent);
+    if (svg) node.innerHTML = svg;
+  });
+
+  /** A how-to list as plain steps: labels instead of screenshot buttons, the settings as one sentence. */
+  function plainHowto(list) {
+    for (const peek of list.querySelectorAll('.ui-peek')) {
+      const label = document.createElement('span');
+      label.className = 'ui-label';
+      label.textContent = peek.textContent;
+      peek.replaceWith(label);
+    }
+    // "Date range | All time, Format | JSON (not HTML), …" → "Date range to All time, Format to JSON (not HTML), …".
+    for (const set of list.querySelectorAll('.howto-set')) {
+      const cells = [...set.children];
+      const out = document.createDocumentFragment();
+      for (let i = 0; i + 1 < cells.length; i += 2) {
+        out.append(cells[i].textContent.trim() + ' to ');
+        out.append(...[...cells[i + 1].childNodes].map(node => node.cloneNode(true)));
+        out.append(i + 2 < cells.length ? ', ' : '. ');
+      }
+      set.replaceWith(out);
+    }
+  }
+
+  /**
+   * The welcome hero's video, with a player of its own: a timing bar to drag,
+   * play/pause, the time, mute, and full screen / back.
+   *
+   * It loops silently while it is on screen and pauses when it is not, unless
+   * the reader paused it themselves, which it then respects. "Tap for sound"
+   * (or a tap on the picture while it is silent) turns the sound on and starts
+   * it again from the top so the voice is heard from its first line, plays it
+   * once through, and at the end falls back to silent looping. For a reader who
+   * asked for less motion it never starts on its own.
+   *
+   * Full screen takes the whole player, so the controls come with it, and
+   * shows the 9:16 frame whole rather than cropped. Going full screen from the
+   * silent loop turns the sound on and starts from the top.
+   *
+   * On a phone it does not use the browser's full screen at all: Android lays
+   * its own "drag from top and touch back to exit" notice over any page that
+   * does, and iPhone Safari would swap in its own player. Instead the player
+   * expands to cover the window (.is-expanded), with a history entry so the
+   * phone's Back closes it like any video player, as Esc does. The video also
+   * opts out of casting (disableremoteplayback), which is what put a "cast to
+   * screen" button in its corner on Android.
+   */
+  function initHeroVideo() {
+    const video = $('#hero-video');
+    const frame = video && video.closest('.hero-video');
+    if (!video || !frame) return;
+    const sound = $('#hero-video-sound');
+    const play = $('#hero-video-play');
+    const mute = $('#hero-video-mute');
+    const full = $('#hero-video-full');
+    const seek = $('#hero-video-seek');
+    const time = $('#hero-video-time');
+    const ICONS = {
+      play: '<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>',
+      pause: '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" stroke="none"/>',
+      muted: '<path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" stroke="none"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/>',
+      sound: '<path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+      expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+      shrink: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+    };
+    const icon = (button, name, label) => {
+      button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + ICONS[name] + '</svg>';
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    };
+    const still = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // A reader saving data, or on a 2G connection, is not sent 4MB of video
+    // unasked: the poster and its play button stay, and play works as ever.
+    const sparing = () => {
+      const net = navigator.connection;
+      return Boolean(net && (net.saveData || /(^|-)2g$/.test(String(net.effectiveType || ''))));
+    };
+    // Playing on its own waits until the page has loaded and settled, so the
+    // video never competes with what the reader came to see first.
+    let settled = false;
+    const clock = seconds => {
+      const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
+      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    };
+    const fullElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+    // A phone, or anything without real full screen for an element, expands the player over the page instead.
+    const expandsInstead = () => (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+      !(frame.requestFullscreen || frame.webkitRequestFullscreen);
+    const expanded = () => frame.classList.contains('is-expanded');
+    let expandedEntry = false;
+    const setExpanded = on => {
+      frame.classList.toggle('is-expanded', on);
+      document.documentElement.classList.toggle('hero-video-open', on);
+      paint();
+    };
+    collapseHeroVideo = fromHistory => {
+      if (!expanded()) return false;
+      setExpanded(false);
+      if (expandedEntry && !fromHistory) popOwnEntry();
+      expandedEntry = false;
+      return true;
+    };
+    let onScreen = false;
+    let heldByReader = false;
+    video.setAttribute('aria-label', TEXT.heroVideoLabel);
+    seek.setAttribute('aria-label', TEXT.heroVideoSeek);
+
+    const paint = () => {
+      icon(play, video.paused ? 'play' : 'pause', video.paused ? TEXT.heroVideoPlayShort : TEXT.heroVideoPause);
+      icon(mute, video.muted ? 'muted' : 'sound', video.muted ? TEXT.heroVideoUnmute : TEXT.heroVideoMute);
+      const isFull = fullElement() === frame || expanded();
+      icon(full, isFull ? 'shrink' : 'expand', isFull ? TEXT.heroVideoExitFull : TEXT.heroVideoFull);
+      // The big invitation only while it is silent.
+      sound.hidden = !video.muted;
+      sound.querySelector('.hero-video-text').textContent = still() && video.paused ? TEXT.heroVideoPlay : TEXT.heroVideoSound;
+      sound.querySelector('.hero-video-icon').innerHTML = still() && video.paused ? '▶' : Copy.lineIcon('🔇');
+    };
+    const tick = () => {
+      const d = video.duration;
+      if (Number.isFinite(d) && d > 0 && document.activeElement !== seek) seek.value = String(Math.round(video.currentTime / d * 1000));
+      time.textContent = clock(video.currentTime) + ' / ' + (Number.isFinite(d) ? clock(d) : '–:––');
+    };
+    const frameLoop = () => { tick(); if (!video.paused) requestAnimationFrame(frameLoop); };
+    const go = () => video.play().catch(() => {});
+    // From the top, with sound, once through.
+    const withSound = () => {
+      heldByReader = false;
+      video.muted = false;
+      video.loop = false;
+      video.currentTime = 0;
+      go();
+      paint();
+    };
+    // Back to the silent loop.
+    const silent = () => {
+      video.muted = true;
+      video.loop = true;
+      if (onScreen && !still() && !heldByReader) go();
+      else video.pause();
+      paint();
+    };
+
+    sound.addEventListener('click', withSound);
+    video.addEventListener('click', () => {
+      if (video.muted) withSound();
+      else if (video.paused) { heldByReader = false; go(); }
+      else { heldByReader = true; video.pause(); }
+    });
+    play.addEventListener('click', () => {
+      if (video.paused) { heldByReader = false; go(); } else { heldByReader = true; video.pause(); }
+    });
+    mute.addEventListener('click', () => { if (video.muted) withSound(); else { video.muted = true; paint(); } });
+    seek.addEventListener('input', () => {
+      const d = video.duration;
+      if (Number.isFinite(d) && d > 0) video.currentTime = Number(seek.value) / 1000 * d;
+      tick();
+    });
+    full.addEventListener('click', () => {
+      if (expanded()) { collapseHeroVideo(false); return; }
+      if (fullElement()) {
+        const leaving = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if (leaving && leaving.catch) leaving.catch(() => {});
+        return;
+      }
+      if (video.muted) withSound();
+      if (expandsInstead()) {
+        history.pushState({ psycheaiVideo: true }, '');
+        expandedEntry = true;
+        setExpanded(true);
+        return;
+      }
+      try {
+        const entering = frame.requestFullscreen ? frame.requestFullscreen() : frame.webkitRequestFullscreen();
+        if (entering && entering.catch) entering.catch(() => {});
+      } catch (error) { setExpanded(true); }
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && expanded()) collapseHeroVideo(false); });
+    document.addEventListener('fullscreenchange', paint);
+    document.addEventListener('webkitfullscreenchange', paint);
+    ['play', 'pause', 'volumechange'].forEach(name => video.addEventListener(name, paint));
+    video.addEventListener('play', () => requestAnimationFrame(frameLoop));
+    ['timeupdate', 'loadedmetadata', 'seeked'].forEach(name => video.addEventListener(name, tick));
+    video.addEventListener('ended', () => {
+      if (fullElement() === frame) {
+        const leaving = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if (leaving && leaving.catch) leaving.catch(() => {});
+      }
+      collapseHeroVideo(false);
+      video.currentTime = 0;
+      silent();
+    });
+    const autoplay = () => {
+      if (settled && onScreen && video.muted && !still() && !sparing() && !heldByReader) go();
+    };
+    if ('IntersectionObserver' in window) {
+      // Mostly on screen (half of it), not just its edge.
+      new IntersectionObserver(entries => {
+        onScreen = entries[entries.length - 1].isIntersecting;
+        if (fullElement() === frame || expanded()) return;
+        if (!onScreen) video.pause();
+        else autoplay();
+      }, { threshold: 0.5 }).observe(video);
+    }
+    const settle = () => setTimeout(() => { settled = true; autoplay(); }, 1500);
+    if (document.readyState === 'complete') settle();
+    else window.addEventListener('load', settle, { once: true });
+    paint();
+    tick();
+  }
+  // Drawn with the insights block, after this runs, so the clicks are delegated.
+  document.addEventListener('click', event => {
+    const sample = event.target.closest('#insight-sample, .tier-sample');
+    if (sample) { showSample(sample); return; }
+    const card = event.target.closest('#insight-deck .insight-preview.is-front');
+    if (card) { openInsightCard(Number(card.getAttribute('data-card')) || 0); return; }
+    // The deck's arrows bring the next or the previous card to the front.
+    const arrow = event.target.closest('.insight-deck-step');
+    if (arrow) { stepDeck(Number(arrow.getAttribute('data-deck-step'))); return; }
+    // Full screen, the arrows either side step through the cards.
+    const step = event.target.closest('.sample-card-nav');
+    if (step) stepInsightCard(Number(step.getAttribute('data-step')));
+  });
+  // A swipe across the deck brings the next card forward, or the last one back.
+  {
+    let start = null;
+    document.addEventListener('touchstart', event => {
+      const t = event.touches[0];
+      start = event.touches.length === 1 && event.target.closest && event.target.closest('#insight-deck')
+        ? { x: t.clientX, y: t.clientY } : null;
+    }, { passive: true });
+    document.addEventListener('touchend', event => {
+      if (!start) return;
+      const t = event.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4) stepDeck(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+  // Full screen, the cards step left and right by keyboard, by a swipe, and
+  // by a sideways scroll on a trackpad or mouse; on the page, the arrow keys
+  // step the deck while it has focus.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const dialog = $('#sample-card-dialog');
+    if (dialog && dialog.open) { stepInsightCard(step); return; }
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.insight-deck-wrap')) {
+      stepDeck(step);
+      const front = document.querySelector('#insight-deck .insight-preview.is-front');
+      if (front && document.activeElement.closest('#insight-deck')) front.focus();
+    }
+  });
+  {
+    const dialog = $('#sample-card-dialog');
+    let start = null;
+    dialog.addEventListener('touchstart', event => {
+      const t = event.touches[0];
+      start = event.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null;
+    }, { passive: true });
+    dialog.addEventListener('touchend', event => {
+      if (!start || !dialog.classList.contains('is-gallery')) return;
+      const t = event.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) stepInsightCard(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    let swept = 0;
+    let rested = 0;
+    dialog.addEventListener('wheel', event => {
+      if (!dialog.classList.contains('is-gallery') || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      const now = Date.now();
+      // One step per gesture: a trackpad's sideways flick sends dozens of events.
+      if (now - rested < 450) return;
+      swept += event.deltaX;
+      if (Math.abs(swept) > 60) {
+        stepInsightCard(swept > 0 ? 1 : -1);
+        swept = 0;
+        rested = now;
+      }
+    }, { passive: false });
+    dialog.addEventListener('close', () => {
+      // The deck is left with the card last looked at at its front.
+      if (dialog.classList.contains('is-gallery')) { deckIndex = insightIndex; arrangeDeck(); }
+      dialog.classList.remove('is-gallery');
+    });
+  }
+  $('#sample-close').addEventListener('click', closeSample);
+
+  // Delegated, because the cover is written by innerHTML. The sample renders
+  // its own `.premium-unlock` buttons now, same as a real report — what keeps
+  // one of them from ever reaching here is the `disabled` attribute paidCard
+  // sets in sample mode: a disabled button dispatches no click event in any
+  // browser, so this listener simply never fires for it, with no scope check
+  // needed against #sample-body.
+  document.addEventListener('click', event => {
+    const unlock = event.target.closest('.premium-unlock');
+    if (unlock) openPremiumDialog(unlock, 'unlock');
+    // A source row under Evidence and method: the same popout, by the flow
+    // this report is on — the unlock on a free one, the re-run on a paid one.
+    // The name folds out what was read; Change or Add opens the popout.
+    const fold = event.target.closest('.source-read-toggle:not(.is-static)');
+    if (fold) {
+      const more = document.getElementById(fold.getAttribute('aria-controls'));
+      const open = fold.getAttribute('aria-expanded') !== 'true';
+      fold.setAttribute('aria-expanded', String(open));
+      if (more) more.hidden = !open;
+      return;
+    }
+    const action = event.target.closest('.source-read-action');
+    const source = action && action.closest('.source-read');
+    if (source && source.dataset.flow === 'unlock') openPremiumDialog(action, 'unlock');
+    else if (source) startRerun();
+  });
+
+  // Delegated for the same reason — the covers are written by innerHTML in
+  // two places, the real report and the sample dialog, and both need the
+  // same behaviour. Unlike `.premium-unlock` above, neither of these ever
+  // opens a payment dialog: the roast is free, so this only ever toggles
+  // between a cover and the writing it was hiding. The writing itself is
+  // looked up from whichever report the clicked cover belongs to rather
+  // than read out of the page, since the whole point is that it was never
+  // put in the page.
+  document.addEventListener('click', event => {
+    const reveal = event.target.closest('.bonus-reveal');
+    if (reveal) {
+      const source = event.target.closest('#sample-body')
+        ? sampleReport
+        : state.profile && state.profile.report;
+      if (!source || !source.bonus) return;
+      reveal.setAttribute('aria-expanded', 'true');
+      revealRoast(reveal.closest('.bonus-cover'), source.bonus);
+      return;
+    }
+    const hide = event.target.closest('.bonus-hide');
+    if (hide) hideRoast(hide);
+  });
+
+  // The part nav: jump to a part — opening it if the reader had shut it — in
+  // whichever report (the reader's own or the sample) the nav belongs to.
+  document.addEventListener('click', event => {
+    const item = event.target.closest('.part-nav-item');
+    if (!item) return;
+    const scope = item.closest('.part-nav').parentElement;
+    const target = scope && scope.querySelector('[data-part="' + item.getAttribute('data-part-target') + '"]');
+    if (!target) return;
+    const card = target.closest('.part-card');
+    if (card) setSectionOpen(card, true);
+    // On a phone, one part open at a time, as when its heading is tapped.
+    if (card && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
+      for (const other of scope.querySelectorAll('.part-card')) if (other !== card) setSectionOpen(other, false);
+    }
+    // Part 00 starts with the Psyche Card at the top of the page.
+    if (item.getAttribute('data-part-target') === 'overview' && item.closest('#profile-body')) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    // Lands with the part's whole heading clear of whatever is pinned over
+    // the top of the page: the site's header and, where it sticks rather than
+    // sitting in the left column, this nav itself.
+    const landing = card || target;
+    landing.style.scrollMarginTop = pinnedHeight(item.closest('.part-nav')) + 'px';
+    landing.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  /** How much of the top of the scroller is covered by pinned bars, plus a little air. */
+  function pinnedHeight(nav) {
+    let height = 14;
+    if (!nav.closest('dialog')) {
+      const bar = document.querySelector('.nav');
+      const position = bar && getComputedStyle(bar).position;
+      if (position === 'sticky' || position === 'fixed') height += bar.getBoundingClientRect().bottom;
+    }
+    // Only a nav pinned across the top covers the part; one standing down the
+    // side (the sample on a laptop) covers nothing.
+    const navStyle = getComputedStyle(nav);
+    if (navStyle.display !== 'none' && navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') height += nav.getBoundingClientRect().height + 8;
+    return Math.round(height);
+  }
+
+  // Ticking an action off the plan. Kept on this device only, by a hash of
+  // the action's wording, under KEYS.plan — so Delete everything clears it.
+  document.addEventListener('change', event => {
+    const box = event.target.closest && event.target.closest('.plan-check');
+    if (!box || box.disabled) return;
+    const done = store.read(KEYS.plan, {}) || {};
+    const key = box.getAttribute('data-plan-key');
+    if (box.checked) done[key] = true; else delete done[key];
+    store.write(KEYS.plan, done);
+  });
+
+  // Opening and shutting a section. Delegated for the same reason as the two
+  // above: these heads are written by innerHTML in both the real report and
+  // the sample dialog, and a listener bound to the elements themselves would
+  // be orphaned by the next render.
+  //
+  // Bound to the whole head rather than to `.card-toggle` alone, so the title
+  // and the sub-line are as clickable as the chevron is — a disclosure whose
+  // hit area is a 2rem glyph at the end of the row is a worse one. The button
+  // inside bubbles up to this same handler, so a click on it toggles once,
+  // not twice.
+  document.addEventListener('click', event => {
+    const head = event.target.closest('.card-head-toggle');
+    if (!head) return;
+    const card = head.closest('.section-card');
+    if (!card) return;
+    const opening = card.classList.contains('is-collapsed');
+    // The heading, not the card around it, and measured before anything is
+    // toggled — both halves matter and both were wrong first time.
+    //
+    // The position worth preserving is the one the reader's finger was on,
+    // which is the heading. The card is not a stand-in for it: a shut card
+    // carries reduced padding, so opening one pushes its own heading a few
+    // pixels further down inside it. Anchor the card and the heading creeps
+    // downward on every single toggle, by an amount too small to name and
+    // large enough to feel over a session of opening sections.
+    const host = opening ? scrollHostOf(card) : null;
+    const touchedAt = opening ? viewportTopOf(head, host) : 0;
+    setSectionOpen(card, opening);
+    // Accordion, not a pile of open sections: opening one shuts every other
+    // one already open in the same report, so the page stays as compact as
+    // collapsing it in the first place was for — an index a reader picks one
+    // thing from at a time, not a list that just regrows as they explore it.
+    // Scoped to whichever report this card actually belongs to (the real one
+    // or the sample dialog's), so opening a section in one never reaches
+    // across and shuts a section in the other.
+    // The structured report's parts all start open and open and shut on their
+    // own: a reader moving between parts with the nav should not find the
+    // one they left closed behind them.
+    // On a phone the parts are an accordion too: opening one shuts the
+    // others, and the opened part is brought to the top of the screen.
+    const partOnPhone = card.classList.contains('part-card') && window.matchMedia &&
+      window.matchMedia(PHONE_REPORT).matches;
+    if (opening && (partOnPhone || !card.classList.contains('part-card'))) {
+      const scope = card.closest('#profile-body, #sample-body') || document;
+      for (const head2 of scope.querySelectorAll('.card-head-toggle')) {
+        const other = head2.closest('.section-card');
+        if (!other || other === card || other.contains(card)) continue;
+        // A part shuts only other parts; a section inside one, its siblings.
+        if (other.classList.contains('part-card') !== card.classList.contains('part-card')) continue;
+        setSectionOpen(other, false);
+      }
+
+      // Put it back exactly where it was.
+      //
+      // Shutting a section that sat *above* the clicked one removes its whole
+      // height from the flow, and everything below leaps up by however tall
+      // that section happened to be — often most of a screen. This used to be
+      // answered by scrolling the opened card to the top of the viewport
+      // afterwards, which fixed where the reader ended up and not what they
+      // saw on the way: an instant, uncontrolled jump followed by an animated
+      // glide, from a position the jump had already invalidated. Two movements
+      // where the reader asked for none, and on a heading clicked below the
+      // previously-open section the glide ran *backwards*, so the page
+      // appeared to overshoot and bounce.
+      //
+      // Correcting the scroll by exactly the distance the layout moved cancels
+      // the jump instead of chasing it. The heading stays under the reader's
+      // finger, the section above vanishes, the sections below slide up around
+      // it, and the thing they are looking at does not move at all. Instantly
+      // and unconditionally, because this is not an animation — it is the
+      // absence of one.
+      //
+      // Measured after the loop rather than in a frame callback: those
+      // `display: none` switches are synchronous and getBoundingClientRect
+      // forces layout, so this reads the settled position rather than the
+      // pre-collapse one.
+      // Corrected, then checked and corrected again.
+      //
+      // One pass leaves a few pixels behind: scrolling and laying out settle
+      // against each other, so the position measured immediately after the
+      // collapse is not quite the position the browser ends up at once the
+      // scroll has been applied. Two passes converge; a third has nothing left
+      // to do. Cheap, and the alternative is a heading that creeps by a few
+      // pixels on every toggle, which over a session of opening sections is
+      // exactly the drift this is here to remove.
+      for (let pass = 0; pass < 2; pass++) {
+        const drift = viewportTopOf(head, host) - touchedAt;
+        if (Math.abs(drift) < 1) break;
+        scrollHostBy(host, drift);
+      }
+
+      // The one case anchoring alone handles badly: a heading near the bottom
+      // of the screen, whose section now opens almost entirely below the fold.
+      // Here a scroll is what the reader wants rather than something happening
+      // to them — and it starts from a settled position instead of mid-leap,
+      // so it reads as one deliberate movement.
+      //
+      // The offset that keeps the heading clear of the sticky nav lives in CSS
+      // as .section-card's `scroll-margin-top`, so the two cannot drift the way
+      // a hardcoded pixel figure here would the next time the nav changes
+      // height. Inside the sample dialog that margin is smaller, because the
+      // dialog's own head does not overlap its scrolling body.
+      if (partOnPhone || viewportTopOf(card, host) > visibleHeightOf(host) * REVEAL_BELOW) {
+        // A part lands clear of the pinned bars over it, the part nav among them.
+        const partNav = partOnPhone && card.parentElement && card.parentElement.querySelector('.part-nav');
+        if (partNav) card.style.scrollMarginTop = pinnedHeight(partNav) + 'px';
+        card.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+      }
+    }
+  });
+
+  // The button is the discoverable path and opens the popout. Drag-and-drop
+  // survives on the card itself rather than in a box of its own: an Instagram
+  // export arrives as several .zip parts, and dropping them together stays
+  // faster than any picker. Nothing advertises it any more, which is the
+  // trade — an accelerator for the people who already reach for it.
+  // The download steps, written once in index.html (#howto-instagram and the
+  // rest), copied into every list that shows them.
+  for (const list of document.querySelectorAll('ol[data-howto]')) {
+    const steps = document.getElementById('howto-' + list.dataset.howto);
+    if (steps) list.replaceChildren(steps.content.cloneNode(true));
+    // Inside a popout's "See download instructions" the Instagram steps are
+    // plain text like the others: the purple screenshot labels and the set
+    // of three rows were too small there to read or tap.
+    if (list.closest('.supplement-help-body')) plainHowto(list);
+    // On the front page the chats are loaded at Start here, below the steps.
+    if (list.closest('#way-whatsapp')) for (const where of list.querySelectorAll('.howto-where')) where.textContent = 'below';
+  }
+  mountPeeks();
+
+  $('#open-sources').addEventListener('click', startFromSources);
+  // Opens the walkthrough over the popout rather than instead of it: the
+  // reader came here to load a file and is stepping aside to see how, so the
+  // popout is left open underneath and is still there when the guide closes.
+  $('#datasources-guide-open').addEventListener('click', event => {
+    event.preventDefault();
+    showGuide();
+  });
+  // The FAQ's "what file do I need" answer ends with the same offer, for the
+  // reader who came here to find out rather than to load anything yet.
+  $('#faq-guide-open').addEventListener('click', event => {
+    event.preventDefault();
+    showGuide();
+  });
+  // On a phone, the link under the steps in place of See illustration.
+  $('#steps-guide-open').addEventListener('click', event => {
+    event.preventDefault();
+    showGuide();
+  });
+  dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('is-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-over'));
+  dropzone.addEventListener('drop', event => {
+    event.preventDefault();
+    dropzone.classList.remove('is-over');
+    handleFiles(event.dataTransfer.files);
+  });
+  // The value is cleared on every pick, and that is what keeps the box
+  // working the second time.
+  //
+  // A file input only fires `change` when its value actually changes, so
+  // choosing the *same* archive twice in a row fires nothing at all: the
+  // reader clicks the box, the OS chooser opens, they pick the file they
+  // picked a minute ago, and the page sits there. Which is exactly what
+  // happens after abandoning an upload at the supplement offer — the most
+  // likely next action is to pick that same file again, and it was the one
+  // action that silently did nothing.
+  //
+  // handleFiles copies the list into an array on its first line, so clearing
+  // here is safe even though `files` empties with the value. Both of the other
+  // file inputs in this app already do this (see askSupplement and
+  // askDataSources); the main dropzone was the one that never did.
+  fileInput.addEventListener('change', () => {
+    const picked = Array.from(fileInput.files || []);
+    fileInput.value = '';
+    handleFiles(picked);
+  });
+
+  function setProgress(percent, label) {
+    $('#progress-bar').style.width = percent + '%';
+    if (label) $('#progress-label').textContent = label;
+  }
+
+  // The model call has no progress to report, so show elapsed time instead of
+  // a bar that lies.
+  let elapsedTimer = null;
+  // `since`: when the work began, so a rejoined job keeps counting from then.
+  function startElapsed(label, since) {
+    const started = Number.isFinite(since) && since <= Date.now() ? since : Date.now();
+    stopElapsed();
+    // The steps before (opening the archive, building the digest) set the
+    // bar's width inline, and an inline width beats the sweep's own 40%: the
+    // stripe sat at whatever was set last, usually 0, so nothing moved.
+    $('#progress-bar').style.width = '';
+    $('#progress-bar').classList.add('indeterminate');
+    elapsedTimer = setInterval(() => {
+      const seconds = Math.round((Date.now() - started) / 1000);
+      $('#progress-label').textContent = label + ' – ' + TEXT.elapsed(seconds);
+    }, 1000);
+    $('#progress-label').textContent = label + ' – ' + TEXT.elapsed(Math.round((Date.now() - started) / 1000));
+  }
+  function stopElapsed() {
+    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+    // The guessing game lasts as long as the wait does.
+    closeGuessGame();
+    $('#progress-bar').classList.remove('indeterminate');
+  }
+
+  // Offered once the Instagram archive has parsed, and again whenever the
+  // reader presses Back on the review.
+  //
+  // Unlike every other dialog here, this one does not resolve-then-act: it
+  // stays open while a second archive is read, and only Skip or Continue
+  // close it. That is forced by the file picker. `input.click()` opens the OS
+  // dialog only inside a user-gesture task, and a promise that resolves and
+  // *then* opens a picker has lost that gesture — Safari and Firefox block it.
+  // So the picker is opened synchronously from the source button's own click
+  // handler. Staying open is also the better flow: a reader can add Google and
+  // Facebook without the dialog closing and reopening between them.
+  //
+  // Resolves an object of what was added — Skip and Continue are the same
+  // resolution, the only difference being what is in it, and Escape behaves as
+  // Skip. Back is the one exception: it resolves null, and handleFiles drops
+  // back to the welcome page on it. That is why the return is not
+  // unconditionally an object.
+  //
+  // `existing` seeds it on re-entry. Coming back from the review has to find
+  // the archives still added: re-reading a Takeout is slow, and silently
+  // discarding one because the reader wanted to change a checkbox upstream
+  // would be the dialog undoing their work.
+  //
+  // `opts.requireAtLeastOne` is what "Re-run analysis with additional data"
+  // needs and the first-upload path does not: Skip stays hidden regardless of
+  // whether anything has been added yet (rather than only once something
+  // has), and Escape is refused while `added` is still empty, so the one
+  // dialog that exists specifically because the reader chose to add a source
+  // cannot be dismissed without one. Back is untouched by this — it still
+  // always resolves null — because "I changed my mind" has to stay available
+  // even in this mode; only "leave with nothing, some other way" is blocked.
+  function askSupplement(existing, opts) {
+    const requireAtLeastOne = Boolean(opts && opts.requireAtLeastOne);
+    const dialog = $('#supplement-dialog');
+    const status = $('#supplement-status');
+    const input = $('#supplement-input');
+    const buttons = dialog.querySelectorAll('.mode-option');
+    const added = Object.assign({}, existing || {});
+    let pending = '';
+    let busy = false;
+    let cancelled = false;
+
+    const LABELS = { google: 'Google Takeout', facebook: 'Facebook' };
+
+    const say = (message, tone) => {
+      status.textContent = message || '';
+      status.hidden = !message;
+      status.className = 'supplement-status' + (tone ? ' is-' + tone : '');
+    };
+
+    // Skip is only truthful while nothing has been contributed. The moment an
+    // archive is in — or is being read — the right-hand slot belongs to
+    // Continue, so the two swap rather than sitting side by side. Back is
+    // untouched by this and stays available throughout, including mid-read.
+    // In requireAtLeastOne mode Skip never gets its turn at all: there is
+    // nothing truthful it could say, since this dialog only opens because the
+    // reader chose to add a source.
+    const showActions = () => {
+      const has = Object.keys(added).length > 0;
+      $('#supplement-continue').hidden = !has;
+      $('#supplement-skip').hidden = requireAtLeastOne || has || busy;
+    };
+
+    const setBusy = state => {
+      busy = state;
+      for (const button of buttons) button.disabled = state || Boolean(added[button.dataset.supplement]);
+      showActions();
+    };
+
+    // Drives the bar on one row. `percent` of null puts the row back to rest:
+    // the bar is hidden and the width reset, so the next read starts from empty
+    // rather than animating down from wherever the last one stopped.
+    const rowOf = source => dialog.querySelector('.mode-option[data-supplement="' + source + '"]');
+    const setSourceProgress = (source, percent, label) => {
+      const row = rowOf(source);
+      if (!row) return;
+      const wrap = row.querySelector('.mode-progress');
+      const bar = row.querySelector('.progress-bar');
+      const text = row.querySelector('.mode-progress-label');
+      row.classList.toggle('is-loading', percent !== null);
+      wrap.hidden = percent === null;
+      bar.style.width = (percent === null ? 0 : percent) + '%';
+      if (label !== undefined) text.textContent = label || '';
+    };
+
+    // The row itself carries "added" now, rather than a separate green line
+    // restating it underneath. Two reasons it belongs on the row: it is the
+    // thing the reader is looking at when they wonder whether it worked, and a
+    // per-source state read better per source than as one sentence that had to
+    // join names with "and" as the list grew.
+    //
+    // Still `disabled` — adding the same export twice makes no sense — but the
+    // greying that goes with `disabled` says "you cannot use this" where the
+    // truth is "you already did", so `.is-added` overrides it in the stylesheet.
+    const markAdded = () => {
+      for (const button of buttons) {
+        const isAdded = Boolean(added[button.dataset.supplement]);
+        button.classList.toggle('is-added', isAdded);
+        const tick = button.querySelector('.mode-added');
+        if (isAdded && !tick) {
+          const mark = document.createElement('span');
+          mark.className = 'mode-added';
+          // A bare glyph announces as nothing useful, so the tick carries the
+          // word for anyone not looking at it.
+          mark.setAttribute('role', 'img');
+          mark.setAttribute('aria-label', 'Added');
+          mark.textContent = '✓';
+          button.appendChild(mark);
+        } else if (!isAdded && tick) {
+          tick.remove();
+        }
+      }
+    };
+
+    const summarise = () => {
+      markAdded();
+      showActions();
+    };
+
+    return new Promise(resolve => {
+      const choose = event => {
+        const source = event.currentTarget.dataset.supplement;
+        if (busy || added[source]) return;
+        pending = source;
+        // Reset first: the change event does not fire when the same file is
+        // picked twice, so without this a reader who re-picks after an error
+        // gets silence. Nothing else in this app resets a file input, which is
+        // a live bug there and not one to inherit.
+        input.value = '';
+        input.click();
+      };
+
+      const read = async () => {
+        const files = Array.from(input.files || []).filter(f => /\.zip$/i.test(f.name));
+        input.value = '';
+        if (!pending || !files.length) return;
+        const source = pending;
+        pending = '';
+        setBusy(true);
+        // The row's own bar reports this now, so the shared status line below
+        // stays empty and is left to do the one job the bar cannot: errors.
+        say('');
+        setSourceProgress(source, 0, 'Opening the archive…');
+        try {
+          await loadReaders();
+          const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
+          added[source] = await reader(files, {
+            // The readers report {phase, done, total}, so this is a real
+            // fraction rather than a sweep. 'open' holds a visible sliver so
+            // the bar reads as started, and the parse phase — the long one —
+            // gets the rest of the track.
+            onProgress: p => {
+              const share = p.total ? Math.min(1, p.done / p.total) : 0;
+              const percent = p.phase === 'open' ? 6
+                : p.phase === 'done' ? 100
+                : 10 + Math.round(share * 85);
+              setSourceProgress(source, percent, p.label);
+            },
+          });
+          setBusy(false);
+          setSourceProgress(source, null, '');
+          say('');
+          summarise();
+        } catch (error) {
+          setBusy(false);
+          setSourceProgress(source, null, '');
+          // Deliberately the opposite of handleFiles's catch, which drops back
+          // to the welcome page. A failed *supplement* must never cost the
+          // reader the Instagram export they already gave: the dialog stays
+          // open, says what went wrong, and they can try another file or skip.
+          //
+          // summarise() no longer writes to the status, which incidentally
+          // fixes a real bug: it used to re-assert "✓ Added …" straight over
+          // the error whenever anything had already been added, so a second
+          // archive failing after a first succeeded reported success.
+          say((error && error.message) || 'That archive could not be read.', 'bad');
+          summarise();
+        }
+      };
+
+      const done = () => dialog.close();
+      const goBack = () => { cancelled = true; dialog.close(); };
+      // The native Escape path: a <dialog> fires a cancelable 'cancel' event
+      // just before it closes itself. Refusing it while nothing has been
+      // added yet is what actually makes requireAtLeastOne a requirement
+      // rather than a suggestion — otherwise Escape would still let a reader
+      // leave with nothing, same as Skip would have. Once something is in,
+      // Escape is allowed again and resolves the same way Continue does,
+      // exactly as it already does outside this mode.
+      //
+      // Scoped to the dialog's own cancel for the same reason askDataSources
+      // scopes its own: the file input inside this dialog fires a bubbling
+      // `cancel` of its own when the OS picker is dismissed, and calling
+      // preventDefault() on that one refuses a dismissal the reader has every
+      // right to make.
+      const blockEscape = event => {
+        if (event.target !== dialog) return;
+        if (requireAtLeastOne && Object.keys(added).length === 0) event.preventDefault();
+      };
+
+      for (const button of buttons) button.addEventListener('click', choose);
+      input.addEventListener('change', read);
+      $('#supplement-skip').addEventListener('click', done);
+      $('#supplement-continue').addEventListener('click', done);
+      $('#supplement-back').addEventListener('click', goBack);
+      dialog.addEventListener('cancel', blockEscape);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) {
+          button.removeEventListener('click', choose);
+          button.disabled = false;
+          // The green row has to come off with the disabled state, or a later
+          // upload in the same session opens on the previous run's ticks. The
+          // reset on open re-applies them from `added` when this was a Back.
+          button.classList.remove('is-added');
+          const tick = button.querySelector('.mode-added');
+          if (tick) tick.remove();
+        }
+        input.removeEventListener('change', read);
+        $('#supplement-skip').removeEventListener('click', done);
+        $('#supplement-continue').removeEventListener('click', done);
+        $('#supplement-back').removeEventListener('click', goBack);
+        dialog.removeEventListener('cancel', blockEscape);
+        resolve(cancelled ? null : added);
+      }, { once: true });
+
+      // Reset the dialog's own state, because it is reused markup and a second
+      // upload in the same session would otherwise open on the last run's
+      // error line, its instructions still unfolded, or Skip still hidden from
+      // the run before.
+      say('');
+      cancelled = false;
+      // "…or skip straight to it" is true of the first-upload offer and false
+      // here, where Skip is not shown at all. Set on every open rather than
+      // once, because the same markup serves both callers.
+      $('#supplement-dialog-blurb').textContent = requireAtLeastOne
+        ? 'Add your Google or Facebook data and PsycheAI will write your report again, using it '
+          + 'alongside the Instagram data it already has.'
+        : 'You can add your Google or Facebook data to deepen the analysis, or skip straight to it.';
+      dialog.querySelector('.supplement-help').open = false;
+      // Back stays live mid-read, so a reader can leave with a bar still
+      // running and a read still resolving into a dialog nobody is looking at.
+      // Both rows go back to rest here rather than on close, so that reopening
+      // never shows the last run's bar frozen part-way across.
+      for (const button of buttons) setSourceProgress(button.dataset.supplement, null, '');
+      setBusy(false);
+      // Re-ticks the rows and re-reveals Continue when this is a return trip
+      // from the review. No-op on a first open, where `added` is empty.
+      summarise();
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
+    });
+  }
+
+  // There is one kind of run. A depth picker used to sit here offering
+  // Standard and Comprehensive, which was a question with one available
+  // answer since Comprehensive never went on sale — so it cost a click and a
+  // decision to arrive back where the reader started. The picker went first;
+  // the second set of caps and the second budget followed it out of
+  // digest.js once it was clear an unreachable budget was a number everyone
+  // still had to reason about. Photographs followed them both — see the note
+  // above COST_CAP in digest.js for why, and for what the freed budget bought.
+
+  // Shared by handleFiles (on the real digest, once the dialog has resolved)
+  // and askReview's own downloadable preview (on a throwaway clone, while the
+  // dialog is still open) — the same six fields, redacted the same way,
+  // so the file a reader downloads mid-review cannot drift from what
+  // actually goes out once they press Send.
+  function applyReviewDecision(target, decision) {
+    // The review's finer choices (years, words, chats, single lines) first,
+    // then whole kinds of data.
+    if (decision.lines) Digest.trimLines(target, decision.lines);
+    if (!decision.includeCaptions) Digest.omitCaptionsAndComments(target);
+    if (!decision.includeLikedCaptions) Digest.omitLikedCaptions(target);
+    if (!decision.includeActivity) Digest.omitActivity(target);
+    if (!decision.includeAccounts) Digest.omitAccounts(target);
+    if (!decision.includeTopics) Digest.omitTopics(target);
+    if (decision.includeSearches === false) Digest.omitSearches(target);
+    if (!decision.includeMessages) Digest.omitMessages(target);
+    // Each is a no-op when its block is absent, so a reader who added only
+    // Google is unaffected by the Facebook keys being false.
+    if (!decision.includeYouTube) Digest.omitYouTube(target);
+    if (!decision.includeYouTubeSearches) Digest.omitYouTubeSearches(target);
+    if (!decision.includeGoogleSearches) Digest.omitGoogleSearches(target);
+    if (!decision.includeChrome) Digest.omitChrome(target);
+    if (!decision.includeFacebookPosts) Digest.omitFacebookPosts(target);
+    if (!decision.includeFacebookConnections) Digest.omitFacebookConnections(target);
+    if (!decision.includeFacebookMessages) Digest.omitFacebookMessages(target);
+    if (!decision.includeWhatsApp) Digest.omitWhatsApp(target);
+    if (!decision.includeTikTok) Digest.omitTikTok(target);
+    if (!decision.includeJournal) Digest.omitJournal(target);
+    return target;
+  }
+
+  // A self-contained HTML page rather than a raw .json file — opens with a
+  // double-click in whatever browser is already installed, no app that
+  // understands JSON required. Inline CSS only, no external requests, so it
+  // renders identically read offline a year from now. `rows` is askReview's
+  // own row list, reused here so the category names and detail lines in this
+  // table are read from the same place the checklist itself was, not typed
+  // out a second time where they could drift.
+  function buildDigestPreviewHtml(rows, decision, preview, deepRead) {
+    // One digest serves both calls, and the file says so: a reader comparing
+    // the free card with the premium report should know both read this.
+    // The text the model is actually sent, the same measure the budget counts.
+    const sentKb = Math.max(1, Math.round(Digest.evidenceChars(preview) / 1000));
+    const sizeNote = 'About ' + sentKb + ' KB. ' + (deepRead === 'rebuilt' ? TEXT.deepRebuiltNote : deepRead ? TEXT.deepReviewNote
+      : 'This same summary is what both your free Psyche Card and the Psyche Report are read from.');
+    const rowsHtml = rows.map(r => {
+      const included = decision[r[1]];
+      return '<tr><td>' + esc(r[3]) + '</td>' +
+        '<td class="' + (included ? 'yes' : 'no') + '">' + (included ? 'Included' : 'Excluded') + '</td>' +
+        '<td>' + esc(r[5]) + '</td></tr>';
+    }).join('');
+
+    // The review's finer choices, said in a line under the table.
+    const l = decision.lines || {};
+    const chatsOff = Object.values(l.chatsOff || {}).reduce((n, list) => n + list.length, 0);
+    const linesOff = Object.values(l.drop || {}).reduce((n, list) => n + list.length, 0);
+    const parts = [
+      (l.yearsOff || []).length ? 'everything from ' + l.yearsOff.slice().sort().join(', ') : '',
+      // Never the words themselves: a topic the reader chose to keep back is not written into the file.
+      chatsOff ? chatsOff + (chatsOff === 1 ? ' chat' : ' chats') : '',
+      linesOff ? linesOff + (linesOff === 1 ? ' single line' : ' single lines') : '',
+    ].filter(Boolean);
+    const linesNote = parts.length ? '<p class="muted">' + esc(TEXT.review.alsoLeftOut + ': ' + parts.join('; ') + '.') + '</p>' : '';
+    return '<!doctype html><html><head><meta charset="utf-8">' +
+      '<title>What was sent to the AI model</title><style>' +
+      'body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;' +
+      'max-width:840px;margin:2rem auto;padding:0 1.5rem;color:#241a2e;background:#faf7fb}' +
+      'h1{font-size:1.4rem}h2{font-size:1.1rem;margin-top:2rem}' +
+      'table{border-collapse:collapse;width:100%;margin:1rem 0}' +
+      'th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid #e7dfec;font-size:.92rem}' +
+      'td.yes{color:#2f7d5b;font-weight:600}td.no{color:#6b6076}' +
+      'pre{background:#fff;border:1px solid #e7dfec;border-radius:10px;padding:1rem;' +
+      'overflow-x:auto;font-size:.82rem;white-space:pre-wrap;word-break:break-word}' +
+      '.muted{color:#6b6076;font-size:.9rem}' +
+      '</style></head><body>' +
+      '<h1>What was sent to the AI model</h1>' +
+      '<p class="muted">Generated by PsycheAI on ' + esc(new Date().toLocaleString()) +
+      '. This file was written directly to your device and was never uploaded anywhere.</p>' +
+      '<table><thead><tr><th>Category</th><th>Status</th><th>Detail</th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody></table>' + linesNote +
+      '<h2>Full summary</h2>' +
+      '<p class="muted">The exact object that is sent. Nothing accompanies it – no photographs, no ' +
+      'files, nothing from your archive that is not written out below.</p>' +
+      '<p class="muted digest-size">' + esc(sizeNote) + '</p>' +
+      '<pre>' + esc(JSON.stringify(preview, null, 2)) + '</pre>' +
+      '</body></html>';
+  }
+
+  // The last stop before anything leaves the device, and the one dialog here
+  // that is rebuilt from scratch on every run rather than reused static
+  // markup — everything in it is a real count read off the digest that was
+  // just built, not a description of what the app generally does. Cancelling
+  // discards the digest along with the archive; there is nowhere it is held
+  // that a second attempt could reuse, by design — see handleFiles.
+  //
+  // What askReview resolves, and what each means to handleFiles:
+  //   an object    — Send. The decision about what to include.
+  //   REVIEW_BACK  — Back. Reopen the supplement offer, keeping what was added.
+  //   null         — Escape, or the dialog closed some other way. Abandon.
+  const REVIEW_BACK = 'review:back';
+  // Back on the payment sheet: the step before it (the review) again, rather
+  // than a declined payment.
+  const PAY_BACK = 'pay:back';
+
+  // This used to take a `getImages` lazy extractor alongside the digest, and a
+  // count, and a "your photos could not be carried over" flag — three
+  // parameters and a whole row of the checklist, all for a payload nothing
+  // sends any more. Decoding and re-encoding a dozen photographs was also the
+  // slowest thing this app did, which is why it was deferred to whichever of
+  // Send or the download button asked first. All of that is gone with them.
+  function askReview(digest, options) {
+    const dialog = $('#review-dialog');
+    const list = $('#review-list');
+    // Set by the caller, not derived here — each of the three callers already
+    // knows whether the step right after this one is a charge (its own call
+    // to mustPayForAnalysis(), or the premium unlock this review sits inside
+    // of) before it ever opens this dialog. Send this button is only ever
+    // "send it to the model", never "and also pay for it" — a reader should
+    // not discover a charge was coming after they already agreed to send.
+    const paymentDue = Boolean(options && options.paymentDue);
+
+    const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
+    const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
+    // Any block can be missing from a stored digest (an older one, or one
+    // with only a supplement left): counted as none rather than throwing.
+    const samples = digest.samples || {};
+    const captionsCount = (samples.captions || []).length;
+    const commentsCount = (samples.comments || []).length;
+    const engagedCount = (digest.mostLikedAccounts || []).length + (digest.mostSavedAccounts || []).length +
+      (digest.mostEngagedWith || []).length + (digest.storyLikedAccounts || []).length;
+    const searchesCount = (digest.instagramSearches || []).length;
+    const topicsCount = (digest.instagramTopics || []).length;
+    const likedCaptionsCount = (samples.likedPostCaptions || []).length;
+    const likedTagsCount = (samples.likedPostHashtags || []).length;
+
+    // One row per checkbox — id, how many there are to send, the on/off
+    // label, and the detail line. The single source both the checklist below
+    // and the downloadable summary read their copy from, so the two
+    // descriptions of the same seven things cannot quietly drift apart.
+    // decisionKey lines up with currentDecision()'s shape by position.
+    // "1 comment", "2 comments": a count with its noun in the right number.
+    const n = (count, one, many) => count + ' ' + (count === 1 ? one : many);
+    const rows = [
+      ['review-captions', 'includeCaptions', captionsCount + commentsCount,
+        'Your captions & comments', 'Your captions & comments – none found',
+        n(captionsCount, 'caption', 'captions') + ', ' + n(commentsCount, 'comment', 'comments') +
+        ' – a sample of your own words. Needed for any read at all.'],
+      // Always there with Instagram; a digest of WhatsApp chats alone has none.
+      ['review-activity', 'includeActivity', digest.counts || digest.rhythm ? 1 : 0,
+        'Activity & timing', 'Activity & timing',
+        'Post counts, likes, saves, whether your account is private, and when you tend to be active. None of your words.'],
+      // The raw follow list is no longer sent — hundreds of opaque handles
+      // that said almost nothing — so this row no longer offers it. How many
+      // accounts they follow is still sent, as a number, under Activity &
+      // timing where the other counts live. Naming follows here would be
+      // promising to send something the digest does not contain, which is the
+      // one thing a review screen must never do.
+      // Its own row, and it has to be. Every other Instagram row offers the
+      // reader's own words or their own numbers; this one offers text somebody
+      // else wrote, on posts they liked. Folding it under "Accounts you engage
+      // with" would send text under a heading that promises names — the
+      // mirror image of the mistake the note below warns about, and the worse
+      // direction to make it in.
+      ['review-liked-captions', 'includeLikedCaptions', likedCaptionsCount + likedTagsCount,
+        'Posts you liked', 'Posts you liked – none found',
+        likedCaptionsCount + likedTagsCount ? n(likedCaptionsCount, 'caption', 'captions') + ' from posts you liked in ' +
+          'the last two years' + (likedTagsCount ? ', and the ' + n(likedTagsCount, 'hashtag', 'hashtags') +
+          ' that came up most across all of them' : '') + ' – ' +
+          'written by other people, kept because what you reach for says something about you.' :
+          'Your data did not include captions on the posts you liked.'],
+      ['review-accounts', 'includeAccounts', engagedCount,
+        'Accounts you engage with', 'Accounts you engage with – none found',
+        n(engagedCount, 'name', 'names') + ' among who you like, save, comment on and whose stories you like most.'],
+      // What they searched for on Instagram, most repeated first. Searches
+      // that look like a username, or name an account they follow, were
+      // already left out on this device (searchableTerms in digest.js).
+      ['review-searches', 'includeSearches', searchesCount,
+        'Your Instagram searches', 'Your Instagram searches – none found',
+        n(searchesCount, 'search', 'searches') + ' you made most often on Instagram, with none that look like a person’s username.'],
+      ['review-topics', 'includeTopics', topicsCount,
+        'Instagram’s own inferred topics', 'Instagram’s own inferred topics – none found',
+        n(topicsCount, 'topic', 'topics') + ' Instagram has already guessed you are interested in.'],
+      ['review-dms', 'includeMessages', dmCount,
+        'Direct messages', 'Direct messages – none found',
+        dmCount ? dmCount + ' of your own ' + (dmCount === 1 ? 'message' : 'messages') + ' sampled out of ' + dmTotal + ' total. Some show a short, ' +
+          'anonymised line of the message they answered; nothing else from the other side is included.' :
+          'Your data did not include any direct messages to sample.'],
+    ];
+
+    // Supplementary rows are appended only when that source was actually
+    // added, rather than rendered greyed out for everybody. A reader who
+    // skipped the offer sees the same seven rows they always saw — which is
+    // also what keeps the "exactly seven checkboxes" check honest instead of
+    // making it a count of whatever happens to be there.
+    const g = digest.google;
+    if (g) {
+      const watched = g.counts.watched;
+      const ytSearches = g.topYoutubeSearches.length;
+      const gSearches = g.counts.googleSearches;
+      const visits = g.counts.visits || 0;
+      rows.push(
+        ['review-yt-watched', 'includeYouTube', watched,
+          'YouTube watch history', 'YouTube watch history – none found',
+          watched ? g.topChannels.length + ' channels you watch most, from ' + watched +
+            ' videos, plus a sample of titles. Not the full history.' :
+            'No watch history was found in your data.'],
+        ['review-yt-searches', 'includeYouTubeSearches', ytSearches,
+          'YouTube searches', 'YouTube searches – none found',
+          ytSearches ? ytSearches + ' of your most repeated YouTube searches.' :
+            'No YouTube searches were found in your data.'],
+        ['review-google-searches', 'includeGoogleSearches', gSearches,
+          'Google searches', 'Google searches – none found',
+          gSearches ? g.topGoogleSearches.length + ' of your most repeated searches out of ' +
+            gSearches + ', plus a sample of others.' :
+            'No Google searches were found in your data.'],
+        // The list of site names is gone — on a real export it was
+        // "google.com" 18,255 times and almost nothing else — so what this row
+        // now offers is two numbers. Still its own switch, because a count of
+        // how much somebody browses is still something to be asked about.
+        ['review-chrome', 'includeChrome', visits,
+          'Chrome browsing history', 'Chrome browsing history – none found',
+          visits ? visits + ' visits across ' + (g.counts.distinctDomains || 0) +
+            ' different sites, as two numbers. No site name, page, address or time.' :
+            'No browsing history was found in your data.'],
+      );
+    }
+
+    const fb = digest.facebook;
+    if (fb) {
+      const fbWriting = fb.postSample.length + fb.commentSample.length;
+      const fbMessages = fb.ownMessageSample.length;
+      rows.push(
+        ['review-fb-posts', 'includeFacebookPosts', fbWriting,
+          'Facebook posts & comments', 'Facebook posts & comments – none found',
+          fbWriting ? n(fb.postSample.length, 'post', 'posts') + ' and ' + n(fb.commentSample.length, 'comment', 'comments') +
+            ' – a sample of your own words on Facebook.' :
+            'No Facebook posts or comments were found in your data.'],
+        ['review-fb-messages', 'includeFacebookMessages', fbMessages,
+          'Facebook Messenger', 'Facebook Messenger – none found',
+          fbMessages ? fbMessages + ' of your own messages sampled out of ' + fb.counts.messages +
+            ' total. Some show a short, anonymised line of the message they answered; nothing else from the other side is included.' :
+            'No Messenger history was found in your data.'],
+      );
+    }
+
+    // WhatsApp: one switch for the lot — every number in it is about the
+    // reader's private chats, so it goes whole or not at all.
+    const wa = digest.whatsapp;
+    if (wa) {
+      const chats = (wa.chats || []).length;
+      const waOwn = (wa.ownMessageSample || []).length;
+      rows.push(['review-whatsapp', 'includeWhatsApp', chats,
+        'WhatsApp chats', 'WhatsApp chats – none found',
+        chats + (chats === 1 ? ' chat' : ' chats') + ': ' + waOwn + ' of your own messages, plus counts and timings. ' +
+          'Some show a short, anonymised line of the message they answered; otherwise other people\u2019s messages ' +
+          'were only counted, and nobody is named.']);
+    }
+
+    // TikTok and a journal (October 2026): one switch each.
+    const tt = digest.tiktok;
+    if (tt) {
+      const ttWriting = (tt.commentSample || []).length + (tt.captionSample || []).length;
+      const ttDms = (tt.ownMessageSample || []).length;
+      const ttSearches = (tt.topSearches || []).length;
+      const count = ttWriting + ttDms + ttSearches;
+      rows.push(['review-tiktok', 'includeTikTok', count, 'TikTok', 'TikTok – nothing found',
+        [ttWriting ? n(ttWriting, 'comment or caption', 'comments and captions') + ' of your own' : '',
+          ttSearches ? n(ttSearches, 'search', 'searches') : '',
+          ttDms ? n(ttDms, 'message', 'messages') + ' of yours (each may show a short, anonymised line of what it answered)' : '']
+          .filter(Boolean).join(', ') + ', plus counts of what you watched, liked and shared. Nobody is named.']);
+    }
+    const jn = digest.journal;
+    if (jn) {
+      const entries = (jn.entrySample || []).length;
+      rows.push(['review-journal', 'includeJournal', entries, 'Your journal', 'Your journal – nothing found',
+        n(entries, 'entry', 'entries') + ' of your own writing, sampled through time. Names other sources know are numbered; ' +
+          'any other name stays as you wrote it, so leave out anyone you would rather not send with the box below.']);
+    }
+
+    // The reader's thumbs on their current report, when there are any: sent
+    // with a paid run so the new report answers them (prompts.marksBlock), and
+    // a row of their own here so they go only as reviewed. The server takes
+    // them on a paid run only.
+    marksForRun = null;
+    const marks = state.profile ? withoutOwnName(marksForAsk()) : [];
+    if (marks.length) {
+      const notes = marks.filter(m => m.note).length;
+      rows.push(['review-marks', 'includeMarks', marks.length, 'Your thumbs on your last report', '',
+        TEXT.review.marksDetail(marks.length, notes)]);
+    }
+
+    // The rows, least personal first (TEXT.review.rows sets the order and the
+    // short names). Each type's switch is still the real checkbox with the
+    // row's id, so currentDecision below reads exactly what it always has; the
+    // rest of a row (its count, its preview, its chats) is redrawn around it
+    // on every change, and the checkbox itself is never replaced.
+    const R = TEXT.review;
+    const order = Object.keys(R.rows);
+    // A kind of data the export has none of is not shown at all.
+    const shown = rows.filter(r => r[2] > 0).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+    // What each row previews: the lists it covers. Messages preview by chat instead.
+    const PATHS = {
+      'review-topics': ['instagramTopics'],
+      'review-accounts': ['mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith', 'storyLikedAccounts'],
+      'review-liked-captions': ['samples.likedPostCaptions', 'samples.likedPostHashtags'],
+      'review-yt-watched': ['google.topChannels', 'google.videoTitleSample'],
+      'review-captions': ['samples.captions', 'samples.comments'],
+      'review-fb-posts': ['facebook.postSample', 'facebook.commentSample'],
+      'review-searches': ['instagramSearches'],
+      'review-yt-searches': ['google.topYoutubeSearches'],
+      'review-google-searches': ['google.topGoogleSearches'],
+      'review-tiktok': ['tiktok.commentSample', 'tiktok.captionSample', 'tiktok.topSearches', 'tiktok.topHashtags', 'tiktok.ownMessageSample'],
+      'review-journal': ['journal.entrySample'],
+    };
+    const CHATS = {
+      'review-dms': 'directMessages.ownMessageSample',
+      'review-fb-messages': 'facebook.ownMessageSample',
+      'review-whatsapp': 'whatsapp.ownMessageSample',
+    };
+    const listAt = (d, path) => {
+      const v = path.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), d);
+      return Array.isArray(v) ? v : [];
+    };
+    // The finer choices, applied by Digest.trimLines: years, words, chats, single lines.
+    const lines = { yearsOff: [], words: [], chatsOff: {}, drop: {} };
+    const openRows = new Set();
+    // Each chat's real name, on this device only (a property JSON cannot see; see chatLabels in digest.js).
+    const chatNames = digest.chatNames || {};
+
+    list.innerHTML = shown.map(r => {
+      const [label, note] = R.rows[r[0]] || [r[3], ''];
+      const has = r[2] > 0;
+      // A single chat's messages carry no chat tag, so there is nothing to switch one by one.
+      const previews = has && (PATHS[r[0]] || (CHATS[r[0]] && listAt(digest, CHATS[r[0]]).some(Digest.lineChat)));
+      return '<div class="review-row" data-row="' + r[0] + '"><div class="review-row-main">' +
+        '<button class="review-row-name" type="button" data-peek="' + r[0] + '" aria-expanded="false"' +
+          (previews ? ' aria-controls="' + r[0] + '-more"' : ' disabled') + '><b>' + esc(label) + '</b>' +
+          '<span id="' + r[0] + '-n">' + esc(note || '') + '</span></button>' +
+        '<label class="review-switch"><input type="checkbox" role="switch" id="' + r[0] + '"' + (has ? ' checked' : ' disabled') +
+          ' aria-label="' + esc(label) + '"><span aria-hidden="true"></span></label></div>' +
+        (previews ? '<div class="review-more" id="' + r[0] + '-more" hidden></div>' : '') + '</div>';
+    }).join('');
+
+    // Read fresh on every call rather than once, so a click on Download
+    // after toggling a box reflects the box as it stands right now, and the
+    // one place this shape is written also backs Send — see
+    // applyReviewDecision above for why that matters.
+    // Derived from `rows` rather than written out a second time. Each row
+    // already carries its own count in r[2], so a row that was never rendered
+    // yields `false` rather than `undefined`: the moment anything reads a
+    // decision key positively, an absent source must not read as "keep".
+    const currentDecision = () => Object.assign(Object.fromEntries(rows.map(row => {
+      const box = $('#' + row[0]);
+      return [row[1], Boolean(row[2] > 0 && box && box.checked)];
+    })), { lines: JSON.parse(JSON.stringify(lines)) });
+
+    // The years a line can be dated to, from every list the model reads.
+    const yearCounts = new Map();
+    for (const path of Digest.EVIDENCE_LISTS) {
+      for (const item of listAt(digest, path)) {
+        const y = Digest.lineYear(item);
+        if (y) yearCounts.set(y, (yearCounts.get(y) || 0) + 1);
+      }
+    }
+    const years = [...yearCounts.keys()].sort((a, b) => a - b);
+    const lastYear = years[years.length - 1];
+    $('#review-years-sec').hidden = years.length < 2;
+    const shortYear = y => '’' + String(y).slice(2);
+
+    const deepRead = Boolean(options && options.deep);
+    const sizeOf = d => Digest.evidenceChars(Digest.forModel(d, { deep: deepRead }));
+    const fullSize = sizeOf(applyReviewDecision(JSON.parse(JSON.stringify(digest)),
+      Object.fromEntries(rows.map(row => [row[1], row[2] > 0]))));
+
+    const refresh = () => {
+      const decision = currentDecision();
+      const trimmed = JSON.parse(JSON.stringify(digest));
+      Digest.trimLines(trimmed, lines);
+      for (const r of shown) {
+        const box = $('#' + r[0]);
+        const row = box.closest('.review-row');
+        row.classList.toggle('is-off', !box.checked);
+        const [, note] = R.rows[r[0]] || [];
+        if (r[2] > 0 && (PATHS[r[0]] || CHATS[r[0]])) {
+          // Messages count their chats ("2 chats"); every other row its lines.
+          const n = CHATS[r[0]] ? new Set(listAt(trimmed, CHATS[r[0]]).map(Digest.lineChat)).size
+            : PATHS[r[0]].reduce((sum, path) => sum + listAt(trimmed, path).length, 0);
+          const counted = CHATS[r[0]] ? R.chats(n) : String(n);
+          $('#' + r[0] + '-n').textContent = note ? counted + ', ' + note : counted;
+        }
+        const more = $('#' + r[0] + '-more');
+        if (!more) continue;
+        const isOpen = openRows.has(r[0]);
+        more.hidden = !isOpen;
+        row.querySelector('.review-row-name').setAttribute('aria-expanded', String(isOpen));
+        if (!isOpen) continue;
+        if (CHATS[r[0]]) {
+          const path = CHATS[r[0]];
+          // The chats as built, and any that came in to fill the room a switched-off one left
+          // (Digest.trimLines, from the spares): each counted as it now stands, an off one as it was.
+          const count = list => list.reduce((m, item) => {
+            const tag = Digest.lineChat(item);
+            if (tag) m.set(tag, (m.get(tag) || 0) + 1);
+            return m;
+          }, new Map());
+          const built = count(listAt(digest, path));
+          const now = count(listAt(trimmed, path));
+          const off = new Set(lines.chatsOff[path] || []);
+          const tags = [...new Set([...built.keys(), ...now.keys(), ...off])]
+            .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+          more.innerHTML = '<p class="review-note">' + esc(R.chatsNote) + '</p>' + tags.map(tag => {
+            const name = chatNames[tag] || R.chat(Number(tag.slice(1)));
+            const n = off.has(tag) ? (built.get(tag) || 0) : (now.get(tag) || 0);
+            return '<div class="review-chat"><span class="review-chat-name"><b>' + esc(name) + '</b><small>' + n +
+              ' · <em>[' + esc(tag) + ']</em>' + (built.has(tag) ? '' : ' · ' + esc(R.fillsIn)) +
+              '</small></span><button class="review-chat-switch" type="button" role="switch" data-path="' +
+              esc(path) + '" data-tag="' + esc(tag) + '" aria-checked="' + !off.has(tag) + '" aria-label="' + esc(name) + '"' +
+              (box.checked ? '' : ' disabled') + '></button></div>';
+          }).join('');
+        } else {
+          const items = [];
+          for (const path of PATHS[r[0]]) {
+            const kept = new Set(listAt(trimmed, path).map(Digest.reviewText));
+            const dropped = new Set(lines.drop[path] || []);
+            for (const item of listAt(digest, path)) {
+              const text = Digest.reviewText(item);
+              const year = Digest.lineYear(item);
+              const isDropped = dropped.has(text);
+              const out = isDropped || !kept.has(text);
+              items.push('<div class="review-line' + (out ? ' is-out' : '') + '"><q>' + esc(text) + '</q>' +
+                (year ? '<small>' + year + '</small>' : '') +
+                (isDropped || !out ? '<button type="button" data-path="' + esc(path) + '" data-line="' + esc(text) + '" aria-label="' +
+                  esc(isDropped ? R.lineBack : R.lineOut) + '">' + (isDropped ? '↺' : '✕') + '</button>' : '') + '</div>');
+            }
+          }
+          more.innerHTML = '<p class="review-note">' + esc(R.linesNote) + '</p><div class="review-lines">' + items.join('') + '</div>';
+        }
+      }
+      // Which years: a bar each, its height its share of the lines.
+      if (years.length >= 2) {
+        const max = Math.max(...yearCounts.values());
+        const off = new Set(lines.yearsOff);
+        $('#review-years').innerHTML = years.map(y => '<button class="review-year" type="button" data-year="' + y + '" aria-pressed="' + !off.has(y) +
+          '" aria-label="' + y + '"><i></i><small>' + shortYear(y) + '</small></button>').join('');
+        // Heights set through the DOM: the site's policy refuses style attributes in markup.
+        $('#review-years').querySelectorAll('.review-year i').forEach((bar, i) => {
+          bar.style.height = Math.max(5, Math.round(38 * yearCounts.get(years[i]) / max)) + 'px';
+        });
+        const range = from => years.every(y => off.has(y) === (y < from));
+        $('#review-year-chips').innerHTML = [[years[0], R.allYears], [lastYear - 2, R.lastYears(3)], [lastYear, R.lastYears(1)]]
+          .filter(([from], i) => i === 0 || from > years[0])
+          .map(([from, label]) => '<button class="review-chip" type="button" data-from="' + from + '" aria-pressed="' + range(from) + '">' + esc(label) + '</button>').join('');
+        $('#review-years-note').textContent = off.size ? R.yearsOff(years.filter(y => off.has(y)).map(shortYear).join(', ')) : '';
+      }
+      // Leave out anything mentioning.
+      $('#review-kw-chips').innerHTML = lines.words.map(w => '<span class="review-kw-chip">' + esc(w) +
+        '<button type="button" data-word="' + esc(w) + '" aria-label="' + esc(R.wordRemove(w)) + '">×</button></span>').join('');
+      let byWords = 0;
+      if (lines.words.length) byWords = Digest.trimLines(JSON.parse(JSON.stringify(digest)), { words: lines.words });
+      $('#review-kw-note').textContent = lines.words.length ? R.wordsRemoved(byWords) : R.wordsHint;
+      // The foot: how much is left, and roughly how well it can be read.
+      const size = sizeOf(applyReviewDecision(trimmed, decision));
+      const share = fullSize ? Math.min(1, size / fullSize) : 1;
+      const level = Math.sqrt(share);
+      const q = level >= 0.85 ? 3 : level >= 0.65 ? 2 : level >= 0.45 ? 1 : 0;
+      $('#review-quality-label').textContent = R.quality;
+      $('#review-quality').textContent = R.qualities[q];
+      $('#review-quality-fill').style.width = Math.round(level * 100) + '%';
+      dialog.querySelector('.review-meter').classList.toggle('is-low', q < 2);
+      $('#review-download').textContent = R.download(Math.max(1, Math.round(size / 1000)));
+    };
+    $('#review-kw').value = '';
+    dialog.classList.remove('is-typing');
+    $('#review-where').hidden = true;
+    $('#review-where-btn').setAttribute('aria-expanded', 'false');
+    refresh();
+
+    return new Promise(resolve => {
+      let answer = null;
+      const offline = $('#review-offline');
+      offline.hidden = true;
+      const send = () => {
+        // Offline (an airplane-mode test, say): said here, with the review and its choices still open.
+        if (navigator.onLine === false) { offline.textContent = TEXT.reviewOffline; offline.hidden = false; return; }
+        answer = currentDecision();
+        marksForRun = answer.includeMarks && marks.length ? marks : null;
+        dialog.close();
+      };
+      // Back, not Cancel: it steps one dialog upstream to the supplement offer
+      // rather than throwing the upload away. Distinguished from Escape by a
+      // sentinel, because `null` already means "abandoned" to handleFiles and
+      // the two need different answers — one reopens a dialog, the other goes
+      // to the welcome page.
+      const back = () => { answer = REVIEW_BACK; dialog.close(); };
+      // A clone, not the digest itself — this dialog is not done with it yet,
+      // and applyReviewDecision mutates in place. Nothing here ever leaves
+      // the device; it is the same object Send would build, written to a
+      // file instead of a request body.
+      // Synchronous now. It used to await a photo pass that took seconds, with
+      // a re-entrancy guard and a progress label on the button, so a reader
+      // could see the resized images that were about to be sent rather than
+      // the originals on their disk. Nothing sends images any more, so what
+      // this writes is the digest and nothing else.
+      const download = () => {
+        const decision = currentDecision();
+        // Exactly what a model call is sent: the free card and the full premium
+        // report both read this same object.
+        const preview = Digest.forModel(applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision), { deep: deepRead });
+        if (decision.includeMarks && marks.length) preview.readerMarks = marks;
+
+        const html = buildDigestPreviewHtml(rows, decision, preview, deepRead && digest.__rebuilt ? 'rebuilt' : deepRead);
+        const blob = new Blob([html], { type: 'text/html' });
+        const href = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        // Called the summary, as the reels and the privacy page call it (26 October 2026; was psycheai-digest-preview).
+        link.download = 'psycheai-summary.html';
+        link.href = href;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(href), 10000);
+      };
+      $('#review-send').addEventListener('click', send);
+      $('#review-cancel').addEventListener('click', back);
+      $('#review-download').addEventListener('click', download);
+      // Every finer choice is a click somewhere in the body, or a word typed.
+      const onClick = event => {
+        const el = event.target.closest('button');
+        if (!el || !dialog.contains(el)) return;
+        if (el.id === 'review-where-btn') {
+          // Opens inside the green box, and folds again.
+          const where = $('#review-where');
+          where.hidden = !where.hidden;
+          el.setAttribute('aria-expanded', String(!where.hidden));
+          return;
+        }
+        if (el.dataset.peek) {
+          if (openRows.has(el.dataset.peek)) openRows.delete(el.dataset.peek); else openRows.add(el.dataset.peek);
+        } else if (el.dataset.tag) {
+          const off = new Set(lines.chatsOff[el.dataset.path] || []);
+          if (off.has(el.dataset.tag)) off.delete(el.dataset.tag); else off.add(el.dataset.tag);
+          lines.chatsOff[el.dataset.path] = [...off];
+        } else if (el.dataset.line !== undefined) {
+          const drop = new Set(lines.drop[el.dataset.path] || []);
+          if (drop.has(el.dataset.line)) drop.delete(el.dataset.line); else drop.add(el.dataset.line);
+          lines.drop[el.dataset.path] = [...drop];
+        } else if (el.dataset.year) {
+          const y = Number(el.dataset.year);
+          const off = new Set(lines.yearsOff);
+          if (off.has(y)) off.delete(y); else if (off.size < years.length - 1) off.add(y);
+          lines.yearsOff = [...off];
+        } else if (el.dataset.from) {
+          lines.yearsOff = years.filter(y => y < Number(el.dataset.from));
+        } else if (el.dataset.word) {
+          lines.words = lines.words.filter(w => w !== el.dataset.word);
+        } else return;
+        refresh();
+      };
+      const onChange = event => { if (event.target.matches('.review-switch input')) refresh(); };
+      const onWord = event => {
+        event.preventDefault();
+        const word = $('#review-kw').value.trim().toLowerCase();
+        if (word && !lines.words.includes(word)) lines.words.push(word);
+        $('#review-kw').value = '';
+        refresh();
+        // Pressed with the button, the word is done: the keyboard goes. Enter keeps it for the next word.
+        if (event.submitter) $('#review-kw').blur();
+      };
+      // On a phone the first tap on Leave out used to land on nothing: it blurred the box, the keyboard
+      // closed, the foot came back and the button moved out from under the finger. Pressing it no
+      // longer takes the focus, so the tap is the press (October 2026).
+      const keepFocus = event => event.preventDefault();
+      const kwButton = $('#review-kw-form button[type="submit"]');
+      // While typing, the foot steps aside so the keyboard has the room.
+      const typing = () => dialog.classList.add('is-typing');
+      const typed = () => dialog.classList.remove('is-typing');
+      dialog.addEventListener('click', onClick);
+      list.addEventListener('change', onChange);
+      $('#review-kw-form').addEventListener('submit', onWord);
+      kwButton.addEventListener('pointerdown', keepFocus);
+      kwButton.addEventListener('mousedown', keepFocus);
+      $('#review-kw').addEventListener('focus', typing);
+      $('#review-kw').addEventListener('blur', typed);
+
+      dialog.addEventListener('close', () => {
+        $('#review-send').removeEventListener('click', send);
+        $('#review-cancel').removeEventListener('click', back);
+        $('#review-download').removeEventListener('click', download);
+        dialog.removeEventListener('click', onClick);
+        list.removeEventListener('change', onChange);
+        $('#review-kw-form').removeEventListener('submit', onWord);
+        kwButton.removeEventListener('pointerdown', keepFocus);
+        kwButton.removeEventListener('mousedown', keepFocus);
+        $('#review-kw').removeEventListener('focus', typing);
+        $('#review-kw').removeEventListener('blur', typed);
+        dialog.classList.remove('is-typing');
+        resolve(answer);
+      }, { once: true });
+
+      $('#review-send').textContent = paymentDue ? TEXT.reviewProceed : TEXT.reviewSend;
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+
+  async function handleFiles(files) {
+    if (!(await readersReady())) return;
+    const chosen = Array.from(files || []).filter(f => /\.zip$/i.test(f.name));
+    flash('#upload-error', '');
+    if (!chosen.length) {
+      flash('#upload-error', 'That does not look like a .zip file. Instagram sends your data as one or more .zip files.');
+      return;
+    }
+    if (!state.server.ready) {
+      flash('#upload-error', 'The server is not ready to analyse yet – see the note above.');
+      return;
+    }
+
+    $('#working-title').textContent = 'Loading';
+    // No fineprint row for this phase — the "nothing sent" claim now lives in
+    // the progress label itself, reported from instagram.js as each batch of
+    // files is parsed. Cleared explicitly rather than left alone, so a second
+    // upload in the same session cannot show a stale line runAnalysis wrote
+    // for the previous one while this phase is only reading, not sending.
+    $('#working-note').textContent = '';
+    setProgress(0, 'Opening the archive…');
+    // Where the reader was standing before the working screen covered the
+    // page — almost always the dropzone, near the foot of a long welcome page.
+    // Read before show('working'), which scrolls to the top itself, so this is
+    // the position they actually chose rather than the one show() just imposed.
+    const scrollBeforeUpload = window.scrollY;
+    show('working');
+
+    let digest;
+    let decision = null;
+    let signals;
+    try {
+      // Read everything the export has, unconditionally. The choice of what
+      // to send used to gate this step, before the reader had seen any of
+      // it; it now gates nothing here, because the choice moved to the
+      // review dialog below, where it can be made against real content
+      // rather than in advance of it.
+      signals = await IG.readExports(chosen, {
+        includeMessages: true,
+        onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
+      });
+      // The archive names the reader, so a stored card that lost their name
+      // gets it back now, whatever they go on to do with this upload.
+      repairOwnName(signals).catch(() => {});
+      trackStep('export_loaded');
+
+      let thinWarned = false;
+      // The supplement offer and the review are one loop, because Back on the
+      // review steps upstream to the offer rather than abandoning the upload.
+      // The digest is rebuilt on each pass rather than reused: going back is
+      // how a reader adds a source they had skipped, so the thing they are
+      // then reviewing has to include it.
+      for (;;) {
+        {
+        // Skipping resolves an empty object; Back resolves null and abandons
+        // the run. Seeded with whatever a previous pass added, so returning
+        // here does not throw away an archive already read.
+        const supplements = await askSupplement(signals.supplements);
+        if (!supplements) {
+          // Back at the offer abandons the upload, and puts them back exactly
+          // where they were rather than at the top of a page they never left.
+          abandonUpload(scrollBeforeUpload);
+          return;
+        }
+        signals.supplements = supplements;
+
+        setProgress(80, 'Building your evidence summary…');
+        await new Promise(resolve => setTimeout(resolve, 30));
+        digest = Digest.build(signals, { includeMessages: true });
+
+        // Too little of their own writing: no run, only the way back to add data.
+        if (tooThin(digest)) {
+          if (await sayTooThin(digest)) continue;
+          abandonUpload(scrollBeforeUpload);
+          return;
+        }
+        // Little to read in all: said once a session, with the way back to the offer.
+        if (!thinWarned && !thinSaid() && thinDigest(digest)) {
+          thinWarned = true;
+          markThinSaid();
+          if (await sayThin(digest)) continue;
+        }
+        }
+
+        // Free to try: the server decides (see startFromSources).
+        decision = await askReview(digest, { paymentDue: false });
+        if (decision === REVIEW_BACK) continue;
+        break;
+      }
+    } catch (error) {
+      showUploadError((error && error.message) || 'Could not read that archive.');
+      return;
+    }
+
+    if (!decision) {
+      // Escape at the review means the same thing Back at the offer does.
+      abandonUpload(scrollBeforeUpload);
+      return;
+    }
+
+    // Every first upload asks for the free card (see startFromSources): the
+    // server knows whether this Instagram account has had it. Money comes
+    // only if it says so, and only once the archive has parsed and the
+    // review is agreed (runAnalysis's freeUsed branch, over this digest).
+    applyReviewDecision(digest, decision);
+
+    state.digest = digest;
+    // A Google or Facebook read stashed by an earlier report's own rerun
+    // popout belongs to that report, not this fresh upload — see
+    // pendingDataSourceReads' own declaration.
+    pendingDataSourceReads = {};
+    // Kept in memory only, and only for as long as this page lives — see
+    // state.signals — so "Add / change data & re-run analysis" on the report
+    // page can add a Google or Facebook export to this one later in the
+    // session without asking for the Instagram export again.
+    state.signals = signals;
+    writeDigest(digest);
+    await runAnalysis(digest, null);
+  }
+
+  // An export read inside askDataSources() but never carried through to a
+  // completed run — Back was pressed, or the popout was otherwise closed
+  // before Continue. Reading an archive is real work a reader already did;
+  // losing the tick the moment they step back from *continuing* would make
+  // Back read as "throw away what I just read" rather than its actual
+  // meaning, "not right now". Keyed by source, holding the same value `read()`
+  // produced so a later Continue can still send it. Cleared only when a
+  // genuinely new report replaces this one (handleFiles) or once a run
+  // actually commits the value into state.digest — at that point state.digest
+  // and state.signals already carry it permanently, so holding a second copy
+  // here would only be dead weight.
+  //
+  // Instagram was left out of this for a long time, on the grounds that
+  // re-reading it is cheap and that every call already reflects state.digest.
+  // Both are true of a reader who has a report and false of the person this
+  // hurt: a first-timer has no digest at all, and `state.signals` is not set
+  // until *after* the popout resolves, so pressing Back on the popout they
+  // just loaded their export into threw the whole archive away and asked them
+  // to find the file again. "Cheap" was measured in machine time. The reader
+  // pays for it in going back to their downloads folder.
+  let pendingDataSourceReads = {};
+
+  /**
+   * Driven by startRerun below (the hub's and the sources list's change
+   * buttons, My Report's Add data, and "Load my data" with a card already). Shows Instagram, Google Takeout
+   * and Facebook together; unlike askSupplement, a row already ticked stays
+   * clickable, so any of the three — Instagram included — can be replaced
+   * with a fresh export rather than only ever being added once.
+   *
+   * Resolves `null` on Back (nothing sent onward). Otherwise resolves an
+   * object keyed by source: `true` for a row that was already loaded and left
+   * alone, or the freshly read result (Instagram's full `signals`, or a
+   * Google/Facebook supplement fragment) for one that was just picked. The
+   * caller tells the two apart with `typeof value === 'object'`. A row read
+   * successfully in an earlier call to this same function — even one that
+   * ended in Back — still resolves as that same value here, via
+   * pendingDataSourceReads, for all three sources.
+   *
+   * An uncommitted read outranks an already-committed one in that seed, and
+   * the order is load-bearing. Seeded the other way round, a reader who
+   * replaced an export, pressed Back and came again got `true` for that row —
+   * "you already have this one" — and their replacement was dropped on
+   * Continue without a word. The value in hand is always the newer answer.
+   *
+   * Nothing here touches state.digest, localStorage, or authoriseAnalysis —
+   * reading an export is free, and Continue only hands the results back to
+   * addDataAndRerun, which builds the digest the review dialog shows next.
+   */
+  function askDataSources(options) {
+    // Fetched while the reader picks a file; each read waits for them. Once they are here, nothing more is
+    // needed from the network until the review, and the popout says so.
+    const offlineNote = $('#datasources-offline');
+    offlineNote.lastElementChild.textContent = TEXT.dataSourcesOffline;
+    const offlineIcon = $('#datasources-offline-icon');
+    offlineNote.hidden = offlineIcon.hidden = true;
+    loadReaders().then(() => { offlineNote.hidden = offlineIcon.hidden = false; }).catch(() => {});
+    const settings = options || {};
+    const dialog = $('#datasources-dialog');
+    // Loading data in an app's own browser: said in the popout too, where the
+    // top bar may have been closed.
+    const inApp = $('#datasources-inapp');
+    inApp.hidden = !IN_APP;
+    if (IN_APP) inApp.textContent = TEXT.inAppData(IN_APP);
+    const status = $('#datasources-status');
+    const input = $('#datasources-input');
+    // Which rows this entry point offers. The welcome page shows Instagram and
+    // Google only — a first upload is not the moment to open a third door, and
+    // the how-to card beside it recommends exactly those two — while the report
+    // page still offers all three, so Facebook stays reachable for anybody who
+    // wants it, one screen later. Hidden rather than removed from the markup:
+    // one dialog, two audiences.
+    // WhatsApp second, after Instagram, as at the first upload.
+    const offered = settings.sources || ['instagram', 'whatsapp'].concat(OPTIONAL_SOURCES);
+    // A first upload sets Instagram apart, since it is the one source required.
+    dialog.classList.toggle('is-first-upload', Boolean(settings.first));
+    // Rows, and their instructions, in the order offered: the welcome page
+    // asks for Instagram, then a WhatsApp chat, then Google; the report page
+    // keeps the markup's own order. Moving a node is all it takes, and every
+    // opening sets the order afresh, so neither entry point inherits the
+    // other's.
+    const order = offered.concat(['instagram', 'whatsapp'].concat(OPTIONAL_SOURCES).filter(x => !offered.includes(x)));
+    const optionsBox = dialog.querySelector('.mode-options');
+    const helpBox = dialog.querySelector('.supplement-help-body');
+    const helpTail = helpBox.querySelector('.help-illustrated');
+    // Each row is a .ds-row: the source's button and its "How?" (October 2026).
+    const rowWrap = source => optionsBox.querySelector('.ds-row[data-row="' + source + '"]');
+    for (const source of order) {
+      const row = rowWrap(source);
+      if (row) optionsBox.appendChild(row);
+      const help = helpBox.querySelector('[data-help="' + source + '"]');
+      if (help) helpBox.insertBefore(help, helpTail);
+    }
+    // A first upload's two groups (October 2026): "Required (At least one)" over Instagram
+    // and WhatsApp, which either is enough (its tick is showMinimum's), then
+    // "Optional" over the rest. Elsewhere the rows are one plain list.
+    const needHead = $('#datasources-minimum');
+    const optionalHead = $('#datasources-optional');
+    needHead.hidden = !settings.requireMinimum;
+    // On a first upload the optional rows start folded (27 October 2026):
+    // "Optional data", between the buttons, unfolds them. Folded, a source
+    // that is loaded still shows, alone under "Optional" (TikTok loaded shows
+    // TikTok, not the whole list). Only the row wraps are hidden, not the
+    // buttons, so any file in the box is still read. After a first run (Add /
+    // change data) nothing is required, so every source shows, unlabelled.
+    const moreButton = $('#datasources-more');
+    const optionalRows = settings.requireMinimum ? order.filter(x => OPTIONAL_SOURCES.includes(x) && offered.includes(x)) : [];
+    let optionalOpen = false;
+    // Set once `added` exists, below.
+    let optionalLoaded = () => false;
+    // An optional source being read shows under Optional at once, its progress
+    // in its row, folded or not (27 October 2026).
+    const optionalReading = new Set();
+    moreButton.hidden = true;
+    const foldOptional = open => {
+      optionalOpen = open;
+      const shown = optionalRows.filter(source => open || optionalLoaded(source));
+      for (const source of optionalRows) rowWrap(source).hidden = !shown.includes(source);
+      // "Optional ▾" is the heading itself now: the plain one stays out.
+      optionalHead.hidden = true;
+      moreButton.setAttribute('aria-expanded', String(open));
+    };
+    if (settings.requireMinimum) {
+      const needs = order.filter(x => x === 'instagram' || x === 'whatsapp');
+      if (needs.length) optionsBox.insertBefore(needHead, rowWrap(needs[0]));
+    }
+    optionalHead.textContent = TEXT.dataSourcesOptional;
+    optionalHead.hidden = true;
+    if (optionalRows.length) optionsBox.insertBefore(moreButton, rowWrap(optionalRows[0]));
+    moreButton.textContent = TEXT.dataSourcesMore;
+    // "How?" on a row opens that source's steps alone, below the rows; the
+    // same again closes them.
+    const helpDrawer = dialog.querySelector('.supplement-help');
+    const showHow = source => {
+      const open = !(helpDrawer.open && helpDrawer.dataset.only === source);
+      helpDrawer.dataset.only = open ? source : '';
+      for (const help of helpBox.querySelectorAll('[data-help]')) help.classList.toggle('is-other', open && help.dataset.help !== source);
+      for (const how of dialog.querySelectorAll('.ds-how')) how.setAttribute('aria-expanded', String(open && how.dataset.how === source));
+      helpDrawer.open = open;
+      if (open) helpDrawer.scrollIntoView({ block: 'nearest', behavior: scrollBehaviour() });
+    };
+    // How many WhatsApp chats this entry point takes: three, wherever it is.
+    const waMax = settings.whatsappMax || 3;
+    // The download instructions follow the rows. A reader on the welcome page
+    // is offered Instagram and Google, so being walked through a Facebook
+    // export they cannot load from here is noise; a reader on the report page
+    // is offered Facebook and would otherwise get a row with no instructions
+    // behind it. Hidden rather than deleted, for the same reason the row is:
+    // one dialog, two audiences.
+    for (const help of dialog.querySelectorAll('[data-help]')) {
+      help.hidden = !offered.includes(help.dataset.help);
+    }
+    // A row's own sub-line has the same problem the title does: "Load a new
+    // Instagram export .zip file here to replace it" describes replacing
+    // something, and on a first upload there is nothing to replace. Overridden
+    // per entry point, with the markup's own wording remembered the first time
+    // so the report page — which really is offering a replacement — gets it
+    // back. Restoring matters: the override works by overwriting the text, so
+    // without it the welcome page's wording would stick for the rest of the
+    // page's life.
+    const sublines = settings.sublines || {};
+    // A row's title and tag, overridden per entry point the same way and for
+    // the same reason ("WhatsApp chats (up to 3)" on the report page, "WhatsApp
+    // chat with a close friend (optional)" on a first upload).
+    const titles = settings.titles || {};
+    // No tags by default since the redesign (October 2026): one line a row.
+    const tags = settings.tags || {};
+    for (const row of dialog.querySelectorAll('.mode-option')) {
+      const source = row.dataset.datasource;
+      row.hidden = !offered.includes(source);
+      if (row.closest('.ds-row')) row.closest('.ds-row').hidden = row.hidden;
+      for (const [selector, wanted] of [['.mode-title', titles[source]], ['.mode-tag', tags[source]]]) {
+        const node = row.querySelector(selector);
+        if (!node) continue;
+        if (node.dataset.defaultText === undefined) node.dataset.defaultText = node.textContent;
+        // An empty string is an override too: a first upload's rows carry no
+        // tag, their group says it.
+        node.textContent = wanted !== undefined ? wanted : node.dataset.defaultText;
+      }
+      const line = row.querySelector('.mode-body > .muted');
+      if (!line) continue;
+      if (line.dataset.defaultText === undefined) line.dataset.defaultText = line.textContent;
+      line.textContent = sublines[source] !== undefined ? sublines[source] : line.dataset.defaultText;
+    }
+    if (optionalRows.length) {
+      moreButton.hidden = false;
+      foldOptional(false);
+    }
+    // Every list below is built from the visible rows, so a hidden source can
+    // neither be ticked, read, nor resolved.
+    const buttons = dialog.querySelectorAll('.mode-option:not([hidden])');
+    $('#datasources-confirm-text').textContent = TEXT.cardChangeNote;
+    $('#datasources-confirm').hidden = true;
+    // Asked once per opening, at the unlock, before the first file picker.
+    let warned = !settings.cardNote;
+    // Restoring a backup instead: a first upload only, in a browser with no
+    // card, since a restore would replace one.
+    $('#restore-open').hidden = !(settings.first && !state.profile);
+    sayRestore('');
+    $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
+    $('#datasources-blurb-text').textContent = settings.blurb || TEXT.dataSourcesBlurb;
+    const digest = state.digest;
+    const added = {
+      // Seeded from the digest *and* from the archive held in memory. The
+      // digest alone was wrong on the welcome page: a first upload has no
+      // digest until the review has been agreed and paid for, so a reader who
+      // loaded Instagram, pressed Continue, then pressed Back at the review
+      // found the row unticked and was being told to load it again — the one
+      // thing this popout exists to stop, at the moment it is most likely.
+      // `state.signals` is set the moment an archive is read, which is exactly
+      // the memory Instagram was missing.
+      //
+      // The digest can also go missing on its own while the report survives,
+      // and a tick would then promise an archive the popout does not have;
+      // with neither, the row is left unticked and reads as the one thing
+      // still to do, which is what it is.
+      // A digest of WhatsApp chats alone has no Instagram to tick.
+      instagram: pendingDataSourceReads.instagram || Boolean((digest && digestHasInstagram(digest)) || state.signals) || undefined,
+      google: pendingDataSourceReads.google || Boolean(digest && digest.google) || undefined,
+      facebook: pendingDataSourceReads.facebook || Boolean(digest && digest.facebook) || undefined,
+      tiktok: pendingDataSourceReads.tiktok || Boolean(digest && digest.tiktok) || undefined,
+      journal: pendingDataSourceReads.journal || Boolean(digest && digest.journal) || undefined,
+      whatsapp: pendingDataSourceReads.whatsapp || Boolean(digest && digest.whatsapp) || undefined,
+    };
+    // The WhatsApp row says how many of its three chats are loaded: those
+    // picked, plus the stored ones they were added to.
+    const waCount = () => ((pendingDataSourceReads.whatsappChats || []).length +
+        ((pendingDataSourceReads.whatsapp && pendingDataSourceReads.whatsapp.addsTo) || 0)) ||
+      (digest && digest.whatsapp && (digest.whatsapp.chats || []).length) || 0;
+    const showWhatsAppCount = () => {
+      const row = rowOf('whatsapp');
+      const line = row && row.querySelector('.mode-body > .muted');
+      const n = chatsLoaded();
+      if (line) line.textContent = n ? TEXT.whatsappRowSome(n, waMax) : '';
+      // The chats as dots, one a chat, filled as they load.
+      const dots = row && row.querySelector('.ds-dots');
+      if (dots) dots.dataset.n = String(Math.min(n, 3));
+    };
+    // Asked only when the chats do not say which sender is the reader:
+    // resolves the name picked, or null if the popout closes first.
+    const askWho = candidates => new Promise(done => {
+      const box = $('#datasources-who');
+      const list = $('#datasources-who-list');
+      $('#datasources-who-q').textContent = TEXT.whatsappWhoAreYou;
+      list.replaceChildren(...candidates.map(name => {
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'btn btn-outline wa-who-pick';
+        pick.textContent = name;
+        pick.addEventListener('click', () => { box.hidden = true; done(name); });
+        return pick;
+      }));
+      box.hidden = false;
+      dialog.addEventListener('close', () => { box.hidden = true; done(null); }, { once: true });
+    });
+    let pending = '';
+    let busy = false;
+    let cancelled = false;
+    // Declared here and given its real value in the reset block below, with
+    // the rest of the per-opening state. Initialising it at the declaration
+    // instead looks right and does nothing: that block runs afterwards and
+    // overwrites it.
+    let replacedInstagram = false;
+
+    const say = (message, tone) => {
+      status.textContent = message || '';
+      status.hidden = !message;
+      status.className = 'supplement-status' + (tone ? ' is-' + tone : '');
+    };
+
+    // The one box every file can go in, above the rows (October 2026).
+    const drop = $('#datasources-drop');
+    const setBusy = state => {
+      busy = state;
+      for (const button of buttons) button.disabled = state;
+      drop.disabled = state;
+    };
+
+    const rowOf = source => dialog.querySelector('.mode-option[data-datasource="' + source + '"]');
+    const setSourceProgress = (source, percent, label) => {
+      const row = rowOf(source);
+      if (!row) return;
+      const wrap = row.querySelector('.mode-progress');
+      const bar = row.querySelector('.progress-bar');
+      const text = row.querySelector('.mode-progress-label');
+      row.classList.toggle('is-loading', percent !== null);
+      wrap.hidden = percent === null;
+      bar.style.width = (percent === null ? 0 : percent) + '%';
+      if (label !== undefined) text.textContent = label || '';
+    };
+
+    /**
+     * Which sources are ticked, and whether the "reload them" note is showing.
+     *
+     * These two used to be worked out separately and could therefore disagree
+     * — and did. A row's value is either the seeded `true`, meaning "this was
+     * in the digest when the popout opened", or an object, meaning "read just
+     * now". Replacing Instagram invalidates every seeded `true`: the old
+     * Google fragment belongs to the archive that was just swapped out and
+     * cannot be carried onto the new one. The note said exactly that, while
+     * the tick — which only asked whether the value was truthy — went on
+     * saying Google was loaded. A reader saw "your Google data starts afresh,
+     * load it again" directly above a green tick claiming it was already
+     * there.
+     *
+     * So both now read one predicate — and it is not the obvious one. "Was
+     * this tick seeded rather than freshly read" is the wrong question, and
+     * getting it wrong is easy: what actually decides whether Google survives
+     * an Instagram replacement is whether an *in-memory* copy of it exists for
+     * the caller to merge forward. addDataAndRerun reads
+     * `state.signals.supplements` before reassigning `state.signals` to the
+     * fresh Instagram read, so a source held there rides across the
+     * replacement untouched; one that exists only in the stored digest does
+     * not, because a fresh export carries no supplements of its own.
+     *
+     * The two cases look identical at the seed — `Boolean(digest.google)`
+     * short-circuits to `true` before it ever looks at the in-memory read — so
+     * both had to be asked about separately. `state.signals` is null on a page
+     * that has just loaded and is only ever set by reading an archive, which
+     * is exactly the difference:
+     *
+     *   · Google loaded earlier *this session* → in memory → survives → stays
+     *     ticked, no note.
+     *   · Google only in the stored digest, page freshly loaded → nothing in
+     *     memory → genuinely dropped → tick goes, note appears.
+     *
+     * The second is what a reader who comes back to the site and replaces
+     * their export hits, and it is the case that produced the complaint.
+     */
+    const carriedInMemory = source =>
+      Boolean(state.signals && state.signals.supplements && state.signals.supplements[source]) ||
+      Boolean(pendingDataSourceReads[source]) ||
+      typeof added[source] === 'object';
+
+    // WhatsApp is never stale: its chats are carried onto a new Instagram
+    // export, from memory or from the stored digest (October 2026).
+    const isStale = source =>
+      source !== 'whatsapp' && replacedInstagram && Boolean(added[source]) && !carriedInMemory(source);
+    // Stale ones too: replacing Instagram drops them, and their rows stay to be loaded again.
+    optionalLoaded = source => Boolean(added[source]) || optionalReading.has(source);
+
+    const markAdded = () => {
+      for (const button of buttons) {
+        const source = button.dataset.datasource;
+        const isAdded = Boolean(added[source]) && !isStale(source);
+        button.classList.toggle('is-added', isAdded);
+        const tick = button.querySelector('.mode-added');
+        if (isAdded && !tick) {
+          const mark = document.createElement('span');
+          mark.className = 'mode-added';
+          mark.setAttribute('role', 'img');
+          mark.setAttribute('aria-label', 'Loaded');
+          mark.textContent = '✓';
+          button.appendChild(mark);
+        } else if (!isAdded && tick) {
+          tick.remove();
+        }
+      }
+      // The same predicate the ticks use, so the two can never again say
+      // different things about the same row. An object there — whether just
+      // read, or carried forward from an earlier attempt via
+      // pendingDataSourceReads — is exactly the "reload it here" the note
+      // asks for, already done, so warning about it would be noise.
+      // Recomputed on every call rather than fixed the moment Instagram is
+      // replaced, so reading Google or Facebook afterwards can still resolve
+      // the very risk this note exists to name.
+      $('#datasources-instagram-note').hidden = !OPTIONAL_SOURCES.some(isStale);
+      // A loaded optional source shows, folded or not, so its tick does.
+      foldOptional(optionalOpen);
+      showWhatsAppCount();
+      showMinimum();
+    };
+
+    // Instagram, or at least two WhatsApp chats (three at most): what a first
+    // read needs (October 2026; three until the 26th). One chat describes one
+    // friendship more than the reader; two different people start to show
+    // what holds across them. Either is enough; both make the fuller read.
+    const WA_MINIMUM = 2;
+    const hasInstagramLoaded = () => Boolean(added.instagram) && !isStale('instagram');
+    const chatsLoaded = () => (added.whatsapp && !isStale('whatsapp') ? waCount() : 0);
+    const minimumMet = () => hasInstagramLoaded() || chatsLoaded() >= WA_MINIMUM;
+    // A reader whose card came from chats alone is held to the same minimum
+    // when they change their data, though the groups are a first upload's.
+    const needsMinimum = () => settings.requireMinimum ||
+      (Boolean(state.digest) && !digestHasInstagram(state.digest) && !state.signals);
+    // The first group's heading, ticked once either is in, and
+    // Continue, set back until then (still pressable: it says what is
+    // missing). No sentence: the group and the dots say it.
+    const showMinimum = () => {
+      const head = $('#datasources-minimum');
+      const go = $('#datasources-continue');
+      if (!settings.requireMinimum) { go.classList.remove('is-waiting'); return; }
+      const met = minimumMet();
+      // What is still needed, in the heading itself: one chat in, it asks for the next.
+      const more = Math.max(0, WA_MINIMUM - chatsLoaded());
+      const partway = !met && more > 0 && more < WA_MINIMUM;
+      head.textContent = met ? TEXT.dataSourcesNeedOneDone : partway ? TEXT.dataSourcesNeedMore(more) : TEXT.dataSourcesNeedOne;
+      // Partway, what is still needed is set apart in amber: "Required (1 more WhatsApp chat)".
+      const need = partway && head.textContent.match(/^(Required )(\(.+\))$/);
+      if (need) head.innerHTML = esc(need[1]) + '<span class="ds-need">' + esc(need[2]) + '</span>';
+      head.classList.toggle('is-met', met);
+      head.setAttribute('aria-label', met ? TEXT.dataSourcesNeedOneMet : partway ? TEXT.startNeedsMore(more) : TEXT.startNeedsMinimum(WA_MINIMUM));
+      go.classList.toggle('is-waiting', !met);
+    };
+
+    return new Promise(resolve => {
+      // `source` is the row tapped, or 'any' for the box. Either way each file
+      // is sorted by what is inside it (readFiles): the row is only a hint for
+      // a file nothing recognises.
+      const pick = source => {
+        pending = source || 'any';
+        input.value = '';
+        input.click();
+      };
+      // Over an existing card, the first tap says the card may change, and
+      // "Choose file" opens the picker from its own click. A drop goes on
+      // with its files instead (`then`).
+      const confirmFirst = (source, then) => {
+        const box = $('#datasources-confirm');
+        const close = () => {
+          box.hidden = true;
+          dialog.removeEventListener('cancel', onEscape);
+          dialog.removeEventListener('close', close);
+        };
+        const onEscape = event => { event.preventDefault(); close(); };
+        $('#datasources-confirm-go').onclick = () => { warned = true; close(); if (then) then(); else pick(source); };
+        $('#datasources-confirm-cancel').onclick = close;
+        box.onclick = event => { if (event.target === box) close(); };
+        dialog.addEventListener('cancel', onEscape);
+        dialog.addEventListener('close', close);
+        box.hidden = false;
+        $('#datasources-confirm-go').focus();
+      };
+      const choose = event => {
+        const source = event.currentTarget.dataset.datasource || 'any';
+        if (busy) return;
+        if (!warned) { confirmFirst(source); return; }
+        pick(source);
+      };
+
+      // One source's files, read by its own reader. Resolves what to say
+      // afterwards, if anything: `{ message, tone }`.
+      const readSource = async (source, files) => {
+        setSourceProgress(source, 0, 'Opening the archive…');
+        try {
+          if (source === 'instagram') {
+            added.instagram = await IG.readExports(files, {
+              includeMessages: true,
+              onProgress: p => setSourceProgress(source,
+                Math.round((p.total ? p.done / p.total : 0) * 100), p.label),
+            });
+            replacedInstagram = true;
+            trackStep('export_loaded');
+            // Kept even if this call ends in Back, the same as the two below.
+            // The archive is minutes of the reader's phone doing real work and
+            // a trip to wherever they saved the file; a Back press means "not
+            // right now", not "discard that".
+            pendingDataSourceReads.instagram = added.instagram;
+          } else if (source === 'whatsapp') {
+            const readChats = await window.PsycheWhatsApp.readChats(files, {
+              onProgress: p => setSourceProgress(source, p.phase === 'done' ? 100
+                : Math.round(10 + (p.total ? p.done / p.total : 0) * 85), p.label),
+            });
+            // Up to waMax chats, added to what is loaded; one more starts a
+            // fresh set (with a limit of one, a new chat replaces the old).
+            // The chats already loaded: picked in this opening, or the last
+            // set read in this visit (state.waChats). After a reload only the
+            // stored digest has them, as sampled lines: a new chat is added
+            // to those (`addsTo`, carried by Digest.carryChats) rather than
+            // starting a new set, while three still fit.
+            const held = pendingDataSourceReads.whatsappChats || state.waChats || [];
+            // Already adding to the stored chats in this opening: the ones
+            // picked so far are added to them too.
+            const prevAdds = (pendingDataSourceReads.whatsapp && pendingDataSourceReads.whatsapp.addsTo) || 0;
+            const storedChats = prevAdds || (!held.length && !pendingDataSourceReads.whatsapp && digest && digest.whatsapp
+              ? (digest.whatsapp.chats || []).length : 0);
+            // A chat already loaded (the same file, or the same person) is
+            // not taken twice: each slot is a different conversation. Against
+            // the stored chats, by the one-way key of who each is with.
+            const storedKeys = Object.values((digest && digest.__chatKeys) || {}).filter(Boolean);
+            const { kept: notHeld, repeated: heldAgain } = window.PsycheWhatsApp.dropRepeats(held, readChats);
+            const repeated = heldAgain.concat(storedChats ? notHeld.filter(c => storedKeys.includes(Digest.chatKey(c.title))) : []);
+            const kept = notHeld.filter(c => !repeated.includes(c));
+            const repeatNote = repeated.length ? TEXT.whatsappRepeat(repeated.map(c => c.title).filter(Boolean)) : '';
+            setSourceProgress(source, null, '');
+            if (!kept.length) return { message: repeatNote, tone: 'bad' };
+            const fresh = kept;
+            const already = storedChats + held.length;
+            // Past three: a fresh set. With chats in memory, from three already
+            // (the extra ones beyond three are left out, as before); with the
+            // stored chats, from any overflow, since lines cannot be unpicked.
+            const startOver = already + fresh.length > waMax && (already >= waMax || storedChats > 0);
+            const addsTo = storedChats && !startOver ? storedChats : 0;
+            const chats = (startOver ? fresh : held.concat(fresh)).slice(0, waMax - addsTo);
+            const hints = [ownDisplayName(), state.profile && state.profile.card && state.profile.card.name].filter(Boolean);
+            let owner = window.PsycheWhatsApp.resolveOwner(chats, hints).owner;
+            if (!owner) {
+              owner = await askWho(window.PsycheWhatsApp.resolveOwner(chats, hints).candidates);
+              if (!owner) return null;
+            }
+            added.whatsapp = window.PsycheWhatsApp.summarise(chats, owner);
+            if (addsTo) Object.defineProperty(added.whatsapp, 'addsTo', { value: addsTo, enumerable: false });
+            pendingDataSourceReads.whatsapp = added.whatsapp;
+            pendingDataSourceReads.whatsappChats = chats;
+            loadedUnsent = true;
+            state.waChats = addsTo ? null : chats;
+            if (startOver || repeatNote) {
+              return { message: [startOver ? TEXT.whatsappFull(waMax) : '', repeatNote].filter(Boolean).join(' '), tone: '' };
+            }
+          } else {
+            const reader = { google: Supplement.readGoogle, facebook: Supplement.readFacebook,
+              tiktok: Supplement.readTikTok, journal: Supplement.readJournal }[source];
+            added[source] = await reader(files, {
+              onProgress: p => {
+                const share = p.total ? Math.min(1, p.done / p.total) : 0;
+                const percent = p.phase === 'open' ? 6
+                  : p.phase === 'done' ? 100
+                  : 10 + Math.round(share * 85);
+                setSourceProgress(source, percent, p.label);
+              },
+            });
+            // Kept even if this call ends in Back — see
+            // pendingDataSourceReads' own declaration.
+            pendingDataSourceReads[source] = added[source];
+          }
+          setSourceProgress(source, null, '');
+          loadedUnsent = true;
+          return null;
+        } catch (error) {
+          setSourceProgress(source, null, '');
+          // A failed replacement must not cost the reader the source they
+          // already had — the dialog stays open, on the tick it started
+          // with, and they can try another file or move on.
+          return { message: (error && error.message) || 'That archive could not be read.', tone: 'bad' };
+        }
+      };
+
+      // Any mix of files, picked or dropped: each sorted by what is inside it
+      // (Supplement.detectSource), then each source read in the rows' order.
+      // A zip nothing recognises goes with an Instagram export picked beside
+      // it (a later part of a split export), else to the row that was tapped,
+      // else to Instagram, whose reader says plainly what is wrong with it.
+      const readFiles = async (picked, hint) => {
+        const files = Array.from(picked || []).filter(f => /\.(zip|txt|json|md|markdown)$/i.test(f.name));
+        if (!files.length) {
+          if (Array.from(picked || []).length) say(TEXT.dataSourcesWrongType, 'bad');
+          return;
+        }
+        setBusy(true);
+        say('');
+        const notes = [];
+        try {
+          await loadReaders();
+          const groups = {};
+          const unknown = [];
+          for (const file of files) {
+            const kind = await Supplement.detectSource(file);
+            if (kind === 'unknown') { unknown.push(file); continue; }
+            (groups[kind] = groups[kind] || []).push(file);
+          }
+          if (unknown.length) {
+            const home = groups.instagram ? 'instagram' : (hint && hint !== 'any' ? hint : 'instagram');
+            groups[home] = (groups[home] || []).concat(unknown);
+          }
+          for (const source of order) {
+            if (!groups[source]) continue;
+            if (!offered.includes(source)) { notes.push({ message: TEXT.dataSourcesNotHere(source), tone: 'bad' }); continue; }
+            optionalReading.add(source);
+            foldOptional(optionalOpen);
+            const outcome = await readSource(source, groups[source]).finally(() => optionalReading.delete(source));
+            if (outcome && outcome.message) notes.push(outcome);
+          }
+        } catch (error) {
+          notes.push({ message: (error && error.message) || 'That file could not be read.', tone: 'bad' });
+        }
+        setBusy(false);
+        say(notes.map(n => n.message).join(' '), notes.some(n => n.tone === 'bad') ? 'bad' : '');
+        markAdded();
+        if (doneWhenRead && dialog.open) done();
+      };
+
+      const read = () => {
+        const hint = pending;
+        pending = '';
+        const files = Array.from(input.files || []);
+        input.value = '';
+        if (!hint || !files.length) return;
+        readFiles(files, hint);
+      };
+
+      // Files dropped on the popout, on a computer: the same as picking them
+      // in the box.
+      const onDragOver = event => {
+        if (!event.dataTransfer || ![...(event.dataTransfer.types || [])].includes('Files')) return;
+        event.preventDefault();
+        drop.classList.add('is-over');
+      };
+      const onDragLeave = event => { if (!dialog.contains(event.relatedTarget)) drop.classList.remove('is-over'); };
+      const onDrop = event => {
+        if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) return;
+        event.preventDefault();
+        drop.classList.remove('is-over');
+        if (busy) return;
+        const files = Array.from(event.dataTransfer.files);
+        if (!warned) { confirmFirst('any', () => readFiles(files, 'any')); return; }
+        readFiles(files, 'any');
+      };
+
+      // A first upload needs Instagram or two chats: said here, in the
+      // popout, rather than closing it and saying so on the page behind.
+      // Pressed while files are still being read: goes on once they are.
+      let doneWhenRead = false;
+      const done = () => {
+        if (busy) { doneWhenRead = true; return; }
+        doneWhenRead = false;
+        if (needsMinimum() && !minimumMet()) {
+          const more = Math.max(0, WA_MINIMUM - chatsLoaded());
+          say(more > 0 && more < WA_MINIMUM ? TEXT.startNeedsMore(more) : TEXT.startNeedsMinimum(WA_MINIMUM), 'bad');
+          return;
+        }
+        dialog.close();
+      };
+      const goBack = () => { cancelled = true; dialog.close(); };
+      // Escape has no button of its own to route through goBack, but it must
+      // still mean the same thing Back does — "not right now", never a silent
+      // Continue. Without this, a <dialog>'s native Escape fires no listener
+      // here at all, cancelled stays false, and the close handler below would
+      // resolve `added` exactly as if Continue had been pressed.
+      //
+      // Scoped to the dialog's *own* cancel. `<input type="file">` fires its
+      // own `cancel` event — bubbling — when the reader dismisses the OS file
+      // picker without choosing anything, and #datasources-input sits inside
+      // this dialog. Unscoped, that bubbled event set `cancelled = true` from
+      // a gesture that means nothing more than "not that file after all", and
+      // the reader's next press of Continue then resolved null and abandoned
+      // the whole re-run with no message and no dialog — exactly as if they
+      // had pressed Back.
+      const onNativeCancel = event => { if (event.target === dialog) cancelled = true; };
+
+      for (const button of buttons) button.addEventListener('click', choose);
+      const onHow = event => showHow(event.currentTarget.dataset.how);
+      const hows = dialog.querySelectorAll('.ds-how');
+      for (const how of hows) how.addEventListener('click', onHow);
+      drop.addEventListener('click', choose);
+      const onMore = () => {
+        const unfold = moreButton.getAttribute('aria-expanded') !== 'true';
+        foldOptional(unfold);
+        if (unfold) optionalHead.scrollIntoView({ block: 'nearest', behavior: scrollBehaviour() });
+      };
+      moreButton.addEventListener('click', onMore);
+      dialog.addEventListener('dragover', onDragOver);
+      dialog.addEventListener('dragleave', onDragLeave);
+      dialog.addEventListener('drop', onDrop);
+      input.addEventListener('change', read);
+      $('#datasources-continue').addEventListener('click', done);
+      $('#datasources-back').addEventListener('click', goBack);
+      dialog.addEventListener('cancel', onNativeCancel);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) {
+          button.removeEventListener('click', choose);
+          button.disabled = false;
+          button.classList.remove('is-added');
+          const tick = button.querySelector('.mode-added');
+          if (tick) tick.remove();
+        }
+        input.removeEventListener('change', read);
+        drop.removeEventListener('click', choose);
+        moreButton.removeEventListener('click', onMore);
+        for (const how of hows) how.removeEventListener('click', onHow);
+        drop.disabled = false;
+        drop.classList.remove('is-over');
+        dialog.removeEventListener('dragover', onDragOver);
+        dialog.removeEventListener('dragleave', onDragLeave);
+        dialog.removeEventListener('drop', onDrop);
+        $('#datasources-continue').removeEventListener('click', done);
+        $('#datasources-back').removeEventListener('click', goBack);
+        dialog.removeEventListener('cancel', onNativeCancel);
+        resolve(cancelled ? null : added);
+      }, { once: true });
+
+      say(settings.notice || '', settings.notice ? 'bad' : '');
+      cancelled = false;
+      // True from the outset when an uncommitted Instagram read is being
+      // carried in, because from the stored digest's point of view the
+      // replacement is still pending — Back did not undo it, it deferred it.
+      // Flat `false` here dropped the note warning that a replaced Instagram
+      // takes Google with it, and put the Google tick back, on exactly the
+      // second visit where the reader has already been told once that it is
+      // fine.
+      replacedInstagram = Boolean(pendingDataSourceReads.instagram);
+      $('#datasources-instagram-note').hidden = true;
+      dialog.querySelector('.supplement-help').open = false;
+      helpDrawer.dataset.only = '';
+      for (const help of helpBox.querySelectorAll('[data-help]')) help.classList.remove('is-other');
+      for (const how of dialog.querySelectorAll('.ds-how')) how.setAttribute('aria-expanded', 'false');
+      for (const button of buttons) setSourceProgress(button.dataset.datasource, null, '');
+      setBusy(false);
+      markAdded();
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+
+  // Adding or changing data and re-running, from the hub's and the sources
+  // list's change buttons, My Report's Add data (#report-rerun) and "Load my
+  // data" with a card already. Opens the data-sources popout first, then goes to the
+  // review of whatever comes out of it, then payment, then analysis.
+  function startRerun() {
+    flash('#profile-alert', '');
+    addDataAndRerun();
+  }
+
+  async function addDataAndRerun() {
+    if (!(await readersReady())) return;
+    // The popout and the review are one loop, for the same reason the first
+    // upload's supplement offer and review are (see handleFiles): Back on the
+    // review means "let me change what I am sending", and the only screen
+    // that can answer that is the one behind it. Returning to the report
+    // instead — which is what this did — threw away a source the reader had
+    // just spent a minute loading, and read as the button having failed.
+    for (;;) {
+      let collected;
+      try {
+        collected = await askDataSources({ cardNote: true, blurb: TEXT.rerunSourcesBlurb(Prices.label(CURRENCY, 'unlock')) });
+      } catch (error) {
+        flash('#profile-alert', (error && error.message) || 'Could not read that file.');
+        return;
+      }
+      if (!collected) return; // Back at the popout — nothing touched.
+
+      // A freshly read Instagram export replaces the in-memory signals
+      // outright — typeof 'object' is how askDataSources marks a real
+      // replacement rather than the seeded `true` for "already had it,
+      // unchanged". Google or Facebook data still held in this same session
+      // (state.signals.supplements) rides along with it automatically; data
+      // loaded only in an earlier session does not, because Digest.build needs
+      // the raw fragment Supplement.js produced and a stored digest no longer
+      // carries one — only the sampled, capped view that came out of it. The
+      // popout's own copy says so before this ever runs.
+      //
+      // Read before the reassignment below, not after: state.signals is about
+      // to be replaced wholesale by the fresh Instagram read, and a fresh
+      // export never carries a .supplements property of its own. Reading
+      // afterwards would find it always undefined, silently dropping any
+      // Google/Facebook data from this same session the moment Instagram is
+      // replaced — exactly the bug this ordering exists to avoid.
+      //
+      // Re-applied on every pass of the loop rather than once: a reader who
+      // goes Back and returns keeps whatever they had loaded (pendingDataSourceReads
+      // re-seeds the popout's ticks, and a replaced Instagram is already in
+      // state.signals), so a second pass is idempotent rather than additive.
+      // A reader whose card came from chats alone, adding Instagram in the
+      // same visit: their chats (still in memory, state.chats) ride along as
+      // Instagram's own would. After a reload they come from the stored
+      // digest instead (withStoredChats, below).
+      const priorSupplements = (state.signals && state.signals.supplements) ||
+        (state.chats ? { whatsapp: state.chats } : undefined);
+      if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+      repairOwnName().catch(() => {});
+      keepChatsCurrent(collected);
+
+      if (state.signals) {
+        state.signals.supplements = Object.assign({}, priorSupplements,
+          loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp')));
+      }
+
+      const outcome = await rerunWithAdditionalData(loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp')),
+        typeof collected.instagram === 'object' ? priorSupplements || {} : null);
+      // Anything other than Back is terminal: the run happened, the payment
+      // was declined, the reader pressed Escape, or something failed and has
+      // already written its own message to #profile-alert.
+      if (outcome !== REVIEW_BACK) return;
+    }
+  }
+
+  // `freshInstagram` is set — to the supplements the replaced export had —
+  // only when an Instagram export was loaded again on the way here.
+  async function rerunWithAdditionalData(extraSupplements, freshInstagram) {
+    if (!(await readersReady())) return;
+    // Once premium is unlocked, "Add / change data & re-run" stops being the
+    // US$2 free-only re-run: the four paid sections are sitting on evidence
+    // this new data is about to make stale, so the US$5 unlock price now
+    // buys a regeneration of everything together — see the branch below.
+    const alreadyUnlocked = Object.keys(paidAnalysis()).length > 0;
+    // Past the free card the same holds before an unlock too: a new card is
+    // never sold alone, only with its report (late October 2026), so a run
+    // that has to be paid for is this US$5 one.
+    const bundled = alreadyUnlocked || mustPayForAnalysis();
+
+    // Present only in the same session as the upload — either the original
+    // one, or a fresh Instagram export just read by askDataSources above.
+    // With it the digest is rebuilt from the archive; without it, the stored
+    // digest is reviewed as a copy, merged with whatever Google or Facebook
+    // data this call was handed.
+    //
+    // The two used to differ in more than that: a rebuild carried photographs
+    // and a merge could not, which is why the review had a row explaining
+    // that photos "cannot be included when adding data to a saved report".
+    // Nothing sends photographs now, so the two paths produce the same kind
+    // of digest and that row is gone with them.
+    const signals = state.signals;
+    let digest;
+
+    if (signals) {
+      digest = withStoredChats(Digest.build(signals, { includeMessages: true }), signals);
+    } else if (state.digest) {
+      digest = JSON.parse(JSON.stringify(state.digest));
+      if (extraSupplements) digest = Digest.addSupplements(digest, extraSupplements, { ownHandle: ownHandle(), ownName: ownDisplayName() });
+    } else {
+      // No archive in memory and no stored digest to merge into — there is
+      // nothing to send. Reached when the digest went missing on its own
+      // while the report survived (the sources list says so), and
+      // the reader pressed Continue without loading Instagram again.
+      //
+      // This used to fall into the branch above and dereference
+      // `null.coverage`, which threw where nothing catches: the popout shut,
+      // no review opened, no message appeared, and the button read as simply
+      // broken. Saying what is needed is the whole fix — askDataSources
+      // already treats Instagram as replaceable, so the reader's next attempt
+      // has somewhere to go.
+      // A read Muse wrote has no digest here: the chats (and Google or
+      // Facebook beside them) are the deeper read's evidence, as a card read
+      // from chats alone is (Digest.buildFromSupplements). Instagram itself
+      // Muse has already read.
+      if (state.profile && state.profile.source === 'muse' && extraSupplements && extraSupplements.whatsapp) {
+        digest = Digest.buildFromSupplements(extraSupplements);
+      } else {
+        flash('#profile-alert', state.profile && state.profile.source === 'muse' ? TEXT.museAddNeedsChats : TEXT.rerunNeedsInstagram);
         return;
       }
     }
-    if (store.profile) { renderDashboard(); show('dashboard'); }
-    else show('welcome');
+
+    // Once premium is unlocked the run this pays for writes the full report
+    // too, so what is reviewed and sent is the premium read: the card's own
+    // digest with the sources added here on top (premiumDigestFrom), or the
+    // standard digest of an Instagram export loaded again with them. The
+    // standard digest beside it takes the same decisions.
+    let premium = null;
+    if (bundled) {
+      const adding = Object.values(extraSupplements || {}).some(Boolean);
+      let base = state.digest || digest;
+      if (freshInstagram && signals) {
+        base = adding ? withStoredChats(Digest.build(Object.assign({}, signals, { supplements: Object.assign({}, freshInstagram) }), { includeMessages: true }), signals) : digest;
+      }
+      premium = premiumDigestFrom(base, extraSupplements, signals);
+      if (!premium || !premium.__deep) premium = null;
+    }
+
+    // A re-run is held to the same floor, before any payment.
+    if (tooThin(digest)) return (await sayTooThin(digest)) ? REVIEW_BACK : undefined;
+
+    let decision;
+    try {
+      decision = await askReview(premium || digest,
+        { paymentDue: bundled, deep: Boolean(premium) });
+    } catch (error) {
+      // Stays on the report rather than calling showUploadError(): a failed
+      // attempt to re-run must never read as having lost the report.
+      flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
+      return;
+    }
+
+    // Back and Escape mean different things, and did not used to. Back steps
+    // one dialog upstream — addDataAndRerun's loop reopens "Add or change
+    // your data" on this return value, keeping everything already loaded —
+    // while Escape still abandons the whole attempt and leaves the report on
+    // screen untouched. Collapsing the two sent a reader who only wanted to
+    // add another source back to the report with their work discarded.
+    if (decision === REVIEW_BACK) return REVIEW_BACK;
+    if (!decision) return;
+
+    if (bundled) {
+      // One US$5 charge regenerates everything together — the free report
+      // and all four premium sections — against this reviewed digest.
+      // Reuses runPremiumAnalysis's own bundled-refresh mechanism (built for
+      // adding data on the way to a first unlock) via pendingPremiumDigest,
+      // rather than a second copy of it. runAnalysis is deliberately never
+      // called on this branch: it replaces state.profile wholesale, which is
+      // what would wipe the premiumAnalysis this same charge is about to
+      // write — see the comment that used to sit where this branch is now.
+      applyReviewDecision(digest, decision);
+      if (premium) {
+        applyReviewDecision(premium, decision);
+        premium.__standard = digest;
+        premium.__fresh = true;
+      }
+      // Kept until the charge has bought something: a reader who cancels the
+      // payment sheet and comes back finds Google and Facebook still loaded.
+      // Cleared in runPremiumAnalysis once the run succeeds.
+      // Back from the payment sheet reviews the same data again, and Back
+      // there goes on to the data popout, as everywhere else.
+      await openPremiumDialog(null, 'rerunAll', premium || digest, {
+        back: async () => {
+          if ((await rerunWithAdditionalData(extraSupplements, freshInstagram)) === REVIEW_BACK) addDataAndRerun();
+        },
+      });
+      return;
+    }
+
+    // Money last, in the same place the first upload asks: after the review.
+    // Declining costs nothing — the report and digest the reader arrived with
+    // are untouched.
+    const auth = await authoriseAnalysis();
+    // Back from the payment sheet reviews the same data again (27 October
+    // 2026: it ran on, unpaid, into an error).
+    if (auth === PAY_BACK) return rerunWithAdditionalData(extraSupplements, freshInstagram);
+    if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
+
+    applyReviewDecision(digest, decision);
+
+    state.digest = digest;
+    writeDigest(digest);
+    // Whatever was pending is now either committed into digest above or
+    // superseded by it — see pendingDataSourceReads' own declaration.
+    pendingDataSourceReads = {};
+    // Only reachable here when premium has nothing unlocked yet — see
+    // alreadyUnlocked above — so runAnalysis's wholesale replacement of
+    // state.profile has no premiumAnalysis to lose. The one case still worth
+    // naming: a receipt paid for but never fetched (hasUnfetchedUnlock()).
+    // That receipt in psycheai_unlock is untouched by this call, so the paid
+    // cards still offer "Get the sections you paid for" afterwards, now
+    // against this rerun's digest, rather than losing the payment.
+    await runAnalysis(digest, auth);
   }
 
-  boot();
+  // The waiting screen speaks as the product, not as whichever model the
+  // server happens to be configured with. The provenance line at the foot of
+  // the finished report still names the actual model that wrote it.
+  function modelName() {
+    return 'PsycheAI';
+  }
+
+  async function runAnalysis(digest, auth) {
+    if (!(await readersReady())) return;
+    // The same digest the unlock will send, so the card and the full premium
+    // report read identical evidence. The server bounds it again either way.
+    const sent = Digest.forModel(digest);
+    $('#working-title').textContent = modelName() + ' is reading your profile';
+    $('#working-note').textContent =
+      'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
+      'analysis. The personality analysis usually takes 2–4 minutes to complete. Please be patient.';
+    startElapsed('Analysing');
+    show('working');
+
+    // This call runs for minutes, and a reader reaching for the back button —
+    // on a phone, the most natural gesture for "get me off this screen" —
+    // would otherwise navigate away with nothing pushed here to stop it,
+    // aborting the fetch and losing the analysis with no warning at all. The
+    // same guard runPremiumAnalysis already carries for the same reason.
+    guardUnload(true);
+    // Before the call, for the same reason rememberUnlock is: this exists to
+    // survive the tab dying *during* the call. Only for a paid run — a free
+    // one costs nothing to repeat and needs no record that it was owed.
+    if (auth) rememberPending('analysis', auth);
+    // Held before the call rather than in the catch, and holding the digest
+    // object itself rather than a copy, so that a retry sends the same bytes
+    // the server already has an answer to.
+    lastAttempt = { digest, auth };
+    // The bundle's report is written from this digest: kept as its own
+    // evidence once it lands (keepReportDigest), as an unlock's is.
+    // A code kept from before (a pending card-only promo run) goes the same
+    // way: the server no longer writes a card alone for a code.
+    const bundle = Boolean(auth && (auth.bundle || (auth.promoCode && !auth.paymentIntentId)));
+    // A free run asks for the first read; the server decides whether that is
+    // the card alone or the card with its report (firstRun). Which one came
+    // back is read off the result: a report carries the card as `freeCard`.
+    const first = !auth && firstRunMerged();
+    if (first) $('#working-note').textContent = TEXT.workingFirstFull;
+    if (bundle || first) store.write(KEYS.reportDigestNext, sent);
+    try {
+      const body = await withAttribution(bundle ? bundledAuth(auth) : auth);
+      if (first) body.product = 'first';
+      const result = await LLM.analyseProfile(sent, body,
+        { onJob: key => { rememberJob(key, 'analysis', auth); openGuessGame(key, auth); } });
+      if (bundle || withCard(result)) await adoptBundle(result);
+      else {
+        if (first) store.remove(KEYS.reportDigestNext);
+        await adoptProfile(result);
+      }
+    } catch (error) {
+      // Terminal: whatever the job was, it is not coming. Cleared so a later
+      // visit does not sit polling for something the server has already given
+      // up on — the reader is being offered a retry instead, which is a better
+      // answer than a spinner.
+      clearJob();
+      // The server knows this Instagram account has had its free card (a new
+      // device, or after Delete everything): the card is offered only with
+      // its report, US$5 for both, over the same digest.
+      if (error && error.freeUsed && !auth) {
+        if (runCount() < freeAnalyses) store.write(RUNS_KEY, freeAnalyses);
+        stopElapsed();
+        guardUnload(false);
+        analysisNote = digestHasInstagram(digest) ? TEXT.freeUsedBlurb : TEXT.freeUsedChatsBlurb;
+        // Back from the payment sheet steps upstream, as everywhere else (27
+        // October 2026: it fell to the retry offer, with no way back to the
+        // review or the data): the review again, then the sheet; Back at the
+        // review opens Add your data with everything still loaded.
+        for (;;) {
+          const paid = await authoriseAnalysis();
+          if (paid && paid !== PAY_BACK) { analysisNote = ''; return runAnalysis(digest, paid); }
+          if (paid !== PAY_BACK) break;
+          show('welcome');
+          let again;
+          try { again = await askReview(digest, { paymentDue: true }); } catch (e) { again = null; }
+          if (again === REVIEW_BACK) { analysisNote = ''; return startFromSources(); }
+          if (!again) { analysisNote = ''; return; }
+          applyReviewDecision(digest, again);
+          state.digest = digest;
+          writeDigest(digest);
+        }
+        analysisNote = '';
+        offerRetry(error.message);
+        return;
+      }
+      // The server could not tell whose this export is (no username and no
+      // dates in it), so it makes no free read from it (server.js).
+      if (error && error.noAccount && !auth) {
+        offerRetry(TEXT.freeNoAccount);
+        return;
+      }
+      offerRetry((error && error.message) || 'The analysis failed.');
+    } finally {
+      stopElapsed();
+      guardUnload(false);
+    }
+  }
+  // Said on the US$5 sheet when it opens because the account's free card is spent.
+  let analysisNote = '';
+  /** A result that carries its card beside a report: a bundle, or a first free read. */
+  const withCard = result => Boolean(result && result.data && result.data.freeCard);
+
+  /**
+   * A new card and its Psyche Report, bought together (authoriseAnalysis).
+   * The server wrote the card first and the report anchored to it, and sends
+   * the card back beside the report as `freeCard` (cardThenFull in
+   * server.js): the card is taken as a fresh card would be, then the report
+   * laid under it as an unlock's is. A report with no `freeCard` is the card's
+   * too.
+   */
+  async function adoptBundle(result, savedName) {
+    const card = (result.data && result.data.freeCard) || result.data;
+    await adoptProfile(Object.assign({}, result, { data: card }), savedName);
+    await adoptFullReport(result, false, savedName);
+    keepReportDigest();
+    // Every read that writes a card lands on My Psyche, at the card (October
+    // 2026): a first free read and a card bought with its report alike. Only
+    // an unlock of a card already held lands on the report.
+    go('profile');
+    openPaidSections();
+    refreshAskCredits().catch(() => {});
+  }
+
+  /**
+   * Take delivery of a finished report, from wherever it arrived.
+   *
+   * Extracted from runAnalysis because there are two ways in now: the call
+   * that started the work, and a page that rejoined it after the tab that
+   * started it was closed. Both have to store, count and render identically —
+   * two copies of this would be two chances for a resumed report to be worth
+   * slightly less than a waited-for one.
+   */
+  async function adoptProfile(result, savedName, options) {
+    // In hand. Nothing is owed any more, so the offers to collect it go away
+    // before anything else can fail below and leave them standing.
+    clearPending();
+    clearJob();
+    // The name on the shareable card, put back where the redaction took it.
+    //
+    // Most accounts have a display name, which is what `profile.name` carries
+    // and what the model names the card after. An account without one falls
+    // back to its handle — and the handle is now a placeholder, so the model
+    // has nothing to work from and calls them "user". Stitching the real one
+    // in here is the fix, and it is a better arrangement than sending it: the
+    // name reaches the QR code the reader chooses to share, and never reaches
+    // the model at all.
+    //
+    // Only where the model actually returned the placeholder, so a real name
+    // it was given is never overwritten. The name comes from the archive in
+    // memory or, on a page that rejoined the job after the first was closed,
+    // from the job record written when it started (see ownNameFrom).
+    const realName = ownNameFrom(savedName);
+    if (realName) result = Object.assign({}, result, { data: withOwnName(result.data, realName) });
+    const freeFields = cardFieldsFrom(result.data.card, result.data);
+    const payload = await Card.encodeCard(freeFields);
+    state.profile = {
+      report: result.data,
+      card: Card.shape(freeFields),
+      payload,
+      model: result.model,
+      createdAt: new Date().toISOString(),
+    };
+    // Counted only once the report is really in hand, so a provider outage
+    // never spends somebody's free run. Kept outside KEYS on purpose — see
+    // RUNS_KEY — so "Delete everything" cannot roll it back to zero. A read
+    // Muse wrote is not a run here: it cost this site nothing, and the
+    // reader's free upload read stays theirs (adoptMuseRead).
+    if (!(options && options.notARun)) recordRun();
+    if (!store.write(KEYS.profile, state.profile)) {
+      flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
+    }
+
+    takeGuessOutcome(result.guess);
+    refreshGiftBanner();
+    // A friend's link waiting is not run here: the reader sees their own
+    // card first, and the sync is a tap away on it (refreshSyncInvite).
+    renderProfile();
+    show('profile');
+    sayGuessOutcome();
+  }
+
+  /**
+   * Rejoin an analysis this page did not start.
+   *
+   * The whole point of the job record. A reader who runs an analysis and then
+   * closes everything is not losing anything any more — the work carries on
+   * where it always did, on the server, and the next page to open goes back to
+   * the waiting screen and picks it up. Thirty seconds later or two hours
+   * later makes no difference to it.
+   *
+   * Nothing is offered and nothing is asked: this is not a purchase awaiting
+   * collection, it is a report already being written, so the honest thing to
+   * show is the same waiting screen they left.
+   */
+  // One at a time. resumeRunningJob() is reached from boot and from every
+  // return to visibility, and a phone that is put down and picked up three
+  // times would otherwise have three loops polling the same job and three
+  // reports racing to be adopted.
+  let resuming = false;
+
+  /**
+   * The report just landed: the digest written for it becomes the latest
+   * report's digest. A browser that runs out of room keeps the older one
+   * rather than failing the report.
+   */
+  function keepReportDigest() {
+    const next = store.read(KEYS.reportDigestNext, null);
+    if (!next || typeof next !== 'object') return;
+    if (store.write(KEYS.reportDigest, next)) store.remove(KEYS.reportDigestNext);
+  }
+
+  async function resumeRunningJob() {
+    const job = runningJob();
+    if (!job || resuming) return false;
+    // Already being waited on by a call in this tab: nothing to rejoin.
+    if (job.key && job.key === liveJobKey) return false;
+    // A comparison needs the other person's card to render at all, and a paid
+    // section needs a profile to attach to. Neither survives without them, so
+    // a record missing what its kind requires is dropped rather than resumed
+    // into a half-rendered screen.
+    if (job.kind === 'compatibility' && !(job.other && state.profile)) { clearJob(); return false; }
+    if ((job.kind === 'premium' || job.kind === 'full' || job.kind === 'explain') && !state.profile) {
+      clearJob();
+      return false;
+    }
+
+    resuming = true;
+    const comparing = job.kind === 'compatibility';
+    $('#working-title').textContent = comparing
+      ? modelName() + ' is comparing you'
+      : modelName() + ' is reading your profile';
+    $('#working-note').textContent = TEXT.resumingJob;
+    // Counting from when the job began, not from the return to it.
+    startElapsed(comparing ? 'Assessing ' + state.profile.card.name + ' and ' + job.other.name
+      : 'Analysing', job.at);
+    show('working');
+    // So the retry offer has something to repeat if this job turns out to be
+    // gone. Only for the free report: the other two have offers of their own
+    // — an unlock receipt and a pending-purchase record — which know how to
+    // ask for the right thing, and a "Try again" that re-ran the free report
+    // in place of paid sections would be worse than no button.
+    if (job.kind === 'analysis' && state.digest) {
+      lastAttempt = { digest: state.digest, auth: job.auth || null };
+    }
+    // A free first read picked up after a reload: its guess still open, or
+    // the one locked in before.
+    if (job.kind === 'analysis') openGuessGame(job.key, job.auth);
+    try {
+      const result = await LLM.resumeJob(job.key);
+      clearJob();
+      if (job.kind === 'premium') adoptPremium(result);
+      else if (job.kind === 'full' || job.kind === 'explain') {
+        // The unlock's one call: the written report and the four premium
+        // sections, laid under the card the reader has. ('explain' is the
+        // record a page from the previous deploy wrote for the same thing.)
+        await adoptFullReport(result, Boolean(job.replaceCard), job.ownName);
+        keepReportDigest();
+        // An unlock picked up after a reload lands where a live one does: the report.
+        if (fullReportPage()) go('full');
+        else { renderProfile(); show('profile'); }
+        openPaidSections();
+      } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
+      else if ((job.auth && job.auth.bundle) || withCard(result)) await adoptBundle(result, job.ownName);
+      else await adoptProfile(result, job.ownName);
+      return true;
+    } catch (error) {
+      clearJob();
+      // Only the free report has a retry to offer. For the other two the
+      // honest move is to put the reader back where they were and let the
+      // offer that already exists for an uncollected purchase do its job —
+      // it is the one that knows a payment is involved.
+      if (job.kind === 'analysis') {
+        offerRetry((error && error.message) || 'The analysis failed.');
+      } else if (state.profile) {
+        renderProfile();
+        show('profile');
+        flash('#profile-alert', (error && error.message) || 'That did not come through.');
+        offerPendingWork();
+      } else {
+        offerRetry((error && error.message) || 'The analysis failed.');
+      }
+      return false;
+    } finally {
+      resuming = false;
+      stopElapsed();
+    }
+  }
+
+  /**
+   * Put the failure and its remedy in the same place, on top of wherever the
+   * reader already is.
+   *
+   * The welcome page's own error line is still written underneath, so closing
+   * this leaves a page that explains itself rather than one that looks as
+   * though nothing happened. But the dialog is what a reader on a phone
+   * actually meets: the alternative was an error somewhere down a long page,
+   * found by scrolling, acted on by scrolling back.
+   */
+  function offerRetry(message) {
+    showUploadError(message, { retry: true });
+    const dialog = $('#analysis-error-dialog');
+    if (!dialog || !lastAttempt) return;
+    $('#analysis-error-message').textContent = message;
+    if (typeof dialog.showModal === 'function' && !dialog.open) dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
+  function closeRetryDialog() {
+    const dialog = $('#analysis-error-dialog');
+    if (!dialog) return;
+    if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+    else dialog.removeAttribute('open');
+  }
+
+  // Both buttons and the retry on the page below run the same two lines, so
+  // there is one definition of what trying again means.
+  async function retryLastAttempt() {
+    if (!lastAttempt) return;
+    closeRetryDialog();
+    flash('#upload-error', '');
+    $('#upload-retry').hidden = true;
+    await runAnalysis(lastAttempt.digest, lastAttempt.auth);
+  }
+
+  $('#analysis-error-retry').addEventListener('click', retryLastAttempt);
+  $('#analysis-error-close').addEventListener('click', closeRetryDialog);
+
+  // One press, straight back into the same call. Deliberately not routed
+  // through startFromSources: that reopens the popout and the review to
+  // rebuild a digest this already holds, which is three steps for a reader who
+  // asked for none of them and a different cache key at the end of it.
+  $('#upload-retry').addEventListener('click', retryLastAttempt);
+
+  // ══════════════ 2. profile report ══════════════
+
+
+
+  // The long form of the reader's one link, for a server that cannot keep
+  // short ones: the card after the #, and the invite code with it, so it
+  // does everything the short link does.
+  function profileUrl(payload) {
+    return location.origin + location.pathname + (referralCode ? '?ref=' + referralCode : '') + '#p=' + payload;
+  }
+
+  // ---------- the short personal link ----------
+  //
+  // psycheai.io/c/<id>#<key>, one per reader, doing what the long compatibility
+  // link and the ?ref= invite link did between them (lib/links.js). The card
+  // is locked here (AES-GCM) before it is saved; the key is the part after
+  // the #, which browsers never send to a server, so what PsycheAI keeps it
+  // cannot read. Saved once per card, in the background after the report
+  // renders, so a share button can hand it over at once; until then — or on
+  // a server without a store that survives a deploy — the long link is used.
+  const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const fromB64url = text => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((text.length + 3) % 4)), c => c.charCodeAt(0));
+  async function linkCipherKey(material) {
+    const raw = await crypto.subtle.digest('SHA-256', fromB64url(material));
+    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  }
+  async function lockCard(payload, material) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv },
+      await linkCipherKey(material), new TextEncoder().encode(payload)));
+    const out = new Uint8Array(iv.length + sealed.length);
+    out.set(iv);
+    out.set(sealed, iv.length);
+    return b64url(out);
+  }
+  async function unlockCard(blob, material) {
+    const bytes = fromB64url(blob);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12) },
+      await linkCipherKey(material), bytes.slice(12));
+    return new TextDecoder().decode(plain);
+  }
+
+  // What the card looks like, beside what it says: the character, the two
+  // lines on why, and how firmly each type letter was picked. The
+  // compatibility read never needs these, so they are not in the card payload
+  // (docs/card.js) and the long link is no longer for them. They travel only
+  // inside the locked short link, so a friend who opens it sees the card the
+  // way its owner does — the same card the owner posts as an image.
+  function cardFace(report) {
+    const r = report || {};
+    const essence = r.essence || {};
+    return {
+      c: String(essenceName(essence)).slice(0, 40),
+      fr: String(essence.franchise || '').slice(0, 30),
+      i: String(essence.icon || '').slice(0, 8),
+      w: splitSentences(cardBlurb(r)).slice(0, 2).join(' ').slice(0, 420),
+      s: ((r.mbti || {}).letters || []).slice(0, 4).map(l => String((l && l.strength) || '').slice(0, 10)),
+      // The patterns' names in full; the payload cuts them for the comparison.
+      p: signaturePatterns(r).map(p => String(p.name).slice(0, 80)),
+      // The card's lists exactly as its owner sees them, so a friend's view
+      // has no gaps where the payload is shorter or was written without them:
+      // motivators, values & beliefs, interests, and how they receive and
+      // show care.
+      m: cardMotivators(r).slice(0, 3),
+      v: faceTitles(r.values, 3).concat(faceTitles(r.beliefs, 1)).slice(0, 4),
+      n: faceTitles(r.interests, 3),
+      lr: faceLove(r, 'receiving'),
+      lg: faceLove(r, 'giving'),
+    };
+  }
+  const faceTitles = (rows, limit) => titlesOf(rows, limit).map(t => String(t).slice(0, 40));
+  function faceLove(report, side) {
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    return (love[side] || []).slice(0, 2).filter(l => l && l.language).map(l => String(l.language).slice(0, 30));
+  }
+  /**
+   * A card face from someone else's link or sync, held to what cardFace
+   * writes: these fields, as strings and short lists of strings, each cut to
+   * its length. Anything else is dropped, so nothing on it can break a
+   * render or carry more than a face does.
+   */
+  const FACE_FIELDS = { c: 40, fr: 30, i: 8, w: 420 };
+  const FACE_LISTS = { s: [4, 10], p: [3, 80], m: [3, 40], v: [4, 40], n: [3, 40], lr: [2, 30], lg: [2, 30] };
+  function shapeFace(face) {
+    if (!face || typeof face !== 'object' || Array.isArray(face)) return null;
+    const out = {};
+    for (const [key, max] of Object.entries(FACE_FIELDS)) {
+      if (typeof face[key] === 'string') out[key] = face[key].slice(0, max);
+    }
+    for (const [key, [count, max]] of Object.entries(FACE_LISTS)) {
+      if (Array.isArray(face[key])) out[key] = face[key].filter(v => typeof v === 'string').slice(0, count).map(v => v.slice(0, max));
+    }
+    return out;
+  }
+  /** A short link's contents: the card payload, and its face where the link carries one. */
+  function openedCard(text) {
+    const raw = String(text || '');
+    if (raw.charAt(0) !== '{') return { payload: raw, face: null };
+    try {
+      const sealed = JSON.parse(raw);
+      return { payload: String(sealed.p || ''), face: shapeFace(sealed.f) };
+    } catch (error) {
+      return { payload: '', face: null };
+    }
+  }
+
+  // The reader's short link once it is saved for the card on screen.
+  let shortLink = '';
+  let publishing = null;
+  /**
+   * The card's fields for its link, with what the card itself shows filled
+   * in where the call that wrote them left a gap: the motivators (a paid
+   * re-run's card can come without them) and how they show care.
+   */
+  function cardFieldsFrom(fields, report) { return Shape.cardFieldsFrom(fields, report, Copy); }
+  /** A card saved with those gaps is mended in place before its link is published. */
+  async function mendCardPayload() {
+    const profile = state.profile;
+    if (!profile || !profile.card || !profile.report) return;
+    const mended = cardFieldsFrom(profile.card, profile.report);
+    const before = Card.shape(profile.card);
+    const after = Card.shape(mended);
+    if (JSON.stringify(before) === JSON.stringify(after)) return;
+    profile.card = after;
+    profile.payload = await Card.encodeCard(mended);
+    store.write(KEYS.profile, profile);
+  }
+
+  async function publishShortLink() {
+    if (!state.profile || !state.profile.payload || !(state.server && state.server.shortLinks)) return '';
+    if (publishing) return publishing;
+    publishing = (async () => {
+      try {
+        await mendCardPayload();
+        const mine = await ensureReferral();
+        if (!mine) return '';
+        let link = store.read(KEYS.link, null) || {};
+        if (!/^[A-Za-z0-9_-]{16}$/.test(link.key || '')) {
+          link = { key: b64url(crypto.getRandomValues(new Uint8Array(12))) };
+        }
+        const sealed = JSON.stringify({ p: state.profile.payload, f: cardFace(state.profile.report) });
+        const card = (await sha256Hex(sealed)).slice(0, 16);
+        if (link.id && link.card === card && link.secret === mine.code) {
+          shortLink = location.origin + '/c/' + link.id + '#' + link.key;
+          return shortLink;
+        }
+        let blob = await lockCard(sealed, link.key);
+        // Past what the server keeps (lib/links.js), the card goes without its face.
+        if (blob.length > 4096) blob = await lockCard(state.profile.payload, link.key);
+        const answer = await LLM.postWithTicket('api/link/save', { secret: mine.secret, blob });
+        if (!answer || !/^[A-Za-z0-9_-]{10}$/.test(answer.id || '')) return '';
+        store.write(KEYS.link, { key: link.key, id: answer.id, card, secret: mine.code });
+        shortLink = location.origin + '/c/' + answer.id + '#' + link.key;
+        return shortLink;
+      } catch (error) {
+        return '';
+      } finally {
+        publishing = null;
+      }
+    })();
+    return publishing;
+  }
+  /** The link a reader shares: the short one when it is ready, the long one until then. */
+  function myLinkUrl() {
+    if (shortLink) return shortLink;
+    return state.profile && state.profile.payload ? profileUrl(state.profile.payload) : inviteUrl();
+  }
+  /** The one share message, everywhere: "I got <character> on my Psyche Card…" and the reader's link. */
+  function shareMessage() {
+    const report = state.profile && state.profile.report;
+    return TEXT.cardShareText(report && report.essence && report.essence.character, myLinkUrl());
+  }
+  /** The hub's Psyche Sync Share: the same message, asking them to sync with you. */
+  function syncShareMessage() {
+    const report = state.profile && state.profile.report;
+    return TEXT.syncInviteText(report && report.essence && report.essence.character, myLinkUrl());
+  }
+
+  // ---------- section bodies ----------
+
+  // ---------- the structured layout ----------
+  //
+  // Five parts with one thread through them: the only report layout since the
+  // classic one was retired (18 Oct 2026).
+  //
+  // Every section here follows one template: what it measures (a fixed
+  // definition line, shown while the section is open), what it found (a
+  // one-line result, shown even when it is shut, so the closed report reads
+  // as a summary), the read, the chart, and the patterns it connects to. Each
+  // pattern has its own colour, carried by every chip, card and plan item
+  // that comes from it, so the thread is visible as well as written. Reports
+  // written before the structured fields existed still render: each block is
+  // drawn only when its field is there.
+
+  /** The patterns worth drawing: known ids, named, one each, in id order. */
+  function signaturePatterns(report) {
+    const seen = new Set();
+    return (Array.isArray(report && report.patterns) ? report.patterns : [])
+      .filter(p => p && /^p[1-3]$/.test(p.id) && String(p.name || '').trim() && !seen.has(p.id) && seen.add(p.id))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  function patternNumber(id) {
+    return String(id || '').replace(/^p/, '');
+  }
+
+  /** The class that gives an element its pattern's colour, or none. */
+  function patternClass(id) {
+    return /^p[1-3]$/.test(String(id || '')) ? ' pat-' + id : '';
+  }
+
+  function sectionNameChips(keys) {
+    const names = Copy.STRUCTURED.sectionNames;
+    // Values and beliefs are one section on the page, so they are one chip.
+    const list = (keys || []).filter(key => names[key]).map(key => names[key])
+      .filter((name, i, all) => all.indexOf(name) === i);
+    if (!list.length) return '';
+    return list.map(name => '<span class="section-chip">' + esc(name) + '</span>').join('');
+  }
+
+  // No appendix any more: Evidence and method is on My Psyche (the sample
+  // keeps it at the end of Part 05), and so is the roast.
+  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'career', 'together'];
+  // The appendix after them, 06, on the reader's own My Report: the roast and
+  // the questions asked of PsycheAI. Not one of the report's parts (the
+  // header's count and the sample leave it out), but in the nav beside them.
+  const partNumeral = key => String(key === 'appendix' ? PART_ORDER.length : Math.max(0, PART_ORDER.indexOf(key))).padStart(2, '0');
+  const hasAppendix = (report, ownPage) => Boolean(ownPage && report &&
+    ((report.bonus && report.bonus.harsh) || askReady()));
+  // Below this width a full report opens with its parts shut (renderProfile).
+  const PHONE_REPORT = '(max-width: 759px)';
+
+  /**
+   * One part of the structured report as a single box that opens and shuts:
+   * its numbered heading is the toggle, and every section inside stays open.
+   * Numeral and title only: the sections inside say what they are.
+   */
+  function partCardHtml(key, inner, askable) {
+    const part = Copy.STRUCTURED.parts[key];
+    // On the reader's own My Report: a way to ask about this part, the
+    // question started for them (openAsk).
+    const ask = askable ? '<p class="ask-part"><button type="button" class="ask-part-link" data-ask="' + esc(part.title) + '">' +
+      '<span class="ask-mark" aria-hidden="true"></span>' + esc(Copy.STRUCTURED.ask.partLink) + ' <span aria-hidden="true">→</span></button></p>' : '';
+    const numeral = partNumeral(key);
+    return '<section class="card section-card part-card" data-part-card="' + esc(key) + '" data-start-open>' +
+      '<div class="card-head card-head-toggle part-card-head"><div class="report-part" data-part="' + esc(key) + '">' +
+      '<span class="part-num" aria-hidden="true">' + numeral + '</span>' +
+      '<h2 class="part-title"><button class="card-toggle" type="button" aria-expanded="true">' +
+      '<span class="card-toggle-text">' + esc(part.title) + '</span><span class="card-chevron" aria-hidden="true"></span>' +
+      '</button></h2></div></div>' +
+      '<div class="part-body">' + inner + ask + '</div></section>';
+  }
+
+  /**
+   * The row of parts under the summary card, each named as its heading is,
+   * and sticky so a reader can move between them from anywhere in the
+   * report. markStructured lights the one they are in.
+   */
+  /**
+   * My Report's header: the eyebrow pill (parts and the PDF's pages, filled
+   * in once counted), the title, a line on what the report is, and the
+   * reader's character's emblem where My Syncs has its pair.
+   */
+  function reportHeroHtml(report) {
+    const R = Copy.STRUCTURED.reportPage;
+    const name = essenceName(report.essence || {});
+    const emblem = name ? Copy.emblemSvg(name, 'report-hero-emblem') : '';
+    return '<header class="scan-hero report-hero">' +
+      (emblem ? '<span class="report-hero-mark" aria-hidden="true">' + emblem + '</span>' : '') +
+      // The parts and pages, then how well the data supports it, as text: the
+      // ring that opens Signal strength is over the page's actions.
+      '<div class="report-hero-meta"><p class="scan-eyebrow" id="report-hero-pill">' + heroPillHtml(report, reportPdfPages()) + '</p></div>' +
+      '<h2 class="report-hero-title">' + titleMark('report', 'report-title-grad') + esc(R.pageTitle) + '</h2>' +
+      '<p class="scan-lede">' + esc(R.lede) + '</p></header>';
+  }
+  // My Report's actions: Add data in Save a backup's place (the hub keeps Save Backup).
+  document.getElementById('report-rerun').addEventListener('click', () => startRerun());
+  // "6 parts · 16 pages · 84% signal strength": on a phone the signal strength
+  // takes a line of its own (styles.css, .hero-pill-signal).
+  function heroPillHtml(report, pages) {
+    const R = Copy.STRUCTURED.reportPage;
+    const score = heroScore(report);
+    return '<span>' + esc(R.pill(PART_ORDER.length, pages)) + '</span>' + (score === null ? ''
+      : '<span class="hero-pill-signal"><span class="hero-pill-dot"> · </span>' + esc(R.signalRow(score)) + '</span>');
+  }
+  /** The report's signal strength, 0 to 100, or null when it has none. */
+  function heroScore(report) {
+    const conf = report && report.confidence;
+    const score = Math.round(Number(conf && conf.score));
+    return Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : null;
+  }
+  // Signal strength over My Report's actions (October 2026; it was a button in
+  // the header): the hub's ring and the score, opening Signal strength.
+  function refreshReportSignal(on) {
+    const button = $('#report-signal');
+    if (!button) return;
+    const score = on && state.profile ? heroScore(state.profile.report) : null;
+    button.hidden = score === null;
+    if (score === null) return;
+    button.setAttribute('aria-label', Copy.STRUCTURED.hub.signalOf(score));
+    // The score is in the ring, so the words are only the name; the chevron
+    // says the row opens the full read.
+    button.innerHTML = '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
+      '<span class="cta-signal-words">' + esc(Copy.STRUCTURED.hub.methodDialogTitle) + '</span>' +
+      '<svg class="cta-signal-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg>';
+    button.querySelector('.hub-ring').style.setProperty('--p', String(score));
+  }
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-report-signal]') && state.profile) openMethodDialog(state.profile.report);
+  });
+  // The PDF's page count, for the pill: built once per report when the page
+  // is idle, and kept for as long as the report is the same one.
+  let reportPagesFor = '';
+  let reportPages = 0;
+  function reportPdfPages() {
+    const profile = state.profile;
+    const key = profile ? String(profile.createdAt) + '|' + String(profile.premiumAt || '') : '';
+    if (key && key === reportPagesFor) return reportPages;
+    if (key) {
+      reportPagesFor = key;
+      reportPages = 0;
+      const count = () => {
+        try {
+          loadPdf().then(() => buildReportPdf(state.profile).text()).then(text => {
+            if (reportPagesFor !== key) return;
+            reportPages = (text.match(/\/Type \/Page[^s]/g) || []).length;
+            const pill = $('#report-hero-pill');
+            if (pill && reportPages) {
+              pill.innerHTML = heroPillHtml(state.profile.report, reportPages);
+            }
+          }).catch(() => {});
+        } catch (error) { /* the pill keeps the parts alone */ }
+      };
+      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(count, { timeout: 2000 });
+      else setTimeout(count, 300);
+    }
+    return 0;
+  }
+
+  function partNavHtml(ownPage, appendix) {
+    const S = Copy.STRUCTURED;
+    const items = PART_ORDER.concat(appendix ? ['appendix'] : []).map(key => [key, partNumeral(key), S.parts[key].title]);
+    // On a phone it is one thin row under the site's header: the name of the
+    // part being read, then the numerals 00 … 05.
+    return '<nav class="part-nav' + (ownPage ? ' is-report' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
+      '<span class="part-nav-lead" aria-hidden="true">' + esc(items[0][2]) + '</span>' + items.map(([key, num, title]) =>
+      '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
+      (num ? '<span class="part-nav-num">' + num + '</span>' : '') + '<span class="part-nav-label">' + esc(title) + '</span></button>').join('') + '</nav>';
+  }
+
+  /*
+   * Thumbs on a finding (October 2026): 👍 that's me, 👎 not quite, with an
+   * optional line of what is closer, shown where it was written. One row a
+   * pattern and one a section, never one a paragraph. Kept on this device
+   * for the report they were made on (marksNow), in the backup, and handed to
+   * Ask PsycheAI (askReport) so its answers take them as the reader's word.
+   */
+  const MARK_NOTE_MAX = 200;
+  function marksNow() {
+    const kept = store.read(KEYS.marks, null);
+    const stamp = String((state.profile && state.profile.createdAt) || '');
+    return kept && typeof kept === 'object' && kept.stamp === stamp && kept.items && typeof kept.items === 'object' ? kept.items : {};
+  }
+  function writeMark(key, value) {
+    const items = Object.assign({}, marksNow());
+    if (value) items[key] = value; else delete items[key];
+    store.write(KEYS.marks, { stamp: String((state.profile && state.profile.createdAt) || ''), items });
+  }
+  function markInnerHtml(key, editing) {
+    const M = Copy.STRUCTURED.marks;
+    const m = marksNow()[key] || null;
+    const v = m && m.v;
+    const label = v === 'yes' ? M.yes : v === 'no' ? M.no : M.ask;
+    let html = '<div class="mark-bar"><span class="mark-q">' + esc(label) + '</span>' +
+      '<button class="mark-btn' + (v === 'yes' ? ' is-on' : '') + '" type="button" data-mark-v="yes" aria-pressed="' + (v === 'yes') +
+        '" aria-label="' + esc(M.up) + '">👍</button>' +
+      '<button class="mark-btn is-down' + (v === 'no' ? ' is-on' : '') + '" type="button" data-mark-v="no" aria-pressed="' + (v === 'no') +
+        '" aria-label="' + esc(M.down) + '">👎</button></div>';
+    if (v === 'no' && editing) {
+      html += '<form class="mark-why"><input type="text" maxlength="' + MARK_NOTE_MAX + '" autocomplete="off" enterkeyhint="done" placeholder="' +
+        esc(M.placeholder) + '" aria-label="' + esc(M.placeholder) + '" value="' + esc(m.note || '') + '"><button type="submit">' + esc(M.save) + '</button></form>';
+    } else if (v === 'no' && m.note) {
+      html += '<p class="mark-said"><b>' + esc(M.said) + '</b><q>' + esc(m.note) + '</q><button type="button" class="mark-edit">' + esc(M.edit) + '</button></p>';
+    } else if (v === 'no') {
+      html += '<p class="mark-said is-empty"><button type="button" class="mark-edit">' + esc(M.addNote) + '</button></p>';
+    }
+    return html;
+  }
+  function markRowHtml(key, label) {
+    return '<div class="mark-row" data-mark="' + esc(key) + '" data-mark-label="' + esc(String(label || '').slice(0, 120)) + '">' +
+      markInnerHtml(key, false) + '</div>';
+  }
+  function redrawMark(row, editing) {
+    row.innerHTML = markInnerHtml(row.getAttribute('data-mark'), editing);
+    const input = editing && row.querySelector('.mark-why input');
+    if (input) input.focus();
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest && event.target.closest('.mark-row button');
+    if (!button || button.type === 'submit') return;
+    const row = button.closest('.mark-row');
+    const key = row.getAttribute('data-mark');
+    const now = marksNow()[key] || null;
+    if (button.classList.contains('mark-edit')) { redrawMark(row, true); return; }
+    const v = button.getAttribute('data-mark-v');
+    // The same thumb again takes the mark back.
+    if (now && now.v === v) { writeMark(key, null); redrawMark(row, false); return; }
+    writeMark(key, { v, label: row.getAttribute('data-mark-label') || '' });
+    redrawMark(row, v === 'no');
+  });
+  document.addEventListener('submit', event => {
+    const form = event.target.closest && event.target.closest('.mark-why');
+    if (!form) return;
+    event.preventDefault();
+    const row = form.closest('.mark-row');
+    const key = row.getAttribute('data-mark');
+    const now = marksNow()[key];
+    if (!now) return;
+    const note = form.querySelector('input').value.replace(/\s+/g, ' ').trim().slice(0, MARK_NOTE_MAX);
+    writeMark(key, Object.assign({}, now, note ? { note } : { note: undefined }));
+    redrawMark(row, false);
+  });
+  // The marks a paid run carries (withAttribution), set by the review that
+  // showed them and left them switched on; null after any other review.
+  let marksForRun = null;
+  /** The marks, for Ask PsycheAI: what the reader said of each finding. */
+  function marksForAsk() {
+    return Object.values(marksNow()).filter(m => m && (m.v === 'yes' || m.v === 'no')).slice(0, 20)
+      .map(m => Object.assign({ finding: String(m.label || '').slice(0, 120), fits: m.v === 'yes' },
+        m.note ? { note: String(m.note).slice(0, MARK_NOTE_MAX) } : {}));
+  }
+
+  function patternsCardHtml(patterns, mark) {
+    const S = Copy.STRUCTURED;
+    const markRow = mark || (() => '');
+    return '<div class="card section-card patterns-card">' +
+      sectionHead('🧵', esc(S.titles.patterns), esc(S.definitions.patterns), false, '') +
+      '<div class="pattern-list">' + patterns.map(p =>
+        '<div class="pattern' + patternClass(p.id) + '" data-pattern-card="' + esc(p.id) + '">' +
+        '<span class="pattern-badge" aria-hidden="true">' + esc(patternNumber(p.id)) + '</span>' +
+        '<div><h3>' + esc(p.name) + '</h3><p>' + esc(p.line) + '</p>' + evidence(p.evidence) +
+        ((p.showsUpIn || []).length
+          ? '<p class="pattern-where"><span class="connects-label">' + esc(S.showsUpIn) + '</span>' +
+            sectionNameChips(p.showsUpIn) + '</p>' : '') +
+        markRow('pattern:' + p.id, p.name) + '</div></div>').join('') + '</div></div>';
+  }
+
+  /**
+   * A reading in full, with its evidence under it. Nothing behind a "More":
+   * a report with a disclosure in every block read as a page of buttons.
+   */
+  function readingFull(text, evidenceItems) {
+    return (text ? '<p class="trait-reading">' + esc(text) + '</p>' : '') + evidence(evidenceItems);
+  }
+
+  /** One Big Five trait on a spectrum: both poles named, the typical band shaded. */
+  function bipolarBarHtml(trait, item, mark) {
+    const S = Copy.STRUCTURED;
+    const score = Math.min(100, Math.max(0, Math.round(Number(item.score) || 0)));
+    const poles = S.poles[trait] || ['', ''];
+    const band = S.typicalBand;
+    return '<div class="trait-block bipolar reading-row' + (mark ? ' is-' + mark : '') + '">' +
+      '<div class="trait-viz"><div class="bipolar-head"><span class="trait-label">' + esc(TRAIT_LABELS[trait]) +
+      (item.band ? ' · ' + esc(item.band) : '') +
+      (mark ? ' <span class="trait-flag">' + esc(S.flags[mark]) + '</span>' : '') + '</span>' +
+      '<span class="trait-num">' + score + '</span></div>' +
+      '<div class="bipolar-track" role="img" aria-label="' + esc(TRAIT_LABELS[trait] + ': ' + score +
+        ' of 100, between ' + poles[0].toLowerCase() + ' and ' + poles[1].toLowerCase()) + '">' +
+      '<span class="bipolar-band" data-left="' + band[0] + '" data-fill="' + (band[1] - band[0]) + '"></span>' +
+      '<span class="bipolar-mid"></span>' +
+      '<span class="bipolar-marker" data-left="' + score + '"></span></div>' +
+      '<div class="bipolar-poles"><span>' + esc(poles[0]) + '</span><span>' + esc(poles[1]) + '</span></div></div>' +
+      // One line a trait: the score says the rest, and MBTI carries the case.
+      // A report written before the cut keeps only its first sentence.
+      '<div class="trait-text">' + (item.reading ? '<p class="trait-reading">' + esc(Copy.leadSentence(item.reading)[0]) + '</p>' : '') + '</div></div>';
+  }
+
+  /** The highest and lowest of the five, by score. */
+  function bigFiveExtremes(bigFive) {
+    const rows = Object.keys(TRAIT_LABELS).filter(t => bigFive && bigFive[t])
+      .map(t => ({ trait: t, score: Math.round(Number(bigFive[t].score) || 0) }));
+    if (rows.length < 2) return {};
+    const sorted = rows.slice().sort((a, b) => b.score - a.score);
+    return { high: sorted[0], low: sorted[sorted.length - 1] };
+  }
+
+  function bigFiveStructuredHtml(bigFive) {
+    const S = Copy.STRUCTURED;
+    const ends = bigFiveExtremes(bigFive);
+    let html = '<p class="scale-legend"><span class="legend-band" aria-hidden="true"></span>' +
+      esc(S.typicalLabel) + '<span class="legend-marker" aria-hidden="true"></span>' + esc(S.yourScore) + '</p>';
+    for (const trait of Object.keys(TRAIT_LABELS)) {
+      if (!bigFive || !bigFive[trait]) continue;
+      const mark = ends.high && ends.high.trait === trait ? 'high' : ends.low && ends.low.trait === trait ? 'low' : '';
+      html += bipolarBarHtml(trait, bigFive[trait], mark);
+    }
+    return html;
+  }
+
+  /**
+   * MBTI as four sliders, one per axis: the two poles at the ends and a marker
+   * pushed towards the chosen one by how firmly it was chosen, the pole not
+   * chosen faint. The slider sits on the left and the case for the letter on
+   * the right, all of it in view — the same row the Big Five uses.
+   */
+  const AXIS_POLES = { 'E/I': ['E', 'I'], 'N/S': ['N', 'S'], 'T/F': ['T', 'F'], 'J/P': ['J', 'P'] };
+  const STRENGTH_REACH = { slight: 16, moderate: 30, clear: 44 };
+
+  function mbtiSlidersHtml(mbti) {
+    const S = Copy.STRUCTURED;
+    return '<div class="mbti-sliders">' + (mbti.letters || []).map(letter => {
+      const axis = String(letter.axis || '').toUpperCase().replace(/\s/g, '');
+      const pair = AXIS_POLES[axis] || AXIS_POLES[Object.keys(AXIS_POLES).find(k => k.includes(letter.choice))] || ['', ''];
+      const toRight = letter.choice === pair[1];
+      const reach = STRENGTH_REACH[letter.strength] || STRENGTH_REACH.moderate;
+      const position = 50 + (toRight ? reach : -reach);
+      const left = Copy.MBTI_POLES[pair[0]] || { name: pair[0] };
+      const right = Copy.MBTI_POLES[pair[1]] || { name: pair[1] };
+      return '<div class="mbti-slider reading-row">' +
+        '<div class="trait-viz"><div class="slider-ends">' +
+          '<span class="' + (!toRight ? 'is-chosen' : 'is-faint') + '"><b>' + esc(pair[0]) + '</b> ' + esc(left.name) + '</span>' +
+          '<span class="' + (toRight ? 'is-chosen' : 'is-faint') + '">' + esc(right.name) + ' <b>' + esc(pair[1]) + '</b></span>' +
+        '</div>' +
+        '<div class="slider-track" role="img" aria-label="' + esc((toRight ? right.name : left.name) + ', ' + (letter.strength || '')) + '">' +
+          '<span class="slider-mid"></span><span class="slider-marker" data-left="' + position + '">' + esc(letter.choice || '') + '</span>' +
+        '</div>' +
+        (letter.strength ? '<p class="slider-strength"><span class="pill pill-' + esc(letter.strength) + '">' +
+          esc(letter.strength) + '</span></p>' : '') + '</div>' +
+        '<div class="trait-text">' +
+        (letter.why ? '<p class="trait-reading">' + esc(letter.why) + '</p>' : '') +
+        // The behaviours that put the letter here (October 2026), as the
+        // Big Five's evidence once was: the paragraph above weighs them.
+        evidence((letter.evidence || []).map(Copy.shownEvidence)) +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * Schwartz's circle: ten wedges in his order, each as long as its score and
+   * coloured by its higher-order group, so neighbours that rise together and
+   * opposites that trade off are visible at a glance. The bars below it carry
+   * the same numbers for anyone who cannot use the picture.
+   */
+  function motivatorCircleSvg(scores) {
+    const S = Copy.STRUCTURED;
+    const keys = Object.keys(S.motivators);
+    const cx = 170;
+    const cy = 150;
+    const inner = 16;
+    const outer = 108;
+    const pt = (r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    const f = n => Math.round(n * 10) / 10;
+    let rings = '';
+    for (const level of [25, 50, 75, 100]) {
+      rings += '<circle class="rose-ring" cx="' + cx + '" cy="' + cy + '" r="' + f(inner + (outer - inner) * level / 100) + '"/>';
+    }
+    let wedges = '';
+    let labels = '';
+    keys.forEach((key, i) => {
+      const a0 = -Math.PI / 2 + (i * 2 * Math.PI) / keys.length + 0.025;
+      const a1 = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / keys.length - 0.025;
+      const row = scores[key];
+      const value = row ? Math.min(100, Math.max(0, Number(row.score) || 0)) : 0;
+      const r = inner + (outer - inner) * value / 100;
+      const [x0, y0] = pt(r, a0);
+      const [x1, y1] = pt(r, a1);
+      const [i0x, i0y] = pt(inner, a0);
+      const [i1x, i1y] = pt(inner, a1);
+      wedges += '<path class="rose-wedge rose-' + esc(S.motivators[key].group) + '" d="M' + f(i0x) + ' ' + f(i0y) +
+        ' L' + f(x0) + ' ' + f(y0) + ' A' + f(r) + ' ' + f(r) + ' 0 0 1 ' + f(x1) + ' ' + f(y1) +
+        ' L' + f(i1x) + ' ' + f(i1y) + ' A' + inner + ' ' + inner + ' 0 0 0 ' + f(i0x) + ' ' + f(i0y) + ' Z">' +
+        '<title>' + esc(S.motivators[key].label + ': ' + Math.round(value)) + '</title></path>';
+      const mid = (a0 + a1) / 2;
+      const [lx, ly] = pt(outer + 12, mid);
+      const anchor = Math.abs(Math.cos(mid)) < 0.2 ? 'middle' : Math.cos(mid) > 0 ? 'start' : 'end';
+      labels += '<text class="rose-label" x="' + f(lx) + '" y="' + f(ly + 4) + '" text-anchor="' + anchor + '">' +
+        esc(S.motivators[key].short) + '</text>';
+    });
+    const top = keys.filter(k => scores[k]).sort((a, b) => scores[b].score - scores[a].score).slice(0, 3)
+      .map(k => S.motivators[k].label).join(', ');
+    return '<svg class="motive-rose" viewBox="-16 0 372 300" role="img" aria-label="' +
+      esc(S.titles.motivators + ': strongest ' + top) + '">' + rings + wedges + labels + '</svg>';
+  }
+
+  /** The circle, the three strongest, the reading, and all ten as bars behind "More". */
+  function motivatorsHtml(motivators) {
+    const S = Copy.STRUCTURED;
+    const scores = {};
+    for (const row of (motivators && motivators.scores) || []) {
+      if (row && S.motivators[row.value]) scores[row.value] = row;
+    }
+    if (!Object.keys(scores).length) return '';
+    let bars = '<div class="motive-chart">';
+    for (const group of Object.keys(S.motivatorGroups)) {
+      const rows = Object.keys(S.motivators).filter(key => S.motivators[key].group === group && scores[key]);
+      if (!rows.length) continue;
+      bars += '<div class="motive-group motive-' + esc(group) + '"><p class="motive-group-name">' +
+        esc(S.motivatorGroups[group]) + '</p>';
+      for (const key of rows) {
+        const row = scores[key];
+        const value = Math.min(100, Math.max(0, Math.round(Number(row.score) || 0)));
+        bars += '<div class="motive-row">' +
+          '<span class="motive-label">' + esc(S.motivators[key].label) +
+          '<small>' + esc(S.motivators[key].meaning) + '</small></span>' +
+          '<div class="bar motive-bar"><div class="bar-fill" data-fill="' + value + '"></div></div>' +
+          '<span class="trait-num">' + value + '</span>' +
+          (row.line ? '<p class="motive-line">' + esc(row.line) + '</p>' : '') + '</div>';
+      }
+      bars += '</div>';
+    }
+    bars += '</div>';
+    const legend = '<p class="rose-legend">' + Object.keys(S.motivatorGroups).map(group =>
+      '<span class="rose-key rose-key-' + esc(group) + '">' + esc(S.motivatorGroups[group]) + '</span>').join('') + '</p>';
+    return '<div class="motive-top-grid">' + motivatorCircleSvg(scores) +
+      '<div>' + legend + (motivators.reading ? '<div class="callout">' + paragraphs(motivators.reading) + '</div>' : '') +
+      '</div></div>' + bars;
+  }
+
+
+
+  /**
+   * Values and beliefs as one list of what they stand for: every entry drawn
+   * the same way, with no tag saying which list the model filed it under —
+   * the line between the two was the model's, not the reader's. A belief that
+   * only restates a value already listed is left out.
+   */
+  function standForItems(report) {
+    const values = (report.values || []).filter(item => item && item.value);
+    const words = text => String(text || '').toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3);
+    const valueWords = new Set(values.flatMap(item => words(item.value)));
+    const beliefs = (report.beliefs || []).filter(item => item && item.belief &&
+      !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
+    return values.slice(0, 3).map(item => ({ title: item.value, detail: item.detail }))
+      .concat(beliefs.slice(0, 1).map(item => ({ title: item.belief, detail: item.detail }))).slice(0, 4);
+  }
+  /** Part 02's short lists under the motivators: a bold name and one line. */
+  function drivesLinesHtml(title, rows) {
+    const items = rows.filter(([name]) => name);
+    if (!items.length) return '';
+    return '<h3>' + esc(title) + '</h3><ul class="drive-lines">' + items.map(([name, line]) =>
+      '<li><b>' + esc(name) + '</b>' + (line ? '<span>' + esc(line) + '</span>' : '') + '</li>').join('') + '</ul>';
+  }
+
+
+
+  /**
+   * Where an attachment leaning sits on the two dimensions the research uses —
+   * anxiety and avoidance — as a soft area rather than a point, because the
+   * read is a leaning from behaviour, not a measurement. Placed from the
+   * words of the style itself: the first style named is the base, any other
+   * named pulls it part of the way over.
+   */
+  function attachmentPlace(style) {
+    const text = String(style || '').toLowerCase().replace(/fearful[\s-]*avoidant/g, 'fearful')
+      // A mix of the two sits in their shared corner.
+      .replace(/anxious and avoidant mix/g, 'fearful');
+    const centres = { secure: [28, 28], anxious: [28, 72], avoidant: [72, 28], fearful: [72, 72] };
+    const found = Object.keys(centres).map(key => ({ key, at: text.indexOf(key) }))
+      .filter(row => row.at >= 0).sort((a, b) => a.at - b.at);
+    if (!found.length) return null;
+    const base = centres[found[0].key].slice();
+    for (const other of found.slice(1)) {
+      base[0] += (centres[other.key][0] - centres[found[0].key][0]) * 0.35;
+      base[1] += (centres[other.key][1] - centres[found[0].key][1]) * 0.35;
+    }
+    return { x: base[0], y: base[1], style: found[0].key };
+  }
+
+  function attachmentMapSvg(style) {
+    const S = Copy.STRUCTURED;
+    const place = attachmentPlace(style);
+    if (!place) return '';
+    const px = v => 30 + v * 1.8;
+    const py = v => 210 - v * 1.8;
+    return '<figure class="attach-map"><svg viewBox="0 0 220 240" role="img" aria-label="' +
+      esc(S.attachMapLabel + ': ' + style) + '">' +
+      '<rect class="attach-q" x="30" y="30" width="180" height="180"/>' +
+      '<line class="attach-axis" x1="120" y1="30" x2="120" y2="210"/><line class="attach-axis" x1="30" y1="120" x2="210" y2="120"/>' +
+      '<text class="attach-q-label" x="75" y="196" text-anchor="middle">' + esc(S.attachQuadrants.secure) + '</text>' +
+      '<text class="attach-q-label" x="75" y="48" text-anchor="middle">' + esc(S.attachQuadrants.anxious) + '</text>' +
+      '<text class="attach-q-label" x="165" y="196" text-anchor="middle">' + esc(S.attachQuadrants.avoidant) + '</text>' +
+      '<text class="attach-q-label" x="165" y="48" text-anchor="middle">' + esc(S.attachQuadrants.fearful) + '</text>' +
+      '<circle class="attach-blob" cx="' + px(place.x) + '" cy="' + py(place.y) + '" r="30"/>' +
+      '<circle class="attach-dot" cx="' + px(place.x) + '" cy="' + py(place.y) + '" r="5"/>' +
+      '<text class="attach-axis-label" x="120" y="228" text-anchor="middle">' + esc(S.attachAxes.avoidance) + ' →</text>' +
+      '<text class="attach-axis-label" x="12" y="120" text-anchor="middle" transform="rotate(-90 12 120)">' +
+      esc(S.attachAxes.anxiety) + ' →</text></svg>' +
+      '<figcaption>' + esc(S.attachMapNote) + '</figcaption></figure>';
+  }
+
+  /**
+   * Two matched lists side by side, each a numbered run of a title and a line
+   * under a heading with a badge: the good side ticked in green, the costly
+   * side marked in amber. Who suits you, what you bring and where it gets
+   * hard, and your strengths beside what holds you back all read this way.
+   */
+  function pairedListsHtml(good, warn) {
+    const col = (side, kind) => {
+      const rows = ((side && side.items) || []).filter(item => item && item.title);
+      if (!rows.length) return '';
+      return '<div class="partner-col partner-' + kind + '">' +
+        '<h4 class="partner-col-head"><span class="partner-badge" aria-hidden="true">' + (kind === 'need' ? '✓' : '!') + '</span>' +
+        esc(side.title) + '</h4><ol class="partner-items">' + rows.map(item =>
+          '<li><strong>' + esc(item.title) + '</strong>' + (item.detail ? '<span>' + esc(item.detail) + '</span>' : '') + '</li>').join('') +
+        '</ol></div>';
+    };
+    const cols = col(good, 'need') + col(warn, 'careful');
+    return cols ? '<div class="partner-grid">' + cols + '</div>' : '';
+  }
+
+  /** Who suits them: the one-line verdict as a banner, then the two lists. */
+  function idealPartnerStructuredBody(idealPartner) {
+    return '<div class="partner">' +
+      (idealPartner.summary ? '<div class="partner-summary"><span class="partner-summary-icon" aria-hidden="true">' + Copy.lineIcon('💞') + '</span>' +
+        '<p>' + esc(idealPartner.summary) + '</p></div>' : '') +
+      pairedListsHtml({ title: TEXT.idealPartnerNeeds, items: idealPartner.needs },
+        { title: TEXT.idealPartnerCarefulOf, items: idealPartner.carefulOf }) + '</div>';
+  }
+
+  /**
+   * Actions on a three-step timeline, one row per step: this week, this
+   * quarter, this year. Used
+   * by the development plan and by How you work, so every action in the
+   * report reads the same way. Each can be ticked off on this device.
+   */
+  function planKey(text) {
+    let hash = 0;
+    for (const ch of String(text || '')) hash = (hash * 31 + ch.codePointAt(0)) | 0;
+    return 'a' + (hash >>> 0).toString(36);
+  }
+
+  function timelineHtml(actions, sample) {
+    const S = Copy.STRUCTURED;
+    const done = sample ? {} : store.read(KEYS.plan, {}) || {};
+    const horizons = Object.keys(TEXT.careerHorizons);
+    const items = (actions || []).filter(a => a && (a.step || a.title));
+    if (!items.length) return '';
+    // A column per horizon that has steps, as the PDF does: an empty one said
+    // "Nothing here yet", which read as a gap in the report.
+    const groups = horizons.map((horizon, i) => ({ horizon,
+      here: items.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon))) })).filter(g => g.here.length);
+    return '<div class="timeline timeline-' + groups.length + '">' + groups.map(({ horizon, here }) => {
+      return '<div class="timeline-col"><p class="timeline-head"><span class="timeline-dot" aria-hidden="true"></span>' +
+        esc(TEXT.careerHorizons[horizon]) + '</p><div class="timeline-steps">' +
+        (here.length ? here.map(a => {
+          const text = a.step || a.title;
+          const key = planKey(text);
+          return '<label class="plan-step' + patternClass(a.pattern) + '">' +
+            '<input type="checkbox" class="plan-check" data-plan-key="' + key + '"' + (done[key] ? ' checked' : '') +
+            (sample ? ' disabled' : '') + '>' +
+            '<span><b>' + esc(text) + '</b>' + (a.detail ? '<small>' + esc(a.detail) + '</small>' : '') +
+            (a.from ? '<span class="plan-from">' + esc(a.from) + '</span>' : '') + '</span></label>';
+        }).join('') : '<p class="muted timeline-empty">' + esc(S.nothingYet) + '</p>') + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * How you work as one section: the edge and their other strengths,
+   * everything holding them back as one list, and what they are not using.
+   * No intro: its two paragraphs (how they work, where they seem to be now)
+   * said again what the edge and the careers list say. The actions are on
+   * the development plan.
+   */
+  function workStructuredBody(career, coaching) {
+    const S = Copy.STRUCTURED;
+    let html = '';
+    if (coaching && coaching.edge) {
+      html += '<div class="callout career-edge edge-hero"><span class="career-label">' + esc(TEXT.careerEdge) + '</span>' +
+        '<h3>' + esc(coaching.edge.headline) + '</h3><p>' + esc(coaching.edge.detail) + '</p>' +
+        evidence(coaching.edge.evidence) + '</div>';
+    }
+    const holding = [].concat(
+      coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
+      career.weaknesses || []).slice(0, 2);
+    // Two at most, and no separate "where it goes wrong": a report written
+    // before the prompt said so could otherwise repeat one cost three ways.
+    // Two columns: what sets them apart, and what holds them back. What they
+    // are not using is an untapped strength, not a cost, so it closes the
+    // strengths side rather than joining the list of costs.
+    const strengths = (career.strengths || []).concat(coaching && coaching.underused
+      ? [{ title: S.notYetUsing + Copy.afterPrefix(coaching.underused.headline), detail: coaching.underused.detail }] : []);
+    html += '<div class="paired-lists work-pair">' + pairedListsHtml(
+      { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, items: strengths },
+      { title: S.whatHoldsYouBack, items: holding }) + '</div>';
+    html += careerFitHtml(coaching && coaching.fit);
+    return html;
+  }
+
+  /**
+   * The kinds of work that suit them best and the kinds that would drain
+   * them, each written "Kind of work: why" (careerAssessment.fit) and split
+   * there into a title and its reason.
+   */
+  function careerFitHtml(fit) {
+    if (!fit) return '';
+    const S = Copy.STRUCTURED;
+    const rows = list => (Array.isArray(list) ? list : []).map(String).filter(Boolean).map(text => {
+      const at = text.indexOf(': ');
+      return at > 0 ? { title: text.slice(0, at), detail: text.slice(at + 2) } : { title: text };
+    });
+    const pair = pairedListsHtml({ title: S.careerFitSuits, items: rows(fit.suits) },
+      { title: S.careerFitDraining, items: rows(fit.draining) });
+    return pair ? '<div class="career-fit"><h3>' + esc(S.careerFitTitle) + '</h3>' + pair + '</div>' : '';
+  }
+
+  /**
+   * In relationships as one section: how they attach, what they bring and
+   * where it gets hard, how they give and want care, and who suits them —
+   * three sections, a page apart, that kept restating each other.
+   */
+  /** The Tentative pill beside a heading whose read rests on the least direct evidence. */
+  function tentativePill() {
+    const S = Copy.STRUCTURED;
+    return ' <span class="pill pill-tentative" title="' + esc(S.tentativeTip) + '">' + esc(S.tentative) + '</span>';
+  }
+  /** Text without the model's own "(tentative)", which the pill now says. */
+  function untentative(text) {
+    return String(text || '').replace(/\s*\(tentative\)/gi, '');
+  }
+
+  function relationshipsStructuredBody(relationship, source, idealPartner) {
+    const S = Copy.STRUCTURED;
+    const attachment = source ? gentleAttachmentOf(source) : source;
+    // Love languages first: the most concrete thing here, and the one a reader
+    // is most likely to act on tomorrow.
+    let html = loveLanguageBlock(relationship.loveLanguages, { caveat: false, blurbs: false });
+    if (relationship.loveLanguages) html += '<p class="fineprint touch-note">' + esc(S.touchNote) + '</p>';
+    if (attachment) {
+      // The model's own caveat is left out: the map is labelled a leaning,
+      // and the about card already says none of this is a clinical read.
+      html += '<h3>' + esc(S.howYouAttach) + tentativePill() + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
+        '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
+        (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
+        readingFull(attachment.why, attachment.derivedFrom) + '</div></div>';
+      // How they handle disagreement: its own subsection, the card's conflict
+      // style (its first sentence) in bold, then what it does to the other person.
+      if (attachment.conflict) {
+        // The pill says it is tentative, so the model's "(tentative)" goes.
+        const [lead, rest] = Copy.leadSentence(untentative(attachment.conflict));
+        html += '<h3>' + esc(TEXT.attachmentConflict) + tentativePill() + '</h3><p class="attach-conflict"><strong>' + esc(lead) + '</strong>' +
+          (rest ? ' ' + esc(rest) : '') + '</p>';
+      }
+      // No "In practice": what the style gives and costs is under what they
+      // bring and where it gets hard, just below.
+    }
+    html += '<h3>' + esc(S.strengthsFriction) + '</h3><div class="paired-lists bring-pair">' + pairedListsHtml(
+      { title: S.whatYouBring, items: relationship.strengths },
+      { title: S.whereItGetsHard, items: relationship.weaknesses }) + '</div>';
+    if (idealPartner) html += '<h3>' + esc(S.whoSuitsYou) + '</h3>' + idealPartnerStructuredBody(idealPartner);
+    return html;
+  }
+
+  /** Six tiles, coloured by band: steady, mixed, under strain, not enough evidence. Still no scores. */
+  function wellnessStructuredBody(wellness) {
+    let html = '<div class="wellness-tiles">';
+    for (const [label, key] of Copy.WELLNESS_FACETS) {
+      const facet = wellness[key];
+      if (!facet) continue;
+      const band = String(facet.band || '').replace(/\s+/g, '-').toLowerCase();
+      html += '<div class="wellness-tile wellness-tile-' + esc(band) + '">' +
+        '<div class="wellness-head"><span class="wellness-label">' + label + '</span>' + wellnessBand(facet.band) + '</div>' +
+        readingFull(facet.reading, facet.evidence) +
+        '<p class="wellness-confidence">' + esc(TEXT.wellnessConfidence) + esc(facet.confidence) + '</p></div>';
+    }
+    html += '</div>';
+    if (wellness.overall) html += '<div class="callout"><h3>' + esc(TEXT.wellnessOverall) + '</h3>' + paragraphs(wellness.overall) + '</div>';
+    // The suggestions are on the development plan's timeline, with every
+    // other action in the report.
+    html += '<p class="fineprint">' + esc(Copy.STRUCTURED.wellnessNote) + '</p>';
+    return html;
+  }
+
+
+  /**
+   * Build on, then the areas to develop, then every action from those areas
+   * on one timeline. The actions used to sit inside each area; gathered, they
+   * read as a plan rather than as a list of lists.
+   */
+  function developmentHtml(development, sample, extraActions) {
+    const S = Copy.STRUCTURED;
+    const buildOn = ((development && development.buildOn) || []).filter(item => item && item.title);
+    const develop = ((development && development.develop) || []).filter(item => item && item.title);
+    let html = '';
+    if (buildOn.length) {
+      html += '<h3 class="h-good">' + esc(S.titles.buildOn) + '</h3><div class="dev-list dev-grid">' +
+        buildOn.map(item => '<div class="dev-item dev-build' + patternClass(item.pattern) + '"><h4>' + esc(item.title) + '</h4>' +
+          '<p>' + esc(item.detail) + '</p></div>').join('') + '</div>';
+    }
+    if (develop.length) {
+      html += '<h3 class="h-warn">' + esc(S.titles.develop) + '</h3><div class="dev-list dev-grid">' +
+        develop.map(item => '<div class="dev-item dev-develop' + patternClass(item.pattern) + '"><h4>' + esc(item.title) + '</h4>' +
+          '<p>' + esc(item.detail) + '</p>' +
+          // What used to be "Under pressure": the early signs and the move
+          // for that moment, on the area they belong to.
+          ((item.earlySigns || []).length
+            ? '<p class="connects-label">' + esc(S.earlySigns) + '</p>' + list(item.earlySigns, 'ticks') : '') +
+          (item.counterMove ? '<p><span class="connects-label">' + esc(S.counterMove) + '</span>' + esc(item.counterMove) + '</p>' : '') +
+          (item.reflect ? '<p class="reflect"><span class="connects-label">' + esc(S.reflect) + '</span>' +
+            esc(item.reflect) + '</p>' : '') + '</div>').join('') + '</div>';
+    }
+    // Every action in the report, on one timeline: the develop areas', the
+    // work coaching's and the wellbeing suggestions'.
+    // At most five, taken in turns across the sources (Copy.planPick).
+    const own = develop.flatMap(item => (item.actions || []).filter(a => a && a.step)
+      .map(a => ({ horizon: a.horizon, step: a.step, pattern: item.pattern, from: item.title })));
+    const extra = extraActions || [];
+    const actions = Copy.planPick([own, extra.filter(a => a.from === S.fromWork), extra.filter(a => a.from !== S.fromWork)],
+      Object.keys(TEXT.careerHorizons), Copy.PLAN_STEPS);
+    const timeline = timelineHtml(actions, sample);
+    if (timeline) html += '<h3>' + esc(S.titles.plan) + '</h3>' + timeline;
+    return html;
+  }
+
+  function pressureLevelHtml(level) {
+    const S = Copy.STRUCTURED;
+    const levels = ['mild', 'moderate', 'marked'];
+    const at = levels.indexOf(level);
+    if (at < 0) return '';
+    return '<span class="pressure-level pressure-' + esc(level) + '" role="img" aria-label="' +
+      esc('Level: ' + S.levelLabels[level]) + '">' +
+      levels.map((_, i) => '<span class="pressure-step' + (i <= at ? ' is-on' : '') + '"></span>').join('') +
+      '<span class="pressure-word">' + esc(S.levelLabels[level]) + '</span></span>';
+  }
+
+  const PRESSURE_REACH = { mild: 30, moderate: 58, marked: 86 };
+
+  function pressurePointsHtml(points) {
+    const S = Copy.STRUCTURED;
+    const rows = (points || []).filter(item => item && item.strength);
+    return '<div class="pressure-list">' + rows.map(item =>
+      '<div class="pressure-item' + patternClass(item.pattern) + '">' +
+      '<div class="pressure-head"><h4>' + esc(item.strength) + '</h4>' + pressureLevelHtml(item.level) + '</div>' +
+      // From the strength at its best to what it turns into, with the marker
+      // at how far their data shows it has already tipped.
+      '<div class="gauge"><div class="gauge-track"><span class="gauge-marker" data-left="' +
+        (PRESSURE_REACH[item.level] || 50) + '"></span></div>' +
+      '<div class="gauge-ends"><span>' + esc(S.atBest) + '</span><span>' + esc(S.overusedPrefix) + esc(item.overused) + '</span></div></div>' +
+      (item.detail ? '<p>' + esc(item.detail) + '</p>' : '') +
+      ((item.earlySigns || []).length
+        ? '<p class="connects-label">' + esc(S.earlySigns) + '</p>' + list(item.earlySigns, 'ticks') : '') +
+      (item.mitigation ? '<p><span class="connects-label">' + esc(S.counterMove) + '</span>' + esc(item.mitigation) + '</p>' : '') +
+      (item.question ? '<p class="reflect"><span class="connects-label">' + esc(S.reflect) + '</span>' + esc(item.question) + '</p>' : '') +
+
+      '</div>').join('') + '</div>';
+  }
+
+  /**
+   * What the digest carries complete — counts and timing over the whole
+   * archive — as chips, so a sample of 180 messages is not read as all the
+   * analysis saw when every message was counted.
+   */
+  function countedInFull(digest) {
+    const by = countedBySource(digest);
+    return by.instagram.concat(by.google, by.facebook, by.tiktok, by.journal, by.whatsapp);
+  }
+
+  /**
+   * The digest as the report on screen was read from it: the stored one, with
+   * the counts of what the full report actually read laid over it when that
+   * was the premium read (state.profile.readFrom). Without this a WhatsApp
+   * chat added at the unlock showed "10 of your 37.8k messages read" — the
+   * standard digest's share, trimmed to its floor beside a full Instagram —
+   * under a report written from hundreds of them.
+   */
+  function readView(digest) {
+    const read = state.profile && state.profile.readFrom;
+    if (!digest || !read || !read.sampling) return digest;
+    const coverage = Object.assign({}, digest.coverage, {
+      sampling: Object.assign({}, (digest.coverage && digest.coverage.sampling) || {}, read.sampling),
+    });
+    return Object.assign({}, digest, { coverage });
+  }
+
+  /** The same lines, kept apart by the source they were read from. */
+  function countedBySource(source) {
+    const digest = readView(source);
+    const R = Copy.STRUCTURED.readFrom;
+    const items = [];
+    const google = [];
+    const facebook = [];
+    const whatsapp = [];
+    const tiktok = [];
+    const journal = [];
+    if (!digest) return { instagram: items, google, facebook, whatsapp, tiktok, journal };
+    // Totals are rounded to read at a glance — 9,741 is "9.7k", 637 is "~600"
+    // — while what was actually read stays exact.
+    const num = value => roughCount(value);
+    const exact = value => (Number(value) > 0 ? Number(value).toLocaleString() : '');
+    const sampling = (digest.coverage && digest.coverage.sampling) || {};
+    const read = key => {
+      const entry = sampling[key];
+      return entry && Number(entry.available) > 0 ? { shown: exact(entry.shown) || '0', of: num(entry.available) } : null;
+    };
+    const dm = digest.directMessages;
+    const own = read('ownMessages');
+    if (own) items.push(R.messages(own.shown, own.of, num(dm && dm.activeThreads)));
+    else if (dm && num(dm.totalMessages)) items.push(R.messagesCounted(num(dm.totalMessages), num(dm.activeThreads)));
+    const captions = read('captions');
+    if (captions) items.push(R.captions(captions.shown, captions.of));
+    const comments = read('comments');
+    if (comments) items.push(R.comments(comments.shown, comments.of));
+    const c = digest.counts || {};
+    const liked = read('likedCaptions');
+    if (num(c.postsLiked)) items.push(R.liked(num(c.postsLiked), liked && liked.shown !== '0' ? liked.shown : ''));
+    if (num(c.stories)) items.push(R.stories(num(c.stories)));
+    if (num(c.postsSaved)) items.push(R.saved(num(c.postsSaved)));
+    if (num(c.following)) items.push(R.following(num(c.following)));
+    const days = Number(digest.rhythm && digest.rhythm.spanDays);
+    if (days >= 60) {
+      const years = Math.round(days / 365.25);
+      items.push(R.timing(years >= 2 ? R.years(years) : R.months(Math.round(days / 30.44))));
+    }
+    const g = digest.google && digest.google.counts;
+    if (g) {
+      const videos = read('youtubeTitles');
+      if (videos) google.push(R.videos(videos.shown, videos.of));
+      const searches = read('googleSearchTerms');
+      if (searches) google.push(R.googleSearches(searches.shown, searches.of, num(g.googleSearches)));
+      const ytSearches = read('youtubeSearchTerms');
+      if (ytSearches) google.push(R.youtubeSearches(ytSearches.shown, ytSearches.of));
+    }
+    const fbPosts = read('facebookPosts');
+    if (fbPosts) facebook.push(R.facebookPosts(fbPosts.shown, fbPosts.of));
+    const wa = read('whatsappMessages');
+    if (digest.whatsapp) whatsapp.push(R.whatsapp((digest.whatsapp.chats || []).length, wa ? wa.shown : '0', wa ? wa.of : '0'));
+    const ttComments = read('tiktokComments');
+    if (ttComments) tiktok.push(R.tiktokComments(ttComments.shown, ttComments.of));
+    const ttSearches = read('tiktokSearches');
+    if (ttSearches) tiktok.push(R.tiktokSearches(ttSearches.shown, ttSearches.of));
+    if (digest.tiktok && num(digest.tiktok.counts && digest.tiktok.counts.watched)) tiktok.push(R.tiktokWatched(num(digest.tiktok.counts.watched)));
+    const entries = read('journalEntries');
+    if (entries) journal.push(R.journal(entries.shown, entries.of));
+    return { instagram: items, google, facebook, whatsapp, tiktok, journal };
+  }
+
+  /** A total to the nearest hundred: under 100 as it is, then "~600", then "9.7k". */
+  function roughCount(value) {
+    const n = Number(value);
+    if (!(n > 0)) return '';
+    if (n < 100) return String(Math.round(n));
+    if (n < 950) {
+      const hundred = Math.round(n / 100) * 100;
+      return (hundred === n ? '' : '~') + hundred;
+    }
+    if (n < 999500) return String(Math.round(n / 100) / 10).replace(/\.0$/, '') + 'k';
+    return String(Math.round(n / 100000) / 10).replace(/\.0$/, '') + 'M';
+  }
+
+  /**
+   * The confidence score and what it rests on. On the reader's own report,
+   * one row per source with what was read from it beneath (sourcesReadHtml);
+   * the model's own two-to-four line summary only where there is no digest to
+   * count from — the sample, or a report whose digest is gone.
+   */
+  function methodEvidenceHtml(report, sample) {
+    if (sample) return confidenceBodyHtml(report);
+    const withoutSummary = Object.assign({}, report,
+      { confidence: Object.assign({}, report.confidence, { basedOn: [] }) });
+    return confidenceBodyHtml(state.digest ? withoutSummary : report) + sourcesReadHtml();
+  }
+
+  /**
+   * The reader's data under Evidence and method: one quiet row per source —
+   * its name, what was read or counted from it, and on the right "Change" or
+   * "Add". The whole row opens the data popout: on a free report the US$5
+   * unlock, data first (openPremiumDialog); on a paid one the re-run
+   * (startRerun). See the delegated `.source-read` listener.
+   */
+  function sourcesReadHtml() {
+    const S = Copy.STRUCTURED;
+    const digest = state.digest;
+    const paid = Object.keys(paidAnalysis()).length > 0;
+    const by = countedBySource(digest);
+    // A read Muse wrote has no digest here, but its Instagram was read, there:
+    // the row shows it as added (the counts are in "Read from" above it).
+    const viaMuse = !digest && Boolean(state.profile && state.profile.source === 'muse');
+    if (viaMuse) by.instagram = [S.sourceViaMuse];
+    const rows = [
+      // WhatsApp second, after Instagram, as in Load your data.
+      { key: 'instagram', icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest && digestHasInstagram(digest)) || viaMuse },
+      { key: 'whatsapp', icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp),
+        hint: S.sourceWhatsAppHint },
+      { key: 'google', icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
+      { key: 'facebook', icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
+    ].concat([
+      { key: 'tiktok', icon: '🎵', label: TEXT.sourceTikTok, loaded: true },
+      { key: 'journal', icon: '📓', label: TEXT.sourceJournal, loaded: true },
+    ].filter(row => digest && digest[row.key]));
+    const note = !paid ? S.sourcesFreeNote
+      : TEXT.analysisPriceNoteUnlocked;
+    // WhatsApp's ticks: one for each of the three chats recommended.
+    const chats = digest && digest.whatsapp ? (digest.whatsapp.chats || []).length : 0;
+    return '<div class="sources-read">' +
+      '<p class="sources-read-title">' + esc(S.sourcesReadTitle) + '</p>' +
+      (!digest && !viaMuse ? '<p class="sources-read-lost">' + esc(TEXT.sourcesInstagramLost) + '</p>' : '') +
+      '<ul class="sources-read-list">' + rows.map(row => {
+        const lines = row.loaded ? (by[row.key].length ? by[row.key] : [S.sourceLoaded]) : [];
+        const more = 'source-more-' + row.key;
+        const ticks = !row.loaded ? ''
+          : row.key === 'whatsapp'
+            ? '<span class="source-read-ticks" role="img" aria-label="' + esc(S.sourceChats(Math.min(chats, 3))) + '">' +
+                [0, 1, 2].map(i => '<span class="source-tick' + (i < chats ? ' is-on' : '') + '"></span>').join('') + '</span>'
+            : '<span class="source-read-ticks" role="img" aria-label="' + esc(S.sourceAdded) + '"><span class="source-tick is-on"></span></span>';
+        // The name (and its chevron) folds out what was read; Change or Add
+        // opens the data popout.
+        const name = row.loaded
+          ? '<button type="button" class="source-read-toggle" aria-expanded="false" aria-controls="' + more + '">' +
+              '<span class="source-read-name">' + esc(row.label) + '</span><span class="source-read-chevron" aria-hidden="true"></span></button>'
+          : '<span class="source-read-toggle is-static"><span class="source-read-name">' + esc(row.label) + '</span></span>';
+        return '<li><div class="source-read' + (row.loaded ? ' is-loaded' : ' is-missing') + '"' +
+            ' data-source="' + row.key + '" data-flow="' + (paid ? 'rerun' : 'unlock') + '">' +
+          '<span class="source-read-icon" aria-hidden="true">' + Copy.iconHtml(row.icon) + '</span>' +
+          name + ticks +
+          '<button type="button" class="source-read-action">' + esc(row.loaded ? S.sourceChange : '+ ' + S.sourceAdd) + '</button>' +
+          // WhatsApp's recommendation stays in view, folded or not.
+          (row.hint ? '<p class="source-read-hint">' + esc(row.hint) + '</p>' : '') +
+          (row.loaded ? '<div class="source-read-more" id="' + more + '" hidden>' +
+            '<ul class="source-read-what">' + lines.map(line => '<li>' + esc(line) + '</li>').join('') + '</ul></div>' : '') +
+        '</div></li>';
+      }).join('') + '</ul>' +
+      '<p class="sources-read-note">' + esc(note) + '</p></div>';
+  }
+
+  /** What was read, by whom, from which build — the closing section of Part 4. */
+  /**
+   * How far to trust the report, after the four parts and apart from them:
+   * the score, why, what was counted, and the sources with the button that
+   * adds one. What model and build wrote it is in the footer and the PDF.
+   */
+  function methodCardHtml(report, sample) {
+    const S = Copy.STRUCTURED;
+    return '<div class="card section-card confidence-card method-card" data-part="method">' +
+      sectionHead('🎯', esc(S.titles.method), '') +
+      methodEvidenceHtml(report, sample) + '</div>';
+  }
+
+  function structuredSectionsHtml(report, options) {
+    const S = Copy.STRUCTURED;
+    const sample = Boolean(options && options.sample);
+    // The reader's own My Report, as opposed to the sample or an older page.
+    const ownPage = Boolean(options && options.page) && !sample;
+    const patterns = signaturePatterns(report);
+    // Sections inside a part do not open and shut on their own: the part does.
+    const head = (icon, title, defKey) =>
+      sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', false, '');
+    // The sample shows the full premium report — its own premium sections,
+    // never the reader's — and no roast: that is on My Psyche, under the card.
+    const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
+    const paid = key => PAID_SECTIONS.find(section => section.key === key);
+    // My Report opens with its own header, as My Syncs does; the part nav
+    // under it (or down the left) carries no title of its own.
+    let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(ownPage, hasAppendix(report, ownPage));
+    const askable = ownPage && askReady();
+    // Thumbs on each finding, on the reader's own report only (never the sample).
+    const mark = ownPage ? markRowHtml : () => '';
+
+    // Overview, part 00: the summary and the signature patterns, open from
+    // the start. Each part is one box, and the sections inside it are always
+    // open — four disclosures in the whole report rather than one per section.
+    // No headline over it: that line is the card's, printed on the card.
+    let part = '<div class="card section-card summary-card">' +
+      head('👤', esc(S.titles.summary), 'summary') +
+      essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
+    if (patterns.length) part += patternsCardHtml(patterns, mark);
+    html += partCardHtml('overview', part, askable);
+
+    // Part 1: who you are. MBTI first: the type is what most readers know and
+    // look for. The model still writes the Big Five first (the E/I letter is
+    // checked against the extraversion score); only the page order changed.
+    // Wellbeing closes it: it is a read of the person, not of how they relate.
+    const mbti = report.mbti || {};
+    // No type nickname ("The Protagonist"): the reader already has one
+    // character to identify with, and a second label competes with it.
+    part = '<div class="card section-card mbti-card">' +
+      head('🧭', 'MBTI', 'mbti') +
+      '<div class="type-hero"><span class="type-code">' + esc(mbti.type) + '</span></div>' +
+      mbtiSlidersHtml(mbti) + mark('mbti', 'MBTI ' + String(mbti.type || '')) + '</div>';
+    part += '<div class="card section-card">' + head('📊', esc(TEXT.bigFive), 'bigFive') +
+      bigFiveStructuredHtml(report.bigFive) + mark('bigFive', TEXT.bigFive) + '</div>';
+    part += paidCard(paid('wellness'), unlocked, { sample, flat: true, title: S.titles.wellness, sub: S.definitions.wellness,
+      body: wellnessStructuredBody });
+    html += partCardHtml('who', part, askable);
+
+    // Part 2: what drives you, as one box: the motivators, then what they
+    // stand for and every interest, a line each.
+    part = '<div class="card section-card motivators-card drives-card">' +
+      head('🧲', esc(S.titles.motivators), 'motivators') + motivatorsHtml(report.motivators) +
+      drivesLinesHtml(S.drivesValues, standForItems(report).map(item => [item.title, item.detail])) +
+      drivesLinesHtml(S.drivesInterests, (report.interests || []).filter(item => item && item.name)
+        .map(item => [item.name, Copy.leadSentence(item.detail || '')[0]])) + mark('drives', S.titles.motivators) + '</div>';
+    html += partCardHtml('drives', part, askable);
+
+    // Part 3: how you connect.
+    const relationship = report.relationship || {};
+    const attachment = unlocked.attachment;
+    const idealPartner = unlocked.idealPartner;
+    const closeness = attachment || idealPartner;
+    part = '<div class="card section-card relationships-card' +
+      (closeness ? ' paid-card attachment-card" data-paid="attachment' : '') + '">' +
+      head('💞', esc(TEXT.relationships), 'relationships') +
+      relationshipsStructuredBody(relationship, attachment, idealPartner) + mark('connect', TEXT.relationships) + '</div>';
+    // Locked (the sample), the two premium halves keep their own covers.
+    if (!attachment) part += paidCard(paid('attachment'), unlocked, { sample, flat: true });
+    if (!idealPartner) part += paidCard(paid('idealPartner'), unlocked, { sample, flat: true });
+    html += partCardHtml('connect', part, askable);
+
+    // Part 4: how you work — the description and the coach's read as one
+    // section, under the part's own title rather than a second "How you work".
+    // Locked, the coach's read keeps its own cover below.
+    const career = report.career || {};
+    const coaching = unlocked.careerAssessment;
+    part = '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
+      workStructuredBody(career, coaching) + mark('career', S.titles.work) + '</div>';
+    if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
+    html += partCardHtml('career', part, askable);
+
+    // Part 5: putting it together.
+    part = '';
+    const workActions = ((coaching && coaching.actions) || []).filter(a => a && a.title)
+      .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork }));
+    const wellnessActions = ((unlocked.wellness && unlocked.wellness.suggestions) || []).filter(a => a && a.title)
+      .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing }));
+    const development = developmentHtml(report.development, sample, workActions.concat(wellnessActions));
+    if (development) {
+      part += '<div class="card section-card development-card">' + head('🌱', esc(S.titles.development), 'development') +
+        development + '</div>';
+    }
+    if ((report.pressurePoints || []).some(item => item && item.strength)) {
+      part += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints') +
+        pressurePointsHtml(report.pressurePoints) + mark('pressurePoints', S.titles.pressurePoints) + '</div>';
+    }
+    // Evidence and method lives on My Psyche, beside the card it rates; the
+    // sample, which has no My Psyche, keeps it at the end of Part 05.
+    if (!ownPage) part += methodCardHtml(report, sample);
+    html += partCardHtml('together', part, askable);
+    // Part 06, the appendix, on the reader's own My Report: the roast first
+    // (free since the card, read on My Psyche until the report was unlocked),
+    // then the questions asked of PsycheAI (refreshAskAppendix keeps it
+    // current). Each under the same section header as every other section.
+    if (hasAppendix(report, ownPage)) {
+      const roast = report.bonus && report.bonus.harsh
+        ? secretRoastHtml(report.bonus, { appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
+      html += partCardHtml('appendix', roast + (askable ? '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>' : ''), false);
+    }
+    return html;
+  }
+
+  /**
+   * Marks a report root as structured, for the styles that only that layout
+   * uses, and lights the part the reader is in on the part nav.
+   */
+  let partObserver = null;
+  function markStructured(root) {
+    if (!root) return;
+    root.classList.toggle('layout-structured', Boolean(root.querySelector('.part-card')));
+    const nav = root.querySelector('.part-nav');
+    if (!nav || typeof IntersectionObserver !== 'function') return;
+    if (partObserver) partObserver.disconnect();
+    // On a phone the nav's lead names the part the reader is in.
+    const lead = nav.querySelector('.part-nav-lead');
+    const light = key => nav.querySelectorAll('.part-nav-item').forEach(button => {
+      const on = button.getAttribute('data-part-target') === key;
+      button.classList.toggle('is-current', on);
+      if (on && lead) lead.textContent = button.querySelector('.part-nav-label').textContent;
+    });
+    // Whole parts are watched, not their headings, so a jump into the middle
+    // of a long part (the plan, deep in part 05) still lights that part. The
+    // part crossing a thin band near the top of the screen is the current one.
+    const inBand = new Set();
+    const keyOf = node => node.getAttribute('data-part') || node.getAttribute('data-part-card');
+    partObserver = new IntersectionObserver(entries => {
+      entries.forEach(e => (e.isIntersecting ? inBand.add(e.target) : inBand.delete(e.target)));
+      const current = [...inBand].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+      if (current) light(keyOf(current));
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    root.querySelectorAll('.part-card[data-part-card]').forEach(node => partObserver.observe(node));
+    light('overview');
+    // The observer hears only a part crossing the band. A jump straight to
+    // the top (Home, a "back to top", the browser's own) can land with no
+    // part in it and the last one still lit (October 2026), so on every
+    // scroll: above the first part, the first part is the one lit; and once
+    // scrolling stops, the part across the band is worked out again.
+    partNavRoot = root;
+    partNavLight = light;
+    if (!partNavWired) {
+      partNavWired = true;
+      window.addEventListener('scroll', partNavAtTop, { passive: true });
+      window.addEventListener('scrollend', partNavRecompute, { passive: true });
+    }
+  }
+  let partNavRoot = null;
+  let partNavLight = null;
+  let partNavWired = false;
+  const partKeyOf = node => node.getAttribute('data-part') || node.getAttribute('data-part-card');
+  function partNavAtTop() {
+    if (!partNavRoot || !partNavLight || !partNavRoot.isConnected || !partNavRoot.offsetParent) return;
+    const first = partNavRoot.querySelector('.part-card[data-part-card]');
+    if (first && first.getBoundingClientRect().top > window.innerHeight * 0.2) partNavLight(partKeyOf(first));
+  }
+  function partNavRecompute() {
+    if (!partNavRoot || !partNavLight || !partNavRoot.isConnected || !partNavRoot.offsetParent) return;
+    const parts = [...partNavRoot.querySelectorAll('.part-card[data-part-card]')];
+    if (!parts.length) return;
+    const line = window.innerHeight * 0.3;
+    const passed = parts.filter(node => node.getBoundingClientRect().top <= line);
+    partNavLight(partKeyOf(passed.length ? passed[passed.length - 1] : parts[0]));
+  }
+
+  /** The attachment read with the app's gentler names put in, field by field. */
+  function gentleAttachmentOf(attachment) {
+    const out = Object.assign({}, attachment);
+    for (const key of ['style', 'styleTone', 'why', 'conflict', 'caveat']) {
+      if (typeof out[key] === 'string') out[key] = Copy.gentleAttachment(out[key]);
+    }
+    return out;
+  }
+
+  /**
+   * The free Overview on My Psyche (October 2026): the executive summary and
+   * the signature patterns, which the free card's call now writes, open
+   * under the card and above the roast. The card is right above it, so no
+   * character block; the five parts after it are the locked offer below.
+   * Nothing for a card made before, which has neither.
+   */
+  function freeOverviewHtml(report) {
+    const summary = String((report && report.summary) || '').trim();
+    if (!summary) return '';
+    const S = Copy.STRUCTURED;
+    const patterns = signaturePatterns(report);
+    let part = '<div class="card section-card summary-card">' +
+      sectionHead('👤', esc(S.titles.summary), esc(S.definitions.summary), false, '') +
+      paragraphs(summary) + '</div>';
+    if (patterns.length) part += patternsCardHtml(patterns, markRowHtml);
+    return partCardHtml('overview', part, askReady()).replace('class="card section-card part-card"',
+      'class="card section-card part-card free-overview"');
+  }
+
+  /**
+   * The report's sections as HTML, from the report alone.
+   *
+   * Split out of renderProfile so the sample can render the same sections
+   * into a dialog. Everything the sample must not offer — the download
+   * buttons, delete, the QR panel — lives outside #profile-body in
+   * index.html, so building only this excludes them by construction rather
+   * than by a list of things to hide that someone has to remember to update.
+   */
+  function reportSectionsHtml(report, options) {
+    const sample = Boolean(options && options.sample);
+    // The free report is the card above this and nothing else. What sits
+    // under it is the offer of everything that explains it, and the
+    // confidence card, which holds the page's own controls.
+    if (!sample && options && options.explained === false) {
+      const unlocked = paidAnalysis();
+      // Structured: Evidence and method under the offer (freeMethodCardHtml),
+      // and no re-run here — more data comes with the full report, whose
+      // unlock asks for it before the run.
+      // Their link right under their card, while the card is all they have.
+      // Their link last, after Evidence and method.
+      return freeOverviewHtml(report) + secretRoastHtml(report.bonus) + fullReportLockedHtml() +
+        (Object.keys(unlocked).length
+          ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
+        hubHtml(report, false);
+    }
+    return structuredSectionsHtml(report, options);
+  }
+
+  /**
+   * A free report's Evidence and method, under the unlock offer: the score,
+   * why, and what was read. No sources list and no re-run — more data comes
+   * with the full report, whose unlock asks for it before the run.
+   */
+  function freeMethodCardHtml(report) {
+    return '<div class="card section-card confidence-card method-card free-method-card">' +
+      sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') + methodEvidenceHtml(report, false) + '</div>';
+  }
+
+  /**
+   * Beside a free report's card: empty until the reader points at a part of
+   * the card, when that part's meaning pops out level with it — what it is,
+   * the reader's own reading, and why it is worth knowing. Above it, the
+   * card's three actions: download, share, compatibility. Enlarging is the
+   * card's own: a click on it anywhere a part is not explained, or on a
+   * phone the "Tap to open full screen" button under it.
+   */
+  function cardGuideHtml(report, paid) {
+    const G = Copy.STRUCTURED.cardGuide;
+    cardGuideState = cardGuideFor(report);
+    const tool = (act, svg) => '<button type="button" class="cx-tool" data-act="' + act + '" title="' + esc(G.toolTips[act]) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      svg + '</svg><span>' + esc(G.tools[act]) + '</span></button>';
+    return '<div class="cx" aria-label="' + esc(G.title) + '">' +
+      '<div class="cx-home">' +
+        '<h2 class="cx-home-title">' + titleMark('card', 'card-title-grad') + esc(G.home.title) + '</h2>' +
+        '<div class="cx-tools">' +
+          tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
+          tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
+          tool('copy', '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>') +
+          // Once the report is unlocked: the way into it, across all three.
+          (fullReportPage() ? '<button class="btn cx-open-report" type="button" data-nav="full" id="open-report">' +
+            '<span>' + esc(Copy.STRUCTURED.reportPage.open) + '</span>' +
+            '<svg class="cx-open-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>' : '') +
+        '</div>' +
+        '<p class="cx-status" role="status" hidden></p>' +
+        // What the card is, then where its reasoning is: below, or behind the unlock.
+        // "Psyche Hub below" is a link down to the hub.
+        // Then where to go next, as small buttons in the sentence: the report
+        // (or its unlock), the Sync list, and the hub below.
+        '<p class="cx-home-intro">' + introClauses(paid ? G.home.introPaid : G.home.introFree, paid) + '</p>' +
+        '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
+          '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
+      '</div>' +
+      '<div class="cx-stage">' +
+        '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
+          '<span class="cx-arrow" aria-hidden="true"></span>' +
+          '<button type="button" class="cx-close" aria-label="Close">✕</button>' +
+          '<div class="cx-pop-head"><span class="cx-pop-icon" aria-hidden="true"></span><strong class="cx-pop-title"></strong></div>' +
+          '<div class="cx-pop-body"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  let cardGuideState = null;
+  // The same explanations for the sample's card, full screen.
+  let sampleGuideState = null;
+
+  /** What each part of a card means, and what it says on this one. */
+  function cardGuideFor(report, yoursLabel) {
+    const facts = cardGuideFacts(report);
+    return { facts, yoursLabel, items: Copy.STRUCTURED.cardGuide.items.filter(item => item.when(facts)) };
+  }
+
+  /** The facts the guide's lines are written from, read off the card's report. */
+  function cardGuideFacts(report) {
+    const S = Copy.STRUCTURED;
+    const essence = report.essence || {};
+    const five = report.bigFive || {};
+    const traits = Object.keys(TRAIT_LABELS).filter(key => five[key]);
+    const standout = traits.slice().sort((a, b) =>
+      Math.abs((Number(five[b].score) || 50) - 50) - Math.abs((Number(five[a].score) || 50) - 50))[0];
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const first = list => ((list || []).find(entry => entry && entry.language) || {}).language || '';
+    const patterns = signaturePatterns(report);
+    const motives = cardMotivators(report);
+    return {
+      character: essenceName(essence), franchise: essence.franchise || '',
+      score: Math.round(Number((report.card || {}).confidence) || Number((report.confidence || {}).score) || 0),
+      level: (report.confidence || {}).level || '',
+      pattern: patterns[0] ? patterns[0].name : '',
+      motive: motives[0] ? S.motivators[motives[0]].label : '',
+      motives: motives.map(key => S.motivators[key].label),
+      // What each one means, from the app's own copy rather than the model.
+      motiveMeanings: motives.map(key => S.motivators[key].meaning),
+      chosen: ((report.mbti || {}).letters || []).map(l => l && l.choice).filter(Boolean),
+      type: (report.mbti || {}).type || '',
+      letters: ((report.mbti || {}).letters || []).filter(l => l && l.choice && l.strength)
+        .map(l => l.choice + ' ' + l.strength),
+      trait: standout ? TRAIT_LABELS[standout] : '', traitScore: standout ? Math.round(Number(five[standout].score) || 0) : 0,
+      value: titlesOf(report.values, 1)[0] || titlesOf(report.beliefs, 1)[0] || '',
+      interest: titlesOf(report.interests, 1)[0] || '',
+      loveIn: first(love.receiving), loveOut: first(Copy.givingLove(love.giving)),
+      syncs: Copy.cardSyncs(report, essenceName(essence)),
+    };
+  }
+
+  // The parts of the card each explanation belongs to.
+  const GUIDE_TARGETS = {
+    character: ['.pc-shero'],
+    confidence: ['.pc-sconf'],
+    patterns: ['.pc-spatterns'],
+    motives: ['.pc-smotives'],
+    type: ['.pc-sletters'],
+    bigFive: ['.pc-straits'],
+    standFor: ['.pc-schips'],
+    love: ['.pc-slove-panel'],
+    syncs: ['.pc-ssync-panel'],
+    qr: ['.pc-qr-slot'],
+  };
+
+  /** Marks each explained part of the reader's card with the key of its explanation. */
+  function markCardParts(cards = [$('#psyche-card'), $('#psyche-card-full')]) {
+    // The page's card and its full-screen copy, which is where a phone explains it.
+    for (const card of cards) {
+      if (!card) continue;
+      for (const [key, selectors] of Object.entries(GUIDE_TARGETS)) {
+        for (const selector of selectors) {
+          card.querySelectorAll(selector).forEach(node => {
+            (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).setAttribute('data-cx', key);
+          });
+        }
+      }
+    }
+  }
+
+  function lightCardPart(key, card = $('#psyche-card')) {
+    if (!card) return;
+    card.querySelectorAll('.pc-glow').forEach(node => node.classList.remove('pc-glow'));
+    card.classList.toggle('pc-guiding', Boolean(key));
+    if (key) card.querySelectorAll('[data-cx="' + key + '"]').forEach(node => node.classList.add('pc-glow'));
+  }
+
+  // On a phone the card is too small to explain in place: tapping it opens it
+  // full screen, and the parts are explained there.
+  const explainsFullScreen = () => window.matchMedia('(max-width: 719px)').matches &&
+    $('#view-profile').classList.contains('profile-structured') && Boolean(cardGuideState);
+
+  /** Fills an explanation box with what one part of the card means. */
+  function fillCardPop(pop, item, state = cardGuideState) {
+    const G = Copy.STRUCTURED.cardGuide;
+    const facts = state.facts;
+    pop.querySelector('.cx-pop-icon').textContent = item.icon;
+    pop.querySelector('.cx-pop-title').textContent = item.title;
+    pop.querySelector('.cx-pop-body').innerHTML =
+      '<p class="cx-about">' + esc(item.about) + '</p>' +
+      // MBTI's four letters in plain words, the reader's own letter of each pair marked.
+      (item.letters ? '<ul class="cx-letters">' + item.letters.map(([a, b, what, line]) =>
+        '<li><span class="cx-pair"><b class="' + (facts.chosen.includes(a) ? 'is-yours' : '') + '">' + esc(a) + '</b>' +
+        '<b class="' + (facts.chosen.includes(b) ? 'is-yours' : '') + '">' + esc(b) + '</b></span>' +
+        '<span><strong>' + esc(what) + '</strong> ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
+      // The Big Five's traits, one line each.
+      (item.terms ? '<ul class="cx-letters cx-terms">' + item.terms.map(([term, line]) =>
+        '<li><span><strong>' + esc(term) + '</strong> – ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
+      '<div class="cx-yours"><span class="cx-label">' + esc(state.yoursLabel || G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>';
+    pop.scrollTop = 0;
+    pop.hidden = false;
+  }
+
+  /** Pops the explanation of one part of the card out beside it, level with it. */
+  function explainCardPart(key) {
+    const panel = $('#profile-side .cx');
+    const pop = panel && panel.querySelector('.cx-pop');
+    const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
+    if (!pop) return;
+    $('#psyche-card') && $('#psyche-card').classList.remove('pc-hint');
+    if (!item) {
+      pop.hidden = true;
+      panel.classList.remove('is-explaining');
+      lightCardPart(null);
+      return;
+    }
+    fillCardPop(pop, item);
+    panel.classList.add('is-explaining');
+    lightCardPart(key);
+    // Level with the part it explains, kept inside the panel; the arrow
+    // still points at the part's middle when the box has to stop short.
+    const part = document.querySelector('#psyche-card [data-cx="' + key + '"]');
+    if (!part || !window.matchMedia('(min-width: 720px)').matches) { pop.style.transform = ''; return; }
+    const area = panel.getBoundingClientRect();
+    const r = part.getBoundingClientRect();
+    const middle = r.top + r.height / 2 - area.top;
+    const top = Math.max(0, Math.min(area.height - pop.offsetHeight, middle - pop.offsetHeight / 2));
+    pop.style.transform = 'translateY(' + Math.round(top) + 'px)';
+    pop.querySelector('.cx-arrow').style.top = Math.round(Math.max(14, Math.min(pop.offsetHeight - 14, middle - top))) + 'px';
+  }
+
+  /**
+   * Full screen on a phone: the tapped part's explanation opens right beside
+   * it, on whichever side has more room — under "Who you are most like", over
+   * the love languages — so the sheet reads as the part's own note and does
+   * not cover what it explains.
+   */
+  function explainFullCardPart(key) {
+    const card = $('#psyche-card-full');
+    const pop = $('#card-dialog .cx-pop');
+    const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
+    if (!pop || !card) return;
+    card.classList.remove('pc-hint');
+    if (!item) { pop.hidden = true; lightCardPart(null, card); return; }
+    fillCardPop(pop, item);
+    lightCardPart(key, card);
+    placeCardPop(pop, card.querySelector('[data-cx="' + key + '"]'), card);
+  }
+
+  /**
+   * Puts a full-screen explanation right against the part it explains.
+   *
+   * Beside the card, level with the part and pointing at it, where the screen
+   * leaves room for that — a laptop. Otherwise just under the part, or just
+   * over it when there is more room above, and kept on screen; never shorter
+   * than a third of the screen, scrolling past that and overlapping the part
+   * only if it must.
+   */
+  function placeCardPop(pop, part, card) {
+    const r = part && part.getBoundingClientRect();
+    if (!r) return;
+    const W = window.innerWidth, H = window.innerHeight, gap = 8, edge = 12;
+    const frame = card.getBoundingClientRect();
+    const room = W - frame.right - 2 * edge;
+    const side = room >= 300;
+    pop.classList.toggle('at-side', side);
+    pop.style.maxHeight = pop.style.top = pop.style.bottom = pop.style.left = pop.style.right = pop.style.width = pop.style.overflowY = '';
+    if (side) {
+      pop.classList.remove('at-top');
+      pop.style.left = Math.round(frame.right + 2 * edge) + 'px';
+      pop.style.right = 'auto';
+      pop.style.width = Math.round(Math.min(380, room - 2 * edge)) + 'px';
+      pop.style.bottom = 'auto';
+      pop.style.maxHeight = (H - 2 * edge) + 'px';
+      // Scrolling only when it must: a scrolling box clips the arrow.
+      pop.style.overflowY = 'visible';
+      if (pop.scrollHeight > pop.clientHeight + 1) pop.style.overflowY = 'auto';
+      const middle = r.top + r.height / 2;
+      const top = Math.max(edge, Math.min(H - edge - pop.offsetHeight, middle - pop.offsetHeight / 2));
+      pop.style.top = Math.round(top) + 'px';
+      const arrow = pop.querySelector('.cx-arrow');
+      if (arrow) arrow.style.top = Math.round(Math.max(14, Math.min(pop.offsetHeight - 14, middle - top))) + 'px';
+      return;
+    }
+    // Narrower than the card, inset from both its edges, so the note reads as
+    // laid over the card rather than as one more of its rows.
+    const inset = Math.max(14, Math.round(frame.width * 0.05));
+    pop.style.left = Math.round(Math.max(edge, frame.left + inset)) + 'px';
+    pop.style.right = Math.round(Math.max(edge, W - frame.right + inset)) + 'px';
+    const least = Math.round(H * 0.34);
+    const under = r.bottom < H - r.top;
+    pop.classList.toggle('at-top', !under);
+    if (under) {
+      const top = Math.min(r.bottom + gap, H - edge - least);
+      pop.style.top = Math.round(Math.max(edge, top)) + 'px';
+      pop.style.bottom = 'auto';
+      pop.style.maxHeight = Math.round(H - edge - Math.max(edge, top)) + 'px';
+    } else {
+      const bottom = Math.max(r.top - gap, edge + least);
+      pop.style.bottom = Math.round(H - Math.min(H - edge, bottom)) + 'px';
+      pop.style.top = 'auto';
+      pop.style.maxHeight = Math.round(Math.min(H - edge, bottom) - edge) + 'px';
+    }
+  }
+
+  /** The sample's card, full screen: the same explanations, for its parts. */
+  function explainSampleCardPart(key) {
+    const card = $('#sample-psyche-card-full');
+    const pop = $('#sample-card-dialog .cx-pop');
+    const item = sampleGuideState && sampleGuideState.items.find(entry => entry.key === key);
+    if (!pop || !card) return;
+    card.classList.remove('pc-hint');
+    if (!item) { pop.hidden = true; lightCardPart(null, card); return; }
+    fillCardPop(pop, item, sampleGuideState);
+    lightCardPart(key, card);
+    placeCardPop(pop, card.querySelector('[data-cx="' + key + '"]'), card);
+  }
+
+  /** Readies the sample's full-screen card to be explained, from the report it was drawn from. */
+  function guideSampleCard(report) {
+    const card = $('#sample-psyche-card-full');
+    const dialog = $('#sample-card-dialog');
+    sampleGuideState = report
+      ? cardGuideFor(report, Copy.STRUCTURED.cardGuide.labels.sample) : null;
+    dialog.classList.toggle('is-explained', Boolean(sampleGuideState));
+    const G = Copy.STRUCTURED.cardGuide;
+    $('#sample-card-tip').textContent = sampleGuideState ? (canHover() ? G.sampleTip.hover : G.sampleTip.tap) : '';
+    explainSampleCardPart(null);
+    if (!sampleGuideState) return;
+    markCardParts([card]);
+    card.classList.add('pc-hint');
+  }
+
+  const canHover = () => Boolean(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+  // Pointing at a part of the card explains it; leaving the card puts the
+  // panel back to where to start.
+  // The sample's card full screen: pointing at a part explains it, beside the
+  // card; leaving the card for anywhere but the explanation puts it away.
+  document.addEventListener('mouseover', event => {
+    if (!canHover() || !event.target.closest || !sampleGuideState) return;
+    const part = event.target.closest('#sample-psyche-card-full [data-cx]');
+    if (part) explainSampleCardPart(part.getAttribute('data-cx'));
+  });
+  document.addEventListener('mouseout', event => {
+    if (!canHover() || !event.target.closest || !sampleGuideState) return;
+    const inside = node => node && node.closest && node.closest('#sample-card-dialog .card-dialog-frame, #sample-card-dialog .cx-pop');
+    if (inside(event.target) && !inside(event.relatedTarget)) explainSampleCardPart(null);
+  });
+  document.addEventListener('mouseover', event => {
+    if (!canHover() || !event.target.closest || explainsFullScreen()) return;
+    const part = event.target.closest('#psyche-card [data-cx]');
+    if (part && $('#view-profile').classList.contains('profile-structured')) explainCardPart(part.getAttribute('data-cx'));
+  });
+  document.addEventListener('mouseout', event => {
+    const slot = event.target.closest && event.target.closest('#psyche-card-open');
+    if (!slot || !canHover() || (event.relatedTarget && slot.contains(event.relatedTarget))) return;
+    if ($('#view-profile').classList.contains('profile-structured')) explainCardPart(null);
+  });
+  // A tap on a part of the card, where there is no pointer to hover with,
+  // explains it instead of opening the card full screen — except on a phone,
+  // where tapping the card opens it full screen and the parts are explained
+  // there. Captured, so the card's own click never sees it.
+  document.addEventListener('click', event => {
+    if (!event.target.closest) return;
+    const dialog = $('#card-dialog');
+    if (dialog && dialog.open && dialog.classList.contains('is-guided') && event.target.closest('#card-dialog')) {
+      const full = dialog.querySelector('.cx-pop');
+      const part = event.target.closest('#psyche-card-full [data-cx]');
+      // With an explanation showing, a tap anywhere outside it — another part
+      // of the card too — only puts it away, back to the card; with none
+      // showing, a part explains itself and anywhere else closes the card.
+      if (!full.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#card-dialog-close')) explainFullCardPart(null);
+      else if (part) explainFullCardPart(part.getAttribute('data-cx'));
+      else if (event.target.closest('.cx-close')) explainFullCardPart(null);
+      else return;
+      event.stopPropagation();
+      return;
+    }
+    // The same for the sample's card, full screen.
+    const sample = $('#sample-card-dialog');
+    if (sample && sample.open && sampleGuideState && event.target.closest('#sample-card-dialog') &&
+        !event.target.closest('.sample-card-nav')) {
+      const pop = sample.querySelector('.cx-pop');
+      const part = event.target.closest('#sample-psyche-card-full [data-cx]');
+      if (!pop.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#sample-card-dialog-close')) explainSampleCardPart(null);
+      else if (part) explainSampleCardPart(part.getAttribute('data-cx'));
+      else if (event.target.closest('.cx-close')) explainSampleCardPart(null);
+      else return;
+      event.stopPropagation();
+      return;
+    }
+    // A tap anywhere but the explanation itself puts it away. On a touch
+    // screen that includes another part of the card: the tap goes back to
+    // the card rather than straight on to the next explanation. (With a
+    // pointer, hovering has already moved it to the part under it.)
+    const openPop = document.querySelector('#profile-side .cx-pop:not([hidden])');
+    if (openPop && !event.target.closest('.cx-pop')) {
+      const onPart = event.target.closest('#psyche-card [data-cx]');
+      if (!onPart || !canHover()) explainCardPart(null);
+      if (onPart && !canHover()) { event.preventDefault(); event.stopPropagation(); return; }
+    }
+    const tool = event.target.closest('.cx-tool');
+    if (tool) {
+      const act = tool.getAttribute('data-act');
+      if (act === 'copy') copyShareMessage(tool);
+      else if (act === 'download') downloadCardImage({ currentTarget: tool });
+      else if (act === 'share') shareCardImage({ currentTarget: tool });
+      return;
+    }
+    if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
+    // A click or tap on one of the card's parts explains that part; anywhere
+    // else on the card (the zoom-in cursor) opens it full screen.
+    if (!event.target.closest('#psyche-card-open') || !$('#view-profile').classList.contains('profile-structured')) return;
+    const part = event.target.closest('#psyche-card [data-cx]');
+    event.preventDefault();
+    event.stopPropagation();
+    if (explainsFullScreen() || !part) openPsycheCard();
+    else explainCardPart(part.getAttribute('data-cx'));
+  }, true);
+
+  // The score, its rationale and what it was read off, for the method section.
+  function confidenceBodyHtml(report) {
+    return '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + Math.round(report.confidence.score) + '"></div></div>' +
+      '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
+      // The card carries no rationale — that is part of the written report.
+      (report.confidence.rationale ? esc(report.confidence.rationale) : '') + '</p>' +
+      // What the score was read off, beside the score. This is what makes the
+      // number checkable rather than asserted: a reader who is told "88/100,
+      // comprehensive fourteen-year archive" has no way to know the model saw
+      // 3% of the messages, and "300 of 9,741 own messages" says it plainly.
+      // Optional, so a report generated before this field existed still
+      // renders — the same reason attachment.styleTone is.
+      ((report.confidence.basedOn || []).length
+        ? '<p class="essence-label">' + esc(TEXT.confidenceBasedOn) + '</p>' +
+          '<p class="trait-evidence">' + report.confidence.basedOn
+            .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
+        : '');
+  }
+
+  /**
+   * The "Analysed by" line at the foot of the report. Two lines once a paid
+   * unlock exists, since two different providers wrote different parts of the
+   * document a reader is about to save or forward — printing only the free
+   * report's model would misdescribe who wrote the roast they are reading.
+   *
+   * Called both from `renderProfile` (the report as first loaded) and from the
+   * premium success handler (the moment a payment turns one provider's
+   * document into two providers' document) — one function, so the two call
+   * sites cannot say different things about the same profile.
+   *
+   * Guarded on `premiumModel`/`premiumAt` existing, not just on
+   * `premiumAnalysis`: a profile unlocked before this pair existed still has
+   * the writing but not the record of who wrote it or when, and falls back to
+   * the one-line form rather than printing "undefined".
+   */
+  function renderAnalysedBy(profile) {
+    // A quiet pill per line, the model in the ink colour and the date short.
+    const when = provenanceWhen;
+    // One quiet box, a line per thing that was written.
+    const line = (icon, lead, model, at) => '<span class="provenance-item"><span class="provenance-icon" aria-hidden="true">' +
+      icon + '</span><span>' + esc(lead) + ' <b>' + esc(model) + '</b> on ' + esc(when(at)) + '.</span></span>';
+    // A Muse read: Muse wrote the card and the report at once, so one line says it.
+    const oneWriter = profile.premiumAnalysis && profile.model === 'Muse' && profile.premiumModel === 'Muse';
+    const lines = oneWriter ? [] : [line('✦', 'Psyche Card generated by', profile.model || 'the model', profile.createdAt)];
+    if (profile.premiumAnalysis && profile.premiumModel && profile.premiumAt) {
+      lines.push(line('★', 'Psyche Report written by', profile.premiumModel, profile.premiumAt));
+    }
+    $('#analysed-by').innerHTML = '<div class="provenance-box">' + lines.join('') + '</div>';
+  }
+
+  function renderProfile() {
+    // An unlock that lands without a change of view still takes the bar away.
+    requestAnimationFrame(refreshReportPromo);
+    const profile = state.profile;
+    if (!profile) return;
+    const report = profile.report;
+    // A Psyche Report on this device: the PDF maker, ready for its download.
+    if (hasExplanations(profile)) loadPdf().catch(() => {});
+
+    const who = profile.card.name || 'Your';
+    $('#profile-title').textContent = who + '’s psyche';
+
+    // The PDF letterhead. Only ever visible in print, but filled here so the
+    // export never depends on anything happening at print time.
+    $('#letterhead-name').textContent = who;
+    $('#letterhead-meta').textContent =
+      'Generated ' + new Date(profile.createdAt).toLocaleDateString(undefined,
+        { year: 'numeric', month: 'long', day: 'numeric' }) +
+      ' · ' + Math.round(report.confidence.score) + '/100 confidence';
+
+    const cardHtml = psycheCardHtml(report, { own: true });
+    $('#psyche-card').innerHTML = cardHtml;
+    freshArtIds($('#psyche-card'));
+    $('#psyche-card-full').innerHTML = cardHtml;
+    freshArtIds($('#psyche-card-full'));
+    fillCardQr();
+    // Hidden rather than left empty on a report too old or too thin to fill it,
+    // so the page never opens on a blank frame with a "tap to expand" label
+    // under it.
+    $('#psyche-card-section').hidden = !cardHtml;
+    $('#psyche-card-title').textContent = TEXT.cardSection;
+    $('#psyche-card-hint').textContent = TEXT.cardHint;
+    // Visible label plus a fuller aria-label — both set from copy.js rather
+    // than hardcoded in index.html like the icon glyphs themselves.
+    $('#card-download').setAttribute('aria-label', TEXT.cardDownload);
+    $('#card-download-label').textContent = TEXT.cardDownloadLabel;
+    $('#card-share').setAttribute('aria-label', TEXT.cardShare);
+    $('#card-share-label').textContent = TEXT.cardShareLabel;
+    layoutPsycheCard();
+
+    // A free report sets its card beside what it was read from and has no
+    // nav; a full one moves the card above the nav on a wide screen.
+    const explained = hasExplanations(profile);
+    // Unlocked, the report is two pages: My Psyche (the hub: the card, the
+    // link, what it carries, how it was read, and the way to the report) and
+    // My Report (Parts 00-04 and the roast, the part nav down the left).
+    const reportPage = explained && profilePage === 'report';
+    const hub = explained && !reportPage;
+    const view = $('#view-profile');
+    view.classList.add('profile-structured');
+    view.classList.toggle('profile-free', !reportPage);
+    view.classList.toggle('profile-paid', reportPage);
+    view.classList.toggle('profile-hub', hub);
+    // My Report starts at Part 00: the card is on My Psyche, one tap back.
+    $('#profile-top').hidden = reportPage;
+    $('#report-back').hidden = !reportPage;
+    refreshReportSignal(reportPage);
+    // Delete everything is on My Psyche only, at its foot: never beside the report.
+    $('#delete-profile').hidden = reportPage;
+    // On My Psyche the hub carries Save a backup and Delete everything
+    // (hubHtml); the row below keeps them only where there is no hub.
+    const hubHere = !reportPage;
+    if (hubHere) { $('#delete-profile').hidden = true; $('#save-backup').hidden = true; }
+    else $('#save-backup').hidden = false;
+    // Under My Report's part nav the row is narrow: one word each, with the
+    // full name still read out.
+    const words = Copy.STRUCTURED.actions;
+    for (const [id, full, short] of [['#report-back', words.back, words.backShort],
+      ['#export-pdf-bottom', words.download, words.downloadShort], ['#save-backup', words.backup, words.backupShort]]) {
+      $(id + ' .cta-label').textContent = reportPage ? short : full;
+      if (reportPage) $(id).setAttribute('aria-label', full); else $(id).removeAttribute('aria-label');
+    }
+    // Both open on the card with what it means beside it.
+    const side = $('#profile-side');
+    side.hidden = reportPage;
+    setHtml(side, side.hidden ? '' : cardGuideHtml(report, explained));
+    if (!side.hidden) {
+      markCardParts();
+      // Where to start: the ring pulses gently until the reader points at anything.
+      $('#psyche-card').classList.add('pc-hint');
+    }
+    // My Psyche has only the card, which has its own download: the full
+    // report's is on My Report.
+    $('#export-pdf-bottom').hidden = !reportPage;
+    layoutPsycheCard();
+    setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
+    if (explained && !hub) showKeepNote();
+    syncNav();
+    refreshReferral().catch(() => {});
+    if (document.querySelector('#profile-body .hub-card')) {
+      refreshHub();
+      fetchReferralStatus().then(refreshHub).catch(() => {});
+      refreshAskCredits().then(refreshHub).catch(() => {});
+    }
+    // The card's QR code waits for the short link, then fits the card again.
+    publishShortLink().then(link => {
+      if (!link || !state.profile) return;
+      fillCardQr();
+      layoutPsycheCard();
+    }).catch(() => {});
+    layoutSideActions();
+    collapseSections($('#profile-body'));
+    // A full report on a phone opens on Part 00 with the other parts shut, so
+    // the reader starts reading at once and sees the rest at a glance below
+    // it; on a wider screen they all start open.
+    if (reportPage && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
+      for (const card of $('#profile-body').querySelectorAll('.part-card')) {
+        setSectionOpen(card, card.getAttribute('data-part-card') === 'overview');
+      }
+    }
+    markStructured($('#profile-body'));
+    $('#profile-body').querySelectorAll('.report-hero .hub-ring[data-p]').forEach(ring => ring.style.setProperty('--p', ring.dataset.p));
+
+    // Sits after the action buttons rather than inside the report: it is a
+    // record of the run, not a finding, and closing the page with it means
+    // it stays true no matter what gets added between the report and the
+    // buttons above it.
+    renderAnalysedBy(profile);
+    // Under the hub the green ticks carry it (hubStamp); My Report keeps it.
+    $('#analysed-by').hidden = Boolean(document.querySelector('#profile-body .hub-card'));
+    refreshSyncInvite();
+    refreshGiftBanner();
+  }
+
+  // Past syncs as a list: a row each, who, on what basis and when, then two
+  // buttons — their Psyche Card (kept with the sync since that was saved) and
+  // the Sync itself. No score: a sync is read, not rated.
+  const SYNC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg>';
+  const SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
+  const RESULTS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5"/></svg>';
+  /**
+   * A row's circle: their character's emblem, the one at the head of the
+   * report, from the card face their link carried; the initial when there is
+   * none (an older link, or a character without an emblem).
+   */
+  function matchFaceHtml(mode, name, face) {
+    const emblem = face && face.c ? Copy.emblemSvg(face.c, 'match-emblem') : '';
+    return '<span class="match-face m-' + esc(mode) + (emblem ? ' has-emblem' : '') + '" aria-hidden="true">' +
+      (emblem || esc(String(name).trim().charAt(0).toUpperCase() || '?')) + '</span>';
+  }
+  /** A row's name: a link-styled button to their Psyche Card when there is one. */
+  function matchNameHtml(name, attr, first) {
+    if (!attr) return '<strong>' + esc(name) + '</strong>';
+    return '<button type="button" class="match-name" ' + attr + ' aria-label="' + esc(TEXT.matchOpenCard(first)) + '">' +
+      esc(name) + '</button>';
+  }
+  function historyList(history) {
+    const when = value => {
+      const date = new Date(value);
+      return isNaN(date) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    return '<ul class="match-list">' +
+      history.map((entry, index) => {
+        const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
+        const name = String(entry.withName || '?');
+        const first = firstName(name) || name;
+        // Their name opens their Psyche Card; the one button, the result.
+        // A sync from before syncs were between any two connections still
+        // says what it was (Romantic, Professional); a current one says Synced.
+        const label = (mode !== 'platonic' ? (MODE_LABELS[mode] || mode)
+          : entry.received ? TEXT.matchReceivedMeta : TEXT.matchSyncedMeta) + (entry.shared ? ' · ' + TEXT.matchSharedMeta : '');
+        // Not shared with them yet, and it can be: a Share button beside Results.
+        const share = entry.back && !entry.shared && !entry.received && state.server && state.server.shortLinks
+          ? '<button type="button" class="match-go match-share" data-share="' + index + '" aria-label="' +
+            esc(TEXT.matchShareAria(first)) + '">' + SHARE_ICON + '<span>' + esc(TEXT.matchShareLabel) + '</span></button>' : '';
+        return '<li><div class="match-row is-synced">' +
+          matchFaceHtml(mode, name, entry.face) +
+          '<span class="match-who">' + matchNameHtml(name, entry.card ? 'data-card="' + index + '"' : '', first) +
+          '<span class="match-meta">' + (entry.fresh ? '<span class="match-new">' + esc(TEXT.matchNew) + '</span>' : '') +
+            esc(label) + ' · ' + esc(when(entry.when)) + '</span></span>' +
+          '<span class="match-actions">' + share +
+          '<button type="button" class="match-go match-results" data-report="' + index + '" aria-label="' +
+            esc(TEXT.matchOpenSync(first)) + '">' + RESULTS_ICON + '<span>' + esc(TEXT.matchSyncLabel) + '</span></button>' +
+          '</span></div></li>';
+      }).join('') +
+      '</ul>';
+  }
+
+
+  document.addEventListener('click', event => {
+    const link = event.target.closest('[data-report]');
+    if (!link) return;
+    event.preventDefault();
+    const row = link.closest('.match-row');
+    const mark = row && row.querySelector('.match-new');
+    if (openSyncEntry(Number(link.dataset.report)) && mark) mark.remove();
+  });
+  // One saved sync's results, its New mark spent.
+  function openSyncEntry(index) {
+    const history = store.read(KEYS.history, []);
+    const entry = history[index];
+    if (!entry) return false;
+    if (entry.fresh) {
+      delete entry.fresh;
+      store.write(KEYS.history, history);
+      refreshSyncsDot();
+    }
+    renderReport(entry.report, entry.withName, entry.when, entry.with);
+    show('report');
+    return true;
+  }
+  // Their Psyche Card, from My Syncs: drawn from the card their link carried,
+  // in the same full-screen dialog their link's card opens in.
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-card]');
+    if (!button) return;
+    event.preventDefault();
+    const entry = store.read(KEYS.history, [])[Number(button.dataset.card)];
+    if (!entry || !entry.card) return;
+    const card = Card.shape(entry.card);
+    openFriendCard(reportFromCard(Object.assign({}, card, { name: firstName(card.name) || card.name }), entry.face));
+  });
+
+  // Compatibility travels as a link and nothing else. The compact card rides
+  // in the fragment (#p=…), which a browser never sends to a server, so the
+  // link is the data rather than a pointer to it. It used to be a QR code as
+  // well, but a code that dense needed a camera at close range, was unreadable
+  // off a screenshot in a Story, and only ever opened this same link.
+  //
+  // "Send my link" hands the share sheet a ready-written message, so what
+  // arrives in WhatsApp or a DM says what it is rather than being a bare,
+  // very long address. Without a share sheet (most desktops) the same message
+  // goes to the clipboard.
+  function compatMessage() {
+    return shareMessage();
+  }
+
+  function writeClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return Promise.reject(new Error('no clipboard'));
+  }
+
+  function linkStatus(target, message) {
+    const status = typeof target === 'string' ? $(target) : target;
+    if (!status) return;
+    status.textContent = message;
+    clearTimeout(status._clear);
+    status._clear = setTimeout(() => { status.textContent = ''; }, 6000);
+  }
+
+  async function sendMyLink(statusSelector) {
+    if (!state.profile) return;
+    const text = compatMessage();
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (error) {
+        // Backed out of the sheet themselves: nothing to fall back from.
+        if (error && error.name === 'AbortError') return;
+      }
+    }
+    writeClipboard(text).then(
+      () => linkStatus(statusSelector, TEXT.linkMessageCopied),
+      () => window.prompt(TEXT.linkCopyPrompt, text));
+  }
+
+  // Copy link: the link alone (October 2026; it was the share message).
+  function copyMyLink(button, statusSelector) {
+    const url = myLinkUrl();
+    writeClipboard(url).then(() => {
+      const label = button.textContent;
+      button.textContent = 'Copied ✓';
+      setTimeout(() => { button.textContent = label; }, 2000);
+      linkStatus(statusSelector, TEXT.linkCopied);
+    }, () => window.prompt(TEXT.linkCopyPrompt, url));
+  }
+  $('#share-link-report').addEventListener('click', () => sendMyLink('#share-link-report-status'));
+  // Share PDF: the same PDF Download PDF saves, to the share sheet with the
+  // one share message; where files cannot be shared, it is downloaded.
+  $('#share-compat-image').addEventListener('click', async () => {
+    const last = state.lastReport;
+    if (!last) return;
+    let pdf;
+    try { await loadPdf(); pdf = compatPdf(last); } catch (error) { linkStatus('#compat-share-status', 'Could not build the PDF.'); return; }
+    const file = new File([pdf.blob], pdf.name, { type: 'application/pdf' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: shareMessage() }); return; }
+      catch (error) { if (error && error.name === 'AbortError') return; }
+    }
+    exportCompatPdf();
+  });
+  $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
+
+
+  const LABEL_FONT_STACK = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+  // The report is typeset into a PDF here rather than handed to the browser's
+  // print dialog. Print-to-PDF gave the user no say over page size, margins or
+  // whether backgrounds were included, put the browser's own header on every
+  // page, and on mobile often offered no PDF destination at all. pdf.js writes
+  // the file directly, so the download is one click and looks the same
+  // everywhere.
+  // ---------- the PDF maker, loaded when a report is on screen ----------
+  //
+  // pdf.js is the second-largest script and nobody needs it until there is a
+  // Psyche Report to save, so it is loaded only then (renderProfile, once a
+  // report is drawn) or when a PDF is asked for, which waits for it.
+  const loadPdf = () => (window.PsychePDF ? Promise.resolve() : loadScripts('pdf-scripts'));
+  window.PsycheLoadPdf = loadPdf;
+
+  function buildReportPdf(profile) {
+    const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
+    // Same date-only granularity the free line already used — kept rather
+    // than upgraded to match the page's full date-and-time, so the two
+    // "Analysed by" lines in one PDF read as one convention rather than two.
+    const premiumStamp = profile.premiumAt ? new Date(profile.premiumAt) : null;
+    return window.PsychePDF.build(profile.report, profile.card, {
+      date: stamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+      model: profile.model || '',
+      // The provider and date that wrote the paid sections, when there are
+      // any — see renderAnalysedBy on the page for why this is a separate
+      // pair rather than overwriting model/date above.
+      premiumModel: profile.premiumModel || '',
+      premiumDate: premiumStamp
+        ? premiumStamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '',
+      // The page shows a matches section when this device has any, so the
+      // report does too.
+      history: store.read(KEYS.history, []),
+      // The questions asked of PsycheAI, for the PDF's appendix.
+      asked: askThread().map(item => ({ q: item.q, a: item.a, steps: item.steps || [] })),
+      // The roast prints only for the reader who bought it. Unpaid, the key is
+      // absent and the section does not exist in the file at all.
+      unlocked: unlockedSections(profile),
+      build: (() => {
+        const b = state.server && state.server.build;
+        return b && b.version ? 'v' + b.version : '';
+      })(),
+      sources: (!state.digest || digestHasInstagram(state.digest) ? [TEXT.sourceInstagram] : [])
+        .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
+        .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : [])
+        .concat(state.digest && state.digest.tiktok ? [TEXT.sourceTikTok] : [])
+        .concat(state.digest && state.digest.journal ? [TEXT.sourceJournal] : [])
+        .concat(state.digest && state.digest.whatsapp ? [TEXT.sourceWhatsApp] : []),
+      // What the evidence page's "Read from" lists, the same as the page's.
+      counted: countedInFull(state.digest),
+    });
+  }
+
+  // ---------- where the report goes ----------
+  //
+  // Straight to the reader's own disk, and nowhere else. The PDF is typeset in
+  // the browser by pdf.js and handed to a temporary object URL, so the file
+  // never touches the network and the server is never given anything
+  // report-shaped to store even by accident.
+  //
+  // Nothing is asked for first. The download used to be gated behind an email
+  // address, which bought the operator a mailing list at the cost of putting a
+  // form in front of the one thing the reader had already paid for; the gate is
+  // gone and the button now does what it says.
+  /** "Psyche Report - Jared Sia - 05102026.pdf": whose, and the day it was written. */
+  function reportFileName(profile) {
+    const when = new Date(profile.createdAt || Date.now());
+    const day = Number.isNaN(when.getTime()) ? new Date() : when;
+    const ddmmyyyy = String(day.getDate()).padStart(2, '0') + String(day.getMonth() + 1).padStart(2, '0') + day.getFullYear();
+    // Plain letters only: a browser can drop a name it cannot encode and save
+    // the file as "download", so accents fold (Aleç → Alec) and anything still
+    // outside ASCII, or unsafe in a file name, goes.
+    const who = String((profile.card && profile.card.name) || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7e]+/g, ' ').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'You';
+    return 'Psyche Report - ' + who + ' - ' + ddmmyyyy + '.pdf';
+  }
+
+  // The full report is kept only in this browser: until its PDF has been
+  // downloaded once, a note at the head of the report says so, with the button.
+  // Its ✕ puts it away for this visit; it is back on the next until the PDF is saved.
+  let keepNoteClosed = false;
+  function showKeepNote() {
+    const body = $('#profile-body');
+    if (!body || keepNoteClosed || body.querySelector('.report-keep-note') || store.read(KEYS.pdfSaved, false)) return;
+    const note = document.createElement('div');
+    note.className = 'report-keep-note no-print';
+    const P = Copy.STRUCTURED.reportPage;
+    note.innerHTML = '<p>' + esc(P.keep)
+      .replace('{pdf}', '<button class="report-keep-btn report-keep-save" type="button">' + esc(P.keepPdf) + '</button>')
+      .replace('{backup}', '<button class="report-keep-btn report-keep-backup" type="button">' + esc(P.keepBackup) + '</button>') + '</p>' +
+      '<button type="button" class="report-keep-close" aria-label="' + esc(TEXT.close) + '">✕</button>';
+    note.querySelector('.report-keep-save').addEventListener('click', exportPdf);
+    // A full backup keeps it too (with the card, the syncs and the questions), so it puts the note away the same way.
+    // The same popout as My Psyche's Save Backup (27 October 2026): nothing downloads until Download backup.
+    note.querySelector('.report-keep-backup').addEventListener('click', () => {
+      openHubConfirm('backup');
+      afterHubBackup = () => {
+        store.write(KEYS.pdfSaved, true);
+        removeHeadNote(note);
+      };
+    });
+    note.querySelector('.report-keep-close').addEventListener('click', () => {
+      keepNoteClosed = true;
+      removeHeadNote(note);
+    });
+    body.prepend(note);
+  }
+
+  async function exportPdf() {
+    const profile = state.profile;
+    if (!profile) return;
+    try { await loadPdf(); } catch (error) { return; }
+    const href = URL.createObjectURL(buildReportPdf(profile));
+    const link = document.createElement('a');
+    link.download = reportFileName(profile);
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Long enough for every browser to have started reading the blob, after
+    // which holding it open only costs memory.
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+    // In an app's own browser a download often goes nowhere, so the note
+    // stays there until the PDF is saved somewhere it lands.
+    if (hasExplanations(profile) && !IN_APP) {
+      store.write(KEYS.pdfSaved, true);
+      document.querySelectorAll('.report-keep-note').forEach(removeHeadNote);
+    }
+  }
+
+  // ---------- psyche card: inline preview and full screen ----------
+  //
+  // Both copies are scaled here rather than in CSS, because the fit depends on
+  // the viewport and on the column the preview happens to be sitting in, and
+  // neither is knowable from a stylesheet.
+  // A full report on a wide, tall screen has its nav down the left column,
+  // with the page's actions under it (styles.css, .profile-paid).
+  function sideCardMode() {
+    const view = $('#view-profile');
+    return Boolean(view && view.classList.contains('profile-paid') &&
+      window.matchMedia && window.matchMedia('(min-width: 1000px) and (min-height: 520px)').matches);
+  }
+
+  // A note at the head of the report going moves the report up under the
+  // left column, which was laid level with it: lay the column out again.
+  function removeHeadNote(note) {
+    note.remove();
+    layoutSideActions();
+  }
+
+  function layoutSideActions() {
+    const nav = document.querySelector('#profile-body .part-nav');
+    if (!nav || !sideCardMode()) return;
+    const view = $('#view-profile');
+    // The left column's top level with the report's first part, as the page
+    // first lays out; then the actions under it.
+    const first = document.querySelector('#profile-body .report-hero') || document.querySelector('#profile-body .part-card');
+    if (first && first.offsetParent) {
+      const header = document.querySelector('.nav');
+      const floor = (header ? header.getBoundingClientRect().height : 56) + 12;
+      view.style.setProperty('--side-nav-top', Math.round(Math.max(floor, first.getBoundingClientRect().top + window.scrollY)) + 'px');
+    }
+    requestAnimationFrame(() => view.style.setProperty('--side-nav-bottom',
+      Math.round(nav.getBoundingClientRect().bottom + 10) + 'px'));
+  }
+
+  /**
+   * Full screen on a phone. Phones run from about 1:1.6 to 1:2.3 once the
+   * browser's own bars are taken off, and a fixed 9:16 card fitted into that
+   * leaves a band of empty screen at the sides or the foot. Here the card
+   * takes the screen's own shape instead, within reason: as wide as the
+   * screen less a slim margin, and as tall as the room above the line under
+   * it. A taller card draws its content larger, and a shorter one a little
+   * smaller (fitStoryContent); whatever height is left over is shared out
+   * between the sections (.is-guided .pc-story-in). Only
+   * this copy changes shape — the card on the page and the image saved from it
+   * stay 1080 x 1920.
+   */
+  function fitGuidedCard(dialog, card) {
+    if (!card) return;
+    const css = getComputedStyle(dialog);
+    const bar = dialog.querySelector('.card-dialog-bar');
+    const width = dialog.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+    const height = dialog.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom) - (bar ? bar.offsetHeight : 0);
+    if (width <= 0 || height <= 0) return;
+    const tall = Math.min(GUIDED_CARD_MAX_H, Math.max(GUIDED_CARD_MIN_H, STORY_W * height / width));
+    card.style.height = Math.round(tall) + 'px';
+    card.dataset.grow = String(GUIDED_CARD_GROW);
+    fitCard(card, width, height, 'screen');
+  }
+  const GUIDED_CARD_MIN_H = 1400;
+  const GUIDED_CARD_MAX_H = 2800;
+  // How much larger than the story's own type a tall phone may draw it.
+  const GUIDED_CARD_GROW = 1.3;
+
+  function layoutPsycheCard() {
+    const slot = $('#psyche-card-open');
+    if (slot && !$('#psyche-card-section').hidden) {
+      // Capped in height as well as width. Left width-led it filled the column
+      // and pushed "Who you are" a screen and a half down the page — the
+      // opposite of what a summary above the report is for. It is a thumbnail
+      // to be tapped, so it is sized like one.
+      const width = slot.clientWidth || CARD_W;
+      // Beside what it means, the card fills its box's width, however tall
+      // that makes it.
+      const fill = $('#view-profile').classList.contains('profile-structured');
+      fitCard($('#psyche-card'), width, fill ? CARD_W * 4 : PREVIEW_MAX_H);
+      layoutSideActions();
+    }
+    const dialog = $('#card-dialog');
+    if (dialog && dialog.open && dialog.classList.contains('is-guided')) fitGuidedCard(dialog, $('#psyche-card-full'));
+    else if (dialog && dialog.open) {
+      $('#psyche-card-full').style.height = '';
+      delete $('#psyche-card-full').dataset.grow;
+      // Full screen is the case the whole fixed-size approach exists for: fit
+      // both axes, with a small margin so it never touches the edges.
+      // The download bar is pinned to the bottom of the viewport, so the card is
+      // fitted into what is left above it rather than into the whole screen —
+      // otherwise the button lands on top of the card's last row.
+      fitCard($('#psyche-card-full'),
+        window.innerWidth * 0.94, window.innerHeight * 0.96 - CARD_BAR_SPACE, 'screen');
+    }
+    layoutSampleCard();
+    // The sample's own full-screen view. No bar under it, unlike the reader's,
+    // so it gets the height the download row would otherwise take.
+    const sampleFull = $('#sample-card-dialog');
+    if (sampleFull && sampleFull.open) {
+      // Above the line saying how to learn more, when it shows.
+      const tip = $('#sample-card-tip');
+      const tipSpace = tip && tip.offsetHeight ? tip.offsetHeight + 16 : 0;
+      // And clear of the gallery's count at the top, top and bottom alike,
+      // since the card is centred; and of its arrows at the sides.
+      const gallery = sampleFull.classList.contains('is-gallery');
+      fitCard($('#sample-psyche-card-full'),
+        window.innerWidth * 0.94 - (gallery && window.innerWidth >= 720 ? 140 : 0),
+        window.innerHeight * 0.96 - tipSpace - (gallery ? 104 : 0), 'screen');
+      if (sampleGuideState) explainSampleCardPart(null);
+    }
+  }
+
+  /**
+   * The same fit for the sample dialog's copy of the card.
+   *
+   * Kept separate from the branch above rather than folded into it because the
+   * two are measured against different boxes: the report's preview is fitted to
+   * the column it sits in, and this one to the dialog's own scrolling body,
+   * which is a different width on the same screen. Width-led with the same
+   * PREVIEW_MAX_H ceiling, so the sample opens on a card the same size the
+   * reader's own report will show them.
+   */
+  function layoutSampleCard() {
+    const section = $('#sample-card-section');
+    if (!section || section.hidden) return;
+    const frame = section.querySelector('.psyche-card-frame');
+    if (!frame) return;
+    // The frame is what fitCard resizes, so its own width is not the space
+    // available — that is the section it sits in, minus the padding.
+    const style = getComputedStyle(section);
+    const width = section.clientWidth -
+      parseFloat(style.paddingLeft || 0) - parseFloat(style.paddingRight || 0);
+    if (width > 0) fitCard($('#sample-psyche-card'), width, PREVIEW_MAX_H);
+  }
+
+  // ---------- the card as an image ----------
+  //
+  // The card is DOM, and the reader wants a PNG. Rasterising it means putting
+  // the markup inside an SVG <foreignObject>, loading that as an image and
+  // painting it to a canvas — the one route a browser offers without shipping a
+  // rendering library.
+  //
+  // Two things make or break it. The SVG carries no reference to the page it
+  // came from, so the whole stylesheet is inlined; it is fetched once and kept,
+  // rather than reconstructed from cssRules, because the variables the card's
+  // colours resolve through live on :root and are easy to miss when picking
+  // rules out by selector. And every node has to be XHTML — serialised through
+  // XMLSerializer, with the namespace declared on the wrapper — since an SVG
+  // document rejects the HTML parser's unclosed tags.
+  // Only the rules the card actually uses, read out of the live CSSOM.
+  //
+  // Fetching styles.css and inlining the text was the obvious first attempt, and
+  // it fails outright — the SVG never loads and the download silently produces
+  // nothing. The reason is worth writing down because it is not the one you
+  // would guess: the file's *comments* mention `<linearGradient>` and
+  // `<dialog>`, and dropping raw CSS into an XML `<style>` element hands those
+  // to the XML parser as unclosed tags. Reading `cssText` off the CSSOM avoids
+  // it for free, since the parser has already stripped every comment.
+  //
+  // Selecting by prefix is then about size and relevance rather than
+  // correctness: the card's own rules plus the custom properties its colours
+  // resolve through, and none of the rest of the app.
+  const CARD_RULE = /^(:root|\.psyche-card|\.pc-)/;
+  let styleSheetText = null;
+  function cardStyles() {
+    if (styleSheetText !== null) return styleSheetText;
+    const parts = [
+      // The page's own reset is not in the extracted set, and the card's
+      // geometry assumes it.
+      '*{box-sizing:border-box}',
+      'div,p,h2,ul,li,span{margin:0;padding:0}',
+      'ul{list-style-position:inside}',
+      '.psyche-card{font-family:' +
+        '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif}',
+    ];
+    for (const sheet of document.styleSheets) {
+      let rules;
+      // A stylesheet from another origin throws on access rather than
+      // returning nothing, and there is no reason to fail the export over one.
+      try { rules = sheet.cssRules; } catch (error) { continue; }
+      for (const rule of rules) {
+        if (!rule.selectorText) continue;
+        const matches = rule.selectorText.split(',')
+          .some(selector => CARD_RULE.test(selector.trim()));
+        if (matches) parts.push(rule.cssText);
+      }
+    }
+    styleSheetText = parts.join('\n');
+    return styleSheetText;
+  }
+
+  const CARD_IMAGE_SCALE = 2;
+
+  async function cardImageBlob() {
+    // The full screen copy when it is open; otherwise the card on the page —
+    // the copy in a closed dialog has no size to draw from, which is how
+    // Download and Share beside the card used to fail without a word.
+    const full = $('#psyche-card-full');
+    const source = full && full.offsetWidth ? full : $('#psyche-card');
+    if (!source) return null;
+    const width = source.offsetWidth;
+    const height = source.offsetHeight;
+    if (!width || !height) return null;
+
+    // A clone at scale 1: the live node is under a transform that fits it to the
+    // screen, and the image should be the card at full size rather than at
+    // whatever this viewport happened to shrink it to.
+    const clone = source.cloneNode(true);
+    clone.style.transform = 'none';
+    clone.style.margin = '0';
+    // The story card exports at its own size and no larger: one standard
+    // 1080 x 1920 image, whatever screen it was made on. Square-cornered,
+    // so its tinted wash runs to every edge: rounded corners left white
+    // patches there, and a story takes its background from the edges.
+    const story = source.classList.contains('pc-story');
+    if (story) clone.style.borderRadius = '0';
+    const scale = story ? 1 : CARD_IMAGE_SCALE;
+    clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+
+    const markup = new XMLSerializer().serializeToString(clone);
+    const css = cardStyles();
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height +
+      '" viewBox="0 0 ' + width + ' ' + height + '">' +
+      '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
+      '<style>' + css + '</style>' + markup +
+      '</foreignObject></svg>';
+
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    const image = new Image();
+    image.decoding = 'sync';
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('the card could not be drawn'));
+      image.src = url;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const context = canvas.getContext('2d');
+    // The card's own background is painted by its stylesheet, but a PNG with an
+    // alpha channel behind it would go transparent wherever the radius rounds
+    // the corners, which reads as a hole in every viewer that shows a dark page.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0);
+
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  // Folded to plain letters the way the backup's and the PDF's names are
+  // (Aleç → alec), rather than dropped: `\W` took every letter outside ASCII
+  // with it, so "Aleç" saved as psycheai-card-ale and a name in another
+  // script as psycheai-card- (October 2026). Nothing left: psycheai-card.
+  function cardImageName() {
+    const slug = String((state.profile && state.profile.card && state.profile.card.name) || '')
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug ? 'psycheai-card-' + slug : 'psycheai-card';
+  }
+
+  function triggerDownload(blob, name) {
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = name;
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+  }
+
+  // Shared by both icon buttons: neither carries visible text of its own any
+  // more for a failure to borrow, so an error from either one shows up here
+  // instead of inside the button.
+  // The card's Copy link: the link alone on the clipboard (October 2026; it
+  // was the share message, which Share still sends).
+  function copyShareMessage(button) {
+    const text = myLinkUrl();
+    writeClipboard(text).then(() => {
+      const label = button.querySelector('span');
+      const was = label.textContent;
+      label.textContent = TEXT.linkMessageCopiedShort;
+      setTimeout(() => { label.textContent = was; }, 2000);
+      flashCardStatus(TEXT.linkCopied);
+    }, () => window.prompt(TEXT.linkCopyPrompt, text));
+  }
+
+  function flashCardStatus(message) {
+    const dialog = $('#card-dialog');
+    const status = dialog && dialog.open ? $('#card-dialog-status') : ($('#profile-side .cx-status') || $('#card-dialog-status'));
+    if (!status) return;
+    status.textContent = message || '';
+    status.hidden = !message;
+    if (message) setTimeout(() => { status.hidden = true; status.textContent = ''; }, 3000);
+  }
+
+  async function downloadCardImage(event) {
+    const button = event.currentTarget;
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const blob = await cardImageBlob();
+      if (!blob) throw new Error('empty');
+      triggerDownload(blob, cardImageName() + '.png');
+    } catch (error) {
+      flashCardStatus(TEXT.cardImageError);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  // The Web Share API can share a file only on the browsers that actually
+  // support it — Safari and Chrome on a phone, not desktop Chrome or
+  // Firefox — and canShare() is how a browser says so up front rather than
+  // share() throwing after the fact. Where it is missing, or present but
+  // unable to share an image specifically, this falls back to the same
+  // download the other button offers: a share button that silently does
+  // nothing would be worse than one that hands over the file another way.
+  async function shareCardImage(event) {
+    const button = event.currentTarget;
+    if (button.disabled) return;
+    button.disabled = true;
+    // The caption, with the @psycheai.io handle, goes to the clipboard first,
+    // while the tap still counts as the reader's own gesture: Instagram keeps
+    // the image from a share sheet but drops its text, so the reader pastes it.
+    const caption = shareMessage();
+    writeClipboard(caption).then(() => flashCardStatus(TEXT.cardCaptionCopied), () => {});
+    try {
+      const blob = await cardImageBlob();
+      if (!blob) throw new Error('empty');
+      const name = cardImageName() + '.png';
+      const file = new File([blob], name, { type: 'image/png' });
+      // For a Story, the picture alone: with text beside it, some phones leave
+      // Instagram's Story out of the share sheet. The caption is on the clipboard.
+      const story = $('#card-dialog').classList.contains('is-story');
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share(story ? { files: [file] } : { files: [file], title: TEXT.cardSection, text: caption });
+          return;
+        } catch (error) {
+          // The reader opened the share sheet and backed out themselves —
+          // not a failure, and not something to fall back from.
+          if (error && error.name === 'AbortError') return;
+        }
+      }
+      if (story) { showStoryPicture(blob); return; }
+      triggerDownload(blob, name);
+    } catch (error) {
+      flashCardStatus(TEXT.cardImageError);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  // A Muse link with story=1 ("Share to your Story" in Muse) opens on the
+  // card full screen, with the share button named for it and a line on how.
+  function openStoryCard() {
+    const dialog = $('#card-dialog');
+    if (!dialog || !$('#psyche-card-full')) return;
+    openPsycheCard();
+    dialog.classList.remove('is-guided', 'no-tools');
+    dialog.classList.add('is-story');
+    $('#psyche-card-full').classList.remove('pc-hint');
+    $('#card-share-label').textContent = TEXT.cardStoryShare;
+    $('#card-dialog-tip').textContent = TEXT.cardStoryTip;
+    // Fitted again with the line in place, so the card makes room for it.
+    layoutPsycheCard();
+    dialog.addEventListener('close', () => {
+      dialog.classList.remove('is-story');
+      $('#card-share-label').textContent = TEXT.cardShareLabel;
+      $('#card-story-img').hidden = true;
+    }, { once: true });
+  }
+
+  // Where this browser can't share a picture (some in-app browsers can't),
+  // the card as a picture over itself, to press and hold and save.
+  function showStoryPicture(blob) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = $('#card-story-img');
+      img.alt = TEXT.cardSection;
+      img.src = reader.result;
+      img.hidden = false;
+      $('#card-dialog-tip').textContent = TEXT.cardStoryHold;
+    };
+    reader.readAsDataURL(blob);
+  }
+
+  function openPsycheCard() {
+    const dialog = $('#card-dialog');
+    if (!dialog) return;
+    // On a phone, full screen is where the card is explained: no download or
+    // share, a line saying to tap, and the ring pulsing until a part is tapped.
+    const guided = explainsFullScreen();
+    dialog.classList.toggle('is-guided', guided);
+    // Download and share sit beside the card on the page, so full screen is
+    // the card alone, on a laptop as well as a phone.
+    dialog.classList.toggle('no-tools', $('#view-profile').classList.contains('profile-structured'));
+    $('#card-dialog-tip').textContent = guided ? Copy.STRUCTURED.cardGuide.fullTip : '';
+    explainFullCardPart(null);
+    $('#psyche-card-full').classList.toggle('pc-hint', guided);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    layoutPsycheCard();
+  }
+
+  // The sample's card, full screen. Opened over the sample dialog and closed
+  // back to it, so a reader who wanted a proper look at the card returns to
+  // the report they were reading rather than to the page behind it.
+  $('#sample-card-open').addEventListener('click', () => {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || dialog.open) return;
+    dialog.classList.remove('is-gallery');
+    guideSampleCard(sampleReport);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    // After it is shown, never before: fitCard measures the element, and a
+    // closed <dialog> is display:none with nothing to measure.
+    layoutPsycheCard();
+  });
+  // Any click that lands on the dialog itself rather than on the card is a
+  // click outside the image — the dialog fills the screen. Escape closes it
+  // natively, and either way the sample dialog is still open underneath.
+  $('#sample-card-dialog').addEventListener('click', event => {
+    if (event.target === $('#sample-card-dialog') || event.target.closest('#sample-card-dialog-close')) {
+      $('#sample-card-dialog').close();
+    }
+  });
+
+  $('#psyche-card-open').addEventListener('click', openPsycheCard);
+  $('#card-download').addEventListener('click', downloadCardImage);
+  $('#card-share').addEventListener('click', shareCardImage);
+  $('#card-dialog-close').addEventListener('click', () => $('#card-dialog').close());
+  $('#card-dialog').addEventListener('close', () => explainFullCardPart(null));
+  $('#sample-card-dialog').addEventListener('close', () => explainSampleCardPart(null));
+  // Clicking the backdrop closes it: the dialog element itself fills the screen,
+  // so a click that lands on it rather than on the card is a click outside.
+  $('#card-dialog').addEventListener('click', event => {
+    if (event.target === $('#card-dialog')) $('#card-dialog').close();
+  });
+  window.addEventListener('resize', layoutPsycheCard);
+  window.addEventListener('resize', layoutSideActions);
+  // How tall the site's header is, for whatever sticks just under it.
+  const measureHeader = () => {
+    const bar = document.querySelector('.nav');
+    if (bar) document.documentElement.style.setProperty('--header-h', bar.offsetHeight + 'px');
+  };
+  measureHeader();
+  window.addEventListener('resize', measureHeader);
+
+  // ---------- premium unlock: Stripe's Payment Request Button ----------
+  //
+  // Apple Pay and Google Pay both come from the one integration point —
+  // Stripe decides at mount time which wallet, if either, this browser and
+  // device actually offer, rather than the app choosing between two buttons
+  // of its own. Stripe.js is the one third-party script in this app, and it is
+  // not vendored: Stripe does not support a pinned local copy, since the file
+  // at this URL carries its own fraud-detection updates. Loaded lazily, on
+  // the first real (non-mock) Unlock press, rather than paid for by every
+  // visitor whether or not they ever reach this section.
+  let stripeJsLoad = null;
+  function loadStripeJs() {
+    if (window.Stripe) return Promise.resolve(window.Stripe);
+    if (!stripeJsLoad) {
+      stripeJsLoad = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = () => resolve(window.Stripe);
+        script.onerror = () => reject(new Error('Stripe could not be loaded.'));
+        document.head.appendChild(script);
+      });
+    }
+    return stripeJsLoad;
+  }
+
+  // Which product the open payment sheet is selling, for the promo field.
+  let premiumKind = 'unlock';
+
+  function premiumStatus(message, tone) {
+    const status = $('#premium-status');
+    status.textContent = message || '';
+    status.hidden = !message;
+    status.className = 'premium-status' + (tone ? ' is-' + tone : '');
+  }
+
+  // A live seconds counter beside the (indeterminate — there is no real
+  // percentage to report for a single request/response call) progress bar,
+  // so a reader watching a long structured call is looking at a number that
+  // moves rather than a bar that never fills and a sentence that never
+  // changes.
+  let progressTimer = null;
+  function startProgress() {
+    const bar = $('#premium-progress');
+    const time = $('#premium-progress-time');
+    bar.hidden = false;
+    const start = Date.now();
+    const tick = () => { time.textContent = TEXT.elapsed(Math.floor((Date.now() - start) / 1000)); };
+    tick();
+    progressTimer = setInterval(tick, 1000);
+  }
+  /**
+   * Warns before the tab closes while a paid call is in flight. The browser
+   * shows its own generic wording — a custom message has been ignored since
+   * about 2016 — so this only decides *whether* to ask, not what it says.
+   *
+   * Worth the interruption precisely because this call is slow: closing at
+   * minute four is the difference between reading what you bought and coming
+   * back to fetch it again. The receipt makes that recoverable rather than
+   * lost, so this is a nudge, not the safety net.
+   */
+  let unloadGuard = null;
+  function guardUnload(on) {
+    // A run has started: what was loaded is on its way.
+    if (on) loadedUnsent = false;
+    if (on && !unloadGuard) {
+      unloadGuard = event => { event.preventDefault(); event.returnValue = ''; };
+      window.addEventListener('beforeunload', unloadGuard);
+    } else if (!on && unloadGuard) {
+      window.removeEventListener('beforeunload', unloadGuard);
+      unloadGuard = null;
+    }
+  }
+
+  // Leaving with something to lose (27 October 2026), beside the guard above
+  // for a run in progress: data loaded but not yet sent (reading it again
+  // takes minutes and a trip to the files), or a report that has never been
+  // saved anywhere but this browser (no PDF, no backup). The browser shows its
+  // own "Leave site?"; it cannot be worded. Not for a link to another page of
+  // the site, an email link, or while a payment sheet is open (a bank's page
+  // may take over the tab).
+  let loadedUnsent = false;
+  let leavingInside = false;
+  document.addEventListener('click', event => {
+    const link = event.target.closest && event.target.closest('a[href]');
+    if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+    let url;
+    try { url = new URL(link.href, location.href); } catch (error) { return; }
+    if (url.origin === location.origin || !/^https?:$/.test(url.protocol)) {
+      leavingInside = true;
+      setTimeout(() => { leavingInside = false; }, 1500);
+    }
+  }, true);
+  function leaveWouldLose() {
+    if (leavingInside || $('#premium-dialog').open) return false;
+    if (loadedUnsent) return true;
+    const profile = state.profile;
+    return Boolean(profile && profile.report) && !store.read(KEYS.pdfSaved, false) && !store.read(KEYS.lastBackup, null);
+  }
+  window.addEventListener('beforeunload', event => {
+    if (unloadGuard || !leaveWouldLose()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  function stopProgress() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+    $('#premium-progress').hidden = true;
+  }
+
+  /**
+   * Offered once a paid unlock is authorised, before the paid sections are
+   * written: a chance to add Google or Facebook data so the four sections are
+   * read from more than Instagram alone.
+   *
+   * Skipped silently when this reader has already added a source — the offer
+   * only makes sense while there is something left to add.
+   *
+   * Two things about the ordering matter more than they look:
+   *
+   * 1. The receipt is written by the caller *before* this runs. This dialog
+   *    sits between a cleared payment and the generation it paid for, so a
+   *    reader who opens it and then closes the tab has been charged for
+   *    something that never ran. The receipt is what makes that recoverable
+   *    ("Get the sections you paid for"), and it has to exist before anything
+   *    here can be walked away from.
+   * 2. The premium dialog is closed first and reopened after. Stacking a
+   *    second modal on top of it would leave the payment sheet visible
+   *    underneath, still showing a wallet button for a charge that has
+   *    already gone through.
+   *
+   * Adding data goes through the review dialog, exactly as the first upload
+   * does. Skipping does not — that path sends the same digest it always
+   * would, so there is nothing new to review. This is deliberate rather than
+   * belt-and-braces: Chrome history and Gemini prompts are the most sensitive
+   * things this app can carry, and sending them unreviewed because the reader
+   * happened to be inside a payment flow would break the one promise the
+   * review dialog exists to keep.
+   *
+   * Returns the digest the paid call should use — the enriched one when
+   * something was added, the existing one otherwise.
+   */
+  // Holds the enriched digest between "the reader added data and reviewed it"
+  // and "the payment for it actually cleared". Deliberately not persisted
+  // until the paid call succeeds: a reader who adds a Takeout and then
+  // abandons the payment sheet has bought nothing, and should not find their
+  // stored digest quietly changed — nor the re-run button gone, which is what
+  // persisting early would do.
+  let pendingPremiumDigest = null;
+  // True for the whole span between a payment/promo clearing and the paid
+  // sections either landing or failing. A second runPremiumAnalysis call
+  // cannot start while one is already spending this reader's retry budget —
+  // see the guard at its own top. The dialog itself can still be closed via
+  // Cancel during that span (see the #premium-cancel listener), which is why
+  // runPremiumAnalysis reads its own paidDigest snapshot rather than
+  // the live pendingPremiumDigest after an await: a reopened dialog resets
+  // that shared variable, and reading it again here used to crash the
+  // original call once its network response finally arrived.
+  let premiumRunInFlight = false;
+  // What Back on the payment sheet returns to, and whether it was pressed
+  // (askPaymentFor resolves PAY_BACK rather than null for it).
+  let premiumBackStep = null;
+  let premiumWentBack = false;
+
+  /**
+   * Offered when the unlock button is pressed and this reader has only ever
+   * given Instagram: a chance to add Google or Facebook so the four paid
+   * sections are read from more than one source.
+   *
+   * Runs BEFORE any payment UI is mounted, which is the whole point of its
+   * placement — the reader loads their data and sees exactly what will be
+   * sent, and only then is asked for money. That ordering also removes a
+   * hazard the earlier arrangement had: with payment first, this dialog sat
+   * between a cleared charge and the generation it bought, so closing the tab
+   * here meant paying for nothing.
+   *
+   * Adding data goes through the review; skipping does not, because skipping
+   * sends nothing new. Chrome history and Gemini prompts must not reach a
+   * model unreviewed just because the reader is inside an unlock flow.
+   *
+   * Returns the digest the paid call should use, or null to abandon the
+   * unlock entirely (Back at the supplement offer).
+   */
+  /**
+   * The data step of the US$5 unlock: the same "Add or change your data"
+   * popout the report page uses, listing every source with a tick for what is
+   * already loaded, so a reader can add Facebook (or any source added later)
+   * before paying. It hands back the premium read (premiumDigestFrom): with
+   * nothing changed, the standard digest the card was read from, and the
+   * payment sheet follows directly; with something added or replaced, that
+   * digest with the new sources on top, reviewed first,
+   * and the run it pays for rewrites the card as well. Back abandons the
+   * unlock (null).
+   */
+  // Before "Your data for the full report": a card read with under 80%
+  // confidence is told that more sources would help. Resolves true to go on
+  // to the data page, false for Back (the unlock is left).
+  const MORE_DATA_BELOW = 80;
+  // The note's popup, for both notes that suggest more data: resolves true
+  // for its first button, false for the second or Escape.
+  function noteDialog(title, text, primary, secondary) {
+    const dialog = $('#more-data-dialog');
+    if (!dialog) return Promise.resolve(true);
+    $('#more-data-title').textContent = title;
+    $('#more-data-text').textContent = text;
+    $('#more-data-continue').textContent = primary;
+    $('#more-data-back').textContent = secondary;
+    return new Promise(resolve => {
+      const done = answer => {
+        $('#more-data-continue').onclick = null;
+        $('#more-data-back').onclick = null;
+        dialog.onclose = null;
+        if (dialog.open) dialog.close();
+        resolve(answer);
+      };
+      $('#more-data-continue').onclick = () => done(true);
+      $('#more-data-back').onclick = () => done(false);
+      dialog.onclose = () => done(false);
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+  function offerMoreData() {
+    const score = Math.round(Number(((state.profile && state.profile.report) || {}).confidence &&
+      state.profile.report.confidence.score));
+    if (!$('#more-data-dialog') || !Number.isFinite(score) || score >= MORE_DATA_BELOW) return Promise.resolve(true);
+    return noteDialog(TEXT.moreDataTitle, TEXT.moreDataText(score), TEXT.moreDataContinue, TEXT.moreDataBack);
+  }
+  // A first upload with too little of the reader's own writing makes a card
+  // that is mostly a guess, and spends their one free card on it. Measured
+  // in characters they wrote (captions, comments, their own messages on
+  // Instagram, WhatsApp and Facebook, Facebook posts), not in the digest's
+  // size, which counts, likes and follows inflate: under 20,000 (about
+  // 3,000 words), or a digest under 50,000 in all, is thin. Said before the
+  // review, once, with the way back to "Add your data" (late October 2026;
+  // until then only fewer than 10 captions and 50 messages, with no second
+  // source, counted).
+  const THIN_DIGEST_CHARS = 50000;
+  // Three WhatsApp chats and no Instagram hold at most about 45,000, so for a
+  // digest of chats alone the line is lower (October 2026): chats with little
+  // of the reader's writing in them, not two or three chats as such.
+  const THIN_CHATS_CHARS = 20000;
+  // Below this much of their own writing a run is not made at all (October
+  // 2026): the card would be mostly guesswork, and the server refuses it too.
+  // The server's number, from /api/status; this until it lands.
+  const minWriting = () => (state.server && Number.isFinite(state.server.minWriting) ? state.server.minWriting : 20000);
+  const ownWritingChars = digest => Digest.ownWritingChars(digest);
+  function tooThin(digest) { return ownWritingChars(digest) < minWriting(); }
+  // Said every time, with only the way back to add data.
+  function sayTooThin(digest) {
+    const chats = digest && !digestHasInstagram(digest);
+    return noteDialog(TEXT.tooThinTitle, (chats ? TEXT.tooThinChatsText : TEXT.tooThinText)(Math.round(minWriting() / 1000)),
+      TEXT.thinDataAdd, TEXT.tooThinBack);
+  }
+  // Over the floor but a small digest in all: warned, not stopped.
+  function thinDigest(digest) {
+    return Digest.evidenceChars(digest || {}) < (digestHasInstagram(digest) ? THIN_DIGEST_CHARS : THIN_CHATS_CHARS);
+  }
+  // The warning, in the words for what was loaded.
+  function sayThin(digest) {
+    return noteDialog(TEXT.thinDataTitle, digestHasInstagram(digest) ? TEXT.thinDataText : TEXT.thinChatsText,
+      TEXT.thinDataAdd, TEXT.thinDataContinue);
+  }
+  // Said once a browser session, not on every attempt: a reader who has been
+  // told and carried on is not told again until they come back another day.
+  const THIN_SAID = 'psycheai_thin_said';
+  function thinSaid() { try { return sessionStorage.getItem(THIN_SAID) === '1'; } catch (error) { return false; } }
+  function markThinSaid() { try { sessionStorage.setItem(THIN_SAID, '1'); } catch (error) { /* blocked */ } }
+
+  // The data popout's answer behind the latest unlock review, so Back on the
+  // payment sheet can open that review again without asking for it twice.
+  let lastPremiumCollected = null;
+  async function collectDataForPremium(startWith) {
+    if (!(await readersReady())) return null;
+    if (!startWith && !(await offerMoreData())) return null;
+    let given = startWith || null;
+    for (;;) {
+      let collected = given;
+      given = null;
+      if (!collected) {
+        try {
+          collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb, cardNote: true });
+        } catch (error) {
+          flash('#profile-alert', (error && error.message) || 'Could not read that file.');
+          return null;
+        }
+      }
+      if (!collected) return null;
+      lastPremiumCollected = collected;
+      const fresh = key => typeof collected[key] === 'object';
+      const anyFresh = ['instagram', 'whatsapp'].concat(OPTIONAL_SOURCES).some(fresh);
+      if (!anyFresh && !state.digest) {
+        // Nothing to write the full report from: the Instagram export has
+        // gone from this device and was not loaded again.
+        flash('#profile-alert', TEXT.rerunNeedsInstagram);
+        return null;
+      }
+      // The same merge addDataAndRerun makes: a fresh Instagram read replaces
+      // the signals wholesale, so supplements from this session are read off
+      // the old object first, and chats alone in memory ride along too.
+      const priorSupplements = (state.signals && state.signals.supplements) ||
+        (state.chats ? { whatsapp: state.chats } : undefined);
+      if (fresh('instagram')) state.signals = collected.instagram;
+      repairOwnName().catch(() => {});
+      keepChatsCurrent(collected);
+      const extra = loadedSupplements(collected, OPTIONAL_SOURCES.concat('whatsapp'));
+      // Two digests come out of this. The standard one — what every later
+      // free run reads — takes any source added here; the premium read is
+      // what the full report is written from: the standard digest the card
+      // was read from, untouched, with the added sources on top (see "the
+      // premium read" in docs/digest.js).
+      const adding = Object.keys(extra).filter(key => extra[key]);
+      let digest = state.digest;
+      let premium = null;
+      try {
+        if (anyFresh) {
+          if (state.signals) {
+            state.signals.supplements = Object.assign({}, priorSupplements, extra);
+            digest = withStoredChats(Digest.build(state.signals, { includeMessages: true }), state.signals);
+          } else if (state.digest) {
+            digest = Digest.addSupplements(JSON.parse(JSON.stringify(state.digest)), extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
+          } else {
+            flash('#profile-alert', TEXT.rerunNeedsInstagram);
+            return null;
+          }
+        }
+        // The base: the card's own digest — or, for an Instagram export loaded
+        // again here, the standard digest of that export with the sources it
+        // already had, before anything added here.
+        let base = state.digest;
+        if (fresh('instagram')) {
+          base = adding.length ? withStoredChats(Digest.build(Object.assign({}, state.signals, { supplements: Object.assign({}, priorSupplements) }),
+            { includeMessages: true }), { supplements: priorSupplements || {} }) : digest;
+        }
+        premium = premiumDigestFrom(base, extra, state.signals);
+      } catch (error) {
+        flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
+        return null;
+      }
+      if (!premium) { flash('#profile-alert', TEXT.rerunNeedsInstagram); return null; }
+      // Nothing new and the export gone: the digest the card was read from,
+      // reviewed again all the same, so a reader can untick a part or download
+      // the file before paying. A copy: what is unticked here leaves this
+      // report out of it, not the card's own digest.
+      // Marked unchanged: the card is not redrawn from it (runPremiumAnalysis).
+      if (premium === state.digest) premium = Object.assign(JSON.parse(JSON.stringify(premium)), { __unchanged: true });
+      // Something added or replaced, or the same sources read deeper from the
+      // export still open here: reviewed as what will be sent, since it holds
+      // lines the reader has not seen. Payment is the next step whatever
+      // happens here: this review sits inside the unlock itself.
+      const decision = await askReview(premium, { paymentDue: true, deep: Boolean(premium.__deep) });
+      if (decision === REVIEW_BACK) continue;
+      if (!decision) return null;
+      if (digest !== state.digest && digest !== premium) applyReviewDecision(digest, decision);
+      applyReviewDecision(premium, decision);
+      // Carried with it, so a successful unlock keeps the standard digest
+      // up to date with any source added here. Not cleared here: the payment
+      // sheet comes next, and a reader who cancels it and comes back must
+      // find what they loaded still loaded; runPremiumAnalysis clears it once
+      // the unlock is through. (An Instagram export loaded again with nothing
+      // else is simply the new standard digest, and goes as one.)
+      // Read deeper with nothing added, the card stands: the report is
+      // written to explain it, and the standard digest is left as it was.
+      if (premium.__deep && anyFresh) {
+        premium.__standard = digest;
+        premium.__fresh = true;
+      }
+      return premium;
+    }
+  }
+
+  /**
+   * The digest the full premium report reads, at the premium pools
+   * (docs/digest.js, DEEP_POOL_CAPS and "the premium read").
+   *
+   * With the export still open in this tab (`signals`), it is rebuilt from it:
+   * every source the card was read from, read deeper, with anything in
+   * `extra` — marked `__rebuilt`, since it carries lines the reader has not
+   * reviewed yet. Without it, `base` — the standard digest — with any source
+   * in `extra` merged into its pool, at the premium pools' ceilings: a
+   * WhatsApp chat goes in ahead of the Instagram DMs there, as everywhere,
+   * and the card is redrawn from the result. A source loaded again replaces
+   * its older copy and counts as added. With nothing to add, `base` itself
+   * comes back, unchanged.
+   */
+  // New chats picked by a reader with no Instagram in memory: the chats a
+  // later Instagram rides with (state.chats) are these now, or, when they
+  // were added to the stored ones (`addsTo`), the stored digest's, carried.
+  function keepChatsCurrent(collected) {
+    if (state.signals || !collected || typeof collected.whatsapp !== 'object') return;
+    state.chats = collected.whatsapp.addsTo ? null : collected.whatsapp;
+  }
+
+  // A digest rebuilt from an Instagram export, with the chats the stored
+  // digest holds when the export brought none of its own or the ones picked
+  // were added to them (`addsTo`): the reader's chats are kept across a
+  // re-run whose files are gone (Digest.carryChats, October 2026).
+  function withStoredChats(digest, signals) {
+    const stored = state.digest && state.digest.whatsapp ? state.digest : null;
+    const fresh = signals && signals.supplements && signals.supplements.whatsapp;
+    if (!stored || !digest || (fresh && !fresh.addsTo)) return digest;
+    return Digest.carryChats(digest, JSON.parse(JSON.stringify(stored)));
+  }
+
+  function premiumDigestFrom(base, extra, signals) {
+    if (!base) return null;
+    const adding = {};
+    for (const [key, value] of Object.entries(extra || {})) if (value) adding[key] = value;
+    // Every read has had the same pools since late October 2026, so with
+    // nothing added the unlock reads exactly what the card was drawn from:
+    // nothing to rebuild, and no lines the reader has not seen.
+    if (!Object.keys(adding).length) return base;
+    const rebuilt = signals ? deepDigestFrom(signals, base, adding) : null;
+    if (rebuilt) return rebuilt;
+    if (!Object.keys(adding).length) return base;
+    const copy = JSON.parse(JSON.stringify(base));
+    for (const key of Object.keys(adding)) {
+      // Chats added to the stored ones are joined to them by addSupplements.
+      if (key === 'whatsapp' && adding.whatsapp.addsTo) continue;
+      delete copy[key];
+      if (copy.coverage && Array.isArray(copy.coverage.sources)) copy.coverage.sources = copy.coverage.sources.filter(s => s !== key);
+    }
+    const out = Digest.addSupplements(copy, adding, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true });
+    out.__deep = true;
+    return out;
+  }
+
+  // The premium read rebuilt from the export open in this tab. Only when every
+  // source the card was read from is still here to read again: one merged
+  // into a stored digest on an earlier visit is not, and a rebuild would
+  // quietly drop it.
+  function deepDigestFrom(signals, base, adding) {
+    const supplements = Object.assign({}, signals.supplements, adding);
+    if (['whatsapp'].concat(OPTIONAL_SOURCES).some(key => base[key] && !supplements[key])) return null;
+    const out = withStoredChats(Digest.build(Object.assign({}, signals, { supplements }), { includeMessages: true, deep: true }), { supplements });
+    out.__deep = true;
+    out.__rebuilt = true;
+    return out;
+  }
+
+  // The screen names on the Instagram steps' mobile route (.ui-peek) show
+  // their screenshot from the illustrated guide: on hover where there is a
+  // mouse, and on a tap or click anywhere, which keeps it open until the next
+  // tap elsewhere, Escape or another name. One popup at a time, placed
+  // beside its name and kept inside the window; inside a dialog it is added
+  // to that dialog, so it shows above the dialog rather than under it.
+  function mountPeeks() {
+    let pop = null;
+    let owner = null;
+    let pinned = false;
+    const close = () => {
+      if (pop) pop.remove();
+      if (owner) owner.setAttribute('aria-expanded', 'false');
+      pop = null; owner = null; pinned = false;
+    };
+    const place = () => {
+      if (!pop || !owner) return;
+      const at = owner.getBoundingClientRect();
+      let width = Math.min(240, window.innerWidth - 24);
+      pop.style.width = width + 'px';
+      // A tall screenshot is drawn narrower, to fit beside its name.
+      const room = Math.max(at.top, window.innerHeight - at.bottom) - 16;
+      if (pop.offsetHeight > room && room > 120) {
+        width = Math.max(120, Math.floor(width * room / pop.offsetHeight));
+        pop.style.width = width + 'px';
+      }
+      const left = Math.max(12, Math.min(at.left + at.width / 2 - width / 2, window.innerWidth - width - 12));
+      const height = pop.offsetHeight;
+      const below = at.bottom + 8;
+      const top = below + height <= window.innerHeight - 8 || at.top - 8 - height < 8 ? below : at.top - 8 - height;
+      pop.style.left = left + 'px';
+      pop.style.top = Math.max(8, top) + 'px';
+    };
+    const open = button => {
+      if (owner === button) return;
+      close();
+      owner = button;
+      pop = document.createElement('span');
+      pop.className = 'peek-pop';
+      pop.setAttribute('role', 'tooltip');
+      pop.id = 'peek-pop';
+      const frame = document.createElement('span');
+      frame.className = 'guide-frame';
+      const img = document.createElement('img');
+      img.src = button.dataset.peek;
+      img.alt = button.dataset.peekAlt || '';
+      img.width = 480;
+      img.decoding = 'async';
+      // Shown only once the screenshot is ready, so it never paints in
+      // halves; preloaded (below), it is usually ready at once.
+      const reveal = () => { if (pop && pop.contains(img)) { pop.style.visibility = ''; place(); } };
+      pop.style.visibility = 'hidden';
+      img.addEventListener('load', reveal);
+      img.addEventListener('error', reveal);
+      const mark = document.createElement('span');
+      mark.className = 'guide-mark guide-mark-' + (button.dataset.peekMark || '1');
+      mark.setAttribute('aria-hidden', 'true');
+      frame.append(img, mark);
+      pop.append(frame);
+      (button.closest('dialog') || document.body).append(pop);
+      button.setAttribute('aria-expanded', 'true');
+      button.setAttribute('aria-describedby', 'peek-pop');
+      place();
+      if (img.complete && img.naturalWidth) reveal();
+    };
+    // The screenshots, fetched and decoded once the page has settled, so a
+    // hover or tap shows its screenshot at once rather than after a download.
+    const warmed = [];
+    const warm = () => {
+      for (const src of new Set([...document.querySelectorAll('.ui-peek')].map(b => b.dataset.peek))) {
+        const image = new Image();
+        image.src = src;
+        if (image.decode) image.decode().catch(() => {});
+        warmed.push(image);
+      }
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 3000 });
+    else setTimeout(warm, 1500);
+    for (const button of document.querySelectorAll('.ui-peek')) button.setAttribute('aria-expanded', 'false');
+    document.addEventListener('click', event => {
+      const button = event.target.closest && event.target.closest('.ui-peek');
+      if (button) {
+        event.preventDefault();
+        if (owner === button && pinned) { close(); return; }
+        open(button);
+        pinned = true;
+        return;
+      }
+      if (pop && !pop.contains(event.target)) close();
+    });
+    document.addEventListener('mouseover', event => {
+      const button = event.target.closest && event.target.closest('.ui-peek');
+      if (button && !pinned && window.matchMedia('(hover: hover)').matches) open(button);
+    });
+    document.addEventListener('mouseout', event => {
+      const button = event.target.closest && event.target.closest('.ui-peek');
+      if (button && button === owner && !pinned && !button.contains(event.relatedTarget)) close();
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && pop) close(); });
+    window.addEventListener('scroll', () => { if (pop) place(); }, true);
+    window.addEventListener('resize', () => { if (pop) place(); });
+    // A closing dialog takes its popup with it.
+    document.addEventListener('close', event => { if (pop && event.target.contains(pop)) close(); }, true);
+  }
+
+
+  /**
+   * Runs once a payment has actually cleared, or a valid promo code has been
+   * entered — calls the paid route with the same digest the free report
+   * used, and only reveals or persists anything once that call really
+   * succeeds. `auth` is `{ paymentIntentId }` or `{ promoCode }`; either way
+   * the server treats authorisation and generation as separate steps (see
+   * server.js's handlePremiumAnalysis), so a generation that fails after a
+   * real charge or a valid code is a "try again" here — re-sending the same
+   * auth spends one more of the handful of uses the server allows per
+   * payment (promo codes carry no such cap) — never a "pay again".
+   */
+  // Which purchase the payment dialog is currently collecting for. The dialog
+  // markup, the wallet button, the promo field and the mock-pay button are all
+  // shared between the US$5 premium unlock and the US$2 extra analysis;
+  // the only thing that differs is what happens once the money clears, so that
+  // is the only thing held in a variable rather than duplicated.
+  let onPaymentAuthorised = runPremiumAnalysis;
+
+  /**
+   * The same authorisation, aimed at /api/analyse instead of
+   * /api/premium-analysis. `product: 'unlock'` is what tells the server this
+   * US$5 PaymentIntent is paying for a free report as well — it verifies
+   * the intent against the unlock price and ledgers the use under its own
+   * kind, so spending it here cannot eat the premium retries it also covers.
+   *
+   * A promo code needs none of that: it is not a product, and the analyse
+   * route already accepts one on its own terms.
+   */
+  function bundledAuth(auth) {
+    // `product` travels with a promo code too: the server reads it to decide
+    // between the card and the full report, and a code without it would buy a
+    // second copy of the card the reader already has.
+    if (auth.promoCode) return { promoCode: auth.promoCode, product: 'unlock' };
+    if (auth.referralGrant) return { referralGrant: auth.referralGrant, product: 'unlock' };
+    return { paymentIntentId: auth.paymentIntentId, product: 'unlock' };
+  }
+
+  async function runPremiumAnalysis(auth, dialog, options) {
+    // The digest is sent through Digest.forModel: the readers first. Said on
+    // the sheet if they cannot be fetched; the receipt is kept for a retry.
+    try { await loadReaders(); } catch (error) { premiumStatus(error.message); return; }
+    // A second invocation while one is already running would race the first
+    // for pendingPremiumDigest/state.digest and spend an extra retry for
+    // nothing — see the comment on premiumRunInFlight's declaration.
+    if (premiumRunInFlight) return;
+    premiumRunInFlight = true;
+    // Only clear the payment controls for an actual payment attempt. A promo
+    // attempt is a wholly separate authorisation path — hiding the wallet or
+    // mock-pay button while it runs would strand a reader whose code turns
+    // out to be wrong with no visible way to just pay instead, short of
+    // closing and reopening the dialog.
+    if (auth.paymentIntentId) {
+      $('#premium-payment-request-button').innerHTML = '';
+      $('#premium-card-fallback').hidden = true;
+      $('#premium-mock-pay').hidden = true;
+    }
+    // A free report (from the reader's link, or a gift): nothing is being
+    // paid, so the price and every way to pay go while it is written
+    // (.is-free-run). openPremiumDialog clears it.
+    // A 100% promo code too: once it is accepted there is nothing to pay, so
+    // only the progress shows.
+    $('#premium-dialog').classList.toggle('is-free-run', Boolean(auth.referralGrant || auth.promoCode));
+    $('#premium-retry').hidden = true;
+    $('#premium-promo-input').disabled = true;
+    $('#premium-promo-apply').disabled = true;
+    // Cancel goes with them. Reaching this line means a charge has cleared or
+    // a code has been accepted, and from here on the only thing Cancel can do
+    // is walk away from work already paid for: the generation keeps running
+    // either way (the fetch is not tied to the dialog — see "A closed dialog
+    // does not stop the fetch behind it"), so closing here just hides the
+    // progress and the retry button belonging to it. Re-enabled in the catch
+    // below, because a *failed* generation is exactly when a reader must be
+    // able to leave — including one whose promo code turns out to be wrong,
+    // for whom nothing was ever charged in the first place.
+    $('#premium-cancel').disabled = true;
+    // Before the call, not after it. The whole point is to survive the tab
+    // closing *during* the minutes this takes, so a receipt written on success
+    // would be written exactly when it is no longer needed. It also has to be
+    // written before offerDataBeforePremium below, which puts a dialog — and
+    // therefore a chance to close the tab — between the cleared payment and
+    // the generation it bought.
+    rememberUnlock(auth);
+
+    // Whatever openPremiumDialog collected before the payment sheet went up.
+    // By the time a charge clears, the reader has already loaded their extra
+    // data and reviewed it, so there is nothing left to ask here.
+    const paidDigest = pendingPremiumDigest || state.digest;
+    // Data was added on the way to this unlock, so the card is about to be
+    // describing less evidence than the report written under it. This US$5
+    // redraws the card from the new data as well rather than leaving that gap
+    // and charging US$2 to close it.
+    // The premium read (every unlock now) says itself whether data was added
+    // on the way: only then is the card redrawn from it. A standard digest —
+    // a resumed run, an older path — has changed when it is not the stored one.
+    const deepRead = Boolean(paidDigest.__deep);
+    const dataChanged = deepRead ? Boolean(paidDigest.__fresh)
+      : Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest && !pendingPremiumDigest.__unchanged);
+
+    // A read Muse wrote keeps its card when data is added: the deeper read
+    // explains the same character from more evidence, as agreed for Muse
+    // readers, rather than drawing a new card.
+    const museCard = Boolean(state.profile && state.profile.source === 'muse');
+    startProgress();
+    guardUnload(true);
+    try {
+      // One call for everything this purchase buys: the written report behind
+      // the card, the roast, and the four premium sections, in one response.
+      premiumStatus(dataChanged ? TEXT.premiumRefreshingFree : TEXT.premiumGenerating);
+      // The card the reader already has, for the server to sanitise and the
+      // model to explain. None when the data changed: a card read from less
+      // evidence is not one to hold a fuller report to.
+      // With the reader's own name back to the placeholder: the stored card
+      // has it put in (withOwnName), and none of it should travel.
+      const anchor = dataChanged && !museCard ? null
+        : withPlaceholderName(state.profile && (state.profile.freeReport || state.profile.report), state.profile);
+      const request = Object.assign({}, bundledAuth(auth), anchor ? { anchor } : {}, deepRead ? { deep: true } : {});
+      // Recorded under its own kind, because collecting it is not the same as
+      // collecting a free card: it attaches to the profile on screen rather
+      // than replacing it.
+      //
+      // What a resumed one does *not* restore is promoting paidDigest into
+      // state.digest — paidDigest lives in this closure and is far too big to
+      // write into the job record beside a key. So a reader who closes the app
+      // during an unlock that added data gets their report and a stored digest
+      // that still lacks the source they just added; the popout shows it
+      // unticked and asks for it again. That is worse than the unbroken path
+      // and better than losing the report.
+      const sentDigest = Digest.forModel(paidDigest, { deep: deepRead });
+      store.write(KEYS.reportDigestNext, sentDigest);
+      const full = await LLM.analyseProfile(sentDigest, await withAttribution(request),
+        { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged && !museCard }) });
+      // A gifted report, now used.
+      const gift = giftWaiting();
+      if (gift && auth.referralGrant === gift.token) { store.remove(KEYS.gift); refreshGiftBanner(); refreshReportPromo(); }
+
+      // The extra data is kept only now, because only now has it bought
+      // anything. Abandoning the payment sheet leaves the stored digest — and
+      // the re-run button that reads it — exactly as they were.
+      //
+      // Reads paidDigest, the snapshot taken before the await, rather than the
+      // shared pendingPremiumDigest variable again: a reopened dialog resets
+      // that, and reading it here would be one stray caller away from a null.
+      if (deepRead) {
+        // Every later free run reads the standard digest, which takes the
+        // sources added here, and the next unlock starts from it again. The
+        // premium read itself is kept only as the latest report's own
+        // evidence (KEYS.reportDigest), never as the base for another run.
+        const standard = paidDigest.__standard;
+        delete paidDigest.__standard;
+        delete paidDigest.__fresh;
+        if (dataChanged && standard && standard !== state.digest) {
+          state.digest = standard;
+          writeDigest(standard);
+        }
+        pendingPremiumDigest = null;
+        // A new card was drawn only when data was added.
+        if (dataChanged) recordRun();
+      } else if (dataChanged) {
+        const added = paidDigest.__addedSupplements;
+        delete paidDigest.__addedSupplements;
+        if (added && state.signals) state.signals.supplements = added;
+        state.digest = paidDigest;
+        writeDigest(paidDigest);
+        pendingPremiumDigest = null;
+        // A new card really was drawn, so it counts like any other run — see
+        // RUNS_KEY. It costs this reader nothing either way: they cannot reach
+        // an unlock without having run one already.
+        recordRun();
+      }
+      clearJob();
+      keepReportDigest();
+      // What was loaded for this unlock is now part of it.
+      pendingDataSourceReads = {};
+      await adoptFullReport(full, dataChanged && !museCard, undefined,
+        deepRead && paidDigest.coverage ? { sampling: paidDigest.coverage.sampling || {} } : null);
+      // Every section changed, so the whole report is redrawn rather than
+      // having bodies spliced into a page still showing the locked block.
+      // renderProfile calls renderAnalysedBy and redraws the re-run price
+      // note, which says US$5 from this point on. An unlock of a card the
+      // reader already had lands on the report it bought; every read that
+      // writes a card lands on My Psyche, at the card (adoptBundle).
+      // A run that redrew the card (data added on the way, or a paid re-run
+      // from Add / change data) is a read that writes a card, so it lands on
+      // My Psyche at the card too (October 2026); it used to land on My Report.
+      if (dataChanged) {
+        go('profile');
+      } else if (fullReportPage()) {
+        // The keep note at the report's head says it is ready, and where it is
+        // kept (showKeepNote); there is no separate "ready" note any more.
+        go('full');
+      } else {
+        renderProfile();
+      }
+      // renderProfile shuts every section, and this is the one moment that is
+      // wrong: the reader has just paid for the four premium ones.
+      openPaidSections();
+      // The report brought one more free question: the count read again, so
+      // the hub and Ask PsycheAI show the card's unused one beside it.
+      refreshAskCredits().catch(() => {});
+      dialog.close();
+    } catch (error) {
+      // The ways to pay come back: a refused code or free report is exactly
+      // when the reader needs them.
+      dialog.classList.remove('is-free-run');
+      if (error && error.firstUsed) markFirstUsed();
+      premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
+      $('#premium-promo-input').disabled = false;
+      $('#premium-promo-apply').disabled = false;
+      // Nothing is generating any more, so there is nothing left to walk out
+      // on — and a reader who has just been told their code was rejected, or
+      // that the writing failed, must not be held in a dialog whose only
+      // other exit is to try again.
+      $('#premium-cancel').disabled = false;
+      const retry = $('#premium-retry');
+      retry.textContent = TEXT.premiumRetry;
+      retry.hidden = false;
+      retry.onclick = () => runPremiumAnalysis(auth, dialog, options);
+    } finally {
+      // In `finally` rather than once per branch: a throw while the result is drawn
+      // would otherwise leave the ticking counter running and the page
+      // refusing to close, which is a worse failure than the one that caused
+      // it. Teardown belongs on every exit, including the ones not written
+      // down yet.
+      stopProgress();
+      guardUnload(false);
+      premiumRunInFlight = false;
+    }
+  }
+
+  /**
+   * Wires the real (non-mock) path: creates the PaymentRequest, mounts the
+   * button only if this browser can actually satisfy it, and confirms
+   * against the PaymentIntent lib/stripe.js already created server-side.
+   *
+   * `handleActions: false` on the first confirm, then a second unqualified
+   * confirm if Stripe comes back asking for one, is the two-step Stripe
+   * itself documents for this exact button — most cards clear on the first
+   * pass, and the second only ever runs for the ones that come back
+   * `requires_action`.
+   *
+   * `canMakePayment()` resolving falsy is not rare and not necessarily wrong:
+   * it means this device has no wallet-eligible card, not that anything is
+   * broken (a domain Stripe has not been told to trust for Apple Pay reads
+   * the same way to this call as a phone with nothing in its Wallet app).
+   * Either way a reader here still wants to pay, so `mountCardFallback` is
+   * the other half of this function's job, not a separate feature bolted on.
+   */
+  async function mountPaymentRequestButton(intent, dialog) {
+    const Stripe = await loadStripeJs();
+    const stripe = Stripe(intent.publishableKey);
+    const elements = stripe.elements();
+    const paymentRequest = stripe.paymentRequest({
+      country: intent.country,
+      currency: intent.currency,
+      total: { label: premiumKind === 'ask' ? 'PsycheAI – Ask PsycheAI, 5 questions' : 'PsycheAI – Psyche Report', amount: intent.amount },
+      requestPayerName: false,
+      requestPayerEmail: false,
+    });
+
+    const canPay = await paymentRequest.canMakePayment();
+    if (!canPay) {
+      premiumStatus(TEXT.premiumNoWallet, 'bad');
+      mountCardFallback(stripe, elements, intent, dialog);
+      return;
+    }
+
+    const prButton = elements.create('paymentRequestButton', { paymentRequest });
+    prButton.mount('#premium-payment-request-button');
+
+    paymentRequest.on('paymentmethod', async event => {
+      const confirmation = await stripe.confirmCardPayment(
+        intent.clientSecret, { payment_method: event.paymentMethod.id }, { handleActions: false });
+      if (confirmation.error) {
+        event.complete('fail');
+        premiumStatus(confirmation.error.message || TEXT.premiumFailed, 'bad');
+        return;
+      }
+      event.complete('success');
+      if (confirmation.paymentIntent.status === 'requires_action') {
+        const followUp = await stripe.confirmCardPayment(intent.clientSecret);
+        if (followUp.error) {
+          premiumStatus(followUp.error.message || TEXT.premiumFailed, 'bad');
+          return;
+        }
+      }
+      onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
+    });
+  }
+
+  /**
+   * The fallback for a browser `canMakePayment()` says cannot use a wallet:
+   * a plain Stripe Card Element, so the promo code field below it is never
+   * the only way left to pay. Mounted immediately rather than behind a
+   * second click — Unlock already failed once for this reader, and asking
+   * them to press something else to be offered another way to pay would
+   * read as the dialog not knowing what it just told them.
+   *
+   * `confirmCardPayment` alone (no `handleActions: false`) is enough here,
+   * unlike the wallet path above: it already walks a card through 3D Secure
+   * itself when a card asks for it, since there is no separate "payment
+   * method" event to complete first the way the wallet flow has.
+   */
+  function mountCardFallback(stripe, elements, intent, dialog) {
+    const wrap = $('#premium-card-fallback');
+    const errorEl = $('#premium-card-error');
+    const payButton = $('#premium-card-pay');
+    $('#premium-card-label').textContent = TEXT.premiumCardLabel;
+    // Named for what this sheet sells: the card run again, or the report.
+    payButton.textContent = premiumKind === 'analysis'
+      ? TEXT.analysisPayPrefix + Prices.label(intent.currency, 'analysis', intent.discount ? intent.amount : undefined)
+      : premiumKind === 'ask' ? TEXT.askPayPrefix + Prices.label(intent.currency, 'ask')
+      : TEXT.premiumUnlockPrefix +
+        (intent.discount ? Prices.label(intent.currency, 'unlock', intent.amount) : TEXT.premiumPriceLabel);
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+    wrap.hidden = false;
+
+    const card = elements.create('card');
+    card.mount('#premium-card-element');
+    // Stripe's own inline validation (a card number that fails Luhn, an
+    // expiry already past) rather than waiting for a submit that was always
+    // going to fail — the same reason the promo input does not wait for
+    // Apply to tell a reader their code was empty.
+    card.on('change', event => {
+      errorEl.textContent = event.error ? event.error.message : '';
+      errorEl.hidden = !event.error;
+    });
+
+    payButton.onclick = async () => {
+      payButton.disabled = true;
+      errorEl.hidden = true;
+      try {
+        const confirmation = await stripe.confirmCardPayment(intent.clientSecret, { payment_method: { card } });
+        if (confirmation.error) {
+          errorEl.textContent = confirmation.error.message || TEXT.premiumFailed;
+          errorEl.hidden = false;
+          return;
+        }
+        onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
+      } finally {
+        payButton.disabled = false;
+      }
+    };
+  }
+
+  /**
+   * Opens the dialog, then asks the server for a PaymentIntent. The button
+   * that triggered this is disabled for the round trip so a second click
+   * cannot open a second one, and re-enabled in `finally` regardless of how
+   * the attempt ends — cancelled, failed or unlocked all leave a clean cover
+   * behind, in case the reader closes the dialog and tries again.
+   */
+  async function openPremiumDialog(button, product, preparedDigest, options) {
+    // Three products share this dialog now. `kind` is what the server is told
+    // and what verifyPaid checks the payment against, so a wrong value here
+    // sends a reader's US$5 to the wrong ledger — hence a lookup with an
+    // explicit default rather than a chain of ternaries that grows a bug each
+    // time a product is added.
+    const kind = product === 'analysis' ? 'analysis'
+      : product === 'compatibility' ? 'compatibility'
+      : product === 'ask' ? 'ask' : 'unlock';
+    // A new card and its report together, for a reader past their free card
+    // (authoriseAnalysis): the unlock's price and ledger, over the digest the
+    // upload just reviewed, so nothing is collected and no receipt resumed.
+    const bundle = product === 'bundle';
+    // The re-run button's own route to this same US$5 product, used only
+    // when premium is already unlocked and the reader is adding/changing
+    // data — see rerunWithAdditionalData. Ledgers and prices exactly like a
+    // fresh unlock (server.js only ever sees `product: 'unlock'`); the only
+    // difference is the title/blurb, since "unlock" is the wrong verb for a
+    // reader who already has these sections.
+    const rerunAll = product === 'rerunAll';
+    const dialog = $('#premium-dialog');
+    if (dialog.open) return;
+    premiumKind = kind;
+    // The refund line under the button: question packs are non-refundable.
+    $('#premium-refund').hidden = kind === 'ask';
+    $('#premium-refund-ask').hidden = kind !== 'ask';
+
+    // Data first, review second, money last.
+    //
+    // preparedDigest is handed in already reviewed — see
+    // rerunWithAdditionalData — so it is used as-is. Otherwise, only for a
+    // fresh unlock: the resume path already has a receipt and is here to
+    // collect sections that were paid for on an earlier visit, so it is
+    // neither charged nor asked for anything.
+    pendingPremiumDigest = null;
+    premiumWentBack = false;
+    premiumBackStep = (options && options.back) || null;
+    if (preparedDigest) {
+      pendingPremiumDigest = preparedDigest;
+    } else if (kind === 'unlock' && !bundle && !unlockReceipt()) {
+      const collected = await collectDataForPremium(options && options.collected);
+      // Back at the supplement offer abandons the unlock. Nothing has been
+      // charged and no dialog has been opened, so this simply returns.
+      if (!collected) return;
+      pendingPremiumDigest = collected;
+      // Back from the payment sheet: the review again, over the sources
+      // already loaded, with nothing read twice.
+      const again = lastPremiumCollected;
+      premiumBackStep = () => openPremiumDialog(button, product, undefined, { collected: again });
+    }
+    if (kind === 'unlock') trackStep('unlock_open');
+    $('#premium-dialog-title').textContent =
+      kind === 'analysis' ? TEXT.analysisDialogTitle
+        : kind === 'ask' ? TEXT.askDialogTitle
+        : rerunAll ? TEXT.premiumRerunDialogTitle
+        : bundle ? TEXT.bundleDialogTitle
+        : TEXT.premiumDialogTitle;
+    // The unlock's sheet is its title and the ways to pay: what it opens was
+    // set out in the offer, and that new data redraws the card was said in
+    // the data popout before the first file was picked (#datasources-confirm).
+    const blurb = kind === 'analysis' ? (analysisNote || TEXT.analysisDialogBlurb)
+      : kind === 'ask' ? TEXT.askDialogBlurb
+      : rerunAll ? TEXT.premiumRerunDialogBlurb
+      : bundle ? (analysisNote || (firstRunMerged() ? TEXT.bundleDialogBlurbFirst : TEXT.bundleDialogBlurb)) : '';
+    $('#premium-dialog-blurb').textContent = blurb;
+    $('#premium-dialog-blurb').hidden = !blurb;
+    $('#premium-cancel').textContent = TEXT.premiumCancel;
+    // Reset with the rest of the dialog's state: runPremiumAnalysis greys it
+    // out once a charge or code is accepted, and this markup is reused across
+    // every purchase, so a dialog opened after a completed unlock would
+    // otherwise open with no way out at all.
+    $('#premium-cancel').disabled = false;
+    dialog.classList.remove('is-free-run');
+    $('#premium-payment-request-button').innerHTML = '';
+    $('#premium-card-fallback').hidden = true;
+    $('#premium-card-element').innerHTML = '';
+    $('#premium-card-error').hidden = true;
+    $('#premium-card-error').textContent = '';
+    $('#premium-mock-pay').hidden = true;
+    $('#premium-retry').hidden = true;
+    $('#premium-promo-label').textContent = TEXT.premiumPromoLabel;
+    $('#premium-promo-input').placeholder = TEXT.premiumPromoPlaceholder;
+    $('#premium-promo-input').value = '';
+    $('#premium-promo-input').disabled = false;
+    $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
+    $('#premium-promo-apply').disabled = false;
+    renderPremiumPrice(kind, CURRENCY, null);
+    dialog.querySelector('.premium-promo').hidden = false;
+    showReferralOffer(kind, rerunAll);
+    premiumStatus('');
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    // showModal() focuses the first focusable descendant when nothing carries
+    // `autofocus` — which, at this point, is the promo code input, since the
+    // wallet button and the mock/retry buttons are all still empty or hidden.
+    // On a phone that pulls the keyboard up over a dialog whose entire point
+    // is to offer Apple Pay / Google Pay first, before anyone has touched the
+    // promo field at all. `tabindex="-1"` on the dialog plus this explicit
+    // focus() overrides that: the dialog itself takes focus, and the keyboard
+    // only appears once the reader actually taps the promo input.
+    dialog.focus();
+
+    // Already paid, and the analysis never arrived — because the tab closed
+    // mid-generation, the device slept, or the call failed. Fetching is all
+    // that is left to do, so this returns before `create-payment-intent` is
+    // ever reached: asking Stripe for a second PaymentIntent here is how a
+    // reader ends up charged twice for one unlock.
+    const receipt = kind === 'unlock' && !bundle ? unlockReceipt() : null;
+    if (receipt && hasUnfetchedUnlock()) {
+      $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
+      // Already paid: there is no price to state.
+      $('#premium-price').hidden = true;
+      $('#premium-dialog-blurb').textContent = TEXT.premiumResumeBlurb;
+      $('#premium-dialog-blurb').hidden = false;
+      const resume = $('#premium-retry');
+      resume.textContent = TEXT.premiumResumeAction;
+      resume.hidden = false;
+      resume.onclick = () => runPremiumAnalysis(receipt, dialog, { offerData: false });
+      return;
+    }
+
+    // Guarded rather than assumed present: the bundled payment and the paid
+    // re-run pass no button (they are reached through the review, not one
+    // button), and neither does Ask PsycheAI. Disabling it is a nicety for
+    // whichever button actually triggered this dialog, not a requirement of
+    // the flow.
+    if (button) button.disabled = true;
+    try {
+      // Through the same helper the model routes use, rather than fetching a
+      // ticket and posting it by hand. This route creates a real object in the
+      // Stripe account so it must carry a ticket — but it was the only
+      // protected route doing that without the retry behind it, which made it
+      // the one place a ticket the server did not recognise still reached the
+      // reader as "reload the page and try again". A rate limit or a real
+      // failure still arrives here as itself; the catch below shows it.
+      // The code from the reader's link, filled in and applied for them,
+      // first: a discount brings its own payment, so the full price is asked
+      // for only when it does not (free, refused, or not checked). One
+      // payment-intent per opening, not two, under that route's rate limit.
+      let priced = false;
+      if ((kind === 'unlock' || kind === 'analysis') && linkPromo()) {
+        $('#premium-promo-input').value = linkPromo();
+        priced = (await applyPromoCode({ fromLink: true })) === 'discount';
+      }
+      if (!priced && dialog.open && premiumKind === kind) {
+        const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind, currency: CURRENCY });
+        if (!intent) throw new Error(TEXT.premiumNotConfigured);
+        await mountIntent(intent, dialog);
+      }
+    } catch (error) {
+      premiumStatus((error && error.message) || TEXT.premiumFailed, 'bad');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  /**
+   * The price at the top of the payment sheet. Without a discount, the one
+   * line: the product's price. With a discount code, the full price struck
+   * through, the discount the code takes off, and the price left to pay — the
+   * amount of the cheaper PaymentIntent, which is what is actually charged.
+   * Not shown for compatibility, which is free.
+   */
+  function renderPremiumPrice(product, currency, discount) {
+    const box = $('#premium-price');
+    if (product !== 'unlock' && product !== 'analysis' && product !== 'ask') { box.hidden = true; box.innerHTML = ''; return; }
+    const row = (term, value, cls) => '<div class="premium-price-row' + (cls ? ' ' + cls : '') + '"><dt>' + esc(term) +
+      '</dt><dd>' + value + '</dd></div>';
+    const full = Prices.label(currency, product);
+    if (!discount) {
+      box.innerHTML = row(TEXT.premiumPriceFull, esc(full), 'is-total');
+    } else {
+      const fullMinor = Prices.amount(currency, product);
+      const off = Math.max(0, fullMinor - discount.amount);
+      box.innerHTML = row(TEXT.premiumPriceFull, '<s>' + esc(full) + '</s>') +
+        row(TEXT.premiumPriceDiscount(discount.code, discount.percent), '−' + esc(Prices.label(currency, product, off)), 'is-discount') +
+        row(TEXT.premiumPriceNet, esc(Prices.label(currency, product, discount.amount)), 'is-total');
+    }
+    box.hidden = false;
+  }
+
+  /**
+   * Puts the ways to pay a PaymentIntent on the sheet: the mock stand-in, or
+   * the wallet button with the card form behind it. Called again with a
+   * cheaper intent when a discount code is applied, so whatever the first one
+   * mounted is cleared first.
+   */
+  async function mountIntent(intent, dialog) {
+    $('#premium-payment-request-button').innerHTML = '';
+    $('#premium-card-fallback').hidden = true;
+    $('#premium-card-element').innerHTML = '';
+    $('#premium-mock-pay').hidden = true;
+    if (intent.mock) {
+      // The whole Stripe round trip stands in for a click here — mock mode
+      // never loads Stripe.js or touches the network again, the same way
+      // PSYCHEAI_MOCK=1 never calls a real model.
+      const mockButton = $('#premium-mock-pay');
+      mockButton.textContent = TEXT.premiumMockPay;
+      mockButton.hidden = false;
+      mockButton.onclick = () => onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
+      return;
+    }
+    await mountPaymentRequestButton(intent, dialog);
+  }
+
+  /**
+   * Collects payment for one extra analysis, resolving the authorisation to
+   * pass to the model call — or null if the reader closed the dialog.
+   *
+   * Reuses the premium dialog wholesale rather than building a second one:
+   * the wallet button, the card fallback, the promo field and the mock-pay
+   * button are the same machinery whichever of the two products is being
+   * bought. `onPaymentAuthorised` is the only thing swapped, and it is put
+   * back on close so a later premium unlock still finishes as an unlock —
+   * getting that restore wrong would send a reader's US$5 down the analysis
+   * path, so it is done in the `close` handler where every exit passes.
+   */
+  function askBundlePayment() {
+    return askPaymentFor('bundle', null);
+  }
+
+  // Both of the above, and the shape is worth having once rather than twice:
+  // `onPaymentAuthorised` is global mutable state, and the one thing that must
+  // never go wrong is putting it back — a dialog that resolved a compatibility
+  // payment and left the callback pointing at the compatibility flow would
+  // send the next reader's premium unlock down it. The restore therefore lives
+  // in the `close` handler, which every exit passes through, cancelled or not.
+  function askPaymentFor(product, button) {
+    return new Promise(resolve => {
+      const dialog = $('#premium-dialog');
+      if (dialog.open) { resolve(null); return; }
+      let settled = false;
+      onPaymentAuthorised = (auth, dlg) => {
+        settled = true;
+        dlg.close();
+        resolve(auth);
+      };
+      dialog.addEventListener('close', () => {
+        onPaymentAuthorised = runPremiumAnalysis;
+        if (!settled) resolve(premiumWentBack && product === 'bundle' ? PAY_BACK : null);
+      }, { once: true });
+      openPremiumDialog(button, product);
+    });
+  }
+
+  /**
+   * The gate every analysis passes through, free or paid.
+   *
+   * Resolves the `auth` to hand to the model call: `null` for a free run, an
+   * object for a paid one, and `false` when the reader declined to pay — which
+   * the callers treat as "stop", not as "run it free anyway".
+   */
+  async function authoriseAnalysis() {
+    if (!mustPayForAnalysis()) return null;
+    // Past the free card, a card is never sold alone (late October 2026):
+    // the US$5 unlock buys a new card and its Psyche Report together, the
+    // card written first and the report anchored to it (cardThenFull in
+    // server.js). `bundle` marks it, so runAnalysis, a resumed job and a
+    // pending-purchase record all know a full report is coming.
+    const paid = await askBundlePayment();
+    if (paid === PAY_BACK) return PAY_BACK;
+    const auth = paid ? Object.assign({}, paid, { bundle: true }) : null;
+    // Deliberately says nothing itself. The two callers are on different
+    // screens — the upload page and the report — and each has its own place
+    // to put the message. Flashing #profile-alert from here left the upload
+    // path writing into an element nobody could see yet, which then appeared
+    // on the report page later as a message about something long finished.
+    return auth || false;
+  }
+
+  // A code typed into the full report's sheet is asked about first: a code
+  // worth 100% goes straight to the same paid route a real payment reaches,
+  // with the code instead of a paymentIntentId, so it works even mid-dialog
+  // while a wallet button is already mounted, and even on a server with no
+  // Stripe key set. A discount code comes back as a cheaper PaymentIntent,
+  // and the sheet is re-mounted to pay that instead. A code the server
+  // refuses says why, here, before any report is asked for. The same for a
+  // card run again past the free one: a discount takes its share off that
+  // price too.
+  // `fromLink`: the code came in the reader's link and is applied as the
+  // sheet opens. A discount is shown at once; a code that opens the report
+  // free waits for the reader's tap rather than starting it unasked; and a
+  // code the server refuses is forgotten, so it is not offered again.
+  // One promo check at a time: Enter pressed twice, or Apply then Enter.
+  let promoChecking = false;
+  async function applyPromoCode(options) {
+    const fromLink = Boolean(options && options.fromLink);
+    const input = $('#premium-promo-input');
+    const code = input.value.trim();
+    if (!code || promoChecking) return 'none';
+    const dialog = $('#premium-dialog');
+    const product = premiumKind === 'analysis' ? 'analysis' : premiumKind === 'ask' ? 'ask' : 'unlock';
+    // Whether the sheet the code was typed into is still the one open: a
+    // reader who cancels while the code is checked is not then charged or
+    // started on a report, and a code for one product never runs another.
+    const stillHere = () => dialog.open && premiumKind === product;
+    if (premiumKind !== product) {
+      onPaymentAuthorised({ promoCode: code }, dialog);
+      return 'free';
+    }
+    const apply = $('#premium-promo-apply');
+    apply.disabled = true;
+    promoChecking = true;
+    let answer = null;
+    try {
+      answer = await LLM.postWithTicket('api/create-payment-intent',
+        { product, currency: CURRENCY, promoCode: code });
+    } catch (error) {
+      if (error && error.status === 402) {
+        premiumStatus(fromLink ? TEXT.linkPromoRefused(code, error.message) : error.message, 'bad');
+        if (fromLink) { store.remove(KEYS.linkPromo); input.value = ''; }
+        return 'refused';
+      }
+      // Not checked (a rate limit, the network, Stripe): said so, never taken
+      // for a free code. It once was, and a 75% code read "unlocks the Psyche
+      // Report free" whenever the check failed.
+      premiumStatus(TEXT.promoCheckFailed(code, error && error.message), 'bad');
+      return 'failed';
+    } finally {
+      apply.disabled = false;
+      promoChecking = false;
+    }
+    if (!stillHere()) return 'gone';
+    if (answer && answer.discount) {
+      renderPremiumPrice(product, answer.currency, { code: answer.discount.code, percent: answer.discount.percent, amount: answer.amount });
+      premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent), 'good');
+      await mountIntent(answer, dialog);
+      return 'discount';
+    }
+    if (!(answer && answer.free)) {
+      premiumStatus(TEXT.promoCheckFailed(code), 'bad');
+      return 'failed';
+    }
+    if (fromLink) {
+      premiumStatus(product === 'analysis' ? TEXT.linkPromoFreeCard(code) : TEXT.linkPromoFree(code), 'good');
+      return 'free';
+    }
+    onPaymentAuthorised({ promoCode: code }, dialog);
+    return 'free';
+  }
+  $('#premium-promo-apply').addEventListener('click', () => applyPromoCode());
+  // Promo codes are capitals, digits and hyphens only: a lower-case letter is
+  // made a capital as it is typed or pasted, and anything else is dropped.
+  $('#premium-promo-input').addEventListener('input', event => {
+    const input = event.target;
+    const clean = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    if (clean !== input.value) {
+      const at = input.selectionStart;
+      input.value = clean;
+      if (typeof at === 'number') input.setSelectionRange(Math.min(at, clean.length), Math.min(at, clean.length));
+    }
+  });
+  $('#premium-promo-input').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); applyPromoCode(); }
+  });
+
+  // This sheet is either entering or authorising a real charge, so it must
+  // never close by accident: only the reader's own explicit Cancel, or a
+  // successful run finishing (dialog.close() at the end of
+  // runPremiumAnalysis), are allowed to close it. A stray click landing on
+  // the dialog's own padding — which reads as "clicking the box" as much as
+  // clicking outside it does, since a native <dialog>'s backdrop click also
+  // targets the dialog element itself — used to close it just the same as
+  // clicking genuinely outside, and Escape closed it too. Both are refused
+  // unconditionally now, not only while a run is in flight: reopening this
+  // same dialog after an accidental close is also what used to reset
+  // pendingPremiumDigest out from under a run still awaiting its response
+  // (see premiumRunInFlight's declaration) — refusing the close in the first
+  // place removes that trigger entirely, rather than only guarding against it
+  // once payment has cleared.
+  // Back, not Cancel: the sheet is the last step of a flow, so it returns to
+  // the one before it (premiumBackStep, set by whoever opened the sheet: the
+  // review, for an unlock, a re-run or a first upload past the free card).
+  // With no step to return to it simply closes.
+  $('#premium-cancel').addEventListener('click', () => {
+    const step = premiumBackStep;
+    premiumBackStep = null;
+    premiumWentBack = true;
+    $('#premium-dialog').close();
+    if (step) setTimeout(() => step(), 0);
+  });
+  // Deliberately no backdrop-click-to-close listener at all — the dialog's own
+  // clicks are otherwise left alone rather than closing it.
+  $('#premium-dialog').addEventListener('cancel', event => {
+    event.preventDefault();
+  });
+
+  $('#export-pdf-bottom').addEventListener('click', exportPdf);
+
+  /**
+   * The same download for a comparison. Built from `state.lastReport`, which
+   * renderReport fills — the report on screen is the one that gets written,
+   * whether it arrived from a fresh scan or from the history table.
+   */
+  /** The sync's PDF and its file name: what Download PDF saves and Share PDF shares. */
+  function compatPdf(last) {
+    const when = last.when ? new Date(last.when) : new Date();
+    const blob = window.PsychePDF.buildCompatibility(last.report, {
+      a: last.myName,
+      b: last.otherName,
+      modeLabel: last.mode === 'platonic' ? TEXT.syncName : MODE_LABELS[last.mode] || '',
+      stanceLabel: last.mode === 'professional' && Copy.WORK_STANCES[last.stance]
+        ? Copy.stanceText(Copy.WORK_STANCES[last.stance].option, last.otherName) : '',
+      heading: TEXT.compatRelate,
+      date: when.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+      model: (state.profile && state.profile.model) || '',
+    });
+    const slug = value => String(value || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+    return { blob, name: 'psycheai-sync-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf' };
+  }
+
+  async function exportCompatPdf() {
+    const last = state.lastReport;
+    if (!last) return;
+    try {
+      await loadPdf();
+      const { blob, name } = compatPdf(last);
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = name;
+      link.href = href;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+    } catch (error) {
+      // In the line under the buttons, which carry an icon a new label would wipe.
+      linkStatus('#compat-share-status', 'Could not build the PDF.');
+    }
+  }
+
+  $('#export-compat-bottom').addEventListener('click', exportCompatPdf);
+
+  // "Delete everything" asks first, in its own sheet. The note names the one
+  // thing this deliberately does not delete — the count of runs already had
+  // (see RUNS_KEY) — which is both honest and the better deterrent.
+  $('#delete-profile').addEventListener('click', () => {
+    const dialog = $('#delete-dialog');
+    $('#delete-dialog-text').textContent = Copy.STRUCTURED.deleteText;
+    $('#delete-dialog-note').textContent = Copy.STRUCTURED.deleteNote + ' ' + Copy.STRUCTURED.backup.deleteHint;
+    if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+    $('#delete-cancel').focus();
+  });
+  $('#delete-cancel').addEventListener('click', () => $('#delete-dialog').close());
+  // Saves the backup and leaves the sheet open: deleting is still the
+  // reader's next choice to make, now with a copy kept.
+  $('#delete-backup').addEventListener('click', saveBackup);
+  $('#delete-dialog').addEventListener('click', event => {
+    if (clickedOutside($('#delete-dialog'), event)) $('#delete-dialog').close();
+  });
+  $('#delete-confirm').addEventListener('click', () => {
+    $('#delete-dialog').close();
+    store.clearAll();
+    state.profile = null;
+    state.digest = null;
+    state.signals = null;
+    // Back to the page a new reader starts on, from its top.
+    show('welcome');
+    window.scrollTo(0, 0);
+  });
+
+  // ---------- a backup, to restore in another browser ----------
+  //
+  // Everything here lives in one browser's storage and nowhere else, so a
+  // cleared browser, a new phone or Delete everything used to mean starting
+  // over. The backup is that storage, as one .json file the reader keeps: the
+  // card and report, the evidence summary (so the full report can still be
+  // bought without loading the export again), every Psyche Sync, the ticked
+  // plan, and the personal link with its invite code, so the same link keeps
+  // working and syncs sent back to it are still collected.
+  //
+  // Made in the browser and handed straight to the reader's disk, like the
+  // PDF. Restoring reads it in the browser too: nothing goes to PsycheAI.
+  //
+  // What it leaves out: anything mid-purchase or mid-run (unlock, pending,
+  // job), other people's invites, banners, and the runs count (see below).
+  const BACKUP_KIND = 'psycheai-backup';
+  const BACKUP_KEYS = ['profile', 'digest', 'reportDigest', 'history', 'plan', 'pdfSaved', 'link', 'referral', 'account', 'ask', 'marks'];
+
+  function backupFile() {
+    const data = {};
+    for (const name of BACKUP_KEYS) {
+      const value = store.read(KEYS[name], null);
+      if (value !== null) data[name] = value;
+    }
+    return { kind: BACKUP_KIND, v: 1, savedAt: new Date().toISOString(), data };
+  }
+
+  /** "Psyche Backup - Jared Sia - 15102026.json": the PDF's name, for today. */
+  function backupFileName(profile) {
+    return reportFileName(Object.assign({}, profile, { createdAt: Date.now() }))
+      .replace(/^Psyche Report/, 'Psyche Backup').replace(/\.pdf$/, '.json');
+  }
+
+  // From the hub, its Save Backup popout has already said what the file is
+  // for, so no second popout after (quiet). Elsewhere (My Report's menu) the
+  // file still gets its few words after.
+  function saveBackup(options) {
+    if (!state.profile) return;
+    const blob = new Blob([JSON.stringify(backupFile())], { type: 'application/json' });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = backupFileName(state.profile);
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+    // When, for the hub's "saved 3 days ago".
+    store.write(KEYS.lastBackup, new Date().toISOString());
+    const savedLine = document.querySelector('#profile-body .hub-saved');
+    if (savedLine) { savedLine.textContent = Copy.STRUCTURED.hub.savedAgo('today'); savedLine.classList.remove('is-never'); }
+    if (options && options.quiet) return;
+    // Then what the file is for, in plain words.
+    const B = Copy.STRUCTURED.backupSaved, dialog = $('#backup-dialog');
+    $('#backup-dialog-title').textContent = B.title;
+    setHtml($('#backup-dialog-points'), B.points.map(point => '<li>' + esc(point) + '</li>').join(''));
+    $('#backup-dialog-ok').textContent = B.ok;
+    if (!dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
+  }
+  $('#save-backup').addEventListener('click', () => saveBackup());
+  $('#backup-dialog-ok').addEventListener('click', () => $('#backup-dialog').close());
+  $('#backup-dialog').addEventListener('click', event => { if (clickedOutside($('#backup-dialog'), event)) $('#backup-dialog').close(); });
+
+  const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+  /**
+   * The parts of a backup file that are safe to put back, or null.
+   *
+   * The file is the reader's own and could have been edited, or could be any
+   * .json at all, so each part is checked for the shape the app expects and
+   * anything else is left out rather than written into storage. The card has
+   * to decode from its own payload, which is what the link and every sync
+   * are made from. The invite code is worked out again from its secret rather
+   * than taken from the file.
+   */
+  async function readBackup(text) {
+    let file;
+    try { file = JSON.parse(text); } catch (error) { return null; }
+    if (!isRecord(file) || file.kind !== BACKUP_KIND || file.v !== 1 || !isRecord(file.data)) return null;
+    const data = file.data;
+    const profile = data.profile;
+    if (!isRecord(profile) || !isRecord(profile.card) || !isRecord(profile.report) ||
+        typeof profile.payload !== 'string') return null;
+    try { if (!(await Card.decodeCard(profile.payload))) return null; } catch (error) { return null; }
+    const out = { profile };
+    if (isRecord(data.digest)) out.digest = data.digest;
+    if (isRecord(data.reportDigest)) out.reportDigest = data.reportDigest;
+    if (Array.isArray(data.history)) out.history = data.history.filter(isRecord).slice(0, 25);
+    if (isRecord(data.plan)) out.plan = data.plan;
+    if (Array.isArray(data.ask)) {
+      out.ask = data.ask.filter(item => isRecord(item) && typeof item.q === 'string' && typeof item.a === 'string').slice(-ASK_KEEP);
+    }
+    if (data.pdfSaved === true) out.pdfSaved = true;
+    if (isRecord(data.marks) && typeof data.marks.stamp === 'string' && isRecord(data.marks.items)) {
+      const items = {};
+      for (const [key, m] of Object.entries(data.marks.items).slice(0, 40)) {
+        if (/^[\w:.-]{1,80}$/.test(key) && isRecord(m) && (m.v === 'yes' || m.v === 'no')) {
+          items[key] = Object.assign({ v: m.v, label: String(m.label || '').slice(0, 120) },
+            typeof m.note === 'string' && m.note.trim() ? { note: m.note.trim().slice(0, MARK_NOTE_MAX) } : {});
+        }
+      }
+      out.marks = { stamp: data.marks.stamp.slice(0, 40), items };
+    }
+    if (isRecord(data.referral) && /^[0-9a-f]{64}$/.test(data.referral.secret || '')) {
+      out.referral = { secret: data.referral.secret, code: (await sha256Hex(data.referral.secret)).slice(0, 12) };
+      // The link is locked with its key and saved under this invite code, so
+      // one is only any use with the other.
+      const link = data.link;
+      if (isRecord(link) && LINK_KEY.test(link.key || '')) {
+        out.link = LINK_ID.test(link.id || '') && /^[0-9a-f]{16}$/.test(link.card || '')
+          ? { key: link.key, id: link.id, card: link.card, secret: out.referral.code }
+          : { key: link.key };
+      }
+    }
+    if (typeof data.account === 'string' && /^[0-9a-f]{64}$/.test(data.account)) out.account = data.account;
+    return out;
+  }
+
+  function sayRestore(message) {
+    const alert = $('#restore-alert');
+    alert.textContent = message || '';
+    alert.hidden = !message;
+  }
+
+  // Set when a restore closes the Add your data popout, so the upload that
+  // opened it ends quietly rather than going back to the main page.
+  let restoredBackup = false;
+  $('#restore-open').addEventListener('click', () => {
+    sayRestore('');
+    $('#restore-input').value = '';
+    $('#restore-input').click();
+  });
+  $('#restore-input').addEventListener('change', async () => {
+    const file = $('#restore-input').files && $('#restore-input').files[0];
+    // Never over a card this browser already has: that one would be lost.
+    if (!file || state.profile) return;
+    const button = $('#restore-open');
+    button.disabled = true;
+    button.textContent = Copy.STRUCTURED.backup.restoring;
+    let parts = null;
+    // A backup is a few hundred kilobytes; a much larger file is not one.
+    try { parts = file.size < 5 * 1024 * 1024 ? await readBackup(await file.text()) : null; } catch (error) { parts = null; }
+    button.disabled = false;
+    button.textContent = Copy.STRUCTURED.backup.restore;
+    if (!parts) { sayRestore(Copy.STRUCTURED.backup.bad); return; }
+    if (!store.write(KEYS.profile, parts.profile)) {
+      store.remove(KEYS.profile);
+      sayRestore(Copy.STRUCTURED.backup.full);
+      return;
+    }
+    for (const name of BACKUP_KEYS) {
+      if (name !== 'profile' && name in parts) store.write(KEYS[name], parts[name]);
+    }
+    // The card restored was an analysis this reader already had, so it counts
+    // as one here too, as it did in the browser it came from: restoring is not
+    // a way to a fresh free analysis.
+    if (runCount() < 1) store.write(RUNS_KEY, 1);
+    sayRestore('');
+    // Then the page starts again, as it does for any returning reader: boot()
+    // lands on My Psyche and sets up the link, the Syncs and the referral the
+    // ordinary way. Drawing the profile in place could leave the reader on the
+    // main page if anything in that drawing failed; a fresh start cannot.
+    if ($('#datasources-dialog').open) { restoredBackup = true; $('#datasources-back').click(); }
+    location.reload();
+  });
+
+  // ---------- Ask PsycheAI ----------
+  //
+  // A reader with a full Psyche Report asks questions about it, one credit
+  // each: five for US$5 (the `ask` product), and every credit Your Referral
+  // earns counts as one more (lib/askcredits.js). Each question goes to the
+  // server with the report and card — never the digest — and the last few
+  // questions for context; the answer comes back with next steps and two
+  // follow-ups. The whole thread is kept here, in this browser, and in the
+  // backup file; the server keeps none of it.
+  const ASK_KEEP = 50;
+  const ASK_MAX = 300;
+  let askCreditsNow = null;
+  let askBusy = false;
+  const askThread = () => (store.read(KEYS.ask, []) || []).filter(item => item && typeof item.q === 'string');
+  // A function rather than a const: show() asks it, and can run first.
+  // Since October 2026 a Psyche Card is enough: its first question is free
+  // (lib/askcredits.js, gift), and the report brings one more.
+  function askReady() {
+    return Boolean(state.profile);
+  }
+
+  /** The report and card as the model sees them: the reader's own name back to PsycheUser. */
+  function askReport() {
+    const p = state.profile;
+    const body = { card: p.card, report: p.report };
+    if (p.premiumAnalysis) body.premiumAnalysis = p.premiumAnalysis;
+    const marks = marksForAsk();
+    if (marks.length) body.readerMarks = marks;
+    return withoutOwnName(body);
+  }
+  /** The reader's own name, and their first name, as PsycheUser in anything bound for a model. */
+  function withoutOwnName(value) {
+    const p = state.profile || {};
+    let text = JSON.stringify(value);
+    const name = String((p.card && p.card.name) || '').trim();
+    for (const part of [name, name.split(/\s+/)[0]].filter(n => n && n.length >= 2)) {
+      text = text.replace(new RegExp(part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'PsycheUser');
+    }
+    return JSON.parse(text);
+  }
+  /**
+   * The evidence beside the report: the digest the latest report was written
+   * from (KEYS.reportDigest), or for a report made before that was kept, the
+   * standard digest the card was read from. Null when there is neither, and
+   * the question is answered from the report alone.
+   */
+  async function askDigest() {
+    const kept = store.read(KEYS.reportDigest, null);
+    if (kept && typeof kept === 'object') return kept;
+    if (!state.digest) return null;
+    try { await loadReaders(); return Digest.forModel(state.digest); } catch (error) { return null; }
+  }
+  /** "PsycheUser" in an answer, back to the reader's first name. */
+  function askOwnName(text) {
+    const first = String((state.profile && state.profile.card && state.profile.card.name) || '').trim().split(/\s+/)[0] || 'you';
+    return String(text || '').replace(/PsycheUser/g, first);
+  }
+
+  function askItemHtml(item, pending) {
+    const A = Copy.STRUCTURED.ask;
+    const answer = pending ? '<p class="ask-typing">' + esc(A.thinking) + '</p>'
+      : paragraphs(item.a) +
+        (item.steps && item.steps.length ? '<p class="ask-steps-head">' + esc(A.steps) + '</p><ul class="ask-steps">' +
+          item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +
+        (item.follow && item.follow.length ? '<div class="ask-follow"><span>' + esc(A.follow) + '</span>' +
+          item.follow.map(q => '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join('') + '</div>' : '');
+    // What the answer was written from, so the reader can see their data
+    // was read too (answers kept from before this was recorded say nothing).
+    const source = pending || typeof item.fromData !== 'boolean' ? ''
+      : '<p class="ask-source">' + esc(item.fromData ? A.fromData : A.fromReport) + '</p>';
+    return '<div class="ask-item' + (pending ? ' is-pending' : '') + '"><p class="ask-q">' + esc(item.q) + '</p>' +
+      '<div class="ask-a">' + answer + source + '</div></div>';
+  }
+  function renderAskThread(pendingQuestion) {
+    const A = Copy.STRUCTURED.ask;
+    const items = askThread();
+    // Nothing asked yet: one line, and the ideas a tap away under the box.
+    const intro = '<p class="ask-intro">' + esc(A.emptyHint) + '</p>';
+    setHtml($('#ask-thread'), (items.length ? '' : intro) + items.map(item => askItemHtml(item)).join('') +
+      (pendingQuestion ? askItemHtml({ q: pendingQuestion }, true) : ''));
+    const thread = $('#ask-thread');
+    thread.scrollTop = thread.scrollHeight;
+  }
+  function sayAsk(message, tone) {
+    const line = $('#ask-status');
+    line.textContent = message || '';
+    line.hidden = !message;
+    line.className = 'ask-status' + (tone ? ' is-' + tone : '');
+  }
+  function renderAskCredits() {
+    const A = Copy.STRUCTURED.ask;
+    const n = askCreditsNow ? askCreditsNow.total : null;
+    const pill = $('#ask-credits');
+    pill.hidden = n === null;
+    pill.textContent = n === null ? '' : n > 0 ? A.left(n) : A.none;
+    pill.classList.toggle('is-empty', n === 0);
+    const out = n === 0;
+    // With none left the box and Ideas stay, so a question can be drafted
+    // before buying; only Ask gives way to the way to get more.
+    $('#ask-send').hidden = out;
+    $('#ask-buy').hidden = !out;
+    if (out) $('#ask-buy-go').textContent = A.buy(Prices.label(CURRENCY, 'ask'));
+    // The link's credits, named only when some of what is left is theirs.
+    const fromLink = askCreditsNow && !out ? Number(askCreditsNow.referral) || 0 : 0;
+    $('#ask-referral').hidden = !fromLink;
+    $('#ask-referral').textContent = fromLink ? A.fromReferral(fromLink) : '';
+    refreshHub();
+  }
+  async function refreshAskCredits() {
+    const mine = await ensureReferral();
+    if (!mine) return null;
+    try {
+      const response = await fetch('api/ask/credits', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: mine.secret }) });
+      if (response.ok) askCreditsNow = await response.json();
+    } catch (error) { /* keep what we had */ }
+    renderAskCredits();
+    return askCreditsNow;
+  }
+  // A payment for questions is credited by the server once; written down
+  // first, so a closed tab between paying and crediting is credited on the
+  // next open rather than lost.
+  async function creditAskPayment(paymentIntentId) {
+    const mine = await ensureReferral();
+    if (!mine || !paymentIntentId) return false;
+    store.write(KEYS.askPending, { paymentIntentId, at: Date.now() });
+    try {
+      const answer = await LLM.postWithTicket('api/ask/buy', { secret: mine.secret, paymentIntentId });
+      store.remove(KEYS.askPending);
+      if (answer && typeof answer.total === 'number') askCreditsNow = answer;
+      renderAskCredits();
+      return true;
+    } catch (error) {
+      sayAsk((error && error.message) || TEXT.premiumFailed, 'bad');
+      return false;
+    }
+  }
+
+  // A promo code worth 100% gives five questions, once per reader per code.
+  async function creditAskPromo(promoCode) {
+    const mine = await ensureReferral();
+    if (!mine) return false;
+    try {
+      const answer = await LLM.postWithTicket('api/ask/buy', { secret: mine.secret, promoCode });
+      if (answer && typeof answer.total === 'number') askCreditsNow = answer;
+      renderAskCredits();
+      return true;
+    } catch (error) {
+      sayAsk((error && error.message) || TEXT.premiumFailed, 'bad');
+      return false;
+    }
+  }
+
+  /**
+   * Opens Ask PsycheAI, with a question started for the reader when one is
+   * given. A panel, not a modal: the report stays readable and scrollable
+   * beside it, and closing it only minimises it to the floating button.
+   */
+  async function openAsk(prefill, options) {
+    if (!askReady()) return;
+    const A = Copy.STRUCTURED.ask;
+    const dialog = $('#ask-dialog');
+    $('#ask-sub').textContent = A.sub;
+    $('#ask-ideas-toggle').innerHTML = '<span aria-hidden="true">💡</span> ' + esc(A.ideas);
+    $('#ask-ideas-title').textContent = A.ideasTitle;
+    $('#ask-close').setAttribute('aria-label', A.minimise);
+    $('#ask-handle').setAttribute('aria-label', A.minimise);
+    labelAskExpand();
+    $('#ask-ideas-close').setAttribute('aria-label', A.ideasClose);
+    // From the floating button the ideas open at once, over the lower half of
+    // the conversation; ✕ folds them back under the Ideas button.
+    showAskIdeas(Boolean(options && options.ideas));
+    $('#ask-privacy').textContent = museOnly() ? A.musePrivacy : A.privacy;
+    if (museOnly()) $('#ask-sub').textContent = A.museSub;
+    $('#ask-send').textContent = museOnly() ? A.inMuse : A.send;
+    $('#ask-input').placeholder = A.placeholder;
+    $('#ask-input').maxLength = ASK_MAX;
+    sayAsk('');
+    renderAskThread();
+    renderAskCredits();
+    if (typeof prefill === 'string') $('#ask-input').value = prefill;
+    askCount();
+    if (!dialog.open) {
+      if (typeof dialog.show === 'function') dialog.show(); else dialog.setAttribute('open', '');
+      // Scroll restoration is kept per history entry and applied by the one
+      // being returned to: off on this page's entry before the panel's own is
+      // pushed, so minimising (a step back to it) never puts back the
+      // position the panel was opened at (popOwnEntry turns it on again).
+      if (!askHistoryEntry) {
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        history.pushState({ psycheaiAsk: true }, '');
+        askHistoryEntry = true;
+      }
+    }
+    $('#ask-fab').classList.remove('is-ready');
+    dockAsk(true);
+    refreshAskFab();
+    // The box takes focus only where there is a keyboard to spare: a phone's
+    // keyboard is not pulled up unasked, even with a question started for
+    // the reader from a part of My Report.
+    const input = $('#ask-input');
+    const fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+    if (fine && !(options && options.ideas)) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+    if (museOnly()) {
+      // No credits to show or buy: nothing is asked from here.
+      $('#ask-credits').hidden = true;
+      $('#ask-buy').hidden = true;
+      $('#ask-send').hidden = false;
+      return;
+    }
+    const pending = store.read(KEYS.askPending, null);
+    if (pending && pending.paymentIntentId) await creditAskPayment(pending.paymentIntentId);
+    await refreshAskCredits();
+  }
+
+  // Ask in Muse: the question is copied and Muse opened, for a read Muse wrote.
+  async function askInMuse(question) {
+    const A = Copy.STRUCTURED.ask;
+    let copied = false;
+    try { await navigator.clipboard.writeText(question); copied = true; } catch (error) { /* said below */ }
+    sayAsk(copied ? A.museCopied : A.museCopyFailed, copied ? 'good' : 'bad');
+    window.open(TEXT.museUrl, '_blank', 'noopener');
+  }
+  function askCount() {
+    const n = $('#ask-input').value.length;
+    $('#ask-count').textContent = n + '/' + ASK_MAX;
+    $('#ask-count').classList.toggle('is-near', n > ASK_MAX - 30);
+  }
+
+  async function sendAsk() {
+    const A = Copy.STRUCTURED.ask;
+    const question = $('#ask-input').value.replace(/\s+/g, ' ').trim().slice(0, ASK_MAX);
+    if (askBusy) return;
+    if (question.length < 3) { sayAsk(A.tooShort, 'bad'); return; }
+    if (museOnly()) { await askInMuse(question); return; }
+    if (askCreditsNow && askCreditsNow.total < 1) { renderAskCredits(); return; }
+    const mine = await ensureReferral();
+    if (!mine) return;
+    askBusy = true;
+    $('#ask-send').disabled = true;
+    sayAsk('');
+    // The box empties as the question goes: it shows in the thread above
+    // while the answer is written, and comes back only if sending fails.
+    $('#ask-input').value = '';
+    askCount();
+    renderAskThread(question);
+    try {
+      const history = askThread().slice(-3).map(item => ({ q: item.q, a: item.a }));
+      const digest = await askDigest();
+      const answer = await LLM.postWithTicket('api/ask', Object.assign({ secret: mine.secret, question, report: askReport(), history },
+        digest ? { digest } : {}));
+      const item = { q: question, a: askOwnName(answer.answer), steps: (answer.nextSteps || []).map(askOwnName),
+        follow: answer.followUps || [], fromData: answer.fromData === true, at: Date.now() };
+      store.write(KEYS.ask, askThread().concat([item]).slice(-ASK_KEEP));
+      if (answer.credits) askCreditsNow = answer.credits;
+      renderAskThread();
+      renderAskCredits();
+      refreshAskAppendix();
+      // Answered while minimised: the button says so until it is opened.
+      if (!$('#ask-dialog').open) { $('#ask-fab').classList.add('is-ready'); refreshAskFab(); }
+    } catch (error) {
+      renderAskThread();
+      if (!$('#ask-input').value) { $('#ask-input').value = question; askCount(); }
+      if (error && error.status === 402) { await refreshAskCredits(); sayAsk(A.noCredits, 'bad'); }
+      else sayAsk((error && error.message) || A.failed, 'bad');
+    } finally {
+      askBusy = false;
+      $('#ask-send').disabled = false;
+    }
+  }
+
+  async function buyAsk() {
+    const A = Copy.STRUCTURED.ask;
+    minimiseAsk();
+    const auth = await askPaymentFor('ask', null);
+    await openAsk();
+    if (auth && auth.paymentIntentId && await creditAskPayment(auth.paymentIntentId)) sayAsk(A.bought, 'good');
+    else if (auth && auth.promoCode && await creditAskPromo(auth.promoCode)) sayAsk(A.bought, 'good');
+  }
+
+  $('#ask-send').addEventListener('click', sendAsk);
+  $('#ask-input').addEventListener('input', askCount);
+  // A question of the reader's own folds the ideas away (an idea fills the box without this event).
+  $('#ask-input').addEventListener('input', () => { if (!$('#ask-ideas').hidden) showAskIdeas(false); });
+  $('#ask-input').addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); sendAsk(); }
+  });
+  $('#ask-buy-go').addEventListener('click', buyAsk);
+  // Minimising: the – button, the handle on a phone (a tap, or a swipe down),
+  // and Escape. The conversation, a half-typed question and an answer still
+  // coming all stay.
+  // The close event comes a moment later, so the button is put back at once.
+  // Its history entry is given back here, not on the close event: that comes
+  // a moment later, and Back's own close must not give back a second one.
+  function minimiseAsk() {
+    // Where the reader is now, kept: closing hands focus back to whatever
+    // opened the panel (scrolling to it), and the step back would restore
+    // the position the panel was opened at.
+    const y = window.scrollY;
+    $('#ask-dialog').close();
+    window.scrollTo(0, y);
+    if (askHistoryEntry) { askHistoryEntry = false; popOwnEntry(y); }
+    dockAsk(false);
+    refreshAskFab();
+  }
+  $('#ask-close').addEventListener('click', minimiseAsk);
+  $('#ask-handle').addEventListener('click', minimiseAsk);
+  // Expand (a laptop only, styles.css): the panel fills the screen under the
+  // header; again, it goes back to the side. Kept as it is through minimising.
+  function labelAskExpand() {
+    const wide = $('#ask-dialog').classList.contains('is-wide');
+    const A = Copy.STRUCTURED.ask;
+    $('#ask-expand').setAttribute('aria-pressed', String(wide));
+    $('#ask-expand').setAttribute('aria-label', wide ? A.shrink : A.expand);
+    $('#ask-expand').title = wide ? A.shrink : A.expand;
+  }
+  $('#ask-expand').addEventListener('click', () => {
+    $('#ask-dialog').classList.toggle('is-wide');
+    labelAskExpand();
+    placeAsk();
+  });
+  // The sheet follows the finger down from the handle or the title bar
+  // (touch-action: none there in styles.css, or the browser takes the drag
+  // as a scroll and cancels it); let go past 60px and it minimises,
+  // otherwise it springs back.
+  {
+    const sheet = $('#ask-dialog');
+    let startY = null, moved = 0;
+    const settle = () => { sheet.style.transform = ''; sheet.style.transition = ''; startY = null; };
+    sheet.addEventListener('pointerdown', event => {
+      if (!event.target.closest('.ask-handle, .ask-head') || event.target.closest('.ask-close')) return;
+      startY = event.clientY; moved = 0;
+      sheet.style.transition = 'none';
+    });
+    sheet.addEventListener('pointermove', event => {
+      if (startY === null) return;
+      moved = Math.max(0, event.clientY - startY);
+      sheet.style.transform = moved ? 'translateY(' + moved + 'px)' : '';
+    });
+    const end = () => {
+      if (startY === null) return;
+      const away = moved > 60;
+      settle();
+      if (away) minimiseAsk();
+    };
+    sheet.addEventListener('pointerup', end);
+    sheet.addEventListener('pointercancel', end);
+    // A drag that ends in a tap on the handle is not also a tap.
+    $('#ask-handle').addEventListener('click', event => { if (moved > 8) event.stopImmediatePropagation(); }, true);
+    // On a phone, a swipe down from anywhere on the sheet: from the conversation only once it is
+    // scrolled to its top (otherwise the swipe is scrolling it), and never from the box being typed in.
+    let touchY = null, touchMoved = 0;
+    sheet.addEventListener('touchstart', event => {
+      const thread = $('#ask-thread');
+      const fromThread = event.target.closest('#ask-thread, .ask-ideas-list');
+      if (event.touches.length !== 1 || event.target.closest('textarea') ||
+          (fromThread && (fromThread.scrollTop > 0))) { touchY = null; return; }
+      touchY = event.touches[0].clientY; touchMoved = 0;
+      if (thread) sheet.style.transition = 'none';
+    }, { passive: true });
+    sheet.addEventListener('touchmove', event => {
+      if (touchY === null) return;
+      touchMoved = Math.max(0, event.touches[0].clientY - touchY);
+      if (touchMoved > 6) {
+        if (event.cancelable) event.preventDefault();
+        sheet.style.transform = 'translateY(' + touchMoved + 'px)';
+      }
+    }, { passive: false });
+    sheet.addEventListener('touchend', () => {
+      if (touchY === null) return;
+      const away = touchMoved > 90;
+      touchY = null; sheet.style.transform = ''; sheet.style.transition = '';
+      if (away) minimiseAsk();
+    });
+  }
+  // Escape anywhere on the page, since focus need not be inside the panel
+  // (it leaves it while an answer is coming) — but not when a popout of its
+  // own is open on top, whose Escape that is.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !$('#ask-dialog').open || document.querySelector('dialog:modal')) return;
+    event.preventDefault();
+    minimiseAsk();
+  });
+  $('#ask-dialog').addEventListener('close', () => { dockAsk(false); refreshAskFab(); });
+  function dockAsk(on) {
+    document.body.classList.toggle('ask-docked', on);
+    placeAsk();
+  }
+  /**
+   * On a laptop the page never moves for Ask PsycheAI: the button sits at the
+   * bottom right of the report's own column, and the panel opens just right
+   * of that column when there is room for it (320px or more), otherwise over
+   * the page at the right as before. On a phone both keep their CSS places.
+   */
+  function placeAsk() {
+    const gap = 12;
+    const fab = document.getElementById('ask-fab');
+    const panel = document.getElementById('ask-dialog');
+    const column = document.querySelector('main.container');
+    if (!fab || !panel || !column) return;
+    const phone = window.matchMedia('(max-width: 760px)').matches;
+    const box = column.getBoundingClientRect();
+    if (phone || !box.width) {
+      fab.style.left = ''; fab.style.right = ''; fab.style.transform = '';
+      panel.style.left = ''; panel.style.right = ''; panel.style.width = '';
+      return;
+    }
+    // Placed from the left, as the column is measured: the gutter kept for
+    // the scrollbar (html, scrollbar-gutter) makes `right` land short of it.
+    const width = document.documentElement.clientWidth;
+    const pad = parseFloat(getComputedStyle(column).paddingRight) || 0;
+    // Just right of the report when the button fits there; otherwise at the
+    // bottom right inside the report's column.
+    const fabWidth = fab.offsetWidth || 180;
+    const outside = width - box.right - gap - 16 >= fabWidth;
+    fab.style.left = Math.round(outside ? box.right + gap : Math.min(box.right - pad, width - 16)) + 'px';
+    fab.style.right = 'auto';
+    fab.style.transform = outside ? '' : 'translateX(-100%)';
+    const room = width - box.right - gap - 16;
+    // Expanded, the panel's place is in styles.css (the whole screen under the header).
+    if (!panel.classList.contains('is-wide') && room >= 320) {
+      panel.style.left = Math.round(box.right + gap) + 'px';
+      panel.style.right = 'auto';
+      panel.style.width = Math.min(400, Math.floor(room)) + 'px';
+    } else {
+      panel.style.left = ''; panel.style.right = ''; panel.style.width = '';
+    }
+  }
+  window.addEventListener('resize', placeAsk);
+  // An answer waiting is shown as it is; otherwise the ideas open with it.
+  $('#ask-fab').addEventListener('click', () => openAsk(undefined, { ideas: !$('#ask-fab').classList.contains('is-ready') }));
+  // Ideas: the ready-made questions, out of the way until asked for. One
+  // fills the box and the list folds away again.
+  function showAskIdeas(open) {
+    const list = $('#ask-ideas-list');
+    if (open && !list.children.length) {
+      setHtml(list, Copy.STRUCTURED.ask.suggestions.map(q =>
+        '<button type="button" class="ask-chip" data-q="' + esc(q) + '">' + esc(q) + '</button>').join(''));
+    }
+    $('#ask-ideas').hidden = !open;
+    $('#ask-ideas-toggle').setAttribute('aria-expanded', String(open));
+    $('#ask-ideas-toggle').classList.toggle('is-open', open);
+  }
+  $('#ask-ideas-toggle').addEventListener('click', () => showAskIdeas($('#ask-ideas').hidden));
+  $('#ask-ideas-close').addEventListener('click', () => showAskIdeas(false));
+  $('#ask-dialog').addEventListener('click', event => {
+    const chip = event.target.closest('.ask-chip');
+    if (!chip) return;
+    $('#ask-input').value = chip.dataset.q || '';
+    askCount();
+    showAskIdeas(false);
+    $('#ask-input').focus();
+  });
+  /**
+   * The report's appendix: every question asked of PsycheAI, newest last, each answer folded under its
+   * question. At the foot of My Report, and in the PDF (buildReportPdf, asked).
+   */
+  function askAppendixHtml() {
+    const items = askThread();
+    if (!items.length) return '';
+    const A = Copy.STRUCTURED.ask;
+    return '<section class="card section-card ask-appendix screen-only">' +
+      sectionHead('💬', esc(A.appendixTitle(askAppendixNumber())), esc(A.appendixCount(items.length)), false, '') +
+      items.map(item => '<details class="ask-log"><summary>' + esc(item.q) + '</summary><div class="ask-log-body">' +
+        paragraphs(item.a) +
+        (item.steps && item.steps.length ? '<ul>' + item.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ul>' : '') +
+      '</div></details>').join('') +
+    '</section>';
+  }
+  /** Appendix 2 after the roast on My Report; unnumbered on a report without one. */
+  function askAppendixNumber() {
+    const report = state.profile && state.profile.report;
+    return report && report.bonus && report.bonus.harsh ? 2 : 0;
+  }
+  function refreshAskAppendix() {
+    document.querySelectorAll('.ask-appendix-slot').forEach(slot => setHtml(slot, askAppendixHtml()));
+  }
+  /** The floating button: on every page once the report is unlocked, while the panel is down. */
+  function refreshAskFab() {
+    const fab = document.getElementById('ask-fab');
+    const panel = document.getElementById('ask-dialog');
+    const profile = document.getElementById('view-profile');
+    if (!fab || !panel || !profile) return;
+    fab.hidden = !(askReady() && !panel.open);
+    const text = document.getElementById('ask-fab-text');
+    const A = Copy.STRUCTURED.ask;
+    const ready = fab.classList.contains('is-ready');
+    // "Ask PsycheAI" on a laptop, "Ask" on a phone (styles.css picks one).
+    if (text) setHtml(text, ready ? esc(A.fabReady)
+      : '<span class="ask-fab-long">' + esc(A.fabLabel) + '</span><span class="ask-fab-short">' + esc(A.fab) + '</span>');
+    placeAsk();
+    // Its full name for a screen reader.
+    fab.setAttribute('aria-label', ready ? A.fabLabel + ': ' + A.fabReady : A.fabLabel);
+  }
+  // Every way in: the card on My Psyche and at the end of My Report, and the
+  // link at the foot of each part of My Report, which starts the question.
+  document.addEventListener('click', event => {
+    const open = event.target.closest && event.target.closest('[data-ask]');
+    if (!open) return;
+    event.preventDefault();
+    const part = open.getAttribute('data-ask');
+    openAsk(part ? Copy.STRUCTURED.ask.partPrefill(part) : undefined);
+  });
+
+
+  // ══════════════ 3. compatibility links ══════════════
+  //
+  // Someone's link normally arrives by being tapped, and consumeIncomingLink
+  // takes it from there. The compatibility page is for everything else: past
+  // results, a link that arrived some other way to paste, and this person's
+  // own link to send.
+
+  function renderScan() {
+    flash('#scan-alert', '');
+    $('#scan-alert').classList.remove('is-note');
+    // Named for whoever this device belongs to, the way the profile page is.
+    // There may be no profile yet on a device that was sent a link, so the
+    // generic title in the markup stays the fallback.
+    const who = state.profile && state.profile.card && state.profile.card.name;
+    $('#scan-title').innerHTML = titleMark('sync', 'sync-title-grad') + esc(TEXT.scanHistory);
+    $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
+    $('#paste-input').value = '';
+    // One list, Psyche Sync: friends waiting to sync at the top, each with a
+    // Sync button, then past syncs. A sync that lands moves its friend from
+    // one to the other (adoptComparison spends the link).
+    const history = store.read(KEYS.history, []);
+    const waiting = state.profile ? allInvites().length : 0;
+    setHtml($('#scan-history'), history.length || waiting
+      ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.syncsList) + '</h2>' +
+        '<span class="scan-count">' + (history.length + waiting) + '</span></div>' +
+        syncWaitingHtml() +
+        (history.length ? historyList(history) : '') + '</div>' : '');
+    $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
+    refreshSyncsDot();
+  }
+
+  $('#paste-go').addEventListener('click', async () => {
+    // A link already synced with is not run again: its result is in the list.
+    const link = state.profile ? await readLinkText($('#paste-input').value) : null;
+    const pasted = link ? await Card.decodeCard(link.payload) : null;
+    if (pasted && isOwnLink(pasted, link.link, link.ref)) {
+      sayOwnLink('#scan-alert');
+      return;
+    }
+    if (pasted && alreadySynced(pasted)) {
+      if (link.link) keepLinkForSharing(pasted, link.link, link.ref);
+      renderScan();
+      flash('#scan-alert', TEXT.syncAlreadyDone(firstName(pasted.name) || pasted.name));
+      $('#scan-alert').classList.add('is-note');
+      return;
+    }
+    if (!(await runMatch(link || $('#paste-input').value))) {
+      flash('#scan-alert', 'That is not a PsycheAI link. Copy the whole link they sent you.');
+    }
+  });
+
+  const MODE_LABELS = Copy.MODE_LABELS;
+
+  // One sync at a time. A second tap on Sync (a double tap on a phone, before
+  // the working screen appears) used to start a second, identical sync, and
+  // both landed in the list. Cleared when the first one finishes either way.
+  let syncInFlight = false;
+  /**
+   * A pasted link, read the way a tapped one is. A short link
+   * (psycheai.io/c/<id>#<key>) is fetched and unlocked, which is what carries
+   * the face — the character, its write-up and the card's lists — that the
+   * long #p= payload has no room for; a long link is its payload alone.
+   */
+  async function readLinkText(raw) {
+    const text = String(raw || '').trim();
+    const short = text.match(/(?:\/c\/|[?&]c=)([A-Za-z0-9_-]+)[^#\s]*#(\S+)/);
+    if (short) {
+      try {
+        const response = await fetch('api/link?id=' + encodeURIComponent(short[1]));
+        const found = response.ok ? await response.json() : null;
+        if (found && found.blob) {
+          const opened = openedCard(await unlockCard(found.blob, short[2]));
+          if (opened.payload) {
+            // Where the finished sync can be sent back to (sendSyncBack).
+            return Object.assign(opened, { link: { id: short[1], key: short[2] } },
+              /^[0-9a-f]{12}$/.test(found.ref || '') ? { ref: found.ref } : {});
+          }
+        }
+      } catch (error) { /* falls through to "not a PsycheAI link" */ }
+      return { payload: '', face: null };
+    }
+    return { payload: Card.extractPayload(text), face: null };
+  }
+
+  // The face and link code of a pasted link, for adoptComparison.
+  let pastedLink = null;
+
+  // From the first tap to the sync's end: a second tap in the moments before
+  // the sync starts (reading the link, the share question) starts nothing.
+  let matchStarting = false;
+  async function runMatch(link) {
+    if (!state.profile) return false;
+    if (syncInFlight || matchStarting) return true;
+    matchStarting = true;
+    const paste = $('#paste-go');
+    if (paste) paste.disabled = true;
+    try {
+      return await startMatch(link);
+    } finally {
+      matchStarting = false;
+      if (paste) paste.disabled = false;
+    }
+  }
+  async function startMatch(link) {
+    if (typeof link === 'string') link = await readLinkText(link);
+    const other = await Card.decodeCard(link && link.payload);
+    if (!other) return false;
+    pastedLink = syncingInvite ? null : { face: link.face || null, ref: link.ref || '', link: link.link || null };
+    // Their personal link can take the result back to them: asked first, each
+    // time. Closing the popout cancels the sync.
+    const invited = syncingInvite ? allInvites().find(i => i.payload === syncingInvite) : null;
+    const backTo = invited ? invited.link : link.link;
+    shareSync = false;
+    if (backTo && state.server && state.server.shortLinks) {
+      const choice = await askShareSync(firstName(other.name) || other.name);
+      if (choice === null) { syncingInvite = null; pastedLink = null; return true; }
+      shareSync = choice;
+    }
+
+    // Psyche Sync is between friends, and only that: no basis to pick, so it
+    // starts at once. Free, so there is no payment to ask for either.
+    const mode = 'platonic';
+    const stance = null;
+    const auth = {};
+
+    $('#working-title').textContent = modelName() + ' is syncing you';
+    $('#working-note').textContent = 'Psyche Sync. Two profile cards were sent – nothing else.';
+    startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
+    show('working');
+
+    syncInFlight = true;
+    try {
+      await runComparison(other, mode, stance, auth);
+    } finally {
+      syncInFlight = false;
+    }
+    return true;
+  }
+
+  /**
+   * The paid model call behind a comparison, and everything that happens to
+   * the result.
+   *
+   * Its own function so that resuming one can reach it. A reader whose phone
+   * died mid-comparison has already scanned the code and answered both
+   * questions; making them do that again to collect something they paid for
+   * would be the same unfairness the unlock receipt exists to remove.
+   */
+  async function runComparison(other, mode, stance, auth) {
+    // Same reasoning as runAnalysis's own guard: this call runs for real time
+    // with nothing else standing between a reader's back button and losing it.
+    guardUnload(true);
+    // The comparison needs more than the payment to be asked for again: the
+    // other person's card came off a QR code that may be long gone, and the
+    // basis was chosen in two dialogs the reader would have to answer twice.
+    // All of it rides along, so resuming asks nothing of them.
+    // A paid comparison from before they were free is still collected; a free
+    // one has nothing owed to remember, only a job to rejoin.
+    if (auth && Object.keys(auth).length) rememberPending('compatibility', auth, { other, mode, stance });
+    try {
+      // Re-shaped on the way out, so a card saved before the link format last
+      // changed is sent in today's shape, with nothing the comparison no
+      // longer reads.
+      // De-identified on the way out: each card goes as Person A or Person B,
+      // with no name, and adoptComparison puts the first names back here.
+      const result = await LLM.analyseCompatibility(Object.assign(Card.shape(state.profile.card), { name: SYNC_A }),
+        Object.assign(Card.shape(other), { name: SYNC_B }), mode, stance, auth,
+        { onJob: key => rememberJob(key, 'compatibility', auth, { other, mode, stance }) });
+      adoptComparison(result, other, mode, stance);
+    } catch (error) {
+      renderScan();
+      show('scan');
+      flash('#scan-alert', (error && error.message) || 'The comparison failed.');
+    } finally {
+      stopElapsed();
+      guardUnload(false);
+    }
+  }
+
+  /**
+   * Take delivery of the paid sections, from the call that asked for them or
+   * from a page that rejoined it afterwards.
+   *
+   * Attaches to the profile already on screen rather than replacing it, which
+   * is the whole difference between this and adoptProfile: the free report is
+   * the thing these sections are being added to.
+   */
+  function adoptPremium(result) {
+    clearJob();
+    if (!state.profile) return;
+    state.profile.premiumAnalysis = result.data;
+    // The provider and moment that wrote the paid sections, kept apart from
+    // the free report's own `model`/`createdAt` because a different call, on a
+    // different provider, wrote them — see renderAnalysedBy.
+    state.profile.premiumModel = result.model || '';
+    state.profile.premiumAt = new Date().toISOString();
+    // Best-effort: a browser too full to hold this still leaves the reader
+    // able to read what they paid for, on screen, for the rest of this visit —
+    // it just will not survive a reload.
+    store.write(KEYS.profile, state.profile);
+  }
+
+  /**
+   * Take delivery of a finished comparison, from the call that asked for it or
+   * from a page that rejoined it afterwards.
+   *
+   * `mode` and `stance` are optional because a resumed job carries its own,
+   * off the record rather than out of the arguments the caller no longer has.
+   * The report's own `mode` still wins where the model set one, exactly as it
+   * did inline.
+   */
+  /** A short fingerprint of a friend's card, so the same link is recognised once synced. */
+  function syncCardKey(card) {
+    const text = JSON.stringify(Card.shape(card || {}));
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    return (hash >>> 0).toString(16) + '.' + text.length.toString(16);
+  }
+  /**
+   * Whether this card has been synced with on this device already. A sync
+   * saved before fingerprints were kept is matched by the friend's name.
+   */
+  // This reader's own link or card, come back to them: opened from their bio,
+  // a story, or pasted on Syncs. Nobody syncs with themselves, so it is said
+  // so rather than offered as a friend waiting. Known by the link (its id is
+  // the one this device published, or its referral code is this device's),
+  // or by the card itself. On another device with no card of theirs, it
+  // cannot be told apart from a friend's.
+  function isOwnLink(card, link, ref) {
+    const published = store.read(KEYS.link, null);
+    const mine = store.read(KEYS.referral, null);
+    if (link && published && published.id && link.id === published.id) return true;
+    if (ref && mine && mine.code === ref) return true;
+    return Boolean(card && state.profile && state.profile.card && syncCardKey(card) === syncCardKey(state.profile.card));
+  }
+  function sayOwnLink(where) {
+    flash(where, TEXT.syncOwnLink);
+    const note = $(where);
+    if (!note) return;
+    note.classList.add('is-note');
+    // Said where the reader is looking on arrival (October 2026): My Psyche's
+    // note sits under the card, far below the top the page opens at, so it
+    // was never seen. Brought into view once the page has been drawn.
+    requestAnimationFrame(() => {
+      if (!note.hidden && note.offsetParent) note.scrollIntoView({ behavior: 'instant', block: 'center' });
+    });
+  }
+  function alreadySynced(card) {
+    const key = syncCardKey(card);
+    return (store.read(KEYS.history, []) || []).some(entry => entry &&
+      (entry.with ? entry.with === key : entry.withName === card.name));
+  }
+
+  /**
+   * One row per card in the saved list. Lists saved before the fix above can
+   * hold the same sync twice (a double tap, or a pasted link run again): the
+   * newest row is kept. Rows from before cards were fingerprinted are matched
+   * by name and identical result instead, so two different syncs with one
+   * friend are never merged.
+   */
+  function dedupeHistory() {
+    const history = store.read(KEYS.history, []);
+    if (!Array.isArray(history) || history.length < 2) return;
+    const seen = new Set();
+    const kept = history.filter(entry => {
+      if (!entry) return false;
+      const id = entry.with ? 'card:' + entry.with
+        : 'legacy:' + entry.withName + ':' + JSON.stringify(entry.report || null);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    if (kept.length !== history.length) store.write(KEYS.history, kept);
+  }
+  dedupeHistory();
+
+  function adoptComparison(result, other, mode, stance) {
+    // The face their link carried (character, write-up, lists), kept with the
+    // sync so their Psyche Card can be opened from My Syncs later.
+    let face = null;
+    // Where this sync can be sent back to: the link it came from, and its code.
+    let back = null;
+    // The friend's link that brought this sync, now used.
+    if (syncingInvite) {
+      // A sync with a friend's link counts on that friend's "Your link".
+      const synced = allInvites().find(i => i.payload === syncingInvite);
+      face = (synced && synced.face) || null;
+      if (synced && synced.link) back = { link: synced.link, ref: synced.ref || '' };
+      const mine = store.read(KEYS.referral, null);
+      if (synced && synced.ref && !(mine && mine.code === synced.ref)) trackStep('sync_done', synced.ref);
+      spendInvite(syncingInvite);
+      syncingInvite = null;
+      refreshSyncInvite();
+    }
+    if (!back && pastedLink && pastedLink.link) back = { link: pastedLink.link, ref: pastedLink.ref };
+    if (!face && pastedLink) {
+      face = pastedLink.face;
+      // A pasted short link counts on its owner's "Your link" too.
+      const mine = store.read(KEYS.referral, null);
+      if (pastedLink.ref && !(mine && mine.code === pastedLink.ref)) trackStep('sync_done', pastedLink.ref);
+    }
+    pastedLink = null;
+    clearPending();
+    clearJob();
+    const basis = mode || result.data.mode;
+    const data = restoreSyncNames(result.data, state.profile ? state.profile.card.name : '', other.name);
+    const report = { ...data, mode: data.mode || basis, stance };
+    // A sync with a card already in the list replaces it, at the top, rather
+    // than adding a second row for the same person.
+    const key = syncCardKey(other);
+    const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
+    const canShare = Boolean(back && back.link && LINK_ID.test(back.link.id || '') && LINK_KEY.test(back.link.key || ''));
+    // Their link's id, when a short link brought them: a sync later sent
+    // back as this same person has to come from this same link
+    // (adoptReceivedSync).
+    const linkId = back && back.link && LINK_ID.test(back.link.id || '') ? back.link.id : '';
+    // The result as the server sealed it, before the names went in: what is
+    // sent back, so their device can check the words are the model's.
+    const sealed = result.data && typeof result.data.seal === 'string' ? result.data : null;
+    history.unshift(Object.assign({
+      when: new Date().toISOString(), withName: other.name, with: key, mode: report.mode, stance, report,
+      // Their card as their link carried it, to open from My Syncs.
+      card: Card.shape(other), face,
+    // Where the result can still be shared to later, from its row.
+    }, linkId ? { linkId } : null, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null,
+    canShare && sealed ? { sealed } : null));
+    store.write(KEYS.history, history.slice(0, 25));
+    renderReport(report, other.name, undefined, key);
+    show('report');
+    if (canShare && shareSync) shareSyncEntry(key);
+    shareSync = false;
+  }
+
+  // A sync is written about Person A (this reader) and Person B (the other),
+  // never their names, which the model is not sent. Their first names go back
+  // in here, on this device; two who share one become "Jean A" and "Jean B".
+  // A result written before this, with the names in it, passes through as it is.
+  const SYNC_A = 'Person A';
+  const SYNC_B = 'Person B';
+  function restoreSyncNames(value, mine, theirs) {
+    let a = firstName(mine) || mine || 'You';
+    let b = firstName(theirs) || theirs || 'They';
+    if (a === b) { a += ' A'; b += ' B'; }
+    const swap = text => text.replace(/\b[Pp]erson A\b/g, () => a).replace(/\b[Pp]erson B\b/g, () => b);
+    const walk = item => typeof item === 'string' ? swap(item)
+      : Array.isArray(item) ? item.map(walk)
+      : item && typeof item === 'object' ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, walk(v)])) : item;
+    return walk(value);
+  }
+
+  // Whether the reader chose, in the popout before this sync, to share it.
+  let shareSync = false;
+  /**
+   * "Share the results with Jean?" before a sync with a personal link, or
+   * from the row's Share button later. Resolves true for share, false for
+   * the other button, and null when closed (before a sync, that cancels it).
+   */
+  function askShareSync(name, later) {
+    const dialog = $('#sync-share-dialog');
+    if (!dialog) return Promise.resolve(false);
+    $('#sync-share-title').textContent = TEXT.syncShareTitle(name);
+    $('#sync-share-text').textContent = later ? TEXT.syncShareTextLater(name) : TEXT.syncShareText(name);
+    $('#sync-share-yes').textContent = TEXT.syncShareYes(name);
+    $('#sync-share-no').textContent = later ? TEXT.syncShareNotNow : TEXT.syncShareNo;
+    return new Promise(resolve => {
+      const done = answer => {
+        $('#sync-share-yes').onclick = null;
+        $('#sync-share-no').onclick = null;
+        dialog.onclose = null;
+        if (dialog.open) dialog.close();
+        resolve(answer);
+      };
+      $('#sync-share-yes').onclick = () => done(true);
+      $('#sync-share-no').onclick = () => done(false);
+      dialog.onclose = () => done(null);
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+  /**
+   * A sync saved before links were kept with it (or from a long link) has
+   * nowhere to be shared to. Opening or pasting that person's personal link
+   * again gives it one, and its row a Share button.
+   */
+  function keepLinkForSharing(card, link, ref) {
+    if (!link || !LINK_ID.test(link.id || '') || !LINK_KEY.test(link.key || '')) return;
+    const key = syncCardKey(card);
+    const history = store.read(KEYS.history, []) || [];
+    const entry = history.find(e => e && (e.with ? e.with === key : e.withName === card.name));
+    if (!entry || entry.received || entry.back) return;
+    entry.back = { link: { id: link.id, key: link.key }, ref: /^[0-9a-f]{12}$/.test(ref || '') ? ref : '' };
+    entry.shared = false;
+    store.write(KEYS.history, history);
+  }
+  /**
+   * The panel under a sync's results says, first, whether the other person
+   * can see them. Not yet, and it can be shared: the share popout's question,
+   * with its Yes. Shared, or sent to this reader by them: says so. A sync from
+   * a long link, which cannot be shared: not yet, and their own is a link away.
+   */
+  let compatReturnKey = null;
+  function refreshCompatReturn() {
+    const panel = $('#compat-return');
+    const last = state.lastReport;
+    if (!panel || !last) return;
+    panel.hidden = !state.profile;
+    const name = firstName(last.otherName) || last.otherName;
+    const entry = compatReturnKey ? (store.read(KEYS.history, []) || []).find(e => e && e.with === compatReturnKey) : null;
+    const canShare = Boolean(entry && entry.back && !entry.shared && !entry.received && state.server && state.server.shortLinks);
+    const status = entry && entry.received ? 'received' : entry && entry.shared ? 'shared' : canShare ? 'share' : 'link';
+    $('#compat-return-title').textContent = TEXT.compatReturnTitle(name, status);
+    $('#compat-return-text').textContent = TEXT.compatReturnText(name, status);
+    const share = $('#compat-return-share');
+    share.hidden = status !== 'share';
+    share.disabled = sharing.has(compatReturnKey);
+    $('#compat-return-share-label').textContent = TEXT.syncShareYes(name);
+    $('#share-link-report').hidden = status !== 'link';
+    panel.dataset.state = status;
+  }
+  $('#compat-return-share').addEventListener('click', async () => {
+    if (!compatReturnKey) return;
+    $('#compat-return-share').disabled = true;
+    await shareSyncEntry(compatReturnKey);
+    refreshCompatReturn();
+  });
+  /** Sends one saved sync back to the person whose link it was, and marks it shared. */
+  const sharing = new Set();
+  async function shareSyncEntry(key) {
+    const entry = (store.read(KEYS.history, []) || []).find(e => e && e.with === key);
+    // Once per sync: a second tap while the first is sending sends nothing.
+    if (!entry || !entry.back || entry.shared || sharing.has(key)) return false;
+    sharing.add(key);
+    let sent = false;
+    try { sent = await sendSyncBack(entry.back.link, entry.back.ref, entry.report, entry.sealed); } finally { sharing.delete(key); }
+    const name = firstName(entry.withName) || entry.withName;
+    if (sent) {
+      const history = store.read(KEYS.history, []) || [];
+      const saved = history.find(e => e && e.with === key);
+      if (saved) { saved.shared = true; store.write(KEYS.history, history); }
+    }
+    if (!$('#view-scan').hidden) renderScan();
+    if (compatReturnKey === key) refreshCompatReturn();
+    flash('#scan-alert', sent ? TEXT.syncSentBack(name) : TEXT.syncShareFailed(name));
+    $('#scan-alert').classList.toggle('is-note', sent);
+    return sent;
+  }
+  // The row's Share button, for a sync not shared before.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest && event.target.closest('[data-share]');
+    if (!button) return;
+    event.preventDefault();
+    const entry = (store.read(KEYS.history, []) || [])[Number(button.dataset.share)];
+    if (!entry || !entry.back || entry.shared) return;
+    if (!(await askShareSync(firstName(entry.withName) || entry.withName, true))) return;
+    button.disabled = true;
+    if (!(await shareSyncEntry(entry.with))) button.disabled = false;
+  });
+
+  // ---------- a sync, sent back to the person whose link it was ----------
+  //
+  // Whoever syncs with someone's personal link holds that link's key, and so
+  // does the device that made it. The finished sync, flipped so the tips for
+  // that person are theirs, goes with this reader's Psyche Card, locked with
+  // the key, to be collected by the link's owner (lib/syncbox.js). PsycheAI
+  // keeps only the locked copy. Only when the reader chooses to, in the popout
+  // before the sync or from the row's Share button afterwards; a long #p=
+  // link has no key and no owner to send to, so nothing can go.
+  const LINK_ID = /^[A-Za-z0-9_-]{10}$/;
+  const LINK_KEY = /^[A-Za-z0-9_-]{16}$/;
+  async function sendSyncBack(link, ref, report, sealed) {
+    if (!state.profile || !state.profile.payload || !link) return false;
+    if (!LINK_ID.test(link.id || '') || !LINK_KEY.test(link.key || '') || !/^[0-9a-f]{12}$/.test(ref || '')) return false;
+    // The sealed result goes, and their device fills in the names. A sync
+    // from before the seal goes as it was only until their devices stop
+    // taking one (SEAL_FROM).
+    const unsealed = !(sealed && typeof sealed.seal === 'string');
+    if (unsealed && Date.now() >= SEAL_FROM) return false;
+    const play = report.howToPartner || {};
+    const theirs = unsealed ? Object.assign({}, report, {
+      howToPartner: Object.assign({}, play, { forA: play.forB || [], forB: play.forA || [] }),
+    }) : null;
+    // This reader's own link goes with it, so the other side can check the
+    // card it carries really is the one this link shows (verifiedSender).
+    await publishShortLink();
+    const own = store.read(KEYS.link, null);
+    if (!own || !LINK_ID.test(own.id || '') || !LINK_KEY.test(own.key || '')) return false;
+    const sent = Object.assign({ v: unsealed ? 2 : 3, payload: state.profile.payload, face: cardFace(state.profile.report) },
+      unsealed ? { report: theirs } : { sealed }, { from: { id: own.id, key: own.key }, when: new Date().toISOString() });
+    try {
+      let blob = await lockCard(JSON.stringify(sent), link.key);
+      // Past what the server keeps, the card goes without its face.
+      if (blob.length > 24000) { sent.face = null; blob = await lockCard(JSON.stringify(sent), link.key); }
+      if (blob.length > 24000) return false;
+      const answer = await LLM.postWithTicket('api/sync/send', { id: link.id, ref, blob });
+      return Boolean(answer && answer.ok);
+    } catch (error) { return false; }
+  }
+
+  // Collecting the syncs others have sent back to this reader's link: on
+  // start, and on coming back to the page, at most once a minute. Each lands
+  // in the Sync list marked New, replacing an older sync with the same card;
+  // the server deletes it once it is saved here. One that cannot be unlocked
+  // (a link key since replaced) can never be read, so it is cleared too.
+  let syncsAskedAt = 0;
+  async function collectSyncs() {
+    if (!state.profile || !(state.server && state.server.shortLinks)) return;
+    const link = store.read(KEYS.link, null);
+    const mine = store.read(KEYS.referral, null);
+    if (!link || !LINK_KEY.test(link.key || '') || !mine || !/^[0-9a-f]{64}$/.test(mine.secret || '')) return;
+    if (Date.now() - syncsAskedAt < 60000) return;
+    syncsAskedAt = Date.now();
+    let items = [];
+    try {
+      const response = await fetch('api/sync/inbox', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: mine.secret }),
+      });
+      items = response.ok ? ((await response.json()).items || []) : [];
+    } catch (error) { return; }
+    const done = [];
+    const arrived = [];
+    for (const item of items.slice(0, 20)) {
+      let outcome = 'drop';
+      try {
+        const data = JSON.parse(await unlockCard(String(item.blob || ''), link.key));
+        const card = data && typeof data.payload === 'string' ? await Card.decodeCard(data.payload) : null;
+        if (card && (data.sealed || data.report)) {
+          // Only from the person whose card it carries: their own link has to
+          // show that same card. Anyone holding this reader's link could
+          // otherwise send a sync dressed as a friend's.
+          const sender = await verifiedSender(data);
+          // And only words the model wrote: the server's seal has to hold.
+          const report = sender === 'ok' ? await sealedReport(data, card, item.at) : null;
+          let savedAs = '';
+          if (sender === 'retry' || report === 'retry') outcome = 'keep';
+          else if (report) ({ outcome, key: savedAs } = adoptReceivedSync(card, Object.assign({}, data, { report })));
+          if (outcome === 'saved') arrived.push({ key: savedAs, name: firstName(card.name) || card.name, character: data.face && data.face.c });
+        }
+      } catch (error) { /* cannot be unlocked: cleared below */ }
+      // Kept on the server when it could not be checked or saved just now
+      // (offline, or storage full), to collect next time.
+      if (outcome !== 'keep') done.push(item.id);
+    }
+    if (done.length) {
+      try {
+        await fetch('api/sync/done', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: mine.secret, ids: done }),
+        });
+      } catch (error) { /* collected again next time, and replaces itself */ }
+    }
+    if (!arrived.length) return;
+    refreshSyncInvite();
+    refreshSyncsDot();
+    if (!$('#view-scan').hidden) renderScan();
+    saySyncsArrived(arrived);
+  }
+  // Told once, in a popout, as they arrive: who synced with this reader's
+  // card, with a button to the results (or, for several, to My Syncs). They
+  // stay marked New there either way. Another popout open just then is let
+  // finish first.
+  function saySyncsArrived(arrived) {
+    const dialog = $('#synced-dialog');
+    if (!dialog || !arrived.length) return;
+    const busy = document.querySelector('dialog[open]');
+    if (busy && busy !== dialog) {
+      busy.addEventListener('close', () => setTimeout(() => saySyncsArrived(arrived), 0), { once: true });
+      return;
+    }
+    if (dialog.open) dialog.close();
+    const one = arrived.length === 1;
+    const names = arrived.map(a => a.name || '?');
+    const faces = arrived.slice(0, 3).map(a => castFace(a.character, a.name || '?') ||
+      '<figure class="guess-face">' + matchFaceHtml('platonic', a.name || '?', null) + '<figcaption><b>' + esc(a.name || '?') + '</b></figcaption></figure>');
+    $('#synced-faces').innerHTML = faces.join('');
+    $('#synced-faces').querySelectorAll('.cast-art').forEach(art => {
+      art.style.backgroundSize = (Number(art.dataset.count) * 100) + '% 100%, cover';
+      art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
+    });
+    $('#synced-title').textContent = one ? TEXT.syncedTitle(names[0]) : TEXT.syncedTitleMany(arrived.length);
+    $('#synced-text').textContent = one ? TEXT.syncedText(names[0]) : TEXT.syncedTextMany(names);
+    $('#synced-go').textContent = one ? TEXT.syncedOpen : TEXT.syncedOpenMany;
+    $('#synced-later').textContent = TEXT.syncedLater;
+    $('#synced-go').onclick = () => {
+      dialog.close();
+      const history = store.read(KEYS.history, []) || [];
+      const index = one ? history.findIndex(entry => entry && entry.with === arrived[0].key && entry.received) : -1;
+      if (index < 0 || !openSyncEntry(index)) go('scan');
+    };
+    $('#synced-later').onclick = () => dialog.close();
+    dialog.addEventListener('close', refreshReportPromo, { once: true });
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    refreshReportPromo();
+  }
+  // From this moment a received sync has to carry the server's seal
+  // (lib/syncseal.js); one left in the inbox before it, by a page from before
+  // the seal, is still taken as it was.
+  const SEAL_FROM = Date.parse('2026-10-26T00:00:00Z');
+  /**
+   * The result a received sync carries, once the server says its seal holds:
+   * the names filled in as the sender saw them, and its advice turned round
+   * to this reader. Null when it fails, 'retry' when it could not be asked.
+   */
+  async function sealedReport(data, card, at) {
+    const sealed = data && data.sealed;
+    if (!(sealed && typeof sealed === 'object' && !Array.isArray(sealed) && typeof sealed.seal === 'string')) {
+      const report = data && data.report;
+      return Number(at) < SEAL_FROM && report && typeof report === 'object' && !Array.isArray(report) ? report : null;
+    }
+    try {
+      const response = await fetch('api/sync/check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: sealed }),
+      });
+      if (!response.ok) return 'retry';
+      if (!(await response.json()).ok) return null;
+    } catch (error) { return 'retry'; }
+    const named = restoreSyncNames(sealed, card.name, state.profile && state.profile.card ? state.profile.card.name : '');
+    const play = named.howToPartner && typeof named.howToPartner === 'object' ? named.howToPartner : {};
+    return Object.assign({}, named, { howToPartner: Object.assign({}, play, { forA: play.forB || [], forB: play.forA || [] }) });
+  }
+  /**
+   * Whether a received sync comes from the person whose card it carries: the
+   * link it names opens to that same card. 'ok', 'bad' (never will), or
+   * 'retry' (could not be asked just now).
+   */
+  async function verifiedSender(data) {
+    const from = data && data.from;
+    if (!from || !LINK_ID.test(from.id || '') || !LINK_KEY.test(from.key || '')) return 'bad';
+    let found;
+    try {
+      const response = await fetch('api/link?id=' + encodeURIComponent(from.id));
+      if (response.status === 404) return 'bad';
+      if (!response.ok) return 'retry';
+      found = await response.json();
+    } catch (error) { return 'retry'; }
+    try {
+      return openedCard(await unlockCard(String(found.blob || ''), from.key)).payload === data.payload ? 'ok' : 'bad';
+    } catch (error) { return 'bad'; }
+  }
+  // Someone else's sync result, held to the shape a sync has: strings and
+  // lists of strings, each cut to a length, and nothing else.
+  function shapeSyncReport(report) {
+    const r = report && typeof report === 'object' && !Array.isArray(report) ? report : {};
+    const text = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+    const texts = (v, count, max) => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, count).map(x => x.slice(0, max)) : []);
+    const points = v => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object').slice(0, 5).map(x => ({
+      title: text(x.title, 120), detail: text(x.detail, 700), evidence: texts(x.evidence, 3, 300),
+    })).filter(x => x.title) : []);
+    const play = r.howToPartner && typeof r.howToPartner === 'object' ? r.howToPartner : {};
+    return {
+      mode: 'platonic', stance: null, summary: text(r.summary, 400),
+      align: points(r.align), differ: points(r.differ),
+      howToPartner: { forA: texts(play.forA, 5, 400), forB: texts(play.forB, 5, 400), together: texts(play.together, 4, 400) },
+      caveats: text(r.caveats, 600),
+    };
+  }
+  /**
+   * Saves a verified received sync. { outcome: 'saved' | 'drop' (nothing to
+   * add) | 'keep' (could not be saved), key: the row's `with` }.
+   *
+   * verifiedSender proves only that the sender's link shows this card, and a
+   * card is public: anyone holding this reader's link and a friend's card can
+   * publish a link of their own showing it, and send a sync "from" that friend
+   * (October 2026). Syncing with someone new stays exactly as easy — a sync
+   * from a card with no row here is saved as today — but a card that already
+   * has a row is only that person when the sync comes from the link that row
+   * was made with (`linkId`). From any other link it is saved as a row of its
+   * own, beside theirs, and never replaces it.
+   */
+  function adoptReceivedSync(card, data) {
+    const cardKey = syncCardKey(card);
+    const fromId = data && data.from && LINK_ID.test(data.from.id || '') ? data.from.id : '';
+    const when = !isNaN(new Date(data.when)) ? new Date(data.when).toISOString() : new Date().toISOString();
+    const history = store.read(KEYS.history, []) || [];
+    const linkOf = entry => entry.linkId || (entry.back && entry.back.link && entry.back.link.id) || '';
+    const theirs = history.filter(entry => entry && entry.with === cardKey);
+    // Their row, when it was made with the link this sync came from (or the
+    // card has no row yet): this sync is theirs. Otherwise a row of its own,
+    // under that link, which a later sync from the same link replaces.
+    const same = !theirs.length || theirs.some(entry => fromId && linkOf(entry) === fromId);
+    const key = same ? cardKey : cardKey + '~' + fromId;
+    // A sync this reader ran with them is theirs and stays as it is; only an
+    // earlier one they were sent is replaced.
+    if (history.some(entry => entry && entry.with === key && !entry.received)) return { outcome: 'drop', key };
+    const kept = history.filter(entry => !(entry && entry.with === key));
+    kept.unshift(Object.assign({
+      when, withName: card.name, with: key, mode: 'platonic', stance: null,
+      report: shapeSyncReport(data.report), card: Card.shape(card), face: shapeFace(data.face), received: true, fresh: true,
+    }, fromId ? { linkId: fromId } : null));
+    if (!store.write(KEYS.history, kept.slice(0, 25))) return { outcome: 'keep', key };
+    // Their link, if it was waiting here too, is answered by this.
+    if (same) for (const invite of allInvites()) if (invite.payload === data.payload) spendInvite(invite.payload);
+    return { outcome: 'saved', key };
+  }
+  /** The dot on Syncs while a sync someone sent back is still unopened. */
+  function refreshSyncsDot() {
+    const fresh = (store.read(KEYS.history, []) || []).some(entry => entry && entry.fresh);
+    ['#nav-scan'].forEach(sel => { const nav = $(sel); if (nav) nav.classList.toggle('has-new', fresh); });
+  }
+
+  // ══════════════ 4. compatibility report ══════════════
+
+  function renderReport(report, otherName, when, entryKey) {
+    const myName = state.profile ? state.profile.card.name : 'You';
+    // Friends unless the report says otherwise: one saved before Psyche Sync
+    // was friends-only keeps the basis it was run on.
+    const mode = MODE_LABELS[report.mode] ? report.mode : 'platonic';
+    const stance = report.stance;
+    // The pill says which question was answered, and for a work run the basis
+    // alone does not: "Professional / work" reads the same whether the reader
+    // manages this person or reports to them.
+    const stanceLabel = mode === 'professional' && Copy.WORK_STANCES[stance]
+      ? Copy.stanceText(Copy.WORK_STANCES[stance].option, otherName) : '';
+
+    // The title and the basis pills live in the static header rather than in
+    // the rendered body.
+    // First names, as everywhere a friend is named.
+    $('#report-title').textContent = (firstName(myName) || myName) + ' & ' + (firstName(otherName) || otherName);
+    $('#report-sub').innerHTML =
+      '<span class="pill pill-clear">' + esc(mode === 'platonic' ? TEXT.syncName : MODE_LABELS[mode]) + '</span>' +
+      (stanceLabel ? ' <span class="pill pill-clear">' + esc(stanceLabel) + '</span>' : '');
+    // Kept for the PDF, which is built from whatever was last rendered.
+    state.lastReport = { report, otherName, myName, mode, stance, when };
+    compatReturnKey = entryKey || null;
+    refreshCompatReturn();
+
+    // The same order as the PDF: the one-line summary, where they align and
+    // where they differ, and how to relate better.
+    // No score: see COMPATIBILITY_SCHEMA in lib/prompts.js.
+    const [labelA, labelB] = window.PsychePDF ? window.PsychePDF.pairLabels(myName, otherName) : [myName, otherName];
+    const read = syncSections(report);
+    let html = summaryCard(read);
+
+    // Where they align and where they differ, side by side in the profile's
+    // own two columns, each point with its evidence on one small line.
+    const plays = (items, kind, title) => {
+      const rows = (items || []).filter(item => item && item.title);
+      if (!rows.length) return '';
+      return '<div class="partner-col partner-' + kind + '"><h4 class="partner-col-head"><span class="partner-badge" aria-hidden="true">' +
+        (kind === 'need' ? '✓' : '↔') + '</span>' + esc(title) + '</h4><ol class="partner-items">' + rows.map(item =>
+        '<li><strong>' + esc(item.title) + '</strong>' + (item.detail ? '<span>' + esc(item.detail) + '</span>' : '') +
+          evidenceLine(item.evidence) + '</li>').join('') + '</ol></div>';
+    };
+    const playsHtml = plays(read.align, 'need', TEXT.compatAlign) + plays(read.differ, 'careful compat-differ', TEXT.compatDiffer);
+    if (playsHtml) html += '<div class="card section-card compat-plays"><div class="partner-grid">' + playsHtml + '</div></div>';
+
+    const play = report.howToPartner || {};
+    html += '<div class="card section-card compat-playbook"><h2>' + esc(TEXT.compatRelate) + '</h2>' +
+      '<div class="playbook">' +
+      '<div class="play-col play-a"><h3>' + esc(TEXT.compatFor + labelA) + '</h3>' + list(play.forA, 'ticks') + '</div>' +
+      '<div class="play-col play-b"><h3>' + esc(TEXT.compatFor + labelB) + '</h3>' + list(play.forB, 'ticks') + '</div>' +
+      '</div>' +
+      ((play.together || []).length ? '<div class="play-both"><h3>' + esc(TEXT.compatBoth) + '</h3>' + list(play.together, 'ticks') + '</div>' : '') +
+      '</div>';
+
+    if (report.caveats) html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
+
+    setHtml($('#report-body'), html);
+  }
+
+  /**
+   * A sync's sections, from today's shape or from one saved before the score
+   * went: its verdict as the summary, its strengths and frictions as where
+   * the two align and differ. The old score is never shown.
+   */
+  function syncSections(report) {
+    const r = report || {};
+    return {
+      summary: String(r.summary || r.verdict || ''),
+      align: r.align || r.strengths || [],
+      differ: r.differ || r.frictions || [],
+    };
+  }
+
+  // The one-line summary: the answer, before anything else. The basis is the
+  // header's pill, so it is not said again here.
+  function summaryCard(read) {
+    return '<div class="card compat-lead compat-summary">' +
+      '<span class="compat-summary-mark" aria-hidden="true">✨</span>' +
+      '<p class="compat-verdict">' + esc(read.summary) + '</p></div>';
+  }
+
+  // Evidence as one small line under what it supports, rather than a row of
+  // chips: it backs the claim up without competing with it.
+  function evidenceLine(items, className) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '';
+    return '<p class="ev-line' + (className ? ' ' + className : '') + '">' + values.map(esc).join(' · ') + '</p>';
+  }
+
+  // ══════════════ 5. server status & boot ══════════════
+
+  function renderAbout() {
+    $('#about-status').textContent = state.server.unreachable
+      ? 'This page cannot reach the PsycheAI server right now.'
+      : state.server.mock
+        ? 'This server is running in mock mode – analyses are canned, and no API calls are made.'
+        : state.server.ready
+          ? ''
+          : 'Analyses are unavailable right now. Please try again later.';
+  }
+
+  function renderServerStatus() {
+    if (state.server.mock) {
+      flash('#server-status', 'Mock mode: this server returns canned analyses so you can click through the app. Nothing is sent to any model provider.');
+    } else if (state.server.unreachable) {
+      flash('#server-status', 'Cannot reach the PsycheAI server. Start it with "npm start".');
+    } else if (!state.server.ready) {
+      flash('#server-status', 'Analyses are unavailable right now, so a run would fail. Please try again later.');
+    } else {
+      flash('#server-status', '');
+    }
+  }
+
+  // A shared link may arrive as a fresh page load or as a hash change in a tab
+  // that already has PsycheAI open. Both have to work.
+  async function consumeIncomingLink() {
+    let incoming = '';
+    let face = null;
+    let fromRef = '';
+    let backLink = null;
+    const params = new URLSearchParams(location.search);
+    if (params.has('c')) {
+      // A short personal link, /c/<id>#<key>, arrives here as ?c=<id>#<key>.
+      const id = String(params.get('c') || '');
+      const key = location.hash.replace(/^#/, '');
+      params.delete('c');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
+      let found = null;
+      try {
+        const response = await fetch('api/link?id=' + encodeURIComponent(id));
+        found = response.ok ? await response.json() : null;
+      } catch (error) { found = null; }
+      if (found && /^[0-9a-f]{12}$/.test(found.ref || '')) {
+        fromRef = found.ref;
+        const mine = store.read(KEYS.referral, null);
+        if (!(mine && mine.code === found.ref)) {
+          store.write(KEYS.referredBy, { code: found.ref, at: Date.now() });
+          trackStep('referral_open', found.ref);
+        }
+      }
+      try {
+        if (found && key) ({ payload: incoming, face } = openedCard(await unlockCard(found.blob, key)));
+      } catch (error) { incoming = ''; }
+      // The link itself, so the finished sync can go back to its owner.
+      if (incoming && /^[A-Za-z0-9_-]{10}$/.test(id) && /^[A-Za-z0-9_-]{16}$/.test(key)) backLink = { id, key };
+      if (!incoming) {
+        showUploadError(TEXT.shortLinkUnreadable);
+        return true;
+      }
+    } else {
+      if (!/^#p=/.test(location.hash)) return false;
+      incoming = Card.extractPayload(location.hash);
+      if (!incoming) return false;
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    const card = await Card.decodeCard(incoming);
+    if (!card) {
+      showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
+      return true;
+    }
+    // The reader's own link: nothing to sync, so their own page, saying so.
+    if (isOwnLink(card, backLink, fromRef)) {
+      if (state.profile) { renderProfile(); show('profile'); sayOwnLink('#profile-alert'); }
+      else show('welcome');
+      return true;
+    }
+    // A link already synced with is not a friend waiting again: it opens the
+    // list, where that sync is.
+    if (state.profile && alreadySynced(card)) {
+      if (backLink) keepLinkForSharing(card, backLink, fromRef);
+      renderScan();
+      show('scan');
+      flash('#scan-alert', TEXT.syncAlreadyDone(firstName(card.name) || card.name));
+      $('#scan-alert').classList.add('is-note');
+      return true;
+    }
+    // The link's own code too, so a sync with this friend counts for them.
+    addInvite(Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null,
+      fromRef ? { ref: fromRef } : null, backLink ? { link: backLink } : null));
+    // A reader who already has a card lands on it, with the sync one tap
+    // away; one who does not sees the friend's card and how to make theirs.
+    if (state.profile) {
+      renderProfile();
+      show('profile');
+      return true;
+    }
+    show('welcome');
+    await refreshInvite();
+    return true;
+  }
+
+  // How long a compatibility link waits for this reader's own card. Long enough to
+  // cover Instagram's slowest export and a weekend; short enough that a link
+  // nobody acted on does not greet them a season later.
+  const INVITE_DAYS = 14;
+
+  function pendingInvite() {
+    const invite = store.read(KEYS.invite, null);
+    if (!invite || typeof invite.payload !== 'string') return null;
+    // No card's link is this long (Card.MAX_PAYLOAD): one kept from before
+    // that limit is dropped rather than decoded again on every visit.
+    if (invite.payload.length > Card.MAX_PAYLOAD) {
+      store.remove(KEYS.invite);
+      return null;
+    }
+    if (!(Date.now() - Number(invite.at) < INVITE_DAYS * 86400000)) {
+      store.remove(KEYS.invite);
+      return null;
+    }
+    return invite;
+  }
+
+  // More than one friend's link: the latest is the invite (its card is the one
+  // the welcome page shows); the ones before it wait here, newest first, each
+  // for its own fourteen days. Nobody is dropped for having sent theirs first.
+  const MORE_INVITES = 5;
+  function moreInvites() {
+    const list = store.read(KEYS.invitesMore, []);
+    return (Array.isArray(list) ? list : []).filter(i => i && typeof i.payload === 'string' &&
+      i.payload.length <= Card.MAX_PAYLOAD && Date.now() - Number(i.at) < INVITE_DAYS * 86400000);
+  }
+  /** Every friend whose link is waiting, latest first. */
+  function allInvites() {
+    const first = pendingInvite();
+    return (first ? [first] : []).concat(moreInvites().filter(i => !first || i.payload !== first.payload))
+      // The reader's own link, saved as waiting before that was caught: never
+      // a friend to sync with.
+      .filter(invite => !ownInvite(invite));
+  }
+  function ownInvite(invite) {
+    const published = store.read(KEYS.link, null);
+    const mine = store.read(KEYS.referral, null);
+    return Boolean((invite.link && published && published.id && invite.link.id === published.id) ||
+      (invite.ref && mine && mine.code === invite.ref) ||
+      (state.profile && state.profile.payload && invite.payload === state.profile.payload));
+  }
+  function addInvite(invite) {
+    const before = pendingInvite();
+    // One entry per friend: a newer link from the same person replaces theirs.
+    const others = [before].concat(moreInvites())
+      .filter(i => i && i.payload !== invite.payload && i.name !== invite.name);
+    store.write(KEYS.invite, invite);
+    store.write(KEYS.invitesMore, others.slice(0, MORE_INVITES));
+  }
+  /** One friend's link, synced with: gone, and the next one waiting moves up. */
+  function spendInvite(payload) {
+    const first = pendingInvite();
+    const rest = moreInvites().filter(i => i.payload !== payload);
+    if (first && first.payload === payload) {
+      if (rest.length) store.write(KEYS.invite, rest.shift());
+      else store.remove(KEYS.invite);
+    }
+    store.write(KEYS.invitesMore, rest);
+  }
+
+  /**
+   * A shared card as a report, so it is drawn by the same psycheCardHtml as
+   * everyone's own: the payload's fields, and the face — character, scene and
+   * why — where a short link brought one. A long link has no face, and its
+   * card is drawn without the character.
+   */
+  const MBTI_AXES = [['E/I', /[EI]/], ['N/S', /[NS]/], ['T/F', /[TF]/], ['J/P', /[JP]/]];
+  /** A list from a card's face, as plain strings, or null when it has none. */
+  const faceList = list => (Array.isArray(list) && list.length ? list.slice(0, 4).map(String) : null);
+  function reportFromCard(card, face) {
+    const c = card || {};
+    const f = face || {};
+    const type = String(c.mbti || '').toUpperCase();
+    const letters = MBTI_AXES.map(([axis, pole], i) => ({
+      axis, choice: pole.test(type.charAt(i)) ? type.charAt(i) : '', strength: String((f.s || [])[i] || ''),
+    }));
+    const bigFive = {};
+    for (const [key, score] of Object.entries(c.bigFive || {})) bigFive[key] = { score };
+    const titled = list => (list || []).map(title => ({ title }));
+    // The card labels each one, "Quality time (primary)"; the face shows the name.
+    const languages = list => (list || []).map(item => ({ language: String(item).replace(/\s*\([^)]*\)\s*$/, '') }));
+    return {
+      card: { name: c.name || '', headline: c.headline || '', confidence: c.confidence || 0 },
+      confidence: { score: c.confidence || 0 },
+      essence: { character: String(f.c || ''), franchise: String(f.fr || ''), icon: String(f.i || '') },
+      cardHighlights: String(f.w || ''),
+      patterns: ((Array.isArray(f.p) && f.p.length ? f.p : c.patterns) || []).slice(0, 3)
+        .map((name, i) => ({ id: 'p' + (i + 1), name: String(name) })),
+      // The face's own lists where the link has them (see cardFace), else the payload's.
+      topMotivators: faceList(f.m) || c.motivators || [],
+      mbti: { type, letters: letters.every(l => l.choice) ? letters : [] },
+      bigFive,
+      // Values & beliefs travel as one list; the card shows three and a belief.
+      values: titled((faceList(f.v) || c.values || []).slice(0, 3)),
+      beliefs: titled((faceList(f.v) || []).slice(3, 4)),
+      interests: titled(faceList(f.n) || c.interests),
+      relationship: { loveLanguages: {
+        receiving: languages(faceList(f.lr) || c.loveReceiving), giving: languages(faceList(f.lg) || c.loveGiving) } },
+    };
+  }
+
+  // The welcome page for a friend's link: their card itself, drawn the way it
+  // is on their own screen, beside why to make one — the comparison with them
+  // waits on it. Tapping the card opens it full screen, part by part.
+  let inviteDrawn = '';
+  let inviteReport = null;
+  async function refreshInvite() {
+    const banner = $('#invite-banner');
+    if (!banner) return;
+    const waiting = state.profile ? null : pendingInvite();
+    // Put away with its ✕: out of sight, but kept, so it still waits on My
+    // Syncs once a card is made, for the reader to press Sync there.
+    const invite = waiting && (store.read(KEYS.inviteBannerClosed, []) || []).includes(waiting.payload) ? null : waiting;
+    if (!invite) {
+      banner.hidden = true;
+      inviteDrawn = '';
+      inviteReport = null;
+      return;
+    }
+    const drawn = invite.payload + JSON.stringify(invite.face || null);
+    if (inviteDrawn !== drawn) {
+      inviteDrawn = drawn;
+      const card = await Card.decodeCard(invite.payload);
+      // Their first name on the card too, as everywhere on this page.
+      inviteReport = card ? reportFromCard(Object.assign({}, card, { name: firstName(card.name) }), invite.face) : null;
+      const el = $('#invite-card');
+      el.innerHTML = inviteReport ? psycheCardHtml(inviteReport) : '';
+      freshArtIds(el);
+    }
+    const name = firstName(invite.name);
+    $('#invite-title').textContent = TEXT.inviteTitle(name);
+    $('#invite-text').textContent = TEXT.inviteText(name);
+    // Other friends' links waiting too: named, so nobody is lost.
+    const others = moreInvites().map(i => firstName(i.name) || i.name).filter(Boolean);
+    $('#invite-also').textContent = others.length ? TEXT.inviteAlso(others) : '';
+    $('#invite-also').hidden = !others.length;
+    $('#invite-guide').textContent = TEXT.inviteStart;
+    showInviteInApp(name);
+    $('#invite-card-hint').textContent = TEXT.inviteCardHint;
+    const open = $('#invite-card-open');
+    open.hidden = !inviteReport;
+    open.setAttribute('aria-label', TEXT.inviteCardOpen(name));
+    banner.classList.toggle('has-card', Boolean(inviteReport));
+    banner.hidden = false;
+    layoutInviteCard();
+  }
+
+  function layoutInviteCard() {
+    const banner = $('#invite-banner');
+    const el = $('#invite-card');
+    if (!banner || banner.hidden || !inviteReport || !el.innerHTML) return;
+    const width = Math.max(200, Math.min(270, banner.clientWidth - 48));
+    fitCard(el, width, width * 1920 / 1080);
+  }
+  window.addEventListener('resize', layoutInviteCard);
+
+  /** The friend's card full screen, explained part by part, in the sample cards' dialog. */
+  function openInviteCard() {
+    if (inviteReport) openFriendCard(inviteReport);
+  }
+  function openFriendCard(report) {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || dialog.open || !report) return;
+    dialog.classList.remove('is-gallery');
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    const full = $('#sample-psyche-card-full');
+    full.innerHTML = psycheCardHtml(report);
+    freshArtIds(full);
+    guideSampleCard(report);
+    $('#sample-card-count').textContent = '';
+    layoutPsycheCard();
+  }
+
+  // To the steps for requesting the export, on this same page.
+  // At the top of My Psyche, once the reader has a card and a friend's link
+  // is waiting: "You have friends waiting to sync with you", naming them, with
+  // one button, to My Syncs. The sync itself runs from there, only when they
+  // pick a friend. Not on My Report.
+  function refreshSyncInvite() {
+    const box = $('#sync-invite');
+    if (!box) return;
+    const invites = state.profile ? allInvites() : [];
+    // Closed with its ✕, it stays closed until a friend's link arrives that
+    // was not waiting then. The friends still wait on My Syncs.
+    const closed = store.read(KEYS.syncBarClosed, []) || [];
+    const fresh = invites.some(invite => !closed.includes(invite.payload));
+    box.hidden = !invites.length || !fresh || reportPageOn();
+    if (!invites.length) { refreshReportPromo(); return; }
+    const names = invites.map(i => firstName(i.name) || i.name);
+    $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
+    $('#sync-invite-open').textContent = TEXT.syncInviteOpen;
+    // How many are waiting, in the ring.
+    $('#sync-invite-count').textContent = String(invites.length);
+    refreshReportPromo();
+  }
+  /**
+   * Syncs list: each person whose link is waiting, their name a link to
+   * their Psyche Card (from the card their link carries), and a "Sync?"
+   * button of their own, filled, unlike a past sync's outlined "Results".
+   */
+  function syncWaitingHtml() {
+    const invites = state.profile ? allInvites() : [];
+    if (!invites.length) return '';
+    return '<ul class="match-list match-waiting">' + invites.map((invite, i) => {
+      const name = firstName(invite.name) || invite.name || '?';
+      return '<li><div class="match-row is-waiting">' +
+        matchFaceHtml('platonic', name, invite.face) +
+        '<span class="match-who">' + matchNameHtml(name, 'data-waiting-card="' + i + '"', name) +
+          '<span class="match-meta">' + esc(TEXT.syncWaitingMeta) + '</span></span>' +
+        '<button type="button" class="match-go match-pending sync-invite-go" data-i="' + i + '" aria-label="' +
+          esc(TEXT.syncInviteGo(name)) + '">' + SYNC_ICON + '<span>' + esc(TEXT.syncWaitingGo) + '</span></button>' +
+        '</div></li>';
+    }).join('') + '</ul>';
+  }
+  // A waiting friend's Psyche Card, before syncing: decoded from their link.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest && event.target.closest('[data-waiting-card]');
+    if (!button) return;
+    event.preventDefault();
+    const invite = allInvites()[Number(button.dataset.waitingCard) || 0];
+    const card = invite ? await Card.decodeCard(invite.payload) : null;
+    if (!card) return;
+    openFriendCard(reportFromCard(Object.assign({}, card, { name: firstName(card.name) || card.name }), invite.face));
+  });
+  // An app's own browser: Instagram, Facebook and Messenger, TikTok,
+  // Snapchat, LINE and X each mark their user agent. What is made in one is
+  // kept only there, and the app can clear it whenever it likes, so the
+  // reader is asked to open the site in Safari or Chrome. WhatsApp and
+  // Telegram open links in a system browser sheet that does not say so in
+  // its user agent; nothing here can see those.
+  function inAppBrowser(ua) {
+    const agent = String(ua == null ? navigator.userAgent : ua);
+    if (/Instagram/i.test(agent)) return 'Instagram';
+    if (/Messenger|MessengerForiOS|\bOrca-Android\b/i.test(agent)) return 'Messenger';
+    if (/FBAN|FBAV|FB_IAB|FBIOS/i.test(agent)) return 'Facebook';
+    if (/musical_ly|BytedanceWebview|TikTok/i.test(agent)) return 'TikTok';
+    if (/Snapchat/i.test(agent)) return 'Snapchat';
+    if (/\bLine\//.test(agent)) return 'LINE';
+    if (/Twitter|TwitterAndroid/i.test(agent)) return 'X';
+    return '';
+  }
+  const IN_APP = inAppBrowser();
+  const IN_APP_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Settled once boot knows whether a friend's invite is showing: that has the
+  // same step of its own, so the note would only flash and go.
+  let settleInAppWarn = () => {};
+  (function warnInApp() {
+    const bar = $('#inapp-warn');
+    if (!bar || !IN_APP) return;
+    let closed = false;
+    try { closed = sessionStorage.getItem('psycheai_inapp_closed') === '1'; } catch (error) { /* private window */ }
+    $('#inapp-warn-text').textContent = TEXT.inAppWarn(IN_APP, IN_APP_IOS);
+    // Android can be sent to Chrome directly; iOS has no such door.
+    const chrome = $('#inapp-open-chrome');
+    if (/Android/i.test(navigator.userAgent)) {
+      chrome.textContent = TEXT.inAppChrome;
+      chrome.href = 'intent://' + location.host + location.pathname + location.search + location.hash +
+        '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+      chrome.hidden = false;
+    }
+    const copy = $('#inapp-copy');
+    copy.textContent = TEXT.inAppCopy;
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ARRIVED_AT); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
+    });
+    $('#inapp-close').addEventListener('click', () => {
+      bar.hidden = true;
+      closed = true;
+      try { sessionStorage.setItem('psycheai_inapp_closed', '1'); } catch (error) { /* private window */ }
+    });
+    settleInAppWarn = () => { bar.hidden = closed || !$('#invite-inapp').hidden; };
+    // Shown at once, unless a friend's link is in the address or waiting here:
+    // then boot settles it, after the invite has drawn.
+    const linkArriving = new URLSearchParams(location.search).has('c') || /^#p=/.test(location.hash);
+    if (!linkArriving && (state.profile || !pendingInvite())) settleInAppWarn();
+  })();
+
+  // A private window forgets the card when it closes. Browsers hide whether a
+  // window is private, so this is a guess, said as one ("This looks like…"):
+  // Chrome, Edge and other Chromium browsers give a private window a storage
+  // quota tied to memory (under 1 GB here) where a normal one gets a share of
+  // the disk (tens of GB); Firefox has no service workers in one. Safari
+  // gives nothing away, so it is never told. The same bar as the in-app note,
+  // which wins when both apply; its ✕ holds for the tab, as that one's does.
+  async function looksPrivate() {
+    try {
+      if (/Firefox\//.test(navigator.userAgent) && !('serviceWorker' in navigator)) return true;
+      if (!navigator.storage || typeof navigator.storage.estimate !== 'function' || !/Chrome\//.test(navigator.userAgent)) return false;
+      const { quota } = await navigator.storage.estimate();
+      const heap = (performance.memory && performance.memory.jsHeapSizeLimit) || 1073741824;
+      return Number.isFinite(quota) && quota > 0 && quota < heap * 2;
+    } catch (error) { return false; }
+  }
+  (async function warnPrivate() {
+    const bar = $('#inapp-warn');
+    if (!bar || IN_APP) return;
+    let closed = false;
+    try { closed = sessionStorage.getItem('psycheai_private_closed') === '1'; } catch (error) { /* none */ }
+    if (closed || !(await looksPrivate())) return;
+    $('#inapp-warn-text').textContent = TEXT.privateWarn;
+    $('#inapp-open-chrome').hidden = true;
+    const copy = $('#inapp-copy');
+    copy.textContent = TEXT.inAppCopy;
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ARRIVED_AT); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
+    });
+    $('#inapp-close').addEventListener('click', () => {
+      bar.hidden = true;
+      try { sessionStorage.setItem('psycheai_private_closed', '1'); } catch (error) { /* none */ }
+    });
+    bar.hidden = false;
+  })();
+
+  // The slim bar offering the Psyche Report, once a free card exists: on the
+  // front page, My Psyche, My Syncs and the FAQ, not on My Report or while an
+  // analysis runs. Never at the same time as a friend's sync invite: it waits
+  // until that is closed or the sync is done. It has no close: it stays
+  // until something is unlocked.
+  const PROMO_VIEWS = ['welcome', 'profile', 'scan', 'about'];
+  function syncInviteShowing() {
+    const invites = state.profile ? allInvites() : [];
+    const closed = store.read(KEYS.syncBarClosed, []) || [];
+    return invites.some(invite => !closed.includes(invite.payload));
+  }
+  // A free report won by a guess (or any gifted one) waiting to be unlocked:
+  // the one thing to read there, so the slim bar stands down, as it does for
+  // a sync.
+  function prizeShowing() {
+    return giftBannerShowing();
+  }
+  // Signal strength under 80 once the report is in hand (October 2026): a
+  // bar like the Psyche Report's offer, on every page that has one and on My
+  // Report too, to add data and re-run. Not closable: it goes when the score
+  // is 80 or more.
+  const SIGNAL_BAR_BELOW = 80;
+  function signalScore() {
+    const conf = state.profile && state.profile.report && state.profile.report.confidence;
+    const score = Math.round(Number(conf && conf.score));
+    return Number.isFinite(score) ? score : null;
+  }
+  function signalBarOffered() {
+    const score = signalScore();
+    return Boolean(state.profile) && score !== null && score < SIGNAL_BAR_BELOW &&
+      (hasExplanations(state.profile) || Object.keys(paidAnalysis()).length > 0);
+  }
+  function refreshSignalBar() {
+    const bar = $('#signal-bar');
+    if (!bar) return;
+    const view = VIEWS.find(name => !$('#view-' + name).hidden);
+    bar.hidden = !signalBarOffered() || !PROMO_VIEWS.includes(view) || syncInviteShowing() || prizeShowing() ||
+      Boolean($('#synced-dialog') && $('#synced-dialog').open);
+    if (bar.hidden) return;
+    const score = signalScore();
+    $('#signal-bar-go').innerHTML = '<span class="hub-ring" data-p="' + score + '"><b>' + score + '</b></span>' +
+      '<strong class="report-promo-cta signal-bar-words"><span class="signal-bar-long">' + esc(TEXT.signalBarCta(Prices.label(CURRENCY, 'unlock'))) +
+      '</span><span class="signal-bar-short">' + esc(TEXT.signalBarShort(Prices.label(CURRENCY, 'unlock'))) + '</span></strong>';
+    const ring = bar.querySelector('.hub-ring');
+    ring.style.setProperty('--p', ring.dataset.p);
+  }
+  $('#signal-bar-go').addEventListener('click', () => {
+    if (!state.profile) return;
+    if ($('#view-profile').hidden) go('profile');
+    startRerun();
+  });
+
+  function refreshReportPromo() {
+    refreshSignalBar();
+    const bar = $('#report-promo');
+    if (!bar) return;
+    const view = VIEWS.find(name => !$('#view-' + name).hidden);
+    const offered = Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length;
+    bar.hidden = !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing() || prizeShowing() ||
+      Boolean($('#synced-dialog') && $('#synced-dialog').open);
+    if (bar.hidden) return;
+    $('#report-promo-go').innerHTML = '<span class="report-promo-text">' + esc(TEXT.reportPromo) + '</span> ' +
+      '<strong class="report-promo-cta">' + esc(TEXT.reportPromoCta) + '</strong>';
+  }
+  $('#report-promo-go').addEventListener('click', () => {
+    go('profile');
+    // The offer itself, on My Psyche, once it is drawn — and after the Back
+    // entry the move to My Psyche gives back has landed, since that lands
+    // later and puts the page at its top (show, popstate).
+    const toOffer = () => {
+      const offer = document.querySelector('#view-profile .full-report-locked');
+      if (offer) offer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    requestAnimationFrame(toOffer);
+    setTimeout(toOffer, 350);
+  });
+
+  $('#sync-invite-close').addEventListener('click', () => {
+    store.write(KEYS.syncBarClosed, allInvites().map(invite => invite.payload));
+    refreshSyncInvite();
+  });
+  // The invite is spent only once the sync has landed (adoptComparison): a
+  // sync that fails leaves it, on My Syncs, for another try.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest && event.target.closest('.sync-invite-go');
+    if (!button) return;
+    const invite = allInvites()[Number(button.dataset.i) || 0];
+    if (!invite || !state.profile) { renderScan(); return; }
+    if (syncInFlight) return;
+    button.disabled = true;
+    syncingInvite = invite.payload;
+    try {
+      if (!(await runMatch(invite.payload))) syncingInvite = null;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  // Step one of a friend's invite inside an app's own browser (see
+  // renderInvite): open the page in Safari or Chrome, before anything else.
+  // The general note under the navigation says the same, so it stands down
+  // while this shows.
+  function showInviteInApp(name) {
+    const box = $('#invite-inapp');
+    const app = inAppBrowser();
+    box.hidden = !app;
+    if (!app) return;
+    const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    $('#invite-inapp-title').textContent = TEXT.inviteInAppTitle(ios);
+    $('#invite-inapp-text').textContent = TEXT.inviteInAppText(app, name, ios);
+    const chrome = $('#invite-inapp-chrome');
+    chrome.hidden = !/Android/i.test(navigator.userAgent);
+    if (!chrome.hidden) {
+      chrome.textContent = TEXT.inAppChrome;
+      const arrived = new URL(ARRIVED_AT);
+      chrome.href = 'intent://' + arrived.host + arrived.pathname + arrived.search + arrived.hash +
+        '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(ARRIVED_AT) + ';end';
+    }
+    const copy = $('#invite-inapp-copy');
+    copy.textContent = TEXT.inAppCopy;
+    if ($('#inapp-warn')) $('#inapp-warn').hidden = true;
+  }
+  // The address the friend arrived on, with its key: by now the app has taken
+  // the link out of the address bar.
+  $('#invite-inapp-copy').addEventListener('click', async event => {
+    const copy = event.currentTarget;
+    try { await navigator.clipboard.writeText(ARRIVED_AT); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
+  });
+
+  $('#invite-guide').addEventListener('click', () => {
+    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+  $('#invite-card-open').addEventListener('click', openInviteCard);
+  $('#invite-banner-close').addEventListener('click', () => {
+    const invite = pendingInvite();
+    if (invite) store.write(KEYS.inviteBannerClosed, (store.read(KEYS.inviteBannerClosed, []) || []).concat(invite.payload).slice(-20));
+    refreshInvite();
+  });
+
+  // A creator's or campaign's link carries ?via=<code>. Read once on arrival,
+  // kept on this device for VIA_DAYS (the export takes hours, and the card is
+  // made on a later visit), and taken out of the address so it is not passed
+  // on when this page is shared. The server counts it as a daily total and
+  // nothing more; the FAQ says so.
+  const VIA_DAYS = 14;
+  const VIA_PATTERN = /^[a-z0-9][a-z0-9-]{0,23}$/;
+  (function captureVia() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('via')) return;
+      const via = String(params.get('via') || '').trim().toLowerCase();
+      if (VIA_PATTERN.test(via)) {
+        store.write(KEYS.via, { code: via, at: Date.now() });
+        trackStep('open');
+      }
+      params.delete('via');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage or no history: nothing is counted */ }
+  })();
+
+  // A promo code in the address: psycheai.io/?promo=AVA, or on a personal
+  // link, /c/<id>?promo=AVA#<key>. Kept, taken out of the address, and filled
+  // in on the full report's payment sheet. The server still judges it there,
+  // so a made-up or expired code in a link opens nothing.
+  const LINK_PROMO_DAYS = 30;
+  const LINK_PROMO_PATTERN = /^[A-Z0-9-]{3,32}$/;
+  (function captureLinkPromo() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('promo')) return;
+      const code = String(params.get('promo') || '').trim().toUpperCase();
+      if (LINK_PROMO_PATTERN.test(code)) store.write(KEYS.linkPromo, { code, at: Date.now() });
+      params.delete('promo');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage: the code can still be typed in */ }
+  })();
+  /** The promo code this browser arrived with, if it is still fresh; '' otherwise. */
+  function linkPromo() {
+    const saved = store.read(KEYS.linkPromo, null);
+    if (!saved || typeof saved.code !== 'string' || !LINK_PROMO_PATTERN.test(saved.code)) return '';
+    if (!(Date.now() - Number(saved.at) < LINK_PROMO_DAYS * 86400000)) { store.remove(KEYS.linkPromo); return ''; }
+    return saved.code;
+  }
+
+  // ---------- the journey, the account and the invite-friends code ----------
+  //
+  // A step the server cannot see for itself, for the day's totals overall and
+  // per campaign link: arriving on one, an export read, the unlock opened.
+  // Once per step per day from this browser, so a reload does not count twice.
+  // Nothing identifies the browser: the request carries the step and the
+  // campaign code, and nothing else.
+  function trackStep(step, ref) {
+    try {
+      const seen = store.read(KEYS.steps, {}) || {};
+      const day = new Date().toISOString().slice(0, 10);
+      const id = step + ':' + (viaCode() || '') + (ref ? ':' + ref : '');
+      if (seen[id] === day) return;
+      seen[id] = day;
+      store.write(KEYS.steps, seen);
+    } catch (error) { /* counted anyway */ }
+    try {
+      const via = viaCode();
+      fetch('api/event', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+        // The link's own code on an open of someone's link, so its owner sees
+        // how many opened it: a plain count, nothing about who.
+        body: JSON.stringify(Object.assign({ event: step }, via ? { via } : null, ref ? { ref } : null)),
+      }).catch(() => {});
+    } catch (error) { /* no network: nothing counted */ }
+  }
+
+  const toHex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  async function sha256Hex(text) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return toHex(new Uint8Array(digest));
+  }
+
+  /**
+   * Something about this export only its owner has, and that stays the same
+   * when they download it again: the time (to the second) of the earliest
+   * message they sent, or with none, of their earliest post or caption.
+   * '' when the export has neither.
+   */
+  function ownMark(signals) {
+    const s = signals || {};
+    const earliest = list => {
+      let min = 0;
+      for (const ts of list) { const n = Math.floor(Number(ts) || 0); if (n > 0 && (!min || n < min)) min = n; }
+      return min;
+    };
+    const sent = earliest((s.messages && s.messages.sentTimestamps) || []);
+    if (sent) return 'dm:' + sent;
+    const posted = earliest(((s.captions || []).map(c => c && c.ts))
+      .concat((s.events || []).filter(e => e && /^(post|reel|story)$/.test(e.kind)).map(e => e.ts)));
+    return posted ? 'post:' + posted : '';
+  }
+  // The old code, the username alone, is sent beside the new one until this
+  // day, so a card made before the change still counts (lib/referral.js).
+  const LEGACY_ACCOUNT_UNTIL = '2026-11-18';
+  /**
+   * This reader's account, as one-way codes: `account`, from the Instagram
+   * username *and* ownMark, and while it is still checked `legacy`, from the
+   * username alone. Since October 2026 the code needs ownMark: the username
+   * alone is public, so anyone could work out anyone's code, ask whether
+   * they had used PsycheAI and spend their free read. The trade-off: a
+   * reader who deletes their earliest message or post gets a new code.
+   * Without the export in memory (after a reload, or a restored backup), the
+   * code kept from last time. { account: '' } when there is nothing to make
+   * one from, and the server then refuses a free read.
+   */
+  async function accountKeys() {
+    try {
+      const handle = String(ownHandle() || '').trim().replace(/^@+/, '').toLowerCase();
+      const mark = state.signals ? ownMark(state.signals) : '';
+      if (handle || mark) {
+        const account = await sha256Hex('psycheai:v2:' + handle + ':' + (mark || 'none'));
+        store.write(KEYS.account, account);
+        const legacy = handle && new Date().toISOString().slice(0, 10) <= LEGACY_ACCOUNT_UNTIL
+          ? await sha256Hex('psycheai:' + handle) : '';
+        return { account, legacy };
+      }
+      // WhatsApp chats and no Instagram: the reader's name and their chats
+      // (accountSource), or the first such code this browser made.
+      const source = !state.signals && state.chats ? window.PsycheWhatsApp.accountSource(state.chats) : '';
+      if (source) {
+        const kept = store.read(KEYS.chatsAccount, null);
+        const account = typeof kept === 'string' && /^[0-9a-f]{64}$/.test(kept) ? kept : await sha256Hex('psycheai:chats:v1:' + source);
+        store.write(KEYS.chatsAccount, account);
+        store.write(KEYS.account, account);
+        return { account, legacy: '' };
+      }
+    } catch (error) { /* no crypto: the code kept from last time, if any */ }
+    const saved = store.read(KEYS.account, null);
+    return { account: typeof saved === 'string' && /^[0-9a-f]{64}$/.test(saved) ? saved : '', legacy: '' };
+  }
+  /**
+   * A one-way code of each WhatsApp chat in this read, from the chats in
+   * memory (beside Instagram or alone), or the ones kept from the last read
+   * made here when the page was reloaded since.
+   */
+  async function chatCodes() {
+    try {
+      const summary = (state.signals && state.signals.supplements && state.signals.supplements.whatsapp) || state.chats;
+      const sources = summary && window.PsycheWhatsApp ? window.PsycheWhatsApp.chatSources(summary) : [];
+      if (sources.length) {
+        const codes = await Promise.all(sources.map(source => sha256Hex('psycheai:chat:v1:' + source)));
+        store.write(KEYS.chatCodes, codes);
+        return codes;
+      }
+      const kept = store.read(KEYS.chatCodes, null);
+      return state.digest && state.digest.whatsapp && Array.isArray(kept) ? kept.filter(c => /^[0-9a-f]{64}$/.test(c)).slice(0, 3) : [];
+    } catch (error) { return []; }
+  }
+  /** A one-way code of this reader's Instagram account, or '' when there is none to make it from. */
+  async function accountKey() {
+    return (await accountKeys()).account;
+  }
+
+  // The reader's own invite-friends code, made once on this device.
+  let referralCode = '';
+  async function ensureReferral() {
+    try {
+      let mine = store.read(KEYS.referral, null);
+      if (!mine || !/^[0-9a-f]{64}$/.test(mine.secret || '')) {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        mine = { secret: toHex(bytes) };
+      }
+      if (!/^[0-9a-f]{12}$/.test(mine.code || '')) {
+        mine.code = (await sha256Hex(mine.secret)).slice(0, 12);
+        store.write(KEYS.referral, mine);
+      }
+      referralCode = mine.code;
+      return mine;
+    } catch (error) { return null; }
+  }
+  /** The link a reader shares to invite friends: the site, carrying their code. */
+  function inviteUrl() {
+    return location.origin + '/' + (referralCode ? '?ref=' + referralCode : '');
+  }
+  /** The friend's code this browser arrived on, while it is fresh. */
+  function referredBy() {
+    const by = store.read(KEYS.referredBy, null);
+    if (!by || !/^[0-9a-f]{12}$/.test(by.code || '')) return '';
+    if (!(Date.now() - Number(by.at) < 60 * 86400000)) { store.remove(KEYS.referredBy); return ''; }
+    return by.code === referralCode ? '' : by.code;
+  }
+  // A friend's link carries ?ref=<code>: kept for 60 days (the export takes
+  // hours) and taken out of the address.
+  (function captureRef() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('ref')) return;
+      const code = String(params.get('ref') || '').trim().toLowerCase();
+      const mine = store.read(KEYS.referral, null);
+      if (/^[0-9a-f]{12}$/.test(code) && !(mine && mine.code === code)) {
+        store.write(KEYS.referredBy, { code, at: Date.now() });
+        trackStep('referral_open', code);
+      }
+      params.delete('ref');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage: nothing is credited */ }
+  })();
+  ensureReferral();
+
+  function viaCode() {
+    const via = store.read(KEYS.via, null);
+    if (!via || typeof via.code !== 'string' || !VIA_PATTERN.test(via.code)) return '';
+    if (!(Date.now() - Number(via.at) < VIA_DAYS * 86400000)) {
+      store.remove(KEYS.via);
+      return '';
+    }
+    return via.code;
+  }
+
+  // What goes beside the digest for the day's totals: the campaign code, and
+  // whether a friend's compatibility link is waiting for this card. Neither
+  // is part of the cache key, which is the digest alone.
+  //
+  // And, for the server's one-free-card-per-account rule and the
+  // invite-friends count: the one-way code of the username, this reader's own
+  // invite code, and the friend's code they arrived on.
+  async function withAttribution(auth) {
+    const out = Object.assign({}, auth || {});
+    const via = viaCode();
+    if (via) out.via = via;
+    if (pendingInvite()) out.invite = true;
+    const { account, legacy } = await accountKeys();
+    if (account) out.account = account;
+    if (legacy) out.legacyAccount = legacy;
+    // One code a WhatsApp chat: any one used in a free read before makes
+    // this one paid (lib/referral.js, chatsUsed).
+    const chatAccounts = await chatCodes();
+    if (chatAccounts.length) out.chatAccounts = chatAccounts;
+    const mine = await ensureReferral();
+    if (mine && mine.code) out.myRef = mine.code;
+    const by = referredBy();
+    if (by) out.ref = by;
+    // A guess at the character, for the first free card only (judgeGuess).
+    // Only one picked on the old front-page strip: one from the waiting
+    // screen is locked onto its job instead (/api/guess).
+    const guess = !auth && !state.profile ? guessMade() : null;
+    if (guess && !guess.outcome && !guess.job) out.guess = guess.name;
+    // The reader's thumbs on the report a paid run replaces, as reviewed (askReview).
+    if (auth && marksForRun) out.readerMarks = marksForRun;
+    return out;
+  }
+
+  // The guides' "See a sample report" link (/#sample): open the sample over
+  // whatever page this visitor would otherwise land on. On arrival, and when
+  // the hash changes on a page already open, which does not reload it.
+  function openSampleFromHash() {
+    if (location.hash !== '#sample') return;
+    history.replaceState(null, '', location.pathname + location.search);
+    setTimeout(() => showSample(), 0);
+  }
+
+  window.addEventListener('hashchange', () => {
+    consumeIncomingLink();
+    openSampleFromHash();
+  });
+
+  /**
+   * Offers to collect a purchase whose result never arrived.
+   *
+   * Shown at startup rather than waited for, because the case it covers is one
+   * where the reader is no longer watching: the tab was closed, the phone died,
+   * the app was swapped away and discarded. They come back to what looks like
+   * an ordinary page, and without this there is nothing anywhere telling them
+   * a report they paid for is still owed to them.
+   *
+   * Collecting is usually instant and always free. The server keeps finished
+   * results for thirty minutes keyed on the same digest, so a reader back
+   * within the window gets the report that was already written without a
+   * second model call; past it, the payment still has generations left on it
+   * and the ledger allows the re-run.
+   */
+  function offerPendingWork() {
+    const banner = $('#pending-work');
+    const pending = pendingWork();
+    if (!banner) return;
+    if (!pending) { banner.hidden = true; return; }
+
+    const needsDigest = pending.kind === 'analysis' && !state.digest;
+    $('#pending-work-text').textContent = needsDigest ? TEXT.pendingNeedsInstagram
+      : pending.kind === 'compatibility' ? TEXT.pendingCompatText : TEXT.pendingAnalysisText;
+    const go = $('#pending-work-go');
+    // Nothing to press when the export is gone: the message names the one
+    // thing that would fix it, and a button that could only fail is worse
+    // than no button.
+    go.hidden = needsDigest;
+    go.textContent = pending.kind === 'compatibility'
+      ? TEXT.pendingCompatLabel : TEXT.pendingAnalysisLabel;
+    go.onclick = () => {
+      banner.hidden = true;
+      if (pending.kind === 'compatibility') {
+        if (!pending.other || !state.profile) { clearPending(); return; }
+        $('#working-title').textContent = modelName() + ' is comparing you';
+        startElapsed('Assessing ' + state.profile.card.name + ' and ' + pending.other.name);
+        show('working');
+        runComparison(pending.other, pending.mode, pending.stance, pending.auth);
+        return;
+      }
+      runAnalysis(state.digest, pending.auth);
+    };
+    // Dismissing hides the offer for now and keeps the record: the payment is
+    // good for thirty days and the reader may simply not want the report this
+    // minute. Clearing it here would throw away the only evidence that
+    // anything is owed.
+    $('#pending-work-dismiss').onclick = () => { banner.hidden = true; };
+    banner.hidden = false;
+  }
+
+  /**
+   * The release this page is running, in the footer: the package version and
+   * nothing finer. The server no longer says which commit or branch it runs
+   * (see handleStatus), so neither does the page.
+   * Hidden when the server did not say, rather than showing a blank version.
+   */
+  // ---------- A read written by Muse ----------
+  //
+  // The PsycheAI plugin hands the reader psycheai.io/?m=<id>#<key>. The server
+  // holds the read sealed under that key and never sees the key (it is after
+  // the #), so the page fetches the sealed copy, opens it here with WebCrypto,
+  // and adopts it as it would a bundle the server wrote: the card, then the
+  // report laid under it. The source is kept on the profile ('muse'), so the
+  // page knows a read Muse wrote: it is free, and Ask goes back to Muse.
+  const MUSE_ID = /^[A-Za-z0-9_-]{16}$/;
+  const MUSE_KEY = /^[A-Za-z0-9_-]{43}$/;
+
+  async function openMuseRead(id, key) {
+    const response = await fetch('api/import/open?id=' + encodeURIComponent(id), { cache: 'no-store' });
+    if (!response.ok) return null;
+    const sealed = await response.json();
+    const bytes = text => Uint8Array.from(atob(String(text).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(text).length + 3) % 4)), ch => ch.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey('raw', bytes(key), 'AES-GCM', false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes(sealed.iv) }, cryptoKey, bytes(sealed.box));
+    const opened = JSON.parse(new TextDecoder().decode(plain));
+    const data = opened && opened.bundle && opened.bundle.data;
+    return data && typeof data === 'object' && data.freeCard && typeof data.freeCard === 'object' ? opened : null;
+  }
+
+  async function adoptMuseRead(opened, id) {
+    const result = opened.bundle;
+    const name = String(opened.name || '').trim();
+    // The uploaded data on this device belonged to the card being replaced:
+    // kept, it would show as this read's sources and Ask PsycheAI would answer
+    // from evidence the read was not written from. It goes with that card
+    // (the question before this said so); Add / change data brings it back.
+    // Ask PsycheAI's answers were about the report being replaced, and the PDF
+    // prints them: kept, a Muse report carried another report's type and
+    // evidence in its appendix. The Syncs were worked out from the replaced
+    // card too, and My Syncs showed them under the new one. Both go (a backup
+    // keeps them).
+    for (const key of [KEYS.digest, KEYS.deepDigest, KEYS.reportDigest, KEYS.reportDigestNext, KEYS.ask, KEYS.history]) store.remove(key);
+    state.digest = null;
+    state.signals = null;
+    state.chats = null;
+    await adoptProfile(Object.assign({}, result, { data: result.data.freeCard }), name, { notARun: true });
+    await adoptFullReport(result, false, name);
+    state.profile.source = 'muse';
+    // Which read it was, so opening the same link again (its Story link from
+    // Muse, say) shows it rather than asking to replace it with itself.
+    state.profile.museId = id;
+    store.write(KEYS.profile, state.profile);
+    go('profile');
+    openPaidSections();
+  }
+
+  /** True when the page opened on a Muse read, handled or not. */
+  async function consumeMuseRead() {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('m')) return false;
+    const id = String(params.get('m') || '');
+    const key = location.hash.replace(/^#/, '');
+    const story = params.get('story') === '1';
+    params.delete('m');
+    params.delete('story');
+    const query = params.toString();
+    // The key leaves the address bar at once, so it is not in history or a screenshot.
+    history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
+    let opened = null;
+    try { opened = MUSE_ID.test(id) && MUSE_KEY.test(key) ? await openMuseRead(id, key) : null; } catch (error) { opened = null; }
+    if (!opened) {
+      if (state.profile) { renderProfile(); show('profile'); }
+      showUploadError(TEXT.museReadUnreadable);
+      return true;
+    }
+    if (state.profile && state.profile.museId === id) {
+      renderProfile();
+      show('profile');
+      if (story) openStoryCard();
+      return true;
+    }
+    const loaded = state.digest ? uploadedSources(state.digest) : [];
+    const question = loaded.length ? TEXT.museReadReplaceDeeper(firstName(opened.name), loaded.join(', ')) : TEXT.museReadReplace(firstName(opened.name));
+    if (state.profile && !window.confirm(question)) {
+      renderProfile();
+      show('profile');
+      return true;
+    }
+    await adoptMuseRead(opened, id);
+    if (story) openStoryCard();
+    return true;
+  }
+
+  async function boot() {
+    state.server = await LLM.status();
+    // The server owns this number; the constant above is only what applies
+    // before status lands. Guarded rather than assigned blindly so an older
+    // server that does not report it leaves the default in place instead of
+    // setting the allowance to undefined and making every run look free.
+    if (Number.isFinite(state.server.freeAnalyses)) freeAnalyses = state.server.freeAnalyses;
+    renderServerStatus();
+    // The welcome page's sample card was drawn before the server said which
+    // layout it writes; redrawn once it has, so it is the card readers get.
+    drawInsightPreview();
+
+    if (await consumeMuseRead()) return;
+    if (await consumeIncomingLink()) return;
+    openSampleFromHash();
+    // Before the report below, because a job still running is newer than
+    // whatever is stored: a reader who re-ran their analysis and closed the
+    // app would otherwise be shown the previous report and left to work out
+    // for themselves that the new one was still coming.
+    if (runningJob()) {
+      resumeRunningJob();
+      return;
+    }
+    if (state.profile) {
+      renderProfile();
+      show('profile');
+      offerPendingWork();
+      refreshSyncsDot();
+      collectSyncs();
+      return;
+    }
+    show('welcome');
+    await refreshInvite();
+    refreshGiftBanner();
+  }
+
+  // Coming back to the page is not always a page load.
+  //
+  // boot() runs once. A phone that suspends a tab and later restores it from
+  // memory resumes the same JavaScript context — no reload, no boot, and so no
+  // offer, even with a purchase sitting unclaimed in localStorage. That is
+  // exactly the path this whole feature exists for: the reader who closed
+  // everything mid-generation is the reader most likely to come back to a
+  // restored tab rather than a fresh one.
+  //
+  // Checked on every return to visibility rather than only at startup.
+  // offerPendingWork() is cheap and idempotent — it reads one localStorage key
+  // and either shows the banner or hides it — so running it more often costs
+  // nothing and closes the gap.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    // Only where the offer has somewhere to appear. Its banner lives inside
+    // #view-profile, so showing it while the reader is on the welcome or scan
+    // page would set `hidden = false` on something nobody can see, and it
+    // would then be sitting open the next time they did land on the report.
+    if (state.profile && !$('#view-profile').hidden) offerPendingWork();
+    // A suspended tab restored from memory resumes its JavaScript context but
+    // not necessarily its timers, and a poll loop that stopped ticking while
+    // the phone slept is indistinguishable from one that never existed. This
+    // is idempotent — `resuming` guards it — so calling it on every return is
+    // free, and it is what makes putting the phone down for an hour and
+    // picking it up again land on the report rather than on a dead spinner.
+    if (runningJob()) resumeRunningJob();
+    collectSyncs();
+  });
+
+  mountInsights();
+  // A reader with a card already is the one likely to add data or unlock: the
+  // readers are fetched for them once the page has settled.
+  if (state.profile) {
+    const warmReaders = () => loadReaders().catch(() => {});
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warmReaders, { timeout: 4000 });
+    else setTimeout(warmReaders, 2000);
+  }
+  boot().finally(() => settleInAppWarn());
 })();
