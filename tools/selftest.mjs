@@ -9986,7 +9986,7 @@ check('the schema requires evidence on where they align and differ',
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
   check('import: the report in short comes back for the chat, one line per section in the report\'s order',
     JSON.stringify((out.ok.json.sections || []).map(s => s.title)) === JSON.stringify(['Overview', 'Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together', 'Appendix']) &&
-    out.ok.json.sections.every(s => typeof s.finding === 'string' && s.finding.length > 10 && s.finding.length < 600 && Array.isArray(s.points) && s.points.length && s.points.join(' ') === s.finding) && /Care for your people/.test(JSON.stringify(out.ok.json.sections)) && ((who) => who && /^MBTI: /.test(who.points[0]) && who.points.some(x => /^Big Five: /.test(x)))(out.ok.json.sections.find(s => s.title === 'Who you are')), JSON.stringify(out.ok.json.sections));
+    out.ok.json.sections.every(s => typeof s.finding === 'string' && s.finding.length > 10 && s.finding.length < 1500 && Array.isArray(s.points) && s.points.length && s.points.join(' ') === s.finding) && /Care for your people/.test(JSON.stringify(out.ok.json.sections)) && ((who) => who && /^MBTI: /.test(who.points[0]) && who.points.some(x => /^Big Five: /.test(x)))(out.ok.json.sections.find(s => s.title === 'Who you are')), JSON.stringify(out.ok.json.sections));
 }
 
 // ---------- how long a payment stays spendable ----------

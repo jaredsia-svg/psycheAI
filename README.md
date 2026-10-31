@@ -2808,6 +2808,8 @@ rules for writing it live here, so the plugin and the site can't drift.
 
 **The report in short, as points (30 Oct 2026).** `musepdf.summary`'s sections each carry `points`, one labelled fact a bullet ("MBTI: INTP (I moderate, …)", "Big Five: stands out for …", "Wellbeing: …"), with `finding` still the points joined, so Muse shows bullets rather than one run-on paragraph. A Muse read once copied the schema's own wording into its career fit ("Kind of work: …"), which showed as "Suits you: Kind of work; Kind of work": `suits` and `draining` now describe the format ("the kind of work, a colon, then one sentence on why") instead of quoting a template, and a "Kind of work" label is dropped from the summary. The merged call's prompt reserve rose to 40,940 tokens for the longer wording.
 
+**The report in short, fuller (31 Oct 2026).** Muse now shows each section as a collapsed card, so a section can hold more than a line without crowding the chat. Each carries the report's conclusions in full, never the evidence or a detail paragraph: Overview adds the summary's first sentence and each pattern with its one-line description; Who you are lists all five Big Five scores with their bands and the wellbeing bands by area; What drives you adds the motivators' reading, more values and interests, and the beliefs; How you connect adds relationship strengths and watch-outs, what they need from a partner and what to be careful of; How you work adds strengths at work, what is underused, what holds them back and the work that drains; Putting it together adds both build-on and work-on areas, the counter-move, one plan step for each horizon and the wellbeing suggestions. Every point is a title, headline or first sentence the report already wrote. `finding` is still the points joined, now up to about 1,000 characters.
+
 **The Muse guide, read to targets and checked before saving (30 Oct 2026).** A Muse read came back from a 37,000-character digest with messages from the last few months only, one weakness repeated in about eight places, and citations that weren't in the digest. In \`READ_SPEC\`:
 - *Reading plan:* the digest is the evidence ("everything the read cites is a line in it", times on its lines when Instagram gives them). A first read aims for about 80,000 characters and each later one adds about 40,000, towards the 200,000 ceiling; "a target is what a read reaches, not a ceiling to stop short of". Messages come from the 10 busiest conversations by how much is in each, not by which is newest; the 4 busiest go back as far as their target reaches (8,000 growing to 15,000), the next 6 from recent pages (2,000 growing to 6,000). A message sent word for word to several people is kept once. The old paragraph also said all ten were spread over each conversation's whole span, which contradicted the 4-deep / 6-recent rule.
 - *Depth:* twelve rules merged into six.
@@ -10030,3 +10032,12 @@ comment about a crash report). Every reader was sent them as the model answer, a
 plugin serves it as `skill/guide.json`), so they also published one reader's words. They are now invented
 examples that match nobody ("Fixes it before anyone asks", "Restoring old film cameras", a caption about a first
 half-marathon), and a selftest keeps real readers' phrases out. Examples in a guide should always be made up.
+
+### "Posts and stories", rhythm as read, one writer line
+
+A Muse read's "Read from" said "complete hour-of-day … rhythm" (it is from the lines read) and flipped between
+calling the same items posts and stories from one read to the next, since Muse's Instagram connection labels them
+inconsistently. `READ_SPEC` now has `basedOn` count them together as "posts and stories" and give rhythm only as
+from the lines read, never complete. A Muse read's PDF and report page also printed "Analysed by Muse" above
+"Psyche Report written by Muse", both the same day; when Muse wrote both, only the second is printed. Reads
+written by two models keep both lines.

@@ -2297,7 +2297,9 @@
         out.tags(readFrom, { small: true });
       });
     }
-    out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
+    // A Muse read: Muse wrote the card and the report at once, so "Psyche Report written by" says it all.
+    const oneWriter = stamp.model === 'Muse' && stamp.premiumModel === 'Muse';
+    if (!oneWriter) out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
