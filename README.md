@@ -10089,6 +10089,7 @@ with every write-up as written and its evidence (patterns with what they show up
 reading, in-practice line and evidence, each Big Five and wellbeing reading with its evidence, each
 motivator's own line, values, beliefs and interests with detail and evidence, love languages with why,
 attachment with what it was read from and what it means, the career situation, edge evidence, working style
-and watch-outs, development's early signs, counter-move and question, and the confidence rationale and
-activity), never the roast or the scoring ledger. Like the PDF, it is made in memory, sent back once and
+and watch-outs, development's early signs, counter-move and question, and the confidence rationale), never the
+roast or the scoring ledger. A pattern's areas come as the page names them ("Big Five", "Values & beliefs",
+"How you work"; `sectionNames`, as docs/app.js sectionNameChips), never as the schema's keys. Like the PDF, it is made in memory, sent back once and
 kept nowhere; the plugin passes it only to the skill, never into a host's tool result.

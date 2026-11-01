@@ -9931,7 +9931,7 @@ check('the schema requires evidence on where they align and differ',
   check('import: a good read comes back checked, with its PDF, the report in short, view and the full report for the skill\'s file (evidence, never the roast), and no link: nothing is kept (README "Muse reads: nothing kept")',
     out.ok.status === 200 && !('url' in out.ok.json) && !('expiresInDays' in out.ok.json) && !('pdf' in out.ok.json) &&
     out.pdf.head === '%PDF-' && out.pdf.name && /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && Array.isArray(out.ok.json.sections) && out.ok.json.view && out.ok.json.view.overview &&
-    out.ok.json.full && out.ok.json.full.overview && Array.isArray(out.ok.json.full.overview.patterns) && out.ok.json.full.overview.patterns.every(p => Array.isArray(p.evidence)) &&
+    out.ok.json.full && out.ok.json.full.overview && Array.isArray(out.ok.json.full.overview.patterns) && out.ok.json.full.overview.patterns.every(p => Array.isArray(p.evidence)) && out.ok.json.full.overview.patterns.every(p => Array.isArray(p.showsUpIn) && p.showsUpIn.every(n => !/^[a-z]+[A-Z]|^[a-z]+$/.test(n))) &&
     out.ok.json.full.whoYouAre.mbti.every(l => Array.isArray(l.evidence)) && out.ok.json.full.method && !/"(harsh|advice|ledger)"/.test(JSON.stringify(out.ok.json.full)),
     JSON.stringify({ keys: Object.keys(out.ok.json), pdf: out.pdf }));
   {
