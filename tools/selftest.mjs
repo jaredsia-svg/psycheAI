@@ -9785,7 +9785,7 @@ check('the schema requires evidence on where they align and differ',
       JSON.stringify(keysOf(museImport.MUSE_SCHEMA)) === JSON.stringify(keysOf(prompts.MERGED_SCHEMA)) &&
         !/\byou are\b|system prompt|roast|least charitable|second drink|unkind/i.test(shown));
   }
-  check('a Muse read is sent back when its E/I rests on a close circle or a private account, or two plan actions are the same step; real signals and distinct steps pass', (() => {
+  check('a Muse read is sent back when its E/I rests on a close circle or a private account, or two plan actions are the same step; real signals and distinct steps pass, and neither a short title\'s words in a related detail nor the guide\'s own strength-under-pressure frame counts as the same point', (() => {
     const ei = why => museImport.eiProblems({ mbti: { letters: [{ choice: 'I', why, evidence: [] }] } });
     const plan = (x, y) => museImport.planProblems({ wellness: { suggestions: [x] }, careerAssessment: { actions: [y] } });
     return /loyalty rather than energy/.test(ei('Your setting is small and familiar: family gatherings, close friends, and a circle you return to across years').join(' ')) &&
@@ -9800,6 +9800,9 @@ check('the schema requires evidence on where they align and differ',
         { title: 'Too many open threads', detail: 'You start AI, investing, sport, food and building projects together, and you confirm plans late.' },
         { title: 'Spreads across interests', detail: 'You run AI, investing, sport, food and building projects together, and the breadth can slow the one project that matters most.' }] } }).join(' ')) &&
       !museImport.listProblems({ careful: [{ title: 'A partner who needs constant reassurance', detail: 'Your blunt debate and late replies could be read as distance.' }, { title: 'A partner who avoids all conflict', detail: 'You raise issues directly, so a partner who goes quiet would leave you guessing.' }] }).length &&
+      !museImport.samePoint({ title: 'Close one debate sooner', detail: 'Your debating is a strength, but under pressure it becomes a long thread you never close.' },
+        { title: 'Use your research at work, not just in chats', detail: 'Your research is a strength, but under pressure it becomes debate in chats rather than work you close sooner.' }) &&
+      museImport.samePoint({ title: 'Close one debate sooner', detail: 'x' }, { title: 'Close debates sooner', detail: 'y' }) &&
       museImport.bundleFrom(answer).ok === true;
   })());
   check('the Muse schema\'s shortened descriptions each keep their opening sentence (a split at "e.g." once dropped it), and a literal "Kind of work:" is sent back to fix', (() => {
