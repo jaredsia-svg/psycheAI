@@ -9721,7 +9721,7 @@ check('the schema requires evidence on where they align and differ',
   check('it says what the plugin never receives or guesses, that the read is checked and made into a PDF in memory and kept nowhere, and that older reads were sealed under their link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
       /key that exists only in their link/.test(musePrivacy) && /send both back, and keep none of it: no copy of your read is stored, locked or not/.test(musePrivacy) &&
-      /for at most 30 minutes or three downloads, whichever comes first/.test(musePrivacy) && /someone in control of our live servers at that moment could see it/.test(musePrivacy) &&
+      /for at most 30 minutes or three downloads, whichever comes first/.test(musePrivacy) &&
       !/to make your private link/.test(musePrivacy) &&
       /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&

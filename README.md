@@ -10072,9 +10072,9 @@ answers with the PDF itself (`pdfData`, base64, and `pdfName`), the report in sh
 written to the store: no copy of the read, locked or not, no PDF, and no link (`url` and `expiresInDays` are
 gone). The plugin holds the PDF in its own memory behind a one-time link until Muse attaches it, for at most
 30 minutes or three downloads (psycheai-app README "Nothing kept"). The report lives in the reader's Muse
-chat, their Muse workspace and the PDF. What this doesn't cover, and the Muse privacy page says so: while a
-read is being checked and its PDF made, the servers handle it in memory, so someone in control of them at
-that moment could see it. Reads saved before 1 Nov 2026 still open from their links until they expire,
+chat, their Muse workspace and the PDF. What this doesn't cover: while a read is being checked and its PDF made, the servers handle it in
+memory, so someone in control of them at that moment could see it. The Muse privacy page says the read is
+checked and made into a PDF in memory and kept nowhere; it doesn't spell out that case. Reads saved before 1 Nov 2026 still open from their links until they expire,
 7 days after saving (`museImport.open`, `openPdf`, `sealedPdf`, `/report-pdf`, `/api/import/status`); after
 8 Nov those routes, `seal` and `sealPdf` can go. A selftest fails if the import handler, or anything in
 server.js, stores a read or calls the sealing functions.
