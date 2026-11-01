@@ -9989,15 +9989,18 @@ check('the schema requires evidence on where they align and differ',
       return u('You stay steady, with spikes when a debate turns personal, as in March 2026.') === 'You stay steady, with spikes when a debate turns personal.' &&
         u('You plan trips (three in 2025) and book them late.') === 'You plan trips and book them late.' && u('You run every week since 2023.') === 'You run every week.' &&
         u('You argue with evidence.') === 'You argue with evidence.' && u('New ideas, from cave systems in 2023 to driverless cars in 2026.') === 'New ideas, from cave systems to driverless cars.'; })());
-  check('import: the whole report comes back for the chat\'s widget as scores and one-line readings, never the evidence, the "why" paragraphs or the caveats',
+  check('import: the whole report comes back for the chat\'s widget as scores, readings and the write-ups (the executive summary, why-you-are-like, attachment, conflict, strengths and friction, who suits you, your edge, development), never the evidence lists or the caveats',
     ((v) => v && v.overview.patterns.length === 3 && v.overview.patterns.every(p => p.name && p.line) &&
       v.whoYouAre.mbti.length === 4 && v.whoYouAre.mbti.every(l => /^[EINSTFJP]$/.test(l.letter) && l.line) &&
-      v.whoYouAre.bigFive.length === 5 && v.whoYouAre.bigFive.every(t => Number.isInteger(t.score) && t.line && !('band' in t)) &&
+      v.whoYouAre.bigFive.length === 5 && v.whoYouAre.bigFive.every(t => Number.isInteger(t.score) && t.line && t.reading && 'band' in t) &&
+      v.overview.why && v.overview.summaryFull.length >= 1 && v.whoYouAre.mbti.every(l => l.reading) && v.whoYouAre.wellbeing.together &&
+      v.howYouConnect.conflict && Array.isArray(v.howYouConnect.bring) && Array.isArray(v.howYouConnect.needs) && v.howYouWork.edgeDetail !== undefined &&
+      Array.isArray(v.puttingItTogether.develop) && Array.isArray(v.puttingItTogether.steps) && v.puttingItTogether.steps.length <= 5 &&
       v.whatDrivesYou.motivators.length === 10 && v.whatDrivesYou.motivators.every(m => Number.isInteger(m.score) && m.meaning && !('line' in m)) &&
       v.howYouConnect.loveLanguages.receiving.length && v.howYouConnect.loveLanguages.giving.length && v.howYouConnect.loveLanguages.receiving.every(l => l.icon && l.strength) &&
       v.puttingItTogether.plan.length === 3 && Number.isInteger(v.confidence.score) &&
-      !/"(evidence|why|caveat|ledger|derivedFrom|harsh|advice)"/.test(JSON.stringify(v)) && !/Mock evidence|evidence line/i.test(JSON.stringify(v)) &&
-      JSON.stringify(v).length < 12000)(out.ok.json.view), JSON.stringify(out.ok.json.view).slice(0, 600));
+      !/"(evidence|caveat|ledger|derivedFrom|harsh|advice|raisedBy|showsUpIn)"/.test(JSON.stringify(v)) && !/Mock evidence|evidence line/i.test(JSON.stringify(v)) &&
+      JSON.stringify(v).length < 30000)(out.ok.json.view), JSON.stringify(out.ok.json.view).slice(0, 600));
   check('import: the report in short comes back for the chat, one line per section in the report\'s order',
     JSON.stringify((out.ok.json.sections || []).map(s => s.title)) === JSON.stringify(['Overview', 'Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together', 'Appendix']) &&
     out.ok.json.sections.every(s => typeof s.finding === 'string' && s.finding.length > 10 && s.finding.length < 1500 && Array.isArray(s.points) && s.points.length && s.points.join(' ') === s.finding) && /Care for your people/.test(JSON.stringify(out.ok.json.sections)) && ((who) => who && /^MBTI: /.test(who.points[0]) && who.points.some(x => /^Big Five: /.test(x)))(out.ok.json.sections.find(s => s.title === 'Who you are')), JSON.stringify(out.ok.json.sections));

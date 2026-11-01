@@ -10043,3 +10043,21 @@ inconsistently. `READ_SPEC` now has `basedOn` count them together as "posts and 
 from the lines read, never complete. A Muse read's PDF and report page also printed "Analysed by Muse" above
 "Psyche Report written by Muse", both the same day; when Muse wrote both, only the second is printed. Reads
 written by two models keep both lines.
+
+### The chat's report, written out
+
+The Muse widget showed one line per finding, so the chat read as a list of titles next to the full
+report. `view` (`lib/musepdf.js`, sent back with a Muse save) now also carries the write-ups, under the
+full report's own headings: why the reader is like their character, the executive summary's paragraphs
+(`summaryFull`); each MBTI letter's reading (its `why`), each Big Five reading with its band, each
+wellbeing area's reading and "Taken together"; the attachment style's tone and reading, how they deal
+with conflict, "Strengths and friction" ("What you bring", "Where it gets hard") and "Who suits you"
+("What you actually need", "What to be careful of"), each item its title and detail; "Your edge" with its
+write-up, "Your other strengths" (ending with "Not yet using: …"), "What holds you back" and the careers
+that suit and drain them with their reasons; "Build on" and "Develop" (early signs, counter-move, "Worth
+asking yourself"), and the plan as the page builds it (`Copy.planPick`: up to five steps from the develop
+areas, work and wellbeing, each with its detail and where it comes from). The evidence lists, the ledger,
+the caveats and the roast stay out, and every write-up goes through `undated`. The older one-line fields
+stay too, so a skill from before this change still draws its widget. `view` grew from about 6,000 to about
+17,000 characters; the app server keeps strings up to 1,200 characters (psycheai-app README "The report,
+written out").
