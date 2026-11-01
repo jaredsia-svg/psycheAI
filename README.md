@@ -10078,3 +10078,17 @@ checked and made into a PDF in memory and kept nowhere; it doesn't spell out tha
 7 days after saving (`museImport.open`, `openPdf`, `sealedPdf`, `/report-pdf`, `/api/import/status`); after
 8 Nov those routes, `seal` and `sealPdf` can go. A selftest fails if the import handler, or anything in
 server.js, stores a read or calls the sealing functions.
+
+### The report as a file
+
+The Muse widget could only do so much inside Muse's phone app (it can't scroll the chat, and only the top
+of a widget takes taps), so the Muse skill now writes the whole report as one HTML file in the reader's own
+workspace and attaches it after the card (psycheai-app README "The report as a file"). That file shows
+everything the PDF does, so `/api/import` also answers with `full` (`musePdf.fullView`): `view`'s sections
+with every write-up as written and its evidence (patterns with what they show up in, each MBTI letter's
+reading, in-practice line and evidence, each Big Five and wellbeing reading with its evidence, each
+motivator's own line, values, beliefs and interests with detail and evidence, love languages with why,
+attachment with what it was read from and what it means, the career situation, edge evidence, working style
+and watch-outs, development's early signs, counter-move and question, and the confidence rationale and
+activity), never the roast or the scoring ledger. Like the PDF, it is made in memory, sent back once and
+kept nowhere; the plugin passes it only to the skill, never into a host's tool result.

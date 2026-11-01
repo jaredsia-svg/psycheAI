@@ -1616,6 +1616,9 @@ async function handleImport(request, response) {
     sections: musePdf.summary(result.bundle.data, name),
     // The whole report for Muse's one widget: scores, readings and write-ups, never the evidence.
     view: musePdf.chatView(result.bundle.data, name),
+    // The whole report, evidence included, for the HTML file the Muse skill writes in the
+    // reader's workspace (README "The report as a file"); the plugin passes it to the skill only.
+    full: musePdf.fullView(result.bundle.data, name),
     dropped: result.dropped,
   });
 }
