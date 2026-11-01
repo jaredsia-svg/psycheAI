@@ -1477,7 +1477,8 @@ check('the platform\'s genre: a camera is not S, warmth is not F, a topic is not
   /A topic is not a thinking style/.test(ledgerRules));
 check('a blank is never evidence',
   /\*\*A blank\.\*\* No close-friends list/.test(ledgerRules) &&
-  /A missing behaviour is evidence only where you would have expected to see it/.test(ledgerRules));
+  /A missing behaviour is evidence only where you would have expected to see it\. On E\/I, no posts about parties, strangers or big rooms is not avoiding them/.test(ledgerRules) &&
+  /\*\*Loyalty, on E\/I\.\*\* That their friends are few, old, trusted or familiar/.test(ledgerRules) && /\*\*E\/I without a strong row\.\*\*/.test(ledgerRules));
 check('no direct messages means no conversation rows and E/I near the middle',
   /`coverage\.directMessagesIncluded` is false, or they barely use direct messages/.test(ledgerRules) &&
   /the code counts no conversation rows/.test(ledgerRules));
@@ -1617,7 +1618,7 @@ check('the Big Five extraversion bullet follows the ledger and bans volume and g
     axis([own('E'), own('I'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'medium')]).strength === 'slight' &&
     axis([own('E'), own('I'), piece('E', 'strong'), piece('E', 'strong'), piece('E', 'medium'), piece('E', 'medium')]).choice === 'E' &&
     /enter it under both letters, and the axis stays slight/.test(S.RUBRIC['E/I']['own-words'].text) &&
-    S.RUBRIC['E/I'].pursuits.weight === 'weak' && /Seeing several groups of friends they already have is not this row/.test(S.RUBRIC['E/I'].setting.text));
+    S.RUBRIC['E/I'].pursuits.weight === 'weak' && /Time with friends they already have is not this row, for either letter/.test(S.RUBRIC['E/I'].setting.text) && /where there was a choice/.test(S.RUBRIC['E/I'].setting.text) && !/small familiar groups/.test(S.RUBRIC['E/I'].setting.text));
   check('ledger: a tie goes to the strongest single piece, then to the model\'s pick',
     axis([piece('E', 'medium'), piece('E', 'weak'), piece('I', 'strong')]).choice === 'I' &&
     S.scoreAxis('E/I', [], 'I').choice === 'I' && S.scoreAxis('E/I', [piece('E', 'weak'), piece('I', 'weak')], 'E').choice === 'E');
@@ -9772,7 +9773,7 @@ check('the schema requires evidence on where they align and differ',
   // rules said plainly"), about 150 tokens more to read.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 24000 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
+    !('system' in g) && g.spec.length < 24500 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
@@ -9956,7 +9957,7 @@ check('the schema requires evidence on where they align and differ',
     !/Argue it with evidence|The future, tested first|Mercy should outrank keeping score|Investing and private markets|pedal data|driverless|crash report/i.test(out.guide.json.spec) &&
     /Fixes it before anyone asks/.test(out.guide.json.spec) && /Restoring old film cameras/.test(out.guide.json.spec));
   check('import: the read guide keeps E/I to real signals (who starts things, groups, recharge) and never the sample size, a private account or a close circle; no year outweighs the rest',
-    /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close/.test(out.guide.json.spec) &&
+    /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close, their friends old or trusted, their threads long \(loyalty, not energy\)/.test(out.guide.json.spec) && /Nor what isn't there: no posts of parties or strangers is not avoiding them\. An outing with friends leans E, never I; a letter's `evidence` is only pieces pointing to it/.test(out.guide.json.spec) && /With no `own-words` or `setting` piece, the letter is `slight`/.test(out.guide.json.spec) &&
     /no single year more than about a quarter of the sample/.test(out.guide.json.spec) && /counts when it is measured against everyone they message/.test(out.guide.json.spec) &&
     /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 7 to 10 minutes/.test(out.guide.json.spec) && /the 4 busiest are paged back as far as their target reaches/.test(out.guide.json.spec));
   check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
