@@ -1588,10 +1588,11 @@ async function handleLinkOpen(response, url) {
 }
 
 // A read written by Muse, sent by the PsycheAI plugin (lib/museimport.js).
-// The plugin's server signs it with the shared secret; the answer is checked
-// as a provider's merged answer is, sealed under a key made for it, and only
-// the sealed copy is kept. The link goes back to the plugin, which gives it to
-// the reader; the key after the # never comes here again.
+// The plugin's server signs it with the shared secret; the answer is checked as
+// a provider's merged answer is, its PDF made, and all of it handed back. Nothing
+// is kept (README "Muse reads: nothing kept"): no copy of the read, locked or not,
+// and no PDF. Reads saved before 1 Nov 2026 still open from their links until
+// they expire (museImport.open, openPdf, status), 7 days after they were saved.
 async function handleImport(request, response) {
   if (!museImport.authorised(request.headers.authorization)) {
     sendJson(response, museImport.enabled() ? 401 : 404, { error: museImport.enabled() ? 'Not authorised.' : 'No such endpoint.' });
@@ -1604,26 +1605,17 @@ async function handleImport(request, response) {
     sendJson(response, 422, { error: 'The read does not match the PsycheAI schema.', problems: result.problems });
     return;
   }
-  const sealed = await museImport.seal(result.bundle, body && body.name);
-  if (!sealed) {
-    sendJson(response, 503, { error: 'Storage is unavailable. Try again in a moment.' });
-    return;
-  }
   stats.count('muse_import');
-  // The report's PDF, the page's own (lib/musepdf.js), so Muse can hand it
-  // over in the chat. Locked with the read's key; a read is saved without it
-  // if it can't be made.
+  // The report's PDF, the page's own (lib/musepdf.js), made in memory and handed
+  // back with the rest; the plugin holds it in memory until Muse attaches it.
   const name = String((body && body.name) || '').slice(0, 60);
   const pdf = await musePdf.build(result.bundle.data, name);
-  const pdfKept = pdf ? await museImport.sealPdf(sealed.id, sealed.key, pdf) : false;
   sendJson(response, 200, {
-    url: SITE_ORIGIN + '/?m=' + sealed.id + '#' + sealed.key,
-    ...(pdfKept ? { pdf: SITE_ORIGIN + '/report-pdf?m=' + sealed.id + '#' + sealed.key, pdfName: musePdf.fileName(name) } : {}),
+    ...(pdf ? { pdfData: pdf.toString('base64'), pdfName: musePdf.fileName(name) } : {}),
     // The report in short, one line per section, for Muse to show under the card.
     sections: musePdf.summary(result.bundle.data, name),
-    // The whole report for Muse's one widget: scores and one-line readings, never the evidence.
+    // The whole report for Muse's one widget: scores, readings and write-ups, never the evidence.
     view: musePdf.chatView(result.bundle.data, name),
-    expiresInDays: museImport.SEALED_DAYS,
     dropped: result.dropped,
   });
 }

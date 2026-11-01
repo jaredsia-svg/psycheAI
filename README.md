@@ -10061,3 +10061,20 @@ the caveats and the roast stay out, and every write-up goes through `undated`. T
 stay too, so a skill from before this change still draws its widget. `view` grew from about 6,000 to about
 17,000 characters; the app server keeps strings up to 1,200 characters (psycheai-app README "The report,
 written out").
+
+### Muse reads: nothing kept
+
+A Muse read used to be sealed under a key made for it and kept for 7 days (`muse:<id>`), with its PDF
+sealed beside it (`musepdf:<id>`), so the reader could open it on psycheai.io and Muse could fetch the PDF.
+That was a week of locked reports in the database, and the server had both the report and its key at the
+moment of saving. Now `/api/import` checks the read (`bundleFrom`), makes its PDF (`musePdf.build`), and
+answers with the PDF itself (`pdfData`, base64, and `pdfName`), the report in short and `view`. Nothing is
+written to the store: no copy of the read, locked or not, no PDF, and no link (`url` and `expiresInDays` are
+gone). The plugin holds the PDF in its own memory behind a one-time link until Muse attaches it, for at most
+30 minutes or three downloads (psycheai-app README "Nothing kept"). The report lives in the reader's Muse
+chat, their Muse workspace and the PDF. What this doesn't cover, and the Muse privacy page says so: while a
+read is being checked and its PDF made, the servers handle it in memory, so someone in control of them at
+that moment could see it. Reads saved before 1 Nov 2026 still open from their links until they expire,
+7 days after saving (`museImport.open`, `openPdf`, `sealedPdf`, `/report-pdf`, `/api/import/status`); after
+8 Nov those routes, `seal` and `sealPdf` can go. A selftest fails if the import handler, or anything in
+server.js, stores a read or calls the sealing functions.

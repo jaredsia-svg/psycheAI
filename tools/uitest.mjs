@@ -4,7 +4,7 @@
 //
 // Run with: node tools/uitest.mjs [--shots]
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14988,14 +14988,18 @@ try {
     }
   }
 
-  // A read Muse wrote, through the PsycheAI plugin (lib/museimport.js): the
-  // plugin sends it here, gets back psycheai.io/?m=<id>#<key>, and the page
-  // opens it with the key that never reaches the server.
+  // A read Muse wrote, through the PsycheAI plugin (lib/museimport.js), saved
+  // before 1 Nov 2026 as psycheai.io/?m=<id>#<key>: the page opens it with the
+  // key that never reaches the server. New reads aren't kept (README "Muse reads:
+  // nothing kept"); these are sealed the old way by tools/uitest-legacy-reads.cjs,
+  // in the server's own memory, since such links still open until they expire.
   {
     const musePort = PORT + 5;
-    const museServer = spawn(process.execPath, [join(root, 'server.js')], {
+    const legacyReads = join(tmpdir(), 'psycheai-uitest-legacy-reads-' + process.pid + '.json');
+    try { unlinkSync(legacyReads); } catch { /* none yet */ }
+    const museServer = spawn(process.execPath, ['-r', join(root, 'tools', 'uitest-legacy-reads.cjs'), join(root, 'server.js')], {
       env: {
-        ...process.env, PORT: String(musePort), PSYCHEAI_MOCK: '1', PSYCHEAI_IMPORT_SECRET: 'uitest-import-secret',
+        ...process.env, PORT: String(musePort), PSYCHEAI_MOCK: '1', PSYCHEAI_IMPORT_SECRET: 'uitest-import-secret', UITEST_LEGACY_READS: legacyReads,
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-muse-budget.jsonl'),
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-muse-usage.jsonl'),
       },
@@ -15007,11 +15011,10 @@ try {
     try {
       await waitForServer(musePort);
       const base = 'http://localhost:' + musePort + '/';
-      const answer = (await (await import(join(root, 'lib', 'mock.js'))).default.analyseMerged({})).data;
-      const imported = await (await fetch(base + 'api/import', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer uitest-import-secret' },
-        body: JSON.stringify({ answer, name: 'Mei Tan' }),
-      })).json();
+      for (let i = 0; i < 100 && !existsSync(legacyReads); i++) await new Promise(r => setTimeout(r, 100));
+      const savedReads = JSON.parse(readFileSync(legacyReads, 'utf8'));
+      const nextRead = () => ({ url: savedReads.shift() });
+      const imported = nextRead();
       const link = String(imported.url || '').replace('https://psycheai.io/', base);
       await mp.goto(base, { waitUntil: 'load' });
       await mp.evaluate(() => localStorage.clear());
@@ -15037,10 +15040,7 @@ try {
       // card full screen, one button handing the picture alone to the share
       // sheet; where a picture can't be shared, the card as a picture to hold.
       for (const canShare of [true, false]) {
-        const again = await (await fetch(base + 'api/import', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer uitest-import-secret' },
-          body: JSON.stringify({ answer, name: 'Mei Tan' }),
-        })).json();
+        const again = nextRead();
         const storyLink = String(again.url || '').replace('https://psycheai.io/', base).replace('#', '&story=1#');
         const sctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
         const sp = await sctx.newPage();
@@ -15124,10 +15124,7 @@ try {
 
       // Another read opened over a card already here: asked first, and nothing
       // replaced on No. (The same read opened again is just shown: below, with its Story link.)
-      const otherRead = await (await fetch(base + 'api/import', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer uitest-import-secret' },
-        body: JSON.stringify({ answer, name: 'Mei Tan' }),
-      })).json();
+      const otherRead = nextRead();
       const otherLink = String(otherRead.url || '').replace('https://psycheai.io/', base);
       let asked = '';
       // The suite's own handler answers every confirm with No (leaveFreely); this only reads it.

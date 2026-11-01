@@ -9718,9 +9718,11 @@ check('the schema requires evidence on where they align and differ',
   const museDocs = readFileSync(join(root, 'docs', 'muse-docs.html'), 'utf8');
   check('the Muse page has the sections the plugin redirects to, and the connector address',
     ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp') && muse.includes('<pre class="paste" id="install-prompt">Install the skill at app.psycheai.io/install and generate my Psyche</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(muse));
-  check('it says what the plugin never receives or guesses, and that the read is sealed under the link\'s key',
+  check('it says what the plugin never receives or guesses, that the read is checked and made into a PDF in memory and kept nowhere, and that older reads were sealed under their link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
-      /key that exists only in your link/.test(musePrivacy) &&
+      /key that exists only in their link/.test(musePrivacy) && /send both back, and keep none of it: no copy of your read is stored, locked or not/.test(musePrivacy) &&
+      /for at most 30 minutes or three downloads, whichever comes first/.test(musePrivacy) && /someone in control of our live servers at that moment could see it/.test(musePrivacy) &&
+      !/to make your private link/.test(musePrivacy) &&
       /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&
       /other skills you install in the same workspace could read them/.test(musePrivacy) && /never installs an older release over a newer one/.test(musePrivacy) && /is public at <a href="https:\/\/github\.com\/jaredsia-svg\/psycheai-app">/.test(musePrivacy) &&
@@ -9902,36 +9904,15 @@ check('the schema requires evidence on where they align and differ',
       const deepGuide = await fetch(base + '/api/import/guide?depth=deep', { headers: { Authorization: 'Bearer test-import-secret-123' } });
       out.deepSpec = (await deepGuide.json()).spec;
 
-      const id = out.ok.json.url ? new URL(out.ok.json.url).searchParams.get('m') : '';
-      const open = await fetch(base + '/api/import/open?id=' + id);
-      out.open = { status: open.status, json: await open.json() };
+      // Nothing is kept (README "Muse reads: nothing kept"): the PDF comes back in the answer.
+      const pdfBytes = Buffer.from(out.ok.json.pdfData || '', 'base64');
+      out.pdf = { head: pdfBytes.subarray(0, 5).toString(), name: /Mei Tan/.test(pdfBytes.toString('latin1')), file: out.ok.json.pdfName };
+      // A read saved before then still opens from its link: the page and the routes it uses are there.
       out.missing = (await fetch(base + '/api/import/open?id=AAAAAAAAAAAAAAAA')).status;
-      if (out.ok.json.pdf) {
-        // The link is /report-pdf?m=<id>#<key>: the key only after the #, which no request carries.
-        const pdfUrl = new URL(out.ok.json.pdf);
-        const pdfId = pdfUrl.searchParams.get('m'), key = pdfUrl.hash.slice(1);
-        out.pdfLink = { path: pdfUrl.pathname, query: [...pdfUrl.searchParams.keys()].join(), keyInHash: /^[A-Za-z0-9_-]{43}$/.test(key) };
-        // The skill sends the key in a header.
-        const pdf = await fetch(base + '/api/import/pdf?id=' + pdfId, { headers: { 'X-Psyche-Key': key } });
-        const bytes = Buffer.from(await pdf.arrayBuffer());
-        out.pdf = { status: pdf.status, type: pdf.headers.get('content-type'), head: bytes.subarray(0, 5).toString(), name: /Mei Tan/.test(bytes.toString('latin1')), cache: pdf.headers.get('cache-control'), file: out.ok.json.pdfName };
-        // The page gets only the locked copy, and opens it with the key after the #.
-        const raw = await fetch(base + '/api/import/pdf?raw=1&id=' + pdfId);
-        const sealedPdf = await raw.json();
-        const crypto = await import('node:crypto');
-        const box = Buffer.from(sealedPdf.box, 'base64url');
-        const d = crypto.createDecipheriv('aes-256-gcm', Buffer.from(key, 'base64url'), Buffer.from(sealedPdf.iv, 'base64url'));
-        d.setAuthTag(box.subarray(box.length - 16));
-        out.pdfRaw = { status: raw.status, keys: Object.keys(sealedPdf).sort().join(), cache: raw.headers.get('cache-control'), locked: !/%PDF|Mei/.test(box.toString('latin1')),
-          opens: Buffer.concat([d.update(box.subarray(0, box.length - 16)), d.final()]).equals(bytes) };
-        const page = await fetch(base + '/report-pdf?m=' + pdfId);
-        const pageHtml = await page.text();
-        out.pdfPage = { status: page.status, script: pageHtml.includes('<script src="/report-pdf.js'), noindex: pageHtml.includes('<meta name="robots" content="noindex">') };
-        out.pdfLegacy = (await fetch(base + '/api/import/pdf?id=' + pdfId + '&k=' + key)).status;
-        out.pdfWrongKey = (await fetch(base + '/api/import/pdf?id=' + pdfId, { headers: { 'X-Psyche-Key': (key[0] === 'A' ? 'B' : 'A') + key.slice(1) } })).status;
-        out.pdfNoKey = (await fetch(base + '/api/import/pdf?id=' + pdfId)).status;
-        out.pdfRawMissing = (await fetch(base + '/api/import/pdf?raw=1&id=AAAAAAAAAAAAAAAA')).status;
-      }
+      const page = await fetch(base + '/report-pdf?m=AAAAAAAAAAAAAAAA');
+      const pageHtml = await page.text();
+      out.pdfPage = { status: page.status, script: pageHtml.includes('<script src="/report-pdf.js'), noindex: pageHtml.includes('<meta name="robots" content="noindex">') };
+      out.pdfRawMissing = (await fetch(base + '/api/import/pdf?raw=1&id=AAAAAAAAAAAAAAAA')).status;
       const syncBody = JSON.stringify({ a: 'Mei', b: 'Ana', report: { mode: 'platonic', summary: 'Mei brings the plan and Ana the spark.',
         align: [{ title: 'Love of a plan', detail: 'You both like a plan.', evidence: ['both high conscientiousness'] }, { title: 'Kindness first', detail: 'Both put others first.', evidence: [] }],
         differ: [{ title: 'Different paces', detail: 'Mei plans ahead and Ana decides on the day.', evidence: ['J/P'] }],
@@ -9947,8 +9928,16 @@ check('the schema requires evidence on where they align and differ',
   `;
   const out = JSON.parse(execFileSync(process.execPath, ['-e', script], { env: { PATH: process.env.PATH } }).toString());
   check('import: no secret, no entry', out.noAuth === 401 && out.wrongAuth === 401, JSON.stringify([out.noAuth, out.wrongAuth]));
-  check('import: a good read gives a psycheai.io link with the key after the #',
-    out.ok.status === 200 && /^https:\/\/psycheai\.io\/\?m=[\w-]{16}#[\w-]{43}$/.test(out.ok.json.url || '') && out.ok.json.expiresInDays === 7, JSON.stringify(out.ok));
+  check('import: a good read comes back checked, with its PDF, the report in short and view, and no link: nothing is kept (README "Muse reads: nothing kept")',
+    out.ok.status === 200 && !('url' in out.ok.json) && !('expiresInDays' in out.ok.json) && !('pdf' in out.ok.json) &&
+    out.pdf.head === '%PDF-' && out.pdf.name && /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && Array.isArray(out.ok.json.sections) && out.ok.json.view && out.ok.json.view.overview,
+    JSON.stringify({ keys: Object.keys(out.ok.json), pdf: out.pdf }));
+  {
+    const src = readFileSync(join(root, 'server.js'), 'utf8');
+    const handler = src.slice(src.indexOf('async function handleImport('), src.indexOf('// What the plugin hands Muse'));
+    check('import: the handler stores nothing: no store call, no sealing, here or anywhere in the server',
+      handler.length > 200 && !/store\.|museImport\.seal|sealPdf|redis|writeFile/i.test(handler) && !/museImport\.seal\(|museImport\.sealPdf\(/.test(src));
+  }
   check('import: a read that fails the checks is refused with what failed', out.refused.status === 422 && out.refused.json.problems.some(p => /summary/.test(p)));
   check('import: the guide needs the secret too', out.guideNoAuth === 401 && out.guide.status === 200 && typeof out.guide.json.spec === 'string' && out.guide.json.schema);
   {
@@ -9970,17 +9959,22 @@ check('the schema requires evidence on where they align and differ',
     /## Deep Psyche/.test(out.deepSpec || '') && /About 800,000 characters/.test(out.deepSpec || '') && /A year at a time/.test(out.deepSpec || '') &&
     /The confidence rationale counts the chats/.test(out.guide.json.spec), String((out.deepSpec || '').length));
   check('import: ?kind=sync gives the Sync guide', out.syncGuide.status === 200 && /A PsycheAI Sync/.test(out.syncGuide.json.spec) && out.syncGuide.json.brief && out.syncGuide.json.schema);
-  check('import: opening gives only the sealed copy', out.open.status === 200 && typeof out.open.json.box === 'string' &&
-    Object.keys(out.open.json).sort().join() === 'box,iv' && !/Mei/.test(Buffer.from(out.open.json.box, 'base64url').toString('latin1')));
+  {
+    // A read saved before "nothing kept" still opens until it expires: the module that seals and opens it.
+    const mi = (await import('../lib/museimport.js')).default;
+    const sealed = await mi.seal({ data: { summary: 'Mei likes plans' } }, 'Mei');
+    const opened = await mi.open(sealed.id);
+    const fakePdf = Buffer.from('%PDF-1.4 Mei');
+    await mi.sealPdf(sealed.id, sealed.key, fakePdf);
+    const box = await mi.sealedPdf(sealed.id);
+    const wrong = (sealed.key[0] === 'A' ? 'B' : 'A') + sealed.key.slice(1);
+    check('import: a read saved before then opens only as its sealed copy, and its PDF only with the key its link carries',
+      opened && Object.keys(opened).sort().join() === 'box,iv' && !/Mei/.test(Buffer.from(opened.box, 'base64url').toString('latin1')) &&
+      box && !/Mei|%PDF/.test(Buffer.from(box.box, 'base64url').toString('latin1')) && (await mi.openPdf(sealed.id, sealed.key)).equals(fakePdf) && (await mi.openPdf(sealed.id, wrong)) === null);
+  }
   check('import: an expired or unknown read is a 404', out.missing === 404);
-  check('import: the report\'s PDF, the page\'s own document, opens with the key its link carries and with nothing else',
-    out.pdf && out.pdf.status === 200 && out.pdf.type === 'application/pdf' && out.pdf.head === '%PDF-' && out.pdf.name && /no-store/.test(out.pdf.cache) &&
-    /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && out.pdfWrongKey === 404 && out.pdfNoKey === 404, JSON.stringify(out.pdf));
-  check('import: the PDF link keeps its key after the #, never in the address a server or log sees: /report-pdf gets the locked copy and opens it in the browser, the skill sends the key in a header, and an older ?k= link still opens',
-    out.pdfLink && out.pdfLink.path === '/report-pdf' && out.pdfLink.query === 'm' && out.pdfLink.keyInHash &&
-    out.pdfRaw.status === 200 && out.pdfRaw.keys === 'box,iv' && /no-store/.test(out.pdfRaw.cache) && out.pdfRaw.locked && out.pdfRaw.opens &&
-    out.pdfPage.status === 200 && out.pdfPage.script && out.pdfPage.noindex && out.pdfLegacy === 200 && out.pdfRawMissing === 404,
-    JSON.stringify({ link: out.pdfLink, raw: out.pdfRaw, page: out.pdfPage, legacy: out.pdfLegacy }));
+  check('import: the page that opens an older read\'s PDF in the browser is still served, and an unknown one is a 404',
+    out.pdfPage.status === 200 && out.pdfPage.script && out.pdfPage.noindex && out.pdfRawMissing === 404, JSON.stringify(out.pdfPage));
   check('import: a Muse Sync comes back as the site\'s own Sync PDF, for the secret only, kept nowhere',
     out.syncPdf && out.syncPdf.status === 200 && out.syncPdf.type === 'application/pdf' && out.syncPdf.head === '%PDF-' && out.syncPdf.names && /no-store/.test(out.syncPdf.cache) &&
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
