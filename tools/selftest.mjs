@@ -9806,6 +9806,12 @@ check('the schema requires evidence on where they align and differ',
       museImport.samePoint({ title: 'Close one debate sooner', detail: 'x' }, { title: 'Close debates sooner', detail: 'y' }) &&
       museImport.bundleFrom(answer).ok === true;
   })());
+  check('a Muse read is sent back when a Big Five trait sits on the other side of 50 from its letter (a T with agreeableness 64); 50 itself and a trait on its side pass, and the spec says each trait sits on its letter\'s side',
+    ((t) => t.length === 1 && /^bigFive\.agreeableness: 64 is on the other side of 50 from the letter T: agreeableness follows T\/F, so with T it is 50 or below/.test(t[0]))(museImport.traitProblems({ mbti: { letters: [{ axis: 'T/F', choice: 'T' }, { axis: 'E/I', choice: 'E' }, { axis: 'J/P', choice: 'P' }, { axis: 'N/S', choice: 'S' }] }, bigFive: { agreeableness: { score: 64 }, extraversion: { score: 58 }, conscientiousness: { score: 50 }, openness: { score: 40 } } })) &&
+    museImport.traitProblems({ mbti: { letters: [{ axis: 'E/I', choice: 'I' }] }, bigFive: { extraversion: { score: 61 } } }).length === 1 &&
+    /sit on their letter's side of 50: extraversion E\/I, openness N\/S, agreeableness F\/T, conscientiousness J\/P, with E, N, F and J at 50 or above\./.test(museImport.READ_SPEC) &&
+    /never on looks, nor on shared tastes \(food, travel, sport\)\./.test(museImport.READ_SPEC) &&
+    /nor the count of conversations read: the sample's size\)/.test(museImport.READ_SPEC));
   check('the Muse schema\'s shortened descriptions each keep their opening sentence (a split at "e.g." once dropped it), and a literal "Kind of work:" is sent back to fix', (() => {
     const lost = [];
     const walk = (a, b, k) => {
