@@ -1618,7 +1618,7 @@ async function handleImport(request, response) {
     view: musePdf.chatView(result.bundle.data, name),
     // The whole report, evidence included, for the HTML file the Muse skill writes in the
     // reader's workspace (README "The report as a file"); the plugin passes it to the skill only.
-    full: musePdf.fullView(result.bundle.data, name),
+    full: musePdf.fullView(result.bundle.data, name, result.answer),
     dropped: result.dropped,
   });
 }

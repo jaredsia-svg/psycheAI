@@ -9983,6 +9983,15 @@ check('the schema requires evidence on where they align and differ',
   check('import: a Muse Sync comes back as the site\'s own Sync PDF, for the secret only, kept nowhere',
     out.syncPdf && out.syncPdf.status === 200 && out.syncPdf.type === 'application/pdf' && out.syncPdf.head === '%PDF-' && out.syncPdf.names && /no-store/.test(out.syncPdf.cache) &&
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
+  check('import: nothing a Muse read writes for its report file is lost: each Big Five trait\'s evidence, an interest\'s evidence, attachment\'s implications and the work situation and style come from the checked answer where the site\'s schema trims them, and rhythm and activity is the sixth wellbeing area',
+    await (async () => { const mp = (await import('../lib/musepdf.js')).default; const mi = (await import('../lib/museimport.js')).default;
+      const a = (await mock.analyseMerged({})).data;
+      a.wellness.rhythmAndActivity = { band: 'mixed', confidence: 'low', reading: 'RHYTHM-READING across your evenings.', evidence: ['RHYTHM-EVIDENCE at 23:00'] };
+      const b = mi.bundleFrom(a); const f = b.ok && mp.fullView(b.bundle.data, 'Mei Tan', b.answer);
+      return !!f && f.whoYouAre.bigFive.every(t => t.evidence.length > 0) && f.whatDrivesYou.interestsFull.every(x => x.evidence.length > 0) &&
+        f.howYouConnect.implications.length === 2 && /^Mock read of where they appear/.test(f.howYouWork.situation) && /^Mock work style/.test(f.howYouWork.workStyle) &&
+        f.whoYouAre.wellbeing.areas.some(x => x.area === 'Rhythm and activity' && /RHYTHM-READING/.test(x.reading) && x.evidence.includes('RHYTHM-EVIDENCE at 23:00')) &&
+        /full: musePdf\.fullView\(result\.bundle\.data, name, result\.answer\)/.test(readFileSync(join(root, 'server.js'), 'utf8')); })());
   check('import: the chat\'s one-line readings lose their dated moments ("…, as in March 2026"), since a date is evidence',
     await (async () => { const u = (await import('../lib/musepdf.js')).default.undated;
       return u('You stay steady, with spikes when a debate turns personal, as in March 2026.') === 'You stay steady, with spikes when a debate turns personal.' &&
