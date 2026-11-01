@@ -10108,3 +10108,11 @@ and which entry, of which kind, the limit counts by, for each new shape of chain
 Read it after a deploy: the entry the limit counts by should be "public". If it says "private" or
 "cloudflare", set `PSYCHEAI_TRUST_PROXY` to the position, counted from the right, of the last "public"
 entry: for "public, cloudflare, private", that is 3. Then check the log again.
+
+Measured on Render (1 Nov 2026): every proxied request carries 3 entries, "public, cloudflare, private"
+(the visitor as Cloudflare saw them, Render's Cloudflare edge, Render's internal proxy), and with the
+default of 1 the limit counted by the private one, so every visitor shared one bucket, probably since the
+site first ran on Render. The service now sets `PSYCHEAI_TRUST_PROXY=3`, and the log reads "so the limit
+counts by entry 1 (public)". A visitor who adds their own `X-Forwarded-For` entries only adds to the left,
+which counting from the right never reaches. app.psycheai.io's one limit by address (new skill accounts)
+reads `cf-connecting-ip`, which Cloudflare sets and overwrites, so it needed no change.
