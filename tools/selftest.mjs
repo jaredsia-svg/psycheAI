@@ -10335,11 +10335,17 @@ check('the schema requires evidence on where they align and differ',
     const realLog = console.log;
     console.log = line => logged.push(String(line));
     try {
-      rateLimit.clientKey({ headers: { 'x-forwarded-for': '203.0.113.5, 198.51.100.7' }, socket: {} });
+      rateLimit.clientKey({ headers: { 'x-forwarded-for': '203.0.113.5, 172.70.1.1, 10.0.0.9' }, socket: {} });
+      rateLimit.clientKey({ headers: { 'x-forwarded-for': '203.0.113.6, 172.70.1.2, 10.0.0.8' }, socket: {} });
       rateLimit.clientKey({ headers: { 'x-forwarded-for': '198.51.100.8' }, socket: {} });
+      for (let i = 0; i < 9; i++) rateLimit.clientKey({ headers: { 'x-forwarded-for': Array.from({ length: i + 2 }, () => '8.8.8.8').join(', ') }, socket: {} });
     } finally { console.log = realLog; }
-    check('S10: the first proxied request logs how many hops its chain had, once, and no address',
-      logged.length === 1 && /2 X-Forwarded-For entries/.test(logged[0]) && !/\d+\.\d+\.\d+\.\d+/.test(logged[0]), JSON.stringify(logged));
+    check('S10: proxied requests log, for each new shape of chain (five at most), its length, the kind of each entry, and which entry the limit counts by, never an address',
+      logged.length === 5 && logged[0] === 'ratelimit: a proxied request carried 3 X-Forwarded-For entries (public, cloudflare, private); PSYCHEAI_TRUST_PROXY steps back 1, so the limit counts by entry 3 (private).' &&
+      logged[1] === 'ratelimit: a proxied request carried 1 X-Forwarded-For entry (public); PSYCHEAI_TRUST_PROXY steps back 1, so the limit counts by entry 1 (public).' &&
+      logged.every(l => !/\d+\.\d+\.\d+\.\d+|[0-9a-f]{1,4}:[0-9a-f]{1,4}:/i.test(l)) &&
+      ['10.1.2.3', '172.70.1.1', '104.16.0.1', '8.8.8.8', '2606:4700::1', 'fd00::1', '::ffff:192.168.1.1', '1.2.3.4:80', 'unknown'].map(rateLimit.kindOf).join() ===
+        'private,cloudflare,cloudflare,public,cloudflare,private,private,public,not an address', JSON.stringify(logged));
     check('S9: /api/stats reads its token from the Authorization header only, and has a bucket of its own',
       !/searchParams\.get\('token'\)/.test(serverSource) && server.API_GUARDS['/api/stats'].limit === 'stats' && Boolean(rateLimit.LIMITS.stats));
   }

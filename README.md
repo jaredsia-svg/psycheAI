@@ -3291,9 +3291,10 @@ Each is pinned by a check in `tools/selftest.mjs` (the block "security and displ
 - **S9. `/api/stats` took `?token=`** (which ends up in proxy logs and history) and had no rate limit.
   The token is read from `Authorization: Bearer` only, and the route has a bucket of its own
   (`stats`, 30 an hour).
-- **S10. Is Render's proxy chain what `PSYCHEAI_TRUST_PROXY` assumes?** The first proxied request
-  logs, once per process, how many `X-Forwarded-For` entries it carried and how many hops the server
-  steps back. No address is logged.
+- **S10. Is Render's proxy chain what `PSYCHEAI_TRUST_PROXY` assumes?** Proxied requests log, for each
+  new shape of chain (five a process at most), how many `X-Forwarded-For` entries it carried, the kind of
+  each (private, cloudflare, public or not an address), and which entry the limit counts by. No address
+  is logged. See "Who the limit counts".
 
 **Browser**
 
@@ -10093,3 +10094,17 @@ and watch-outs, development's early signs, counter-move and question, and the co
 roast or the scoring ledger. A pattern's areas come as the page names them ("Big Five", "Values & beliefs",
 "How you work"; `sectionNames`, as docs/app.js sectionNameChips), never as the schema's keys. Like the PDF, it is made in memory, sent back once and
 kept nowhere; the plugin passes it only to the skill, never into a host's tool result.
+
+### Who the limit counts
+
+After the move to a new Render workspace (1 Nov 2026), the log said the first proxied request carried 3
+`X-Forwarded-For` entries while `PSYCHEAI_TRUST_PROXY` steps back 1, so the limit counts by the last entry.
+If that entry is a proxy's rather than the visitor's, every visitor behind it shares one bucket: the 21st
+free card in an hour, from anyone, would be refused. Abuse stays capped either way (one free card per
+account, the daily free cap, single-use tickets on every route that costs money); the risk is genuine
+visitors locked out together. The count alone couldn't tell, and logging addresses is out, so the log now
+names the kind of each entry (`kindOf`: private ranges, Cloudflare's published ranges, otherwise public)
+and which entry, of which kind, the limit counts by, for each new shape of chain, five a process at most.
+Read it after a deploy: the entry the limit counts by should be "public". If it says "private" or
+"cloudflare", set `PSYCHEAI_TRUST_PROXY` to the position, counted from the right, of the last "public"
+entry: for "public, cloudflare, private", that is 3. Then check the log again.
