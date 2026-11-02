@@ -7,6 +7,8 @@
 'use strict';
 
 const http = require('node:http');
+// Where psycheai.io/muse leads: the skill's install link (psycheai-app).
+const MUSE_INSTALL_URL = process.env.PSYCHEAI_MUSE_INSTALL_URL || 'https://app.psycheai.io/install';
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -2168,6 +2170,26 @@ const server = http.createServer((request, response) => {
   }
 });
 
+// psycheai.io/muse: app.psycheai.io/install's answer, as it would give it to
+// this caller; if app.psycheai.io can't be reached, a 302 there instead, so the
+// link still works.
+const MUSE_FORWARD = ['user-agent', 'accept', 'accept-language', 'sec-fetch-dest'];
+async function museInstall(request, response) {
+  const headers = {};
+  for (const h of MUSE_FORWARD) if (request.headers[h]) headers[h] = request.headers[h];
+  try {
+    const upstream = await fetch(MUSE_INSTALL_URL, { headers, redirect: 'follow', signal: AbortSignal.timeout(6000) });
+    if (!upstream.ok) throw new Error('status ' + upstream.status);
+    const body = Buffer.from(await upstream.arrayBuffer());
+    response.writeHead(200, { 'Content-Type': upstream.headers.get('content-type') || 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store', Vary: 'User-Agent, Accept, Sec-Fetch-Dest', 'Content-Length': body.length });
+    response.end(request.method === 'HEAD' ? undefined : body);
+  } catch (error) {
+    response.writeHead(302, { Location: MUSE_INSTALL_URL, 'Cache-Control': 'no-store' });
+    response.end();
+  }
+}
+
 function routeRequest(route, url, request, response) {
   if (route.startsWith('/api/')) {
     const handler =
@@ -2273,6 +2295,15 @@ function routeRequest(route, url, request, response) {
   if (retired && RETIRED_PAGES[retired[1]] && (request.method === 'GET' || request.method === 'HEAD')) {
     response.writeHead(301, { Location: '/' + RETIRED_PAGES[retired[1]], 'Cache-Control': 'public, max-age=86400' });
     response.end();
+    return;
+  }
+
+  // The short install link for Muse, psycheai.io/muse: the skill's own install
+  // link's answer, fetched from app.psycheai.io with who's asking passed on,
+  // so Muse gets the skill, a link previewer its preview and a browser its
+  // page, all at this address (README "A short install link").
+  if (/^\/muse\/?$/i.test(route) && (request.method === 'GET' || request.method === 'HEAD')) {
+    museInstall(request, response);
     return;
   }
 

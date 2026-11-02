@@ -554,9 +554,17 @@ try { rmSync(USAGE_STORE); } catch (error) { /* not there yet */ }
 process.env.PSYCHEAI_MIN_WRITING = '0';
 
 // Mock mode: every part of the pipeline runs for real except the model call.
+// A stand-in for app.psycheai.io/install: it echoes the headers psycheai.io/muse passes on.
+const MUSE_STUB_PORT = PORT + 9;
+const museStub = (await import('node:http')).createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ path: req.url, ua: req.headers['user-agent'] || null, dest: req.headers['sec-fetch-dest'] || null }));
+});
+await new Promise(r => museStub.listen(MUSE_STUB_PORT, '127.0.0.1', r));
 const server = spawn(process.execPath, [join(root, 'server.js')], {
   env: {
     ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0',
+    PSYCHEAI_MUSE_INSTALL_URL: 'http://127.0.0.1:' + MUSE_STUB_PORT + '/install',
     // Its own budget ledger, and a ceiling far above what one run spends.
     // Sharing data/budget.jsonl would mean a long suite eating the real
     // deployment's daily allowance — and, worse, a suite that exhausted it
@@ -608,7 +616,7 @@ async function waitForServer(port, ms = 20000) {
   }
   throw new Error('the test server on port ' + port + ' did not start');
 }
-const stop = () => { try { server.kill(); } catch (error) { /* already gone */ } };
+const stop = () => { try { server.kill(); } catch (error) { /* already gone */ } try { museStub.close(); } catch (error) { /* already closed */ } };
 process.on('exit', stop);
 
 await waitForServer(PORT);
@@ -1678,6 +1686,20 @@ try {
     const location = await new Promise((resolve, reject) => rawGet({ host: 'localhost', port: PORT, path: '/c/AbCdEfGhIj?promo=AVA' },
       response => { response.resume(); resolve(response.headers.location); }).on('error', reject).end());
     check('/c/<id>?promo=AVA redirects with the code still on it', location === '/?c=AbCdEfGhIj&promo=AVA', location);
+  }
+  // The short install link for Muse leads to the skill's own install link.
+  {
+    const { request: rawGet } = await import('node:http');
+    const get = p => new Promise((resolve, reject) => rawGet({ host: 'localhost', port: PORT, path: p },
+      response => { response.resume(); resolve([response.statusCode, response.headers.location]); }).on('error', reject).end());
+    const ask = (p, headers) => new Promise((resolve, reject) => rawGet({ host: 'localhost', port: PORT, path: p, headers },
+      response => { let d = ''; response.on('data', c => { d += c; }); response.on('end', () => resolve([response.statusCode, response.headers['content-type'], d])); }).on('error', reject).end());
+    const wa = await ask('/muse', { 'User-Agent': 'WhatsApp/2.24.20.0 A' });
+    const br = await ask('/MUSE/', { 'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Dest': 'document' });
+    check('psycheai.io/muse (any case, with or without a slash) answers itself with the skill\'s install link\'s answer, fetched with the caller\'s user agent and Sec-Fetch-Dest passed on (Muse, a previewer and a browser each get theirs); unreachable, it forwards there instead',
+      wa[0] === 200 && /application\/json/.test(wa[1]) && JSON.parse(wa[2]).path === '/install' && JSON.parse(wa[2]).ua === 'WhatsApp/2.24.20.0 A' && JSON.parse(wa[2]).dest === null &&
+      br[0] === 200 && JSON.parse(br[2]).dest === 'document' && JSON.parse(br[2]).ua === 'Mozilla/5.0' &&
+      /catch \(error\) \{\n    response\.writeHead\(302, \{ Location: MUSE_INSTALL_URL/.test(readFileSync(join(root, 'server.js'), 'utf8')), JSON.stringify([wa, br]).slice(0, 300));
   }
 
   // ---- local prices ----
