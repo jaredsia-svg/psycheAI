@@ -32,12 +32,15 @@ and taken out: both sounded worse).
   stands below the words, its background faded into the reel's (a radial mask), with the PsycheAI mark glowing inside
   its orb, while Instagram, Facebook and WhatsApp circle it and are pulled into the orb. Meta's own characters, and
   close copies or blends of them and others' (Jolly, Labubu), are left out: one in our ad would copy their design and
-  read as their endorsement. Drawn-in-code plush characters were tried and looked poor. "Muse" sits mid-phrase: ending a phrase, its quiet "z"
+  read as their endorsement. Drawn-in-code plush characters were tried and looked poor.
+  It is never still: it hops in from below and lands on a beat with a little squash, then breathes, sways from its
+  feet and bobs on every beat; a swirl of light turns inside the orb and sparkles circle it. Once the sources are in,
+  the camera pushes into the orb (`museLayer`, its own layer, since `scene()` scales the scene) and flashes white
+  into the Psyche Card. The mark sits on the orb's centre measured on a grid over the image (631, 976 of 1152 × 1728). "Muse" sits mid-phrase: ending a phrase, its quiet "z"
   was trimmed off and it sounded like "mew".
 - the report: "And your Psyche Report…", since it is free there, not unlocked.
-- privacy: the voice says "Your data is processed directly in your Muse app, and stays within Muse. Your messages are
-  de-identified. And PsycheAI keeps no copy of your data or report." The screen shows three lines, without "and stays
-  within Muse". ("processed": "is read" is always said like "red" and sounded past tense.)
+- privacy: "Your data is processed directly in your Muse app. Your messages are de-identified. And PsycheAI keeps no
+  copy of your data or report." ("processed": "is read" is always said like "red" and sounded past tense.)
 - Sync: two linked rings between the cards, larger, with no ring round them, instead of the tick.
 - the ending (`end`, `spoken`): "Your Psyche is free in Muse! Paste the link below into your Muse app to begin.", with
   "Paste this into your Muse app:" over the psycheai.io/muse button.

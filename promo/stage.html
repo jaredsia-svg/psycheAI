@@ -270,16 +270,25 @@ if (CONFIG.script === 'muse') {
   $('f2').style.display = 'none'; $('mark').style.display = 'none';
   // PsycheAI's own character (original, in the brand's colours): soft and furry, holding an orb with the mark inside.
   // The mascot (assets/muse-mascot.jpg, the owner's own image): its pastel background fades into the reel's, and
-  // the PsycheAI mark glows inside the orb it already holds (orb centre 322, 525 of 600 x 900; radius about 78).
+  // the PsycheAI mark glows inside the orb it already holds (orb centre 329, 508 of 600 x 900, measured on a grid over the image: 631, 976 of 1152 x 1728; radius about 76).
   document.querySelector('#s4').insertAdjacentHTML('beforeend', `<svg id="buddy" viewBox="0 0 600 900" style="position:absolute;left:160px;top:660px;width:760px;height:1140px;opacity:0;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 52%, #000 62%, transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 52%, #000 62%, transparent 100%)">
     <defs><radialGradient id="orbGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".7" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
       <filter id="markGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
     <image href="assets/muse-mascot.jpg" x="0" y="0" width="600" height="900" preserveAspectRatio="xMidYMid slice"/>
-    <circle id="orb" cx="322" cy="525" r="78" fill="url(#orbGlow)"/>
-    <g id="orbMark" opacity=".9" filter="url(#markGlow)" transform="translate(322 525) scale(0.62) translate(-70 -70)">${markSvg.replace(/<path /g, '<path fill="none" stroke="#8a4fc8" stroke-width="6" ')}</g>
+    <circle id="orb" cx="329" cy="508" r="76" fill="url(#orbGlow)"/>
+    <g id="orbMark" opacity=".9" filter="url(#markGlow)" transform="translate(329 508) scale(0.62) translate(-70 -70)">${markSvg.replace(/<path /g, '<path fill="none" stroke="#8a4fc8" stroke-width="6" ')}</g>
   </svg>`);
   // Behind the orb's light, over the character: centred on the orb (page 540, 1320).
-  Object.assign($('glow').style, { left: '418px', top: '1200px', width: '300px', height: '300px', zIndex: '3' });
+  Object.assign($('glow').style, { left: '427px', top: '1153px', width: '300px', height: '300px', zIndex: '3' });
+  // Its own layer, so the camera can push into the orb at the end of the scene (the scene itself is scaled by scene()).
+  const layer = document.createElement('div'); layer.id = 'museLayer';
+  layer.style.cssText = 'position:absolute;inset:0;transform-origin:577px 1303px';
+  document.querySelector('#s4').appendChild(layer);
+  ['glow', 'buddy', 'f1', 'f3', 'f4'].forEach(id => layer.appendChild($(id)));
+  layer.insertAdjacentHTML('beforeend', '<div id="museFlash" style="position:absolute;inset:0;opacity:0;z-index:9;background:radial-gradient(circle at 577px 1303px, #fff 0%, #fdeefa 45%, #f6e8ff 100%)"></div>');
+  // The orb alive: a swirl of light turning inside it, and sparkles circling it.
+  $('orb').insertAdjacentHTML('afterend', '<circle id="orbSwirl" cx="329" cy="508" r="52" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-dasharray="60 270" opacity=".55"/>' +
+    '<g id="orbSparks">' + Array.from({ length: 12 }, (_, k) => '<circle r="' + (2 + (k % 3)) + '" fill="' + (k % 2 ? '#fff' : '#ffe3fa') + '"/>').join('') + '</g>');
   // Sync: two rings meeting, not a tick (the scene has ticks enough).
   ['ringTick', 'ringBg', 'ringArc'].forEach(id => { $(id).style.display = 'none'; });
   $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="14"><circle cx="74" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/><circle cx="126" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/></g>');
@@ -588,16 +597,33 @@ function render(t) {
     if (CONFIG.script === 'muse') {
       // PsycheAI's character holds the orb; Instagram, Facebook and WhatsApp circle it, then are pulled in as the
       // music's crescendo peaks (audio.py: the riser ends where `suck` does), with a flash of the orb.
-      const k = back(prog(c.local, 0.15, 0.75)), bob = Math.sin(c.local * 3) * 8;
-      $('buddy').style.opacity = clamp(k * 2); $('buddy').style.transform = 'translateY(' + ((1 - Math.min(1, k)) * 220 + bob) + 'px) scale(' + (0.7 + 0.3 * k) + ')';
+      // Hop in from below, landing on a beat with a little squash; then it breathes, sways from its feet and bobs
+      // on every beat, so it is never still.
+      const land = 0.2 + BEAT, hop = prog(c.local, 0.12, land), rise = 1 - Math.pow(1 - hop, 2.2);
+      const squash = Math.exp(-Math.max(0, c.local - land) * 9) * (c.local >= land ? 1 : 0);
+      const breathe = Math.sin(c.local * 2 * Math.PI / 2.2), sway = Math.sin(c.local * 2 * Math.PI / 3.1);
+      const bob = -12 * pulse * (c.local >= land ? 1 : 0) - Math.sin(hop * Math.PI) * 140 * (hop < 1 ? 1 : 0);
+      $('buddy').style.transformOrigin = '50% 92%';
+      $('buddy').style.opacity = clamp(hop * 3);
+      $('buddy').style.transform = 'translateY(' + ((1 - rise) * 520 + bob).toFixed(1) + 'px) rotate(' + (sway * 1.6).toFixed(2) + 'deg) scale(' +
+        (1 + squash * 0.08 - breathe * 0.008).toFixed(4) + ',' + (1 - squash * 0.1 + breathe * 0.02).toFixed(4) + ')';
       const flash = prog(suck, 0.85, 1) * (1 - prog(t, at(0.86) + 0.6, at(0.86) + 1.1));
-      $('orb').setAttribute('r', (78 * (1 + pulse * 0.06 + flash * 0.35)).toFixed(1));
-      $('orbMark').setAttribute('transform', 'translate(322 525) rotate(' + (c.local * 50).toFixed(1) + ') scale(' + (0.62 * (1 + flash * 0.25)).toFixed(3) + ') translate(-70 -70)');
-      const start = said('connected', M[0] + 1.6), cx = 418, cy = 1292;
+      $('orb').setAttribute('r', (76 * (1 + pulse * 0.06 + flash * 0.35)).toFixed(1));
+      $('orbMark').setAttribute('transform', 'translate(329 508) rotate(' + (c.local * 50).toFixed(1) + ') scale(' + (0.62 * (1 + flash * 0.25 + pulse * 0.04)).toFixed(3) + ') translate(-70 -70)');
+      $('orbSwirl').setAttribute('transform', 'rotate(' + (c.local * 220).toFixed(1) + ' 329 508)'); $('orbSwirl').setAttribute('opacity', (0.35 + 0.25 * pulse + 0.4 * flash).toFixed(2));
+      [...$('orbSparks').children].forEach((sp, i) => { const a = i / 12 * 6.283 + c.local * (i % 2 ? 1.4 : -1.1), r = 84 + 10 * Math.sin(c.local * 3 + i);
+        sp.setAttribute('cx', (329 + Math.cos(a) * r).toFixed(1)); sp.setAttribute('cy', (508 + Math.sin(a) * r * 0.9).toFixed(1));
+        sp.setAttribute('opacity', (0.4 + 0.6 * Math.abs(Math.sin(c.local * 4 + i * 1.7))).toFixed(2)); });
+      // Once the sources are in, the camera pushes into the orb and flashes through to the Psyche Card.
+      const zoom = easeIO(prog(t, at(0.86) + 0.55, c.s.end + 0.05));
+      $('museLayer').style.transform = 'scale(' + (1 + zoom * 7).toFixed(3) + ')';
+      $('museFlash').style.opacity = prog(zoom, 0.55, 0.95).toFixed(3);
+      $('s4').querySelector('.big').style.opacity = (1 - prog(zoom, 0, 0.4)).toFixed(3);
+      const start = said('connected', M[0] + 1.6), cx = 427, cy = 1245;
       [['f1', start, 0], ['f3', start + 0.3, 2.094], ['f4', start + 0.6, 4.189]].forEach(([id, when, phase]) => {
         const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
         const ang = phase + c.local * 0.9, r = 360 * (1 - suck);
-        el.style.left = (cx + Math.cos(ang) * r * 1.05) + 'px'; el.style.top = (cy - 60 + Math.sin(ang) * r * 0.62 + bob) + 'px';
+        el.style.left = (cx + Math.cos(ang) * r * 1.05) + 'px'; el.style.top = (cy - 60 + Math.sin(ang) * r * 0.62) + 'px';
         // Always in front, so a name is never half-hidden; the far side of the orbit smaller and fainter.
         const near = (Math.sin(ang) + 1) / 2;
         el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.7, 1)) * (0.65 + 0.35 * near);
