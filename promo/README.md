@@ -23,24 +23,24 @@ frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright)
 
 ## The Muse reel
 
-`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`, about 57 s).
-Its `"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`), and
-`audio.py` gives it its own sound in two places:
+`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`). Its
+`"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`); the
+music is the main reel's (a crescendo moved onto the sources being pulled in, and a ringing last chord, were tried
+and taken out: both sounded worse).
 - the data: "PsycheAI analyses your data that is already connected to your Muse app, with no uploading required."
-  PsycheAI's own character (drawn in `stage.html`, original, in the brand's lilac: Meta's own characters are left out,
-  since one in our ad would read as Meta's endorsement) holds an orb with the mark inside; Instagram, Facebook and
-  WhatsApp circle it and are pulled in. The crescendo was a riser into the cut at the scene's start, well before the
-  pull: the cut now has the plain swoosh, and the riser ends exactly as the sources vanish (`SUCK_END`, matching
-  `suck` in `stage.html`), on a soft boom and a bell chord, with the orb flaring. "Muse" sits mid-phrase: ending a
-  phrase, its quiet "z" was trimmed off and it sounded like "mew".
+  PsycheAI's own character holds an orb with the mark inside while Instagram, Facebook and WhatsApp circle it and are
+  pulled in. The character is original and drawn in `stage.html`: a pink, shaggy, egg-shaped plush with short legs,
+  its face on the fur, determined brows and the PsycheAI orbit as an antenna; its fur is strands drawn once from a
+  seeded random, so every frame matches. Meta's own characters, and close copies of them, are left out: one in our
+  ad would copy their design and read as Meta's endorsement. "Muse" sits mid-phrase: ending a phrase, its quiet "z"
+  was trimmed off and it sounded like "mew".
 - the report: "And your Psyche Report…", since it is free there, not unlocked.
-- privacy: "Your data is processed directly in your Muse app, and stays within Muse. Your messages are de-identified
-  before analysis." ("processed": "is read" is always said like "red" and sounded past tense.)
-- Sync: two rings meeting between the cards instead of the tick.
+- privacy: the voice says "Your data is processed directly in your Muse app, and stays within Muse. Your messages are
+  de-identified. And PsycheAI keeps no copy of your data or report." The screen shows three lines, without "and stays
+  within Muse". ("processed": "is read" is always said like "red" and sounded past tense.)
+- Sync: two linked rings between the cards, larger, with no ring round them, instead of the tick.
 - the ending (`end`, `spoken`): "Your Psyche is free in Muse! Paste the link below into your Muse app to begin.", with
-  "Paste this into your Muse app:" over the psycheai.io/muse button. The music is lighter there (kick on 1 and 3, no
-  claps or stabs, the bells leading, a swell rather than a second big riser into it) and ends on one C chord on the
-  beat after the voice (`END_HIT`), ringing out for about 2 s instead of a full beat fading mid-bar.
+  "Paste this into your Muse app:" over the psycheai.io/muse button.
 
 The other versions are unchanged. `npm run promo -- muse` builds it.
 
