@@ -1478,7 +1478,7 @@ check('the platform\'s genre: a camera is not S, warmth is not F, a topic is not
 check('a blank is never evidence',
   /\*\*A blank\.\*\* No close-friends list/.test(ledgerRules) &&
   /A missing behaviour is evidence only where you would have expected to see it\. On E\/I, no posts about parties, strangers or big rooms is not avoiding them/.test(ledgerRules) &&
-  /\*\*Loyalty, on E\/I\.\*\* That their friends are few, old, trusted or familiar/.test(ledgerRules) && /\*\*E\/I without a strong row\.\*\*/.test(ledgerRules));
+  /\*\*Loyalty, on E\/I\.\*\* That their friends are few, old, trusted or familiar/.test(ledgerRules) && /\*\*E\/I without their own words is slight at most\.\*\*/.test(ledgerRules));
 check('no direct messages means no conversation rows and E/I near the middle',
   /`coverage\.directMessagesIncluded` is false, or they barely use direct messages/.test(ledgerRules) &&
   /the code counts no conversation rows/.test(ledgerRules));
@@ -9807,15 +9807,22 @@ check('the schema requires evidence on where they align and differ',
       museImport.bundleFrom(answer).ok === true;
   })());
   check('the Muse schema gives the signature patterns the site\'s limits (a name under 40 characters like "The quiet organiser", a plain line under 160, evidence as dated moments), by path, leaving every other name and line as it was',
-    ((P) => /^A short name in plain words, under 40 characters, like "The quiet organiser"/.test(P.name.description) && /One plain sentence, under 160 characters: what they do, then what it gives them and what it costs/.test(P.line.description) &&
+    ((P) => /^A name for them in this pattern, under 40 characters: "The" and a noun/.test(P.name.description) && /One plain sentence, under 160 characters: what they do, then what it gives them and what it costs/.test(P.line.description) &&
       /Not the frame "which…, but can also…"/.test(P.line.description) && /each one dated thing they did or wrote/.test(P.evidence.description))(museImport.MUSE_SCHEMA.properties.patterns.items.properties) &&
     !/under 40 characters, like "The quiet organiser"/.test(JSON.stringify(museImport.MUSE_SCHEMA.properties.interests)) && /Under 160 characters/.test(museImport.MUSE_SCHEMA.properties.motivators.properties.scores.items.properties.line.description || 'Under 160 characters'));
+  check('E/I without their own words is slight at most (Instagram shows nights out, rarely nights in), and a few posted nights out are a weak pursuit, not the setting row; a career weakness repeating what holds them back is sent back; pattern names are "The" and a noun; the attachment heading can carry a lean and its caveat never contradicts it',
+    /Without an `own-words` piece, E\/I is `slight` at most/.test(museImport.READ_SPEC) && /\*\*E\/I without their own words is slight at most\.\*\*/.test(readFileSync(join(root, 'lib', 'prompts.js'), 'utf8')) &&
+    /a few posted nights out are `pursuits`, since Instagram shows nights out and rarely nights in/.test(mbtiScore.RUBRIC['E/I'].setting.text) && /repeatedly picking strangers and big events/.test(mbtiScore.RUBRIC['E/I'].setting.text) &&
+    museImport.holdingProblems({ careerAssessment: { holdingBack: { headline: 'Dull follow-through', detail: 'Routine admin slips.' } }, career: { weaknesses: [{ title: 'Follow-through slips on dull admin', detail: 'x' }] } }).length === 1 &&
+    museImport.holdingProblems({ careerAssessment: { holdingBack: { headline: 'Dull follow-through', detail: 'Routine admin slips.' } }, career: { weaknesses: [{ title: 'Blunt in public', detail: 'Your verdicts land hard.' }] } }).length === 0 &&
+    /^A name for them in this pattern, under 40 characters: "The" and a noun, like "The contrarian analyst"/.test(museImport.MUSE_SCHEMA.properties.patterns.items.properties.name.description) &&
+    /"Leans secure, with avoidant defences under stress"/.test(museImport.MUSE_SCHEMA.properties.attachment.properties.style.description) && /does not contradict the heading/.test(museImport.MUSE_SCHEMA.properties.attachment.properties.caveat.description));
   check('the read guide matches a character on temperament, never shared tastes, and names the count of conversations read as the sample\'s size',
     /never on looks, nor on shared tastes \(food, travel, sport\)\./.test(museImport.READ_SPEC) && /nor the count of conversations read: the sample's size\)/.test(museImport.READ_SPEC));
   check('the Muse schema\'s shortened descriptions each keep their opening sentence (a split at "e.g." once dropped it), and a literal "Kind of work:" is sent back to fix', (() => {
     const lost = [];
     // Fields Muse is given its own words for (harsh, advice, and the patterns' name, line and evidence) are the exception.
-    const own = ['harsh', 'advice', 'patterns.name', 'patterns.line', 'patterns.evidence'];
+    const own = ['harsh', 'advice', 'patterns.name', 'patterns.line', 'patterns.evidence', 'attachment.style', 'attachment.caveat'];
     const walk = (a, b, k, path) => {
       if (!a || typeof a !== 'object') return;
       if (typeof a.description === 'string' && !own.includes(k) && !own.includes(path) && !a.description.replace(/\s+/g, ' ').startsWith(b.description.slice(0, 30))) lost.push(path || k);
@@ -9965,7 +9972,7 @@ check('the schema requires evidence on where they align and differ',
     !/Argue it with evidence|The future, tested first|Mercy should outrank keeping score|Investing and private markets|pedal data|driverless|crash report/i.test(out.guide.json.spec) &&
     /Fixes it before anyone asks/.test(out.guide.json.spec) && /Restoring old film cameras/.test(out.guide.json.spec));
   check('import: the read guide keeps E/I to real signals (who starts things, groups, recharge) and never the sample size, a private account or a close circle; no year outweighs the rest',
-    /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close, their friends old or trusted, their threads long \(loyalty, not energy\)/.test(out.guide.json.spec) && /Nor what isn't there: no posts of parties or strangers is not avoiding them\. An outing with friends leans E, never I; a letter's `evidence` is only pieces pointing to it/.test(out.guide.json.spec) && /With no `own-words` or `setting` piece, the letter is `slight`/.test(out.guide.json.spec) &&
+    /how many conversations were read \(the reading plan chooses that number\), whether the account is private, or that their circle is close, their friends old or trusted, their threads long \(loyalty, not energy\)/.test(out.guide.json.spec) && /Nor what isn't there: no posts of parties or strangers is not avoiding them\. An outing with friends leans E, never I; a letter's `evidence` is only pieces pointing to it/.test(out.guide.json.spec) && /Without an `own-words` piece, E\/I is `slight` at most/.test(out.guide.json.spec) &&
     /no single year more than about a quarter of the sample/.test(out.guide.json.spec) && /counts when it is measured against everyone they message/.test(out.guide.json.spec) &&
     /\*\*Across the years\.\*\*/.test(out.guide.json.spec) && /\*\*Names only they fit\.\*\*/.test(out.guide.json.spec) && /A read takes about 7 to 10 minutes/.test(out.guide.json.spec) && /the 4 busiest are paged back as far as their target reaches/.test(out.guide.json.spec));
   check('import: the read guide covers WhatsApp chats made ready on the device (the PDF\'s "Read from" is the read\'s own count of them), and ?depth=deep adds the Deep Psyche plan',
