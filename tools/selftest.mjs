@@ -9730,9 +9730,9 @@ check('the schema requires evidence on where they align and differ',
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&
       /other skills you install in the same workspace could read them/.test(musePrivacy) && /never installs an older release over a newer one/.test(musePrivacy) && /is public at <a href="https:\/\/github\.com\/jaredsia-svg\/psycheai-app">/.test(musePrivacy) &&
       /PsycheAI installs only from app\.psycheai\.io \(psycheai\.io\/muse is its short link\), and every update is signed/.test(muse));
-  check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
+  check('it prices Plus as agreed on the Pair page and says how cancelling works; the privacy page leaves out Pair and Plus, not launched, and says what a waitlist keeps',
     /US\$4\.99 a month or US\$29 a year/.test(musePair) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(musePair) &&
-      /we never see your card/.test(musePrivacy) && /Cancelling keeps Plus until the end of the period you paid for/.test(museTerms) && /Sync, 2 picks a week/.test(musePair));
+      !/Psyche Pair|\bPlus\b|Stripe/.test(musePrivacy) && /<b>A waitlist, if you join one\.<\/b> Only the city you give and when you joined/.test(musePrivacy) && /Cancelling keeps Plus until the end of the period you paid for/.test(museTerms) && /Sync, 2 picks a week/.test(musePair));
   check('the plugin\'s privacy, terms and docs stand on their own pages, linked from /muse, out of search and the sitemap',
     [musePrivacy, museTerms, museDocs].every(h => /<meta name="robots" content="noindex">/.test(h) && /class="footer-note"/.test(h)) &&
       ['/muse-privacy', '/muse-terms', '/muse-docs'].every(p => muse.includes('href="' + p + '"') && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes(p)) &&
