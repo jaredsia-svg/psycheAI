@@ -9806,20 +9806,22 @@ check('the schema requires evidence on where they align and differ',
       museImport.samePoint({ title: 'Close one debate sooner', detail: 'x' }, { title: 'Close debates sooner', detail: 'y' }) &&
       museImport.bundleFrom(answer).ok === true;
   })());
-  check('a Muse read is sent back when a Big Five trait sits on the other side of 50 from its letter (a T with agreeableness 64); 50 itself and a trait on its side pass, and the spec says each trait sits on its letter\'s side',
-    ((t) => t.length === 1 && /^bigFive\.agreeableness: 64 is on the other side of 50 from the letter T: agreeableness follows T\/F, so with T it is 50 or below/.test(t[0]))(museImport.traitProblems({ mbti: { letters: [{ axis: 'T/F', choice: 'T' }, { axis: 'E/I', choice: 'E' }, { axis: 'J/P', choice: 'P' }, { axis: 'N/S', choice: 'S' }] }, bigFive: { agreeableness: { score: 64 }, extraversion: { score: 58 }, conscientiousness: { score: 50 }, openness: { score: 40 } } })) &&
-    museImport.traitProblems({ mbti: { letters: [{ axis: 'E/I', choice: 'I' }] }, bigFive: { extraversion: { score: 61 } } }).length === 1 &&
-    /sit on their letter's side of 50: extraversion E\/I, openness N\/S, agreeableness F\/T, conscientiousness J\/P, with E, N, F and J at 50 or above\./.test(museImport.READ_SPEC) &&
-    /never on looks, nor on shared tastes \(food, travel, sport\)\./.test(museImport.READ_SPEC) &&
-    /nor the count of conversations read: the sample's size\)/.test(museImport.READ_SPEC));
+  check('the Muse schema gives the signature patterns the site\'s limits (a name under 40 characters like "The quiet organiser", a plain line under 160, evidence as dated moments), by path, leaving every other name and line as it was',
+    ((P) => /^A short name in plain words, under 40 characters, like "The quiet organiser"/.test(P.name.description) && /One plain sentence, under 160 characters: what they do, then what it gives them and what it costs/.test(P.line.description) &&
+      /Not the frame "which…, but can also…"/.test(P.line.description) && /each one dated thing they did or wrote/.test(P.evidence.description))(museImport.MUSE_SCHEMA.properties.patterns.items.properties) &&
+    !/under 40 characters, like "The quiet organiser"/.test(JSON.stringify(museImport.MUSE_SCHEMA.properties.interests)) && /Under 160 characters/.test(museImport.MUSE_SCHEMA.properties.motivators.properties.scores.items.properties.line.description || 'Under 160 characters'));
+  check('the read guide matches a character on temperament, never shared tastes, and names the count of conversations read as the sample\'s size',
+    /never on looks, nor on shared tastes \(food, travel, sport\)\./.test(museImport.READ_SPEC) && /nor the count of conversations read: the sample's size\)/.test(museImport.READ_SPEC));
   check('the Muse schema\'s shortened descriptions each keep their opening sentence (a split at "e.g." once dropped it), and a literal "Kind of work:" is sent back to fix', (() => {
     const lost = [];
-    const walk = (a, b, k) => {
+    // Fields Muse is given its own words for (harsh, advice, and the patterns' name, line and evidence) are the exception.
+    const own = ['harsh', 'advice', 'patterns.name', 'patterns.line', 'patterns.evidence'];
+    const walk = (a, b, k, path) => {
       if (!a || typeof a !== 'object') return;
-      if (typeof a.description === 'string' && !['harsh', 'advice'].includes(k) && !a.description.replace(/\s+/g, ' ').startsWith(b.description.slice(0, 30))) lost.push(k);
-      for (const kk of Object.keys(a)) if (a[kk] && typeof a[kk] === 'object') walk(a[kk], b[kk], kk);
+      if (typeof a.description === 'string' && !own.includes(k) && !own.includes(path) && !a.description.replace(/\s+/g, ' ').startsWith(b.description.slice(0, 30))) lost.push(path || k);
+      for (const kk of Object.keys(a)) if (a[kk] && typeof a[kk] === 'object') walk(a[kk], b[kk], kk, ['properties', 'items'].includes(kk) ? path : (path ? path + '.' + kk : kk));
     };
-    walk(prompts.MERGED_SCHEMA, museImport.MUSE_SCHEMA, '');
+    walk(prompts.MERGED_SCHEMA, museImport.MUSE_SCHEMA, '', '');
     return !lost.length && /^Three kinds of work that would suit them best/.test(museImport.MUSE_SCHEMA.properties.careerAssessment.properties.fit.properties.suits.description);
   })() && ((copy) => {
     copy.careerAssessment.fit.suits[0] = 'Kind of work: building a product in a small team, because you test ideas.';
