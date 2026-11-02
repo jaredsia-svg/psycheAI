@@ -8,7 +8,8 @@ const museImport = require('../lib/museimport.js');
 const mock = require('../lib/mock.js');
 
 (async () => {
-  const answer = (await mock.analyseMerged({})).data;
+  // A Muse read's evidence is dated moments (museimport evidenceProblems): the mock's placeholders are given a date.
+  const answer = (a => { const d = JSON.parse(JSON.stringify(a)); const fix = l => Array.isArray(l) ? l.map(x => typeof x === 'string' ? x + ' (your May 2025 story)' : x) : l; (d.patterns || []).forEach(p => { p.evidence = fix(p.evidence); }); ((d.mbti || {}).letters || []).forEach(l => { l.evidence = fix(l.evidence); }); Object.values(d.wellness || {}).forEach(v => { if (v && Array.isArray(v.evidence)) v.evidence = fix(v.evidence); }); if (d.attachment) d.attachment.derivedFrom = fix(d.attachment.derivedFrom); return d; })((await mock.analyseMerged({})).data);
   const checked = museImport.bundleFrom(answer);
   if (!checked.ok) throw new Error('the mock read fails the checks: ' + checked.problems.join('; '));
   const links = [];
