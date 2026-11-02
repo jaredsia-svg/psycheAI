@@ -1,5 +1,5 @@
 {
   "reel": {"button": "psycheai.io ↗", "spoken": "Try it at {B} dot I O.", "theme": "light"},
   "site": {"button": "Try it below ↓", "spoken": "Try it below.", "theme": "light"},
-  "muse": {"button": "psycheai.io/muse ↗", "spoken": "Paste {B} dot I O slash muse into Muse.", "theme": "light", "script": "muse", "end": "Your Psyche is free in Muse!"}
+  "muse": {"button": "psycheai.io/muse ↗", "spoken": "Try it at {B} dot I O.", "theme": "light", "script": "muse", "end": "Your Psyche is free in Muse!"}
 }

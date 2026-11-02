@@ -229,10 +229,21 @@ const DROP = S[4].start, BREAK = S[8].start, FINAL = S[9].start;
 if (CONFIG.script === 'muse') {
   document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> analyses your <span class="grad">Instagram,</span> right here in <span class="grad">Muse,</span> with <span class="grad">no uploading</span> required.';
   $('f1').querySelector('.ext').textContent = 'MUSE'; $('f1').querySelector('.sub').textContent = 'posts, stories, chats';
-  ['f2', 'f3', 'f4'].forEach(id => { $(id).style.display = 'none'; });
-  document.querySelector('#s6 .big').innerHTML = 'And your private<br><span class="grad">Psyche Report</span>';
-  $('p1').innerHTML = 'Read directly in Muse, on <span class="grad">your own account.</span>';
-  $('p2').innerHTML = 'Names <span class="soft">are</span> removed.';
+  $('f3').querySelector('.ext').textContent = 'MUSE'; $('f3').querySelector('.sub').textContent = 'if you add it';
+  $('f4').querySelector('.sub').textContent = 'if you add it';
+  $('f2').style.display = 'none';
+  // The Muse mascot beside the mark, when config.json names an image for it ("mascot").
+  if (CONFIG.mascot) { const m = document.createElement('img'); m.id = 'mascot'; m.src = CONFIG.mascot;
+    m.style.cssText = 'position:absolute;left:650px;top:620px;width:240px;opacity:0'; document.querySelector('#s4').appendChild(m); }
+  // Sync: two rings meeting, not a tick (the scene has ticks enough).
+  $('ringTick').style.display = 'none';
+  $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="10"><circle cx="82" cy="100" r="30" stroke-dasharray="189" stroke-dashoffset="189"/><circle cx="118" cy="100" r="30" stroke-dasharray="189" stroke-dashoffset="189"/></g>');
+  // The ending says the address on screen; the voice only says where.
+  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste into your Muse app:</div>');
+  $('cta').style.top = '1450px';
+  document.querySelector('#s6 .big').innerHTML = 'And your<br><span class="grad">Psyche Report</span>';
+  $('p1').innerHTML = 'Your data is processed directly in <span class="grad">your Muse app.</span>';
+  $('p2').innerHTML = 'Your data is <span class="grad">de-identified.</span>';
   $('p3').innerHTML = 'PsycheAI keeps <span class="grad">no copy.</span>';
   $('sw1').children[1].textContent = '"Friend A"'; $('sw2').children[1].textContent = '"[email]"'; $('sw3').children[1].textContent = '[handle]';
   document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche</span> is free in Muse!';
@@ -563,13 +574,20 @@ function render(t) {
     // Each card as its name is said, two by two.
     const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
     const last = M[M.length - 1];
-    [['f1', said('instagram', M[0] + 1.45), CONFIG.script === 'muse' ? 390 : 190, CONFIG.script === 'muse' ? 1250 : 1120, -6], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4],
-     ['f2', said('google', last), 190, 1420, -3], ['f3', said('facebook', last + 0.8), CONFIG.script === 'muse' ? 390 : 590, 1420, 6]].forEach(([id, when, x, y, rot]) => {
+    // Muse: Instagram in front, WhatsApp and Facebook small and faded behind it (added only if they choose).
+    const ig = said('instagram', M[0] + 1.45);
+    (CONFIG.script === 'muse'
+      ? [['f4', ig + 0.35, 120, 1470, 8, 0.6, 0.45], ['f3', ig + 0.6, 660, 1470, -8, 0.6, 0.45], ['f1', ig, 390, 1200, -6, 1, 1]]
+      : [['f1', ig, 190, 1120, -6, 1, 1], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4, 1, 1],
+         ['f2', said('google', last), 190, 1420, -3, 1, 1], ['f3', said('facebook', last + 0.8), 590, 1420, 6, 1, 1]]).forEach(([id, when, x, y, rot, size, fade]) => {
       const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
       el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (y + (800 - y) * suck) + 'px';
-      el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1));
-      el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) + ') rotate(' + rot * (1 - suck) + 'deg)';
+      el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1)) * fade;
+      el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) * size + ') rotate(' + rot * (1 - suck) + 'deg)';
+      el.style.zIndex = fade < 1 ? '1' : '2';
     });
+    if ($('mascot')) { const k = back(prog(c.local, 0.2, 0.7)); $('mascot').style.opacity = clamp(k * 2) * (1 - prog(suck, 0.5, 1));
+      $('mascot').style.transform = 'scale(' + (0.6 + 0.4 * k) * (1 + pulse * 0.04) + ')'; }
     $('glow').style.opacity = 0.45 + pulse * 0.55; $('glow').style.transform = 'scale(' + (1 + pulse * 0.2) + ')';
     $('mark').style.transform = 'rotate(' + c.local * 60 + 'deg) scale(' + (1 + pulse * 0.1) + ')';
   }
@@ -637,6 +655,7 @@ function render(t) {
     const fill = easeIO(prog(c.local, 0.7, 1.7));
     $('ringArc').setAttribute('stroke-dasharray', (2 * Math.PI * 80 * fill).toFixed(1) + ' 999');
     $('ringTick').setAttribute('stroke-dashoffset', (120 * (1 - ease(prog(c.local, 1.6, 2.1)))).toFixed(1));
+    if ($('venn')) [...$('venn').children].forEach((ring, i) => ring.setAttribute('stroke-dashoffset', (189 * (1 - ease(prog(c.local, 1.6 + i * 0.2, 2.2 + i * 0.2)))).toFixed(1)));
     $('ring').style.color = LIGHT ? '#4a2366' : '#fff';
     $('ringBg').setAttribute('stroke', LIGHT ? '#eadcf5' : 'rgba(255,255,255,.25)');
     $('syncName').style.opacity = prog(c.local, 0.5, 0.8); $('syncName').style.transform = 'scale(' + (0.7 + 0.3 * back(prog(c.local, 0.5, 1.0))) + ')';
@@ -690,6 +709,7 @@ function render(t) {
     $('endCard').style.transform = 'translateY(' + (1 - ease(prog(c.local, cardIn, cardIn + 0.45))) * 260 + 'px) rotate(' + Math.sin(c.local * 2.2) * 5 + 'deg) scale(' + (1 + pulse * 0.03) + ')';
     $('endCard').style.opacity = prog(c.local, cardIn, cardIn + 0.25);
     const p = prog(t, c.s.marks[1] - 0.22 - READ_AHEAD, c.s.marks[1] - READ_AHEAD);
+    if ($('pasteNote')) $('pasteNote').style.opacity = p;
     $('cta').style.opacity = p; $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * back(p) + pulse * 0.06 * p) + ')';
   }
 }

@@ -23,14 +23,21 @@ frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright)
 
 ## The Muse reel
 
-`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`, about 56 s).
+`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`, about 55 s).
 Its `"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`):
-the data ("PsycheAI analyses your Instagram, right here in Muse, with no uploading required", one Instagram card
-marked MUSE, no Google), the report ("And your private Psyche Report…", since it is free there, not unlocked) and
-privacy ("It's read directly in Muse, on your own account. Names are removed, and PsycheAI keeps no copy of your
-data or report": "results" was asked for, but a locked card summary is kept for the card picture and Syncs). Its
-`end` replaces the closing line: "Your Psyche is free in Muse! Paste PsycheAI dot I O slash muse into Muse",
-button psycheai.io/muse. The other versions are unchanged. `npm run promo -- muse` builds it.
+- the data: "PsycheAI analyses your Instagram, right here in Muse, with no uploading required", the Instagram card
+  (marked MUSE) in front and WhatsApp and Facebook small and faded behind it, no Google. "Muse" sits mid-phrase:
+  ending a phrase, its quiet "z" was trimmed off and it sounded like "mew". A `mascot` image in its config entry
+  shows beside the mark; there is none yet (the avatar in Muse screenshots is a user's own character).
+- the report: "And your Psyche Report…", since it is free there, not unlocked.
+- privacy: "Your data is processed directly in your Muse app. Your data is de-identified, and PsycheAI keeps no copy
+  of your data or report". "processed", since "is read" is always said like "red" and sounded past tense; "report",
+  since a locked card summary is kept for the card picture and Syncs.
+- Sync: two rings meeting between the cards instead of the tick.
+- the ending (`end`, `spoken`): "Your Psyche is free in Muse! Try it at PsycheAI dot I O.", with "Paste into your
+  Muse app:" over the psycheai.io/muse button on screen.
+
+The other versions are unchanged. `npm run promo -- muse` builds it.
 
 ## Changing the ending, the link or the colours
 
