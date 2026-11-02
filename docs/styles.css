@@ -5657,4 +5657,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .install-secondary { background: var(--bg-alt); color: var(--ink); border-color: var(--line); text-decoration: none; text-align: center; }
 .install-steps { margin: 0; padding-left: 1.2rem; }
 .install-note { margin: 0; color: var(--ink-soft); font-size: .9rem; }
+.privacy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.privacy-list b { display: block; }
+#short .privacy-points { list-style: none; padding: 0; display: grid; gap: .7rem; }
+#short .privacy-points b { display: block; }
 @media (max-width: 560px) { .install-actions > * { flex: 1 1 100%; } }

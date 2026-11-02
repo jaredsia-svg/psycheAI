@@ -31,7 +31,7 @@
   <header class="hero profile-hero guide-hero">
     <h1>PsycheAI in Muse: how it works</h1>
     <p class="lede">How the PsycheAI connector works: connecting, signing in, and every tool it offers.</p>
-    <p class="legal-meta">PsycheAI · Singapore · Last updated 29 October 2026 · <a href="/muse">PsycheAI in Muse</a></p>
+    <p class="legal-meta">PsycheAI · Singapore · Last updated 2 November 2026 · <a href="/muse">PsycheAI in Muse</a></p>
   </header>
   <section class="card section-card" id="connect">
     <h2>Connecting</h2>
@@ -39,6 +39,7 @@
       <li><b>Address:</b> <code>https://app.psycheai.io/mcp</code>, MCP over HTTP (Streamable HTTP, JSON replies, POST only).</li>
       <li><b>Sign-in:</b> OAuth 2.1 with PKCE (S256). Hosts register themselves (RFC 7591, <code>/oauth/register</code>); client ID metadata documents are accepted (an https <code>client_id</code>); a host that asks for a client ID uses <code>psycheai</code>, a public client that returns only to Meta's own hosts. Discovery: <code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code>.</li>
       <li><b>Accounts:</b> made on connect, with no email and no code: authorize returns the code at once, and a signed cookie brings the same browser back to the same account. Email sign-in (a 6-digit code, Google or Apple) is at <code>/oauth/authorize?…&amp;signin=email</code>, and an email can be added later from Muse for nudges. No password, no API key.</li>
+      <li><b>As a Muse connector</b> (the skill at psycheai.io/muse is the way to install it; the connector alone has no reading script, so Muse reads Instagram by hand, more slowly, and can't de-identify added chats): paste <code>Add a custom connector: https://app.psycheai.io/mcp. If it asks for a Client ID, use psycheai. Once it's connected, open PsycheAI.</code> If Muse shows a <b>Client ID</b> box, type <code>psycheai</code> and tap <b>Add</b>.</li>
       <li><b>Health:</b> <code>/health</code>.</li>
     </ul>
   </section>
