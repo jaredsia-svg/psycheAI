@@ -21,6 +21,17 @@ The first run sets up Python in `promo/.cache` and downloads the voice and a spe
 (about 700 MB, kept for later runs). A full build takes about ten minutes, most of it rendering
 frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright).
 
+## The Muse reel
+
+`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`, about 56 s).
+Its `"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`):
+the data ("PsycheAI analyses your Instagram, right here in Muse, with no uploading required", one Instagram card
+marked MUSE, no Google), the report ("And your private Psyche Report…", since it is free there, not unlocked) and
+privacy ("It's read directly in Muse, on your own account. Names are removed, and PsycheAI keeps no copy of your
+data or report": "results" was asked for, but a locked card summary is kept for the card picture and Syncs). Its
+`end` replaces the closing line: "Your Psyche is free in Muse! Paste PsycheAI dot I O slash muse into Muse",
+button psycheai.io/muse. The other versions are unchanged. `npm run promo -- muse` builds it.
+
 ## Changing the ending, the link or the colours
 
 Each version in `promo/config.json` has three settings:

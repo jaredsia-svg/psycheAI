@@ -227,17 +227,15 @@ const DROP = S[4].start, BREAK = S[8].start, FINAL = S[9].start;
 // The Muse version (config.json "script": "muse", vo.py SCRIPTS): its own words for the data, the report,
 // privacy and the ending, and the sources Muse reads (no Google).
 if (CONFIG.script === 'muse') {
-  document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> reads your <span class="grad">Instagram,</span> right here in <span class="grad">Muse,</span> and your <span class="grad">WhatsApp</span> and <span class="grad">Facebook,</span> if you add them.';
+  document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> analyses your <span class="grad">Instagram,</span> right here in <span class="grad">Muse,</span> with <span class="grad">no uploading</span> required.';
   $('f1').querySelector('.ext').textContent = 'MUSE'; $('f1').querySelector('.sub').textContent = 'posts, stories, chats';
-  $('f3').querySelector('.ext').textContent = 'MUSE'; $('f3').querySelector('.sub').textContent = 'posts, Messenger';
-  $('f4').querySelector('.sub').textContent = 'chats you add';
-  $('f2').style.display = 'none';
+  ['f2', 'f3', 'f4'].forEach(id => { $(id).style.display = 'none'; });
   document.querySelector('#s6 .big').innerHTML = 'And your private<br><span class="grad">Psyche Report</span>';
-  $('p1').innerHTML = 'Read in Muse, on <span class="grad">your own account.</span>';
+  $('p1').innerHTML = 'Read directly in Muse, on <span class="grad">your own account.</span>';
   $('p2').innerHTML = 'Names <span class="soft">are</span> removed.';
   $('p3').innerHTML = 'PsycheAI keeps <span class="grad">no copy.</span>';
   $('sw1').children[1].textContent = '"Friend A"'; $('sw2').children[1].textContent = '"[email]"'; $('sw3').children[1].textContent = '[handle]';
-  document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche Card</span> is free in Muse!';
+  document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche</span> is free in Muse!';
 }
 
 // Word-by-word pop: wrap every word of [data-words] in its own span, keeping the colour spans.
@@ -565,7 +563,7 @@ function render(t) {
     // Each card as its name is said, two by two.
     const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
     const last = M[M.length - 1];
-    [['f1', said('instagram', M[0] + 1.45), 190, 1120, -6], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4],
+    [['f1', said('instagram', M[0] + 1.45), CONFIG.script === 'muse' ? 390 : 190, CONFIG.script === 'muse' ? 1250 : 1120, -6], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4],
      ['f2', said('google', last), 190, 1420, -3], ['f3', said('facebook', last + 0.8), CONFIG.script === 'muse' ? 390 : 590, 1420, 6]].forEach(([id, when, x, y, rot]) => {
       const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
       el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (y + (800 - y) * suck) + 'px';

@@ -63,9 +63,9 @@ END = 'Your first Psyche Card is free!'
 # A version with "script" in config.json says some lines its own way (README "The Muse reel"), by line number:
 # in Muse, the Instagram is read where they are, the report comes with the card, and privacy is Muse's own.
 SCRIPTS = {'muse': {
-    5: (['{B} reads your Instagram,', 'right here in Muse,', ('and your Whatsapp and Facebook, if you add them.', 0.92)], 1.0, True, [0.05, 0.06]),
+    5: (['{B} analyses your Instagram,', 'right here in Muse,', 'with no uploading required.'], 0.95, True, [0.05, 0.06]),
     7: (['And your private Psyche Report,', 'with the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
-    9: (["It's read in Muse, on your own account.", 'Names are removed,', 'and {B} keeps no copy of your report.'], 0.92, None),
+    9: (["It's read directly in Muse, on your own account.", 'Names are removed,', 'and {B} keeps no copy of your data or report.'], 0.92, None),
 }}
 
 # Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen"; "Moo-larn", as the
@@ -125,7 +125,7 @@ def heard(a):
     s = rec.create_stream(); s.accept_waveform(SR, np.concatenate([pad, a, pad])); rec.decode_stream(s); return s.result.text
 
 def words(text):
-    text = text.replace('{WhatsApp}', 'whatsapp').replace('{MBTIofENTP}', 'mbti of entp').replace('{PsycheAIdotIOquick}', 'psyche ai dot i o').replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
+    text = text.replace('{WhatsApp}', 'whatsapp').replace('{MBTIofENTP}', 'mbti of entp').replace('{PsycheAIdotIOquick}', 'psyche ai dot i o').replace('{PsycheAIdotIO}', 'psyche ai dot i o').replace('{B}', 'psyche ai').replace('analysed', 'analyzed').replace('analyses', 'analyzes').lower()
     # The recogniser writes a spoken address as one: "psyche ai dot app" comes back "psycheai.app".
     text = re.sub(r'(?<=[a-z])\.(?=[a-z])', ' dot ', text).replace('psycheai', 'psyche ai')
     # A spelled-out ending, "dot I O", is heard as ".io", and a spelled-out type, "E N T P", as "ENTP".
