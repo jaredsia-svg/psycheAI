@@ -5649,12 +5649,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .install-icon { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; border-radius: 14px; background: var(--accent-soft); color: var(--accent); flex: none; }
 .install-mark { width: 2rem; height: 2rem; }
 .install-kind { margin: .1rem 0 0; color: var(--ink-soft); font-size: .9rem; }
-.install-what { margin: 0; }
-.install-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
-.install-facts > div { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: .8rem .9rem; }
-.install-facts p { margin: 0; font-size: .92rem; }
 .install-label { margin: 0 0 .3rem; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
-.install-facts .install-label { margin-bottom: .3rem; font-size: .72rem; }
 .install-card .paste { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; line-height: 1.55; }
 .install-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .install-actions .btn { display: flex; align-items: center; justify-content: center; text-align: center; }
@@ -5662,4 +5657,4 @@ details.more[open] > summary::after { content: ' ▴'; }
 .install-secondary { background: var(--bg-alt); color: var(--ink); border-color: var(--line); text-decoration: none; text-align: center; }
 .install-steps { margin: 0; padding-left: 1.2rem; }
 .install-note { margin: 0; color: var(--ink-soft); font-size: .9rem; }
-@media (max-width: 560px) { .install-facts { grid-template-columns: 1fr; } .install-actions > * { flex: 1 1 100%; } }
+@media (max-width: 560px) { .install-actions > * { flex: 1 1 100%; } }
