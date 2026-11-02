@@ -2302,7 +2302,10 @@ function routeRequest(route, url, request, response) {
   // link's answer, fetched from app.psycheai.io with who's asking passed on,
   // so Muse gets the skill, a link previewer its preview and a browser its
   // page, all at this address (README "A short install link").
-  if (/^\/muse\/?$/i.test(route) && (request.method === 'GET' || request.method === 'HEAD')) {
+  // A person's browser gets the PsycheAI in Muse page (docs/muse.html) instead,
+  // as it did before the address became the install link.
+  const museInBrowser = request.headers['sec-fetch-dest'] === 'document' && /text\/html/.test(String(request.headers.accept || ''));
+  if (/^\/muse\/?$/i.test(route) && !museInBrowser && (request.method === 'GET' || request.method === 'HEAD')) {
     museInstall(request, response);
     return;
   }

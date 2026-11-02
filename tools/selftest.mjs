@@ -9717,8 +9717,10 @@ check('the schema requires evidence on where they align and differ',
   const musePrivacy = readFileSync(join(root, 'docs', 'muse-privacy.html'), 'utf8');
   const museTerms = readFileSync(join(root, 'docs', 'muse-terms.html'), 'utf8');
   const museDocs = readFileSync(join(root, 'docs', 'muse-docs.html'), 'utf8');
-  check('the Muse page has the sections the plugin redirects to, and the connector address',
-    ['add', 'plus', 'privacy', 'terms', 'safety'].every(id => muse.includes('id="' + id + '"')) && muse.includes('https://app.psycheai.io/mcp') && muse.includes('<pre class="paste" id="install-prompt">Install the skill at app.psycheai.io/install and generate my Psyche</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(muse));
+  const musePair = readFileSync(join(root, 'docs', 'muse-pair.html'), 'utf8');
+  check('the Muse page has the sections the plugin redirects to, and the connector address; Psyche Pair, Plus and safety are on their own page, not this one',
+    ['add', 'privacy', 'terms'].every(id => muse.includes('id="' + id + '"')) && ['pair', 'plus', 'safety'].every(id => musePair.includes('id="' + id + '"')) && !/pair|plus/i.test(muse.replace(/<script[^]*?<\/script>/g, '')) &&
+    muse.includes('https://app.psycheai.io/mcp') && muse.includes('<pre class="paste" id="install-prompt">psycheai.io/muse</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(muse));
   check('it says what the plugin never receives or guesses, that the read is checked and made into a PDF in memory and kept nowhere, and that older reads were sealed under their link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
       /key that exists only in their link/.test(musePrivacy) && /send both back, and keep none of it: no copy of your read is stored, locked or not/.test(musePrivacy) &&
@@ -9727,10 +9729,10 @@ check('the schema requires evidence on where they align and differ',
       /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&
       /other skills you install in the same workspace could read them/.test(musePrivacy) && /never installs an older release over a newer one/.test(musePrivacy) && /is public at <a href="https:\/\/github\.com\/jaredsia-svg\/psycheai-app">/.test(musePrivacy) &&
-      /PsycheAI installs only from app\.psycheai\.io, and every update is signed/.test(muse));
+      /PsycheAI installs only from app\.psycheai\.io \(psycheai\.io\/muse is its short link\), and every update is signed/.test(muse));
   check('it prices Plus as agreed, says Stripe takes the card, and how cancelling works',
-    /US\$4\.99 a month or US\$29 a year/.test(muse) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(muse) &&
-      /we never see your card/.test(musePrivacy) && /Cancelling keeps Plus until the end of the period you paid for/.test(museTerms) && /Sync, 2 picks a week/.test(muse));
+    /US\$4\.99 a month or US\$29 a year/.test(musePair) && /5 picks a week, a drop of up to 8 and 5 custom must-haves/.test(musePair) &&
+      /we never see your card/.test(musePrivacy) && /Cancelling keeps Plus until the end of the period you paid for/.test(museTerms) && /Sync, 2 picks a week/.test(musePair));
   check('the plugin\'s privacy, terms and docs stand on their own pages, linked from /muse, out of search and the sitemap',
     [musePrivacy, museTerms, museDocs].every(h => /<meta name="robots" content="noindex">/.test(h) && /class="footer-note"/.test(h)) &&
       ['/muse-privacy', '/muse-terms', '/muse-docs'].every(p => muse.includes('href="' + p + '"') && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes(p)) &&

@@ -1696,10 +1696,14 @@ try {
       response => { let d = ''; response.on('data', c => { d += c; }); response.on('end', () => resolve([response.statusCode, response.headers['content-type'], d])); }).on('error', reject).end());
     const wa = await ask('/muse', { 'User-Agent': 'WhatsApp/2.24.20.0 A' });
     const br = await ask('/MUSE/', { 'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Dest': 'document' });
+    const page = await ask('/muse', { 'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Dest': 'document', Accept: 'text/html,application/xhtml+xml' });
     check('psycheai.io/muse (any case, with or without a slash) answers itself with the skill\'s install link\'s answer, fetched with the caller\'s user agent and Sec-Fetch-Dest passed on (Muse, a previewer and a browser each get theirs); unreachable, it forwards there instead',
       wa[0] === 200 && /application\/json/.test(wa[1]) && JSON.parse(wa[2]).path === '/install' && JSON.parse(wa[2]).ua === 'WhatsApp/2.24.20.0 A' && JSON.parse(wa[2]).dest === null &&
       br[0] === 200 && JSON.parse(br[2]).dest === 'document' && JSON.parse(br[2]).ua === 'Mozilla/5.0' &&
       /catch \(error\) \{\n    response\.writeHead\(302, \{ Location: MUSE_INSTALL_URL/.test(readFileSync(join(root, 'server.js'), 'utf8')), JSON.stringify([wa, br]).slice(0, 300));
+    check('psycheai.io/muse in a person\'s browser is the PsycheAI in Muse page, with the short link to paste and no Psyche Pair, Plus or dating safety on it',
+      page[0] === 200 && /text\/html/.test(page[1]) && /<h1>PsycheAI in Muse<\/h1>/.test(page[2]) && /<pre class="paste" id="install-prompt">psycheai\.io\/muse<\/pre>/.test(page[2]) &&
+      !/pair|plus|before you meet|red flags/i.test(page[2].replace(/<script[^]*?<\/script>/g, '')), page[0] + ' ' + String(page[2]).slice(0, 120));
   }
 
   // ---- local prices ----
