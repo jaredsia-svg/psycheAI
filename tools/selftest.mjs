@@ -9761,7 +9761,8 @@ check('the schema requires evidence on where they align and differ',
   const { createDecipheriv } = await import('node:crypto');
   store._memory.reset();
 
-  const answer = (await mock.analyseMerged({})).data;
+  // A Muse read's evidence is dated moments (evidenceProblems): the mock's placeholders are given a date.
+  const answer = (a => { const d = JSON.parse(JSON.stringify(a)); const fix = l => Array.isArray(l) ? l.map(x => typeof x === 'string' ? x + ' (your May 2025 story)' : x) : l; (d.patterns || []).forEach(p => { p.evidence = fix(p.evidence); }); ((d.mbti || {}).letters || []).forEach(l => { l.evidence = fix(l.evidence); }); Object.values(d.wellness || {}).forEach(v => { if (v && Array.isArray(v.evidence)) v.evidence = fix(v.evidence); }); if (d.attachment) d.attachment.derivedFrom = fix(d.attachment.derivedFrom); return d; })((await mock.analyseMerged({})).data);
   const good = museImport.bundleFrom(answer);
   check('a merged answer from Muse becomes a bundle', good.ok && good.bundle.model === 'Muse' && good.bundle.data.freeCard && good.bundle.data.freeCard.card);
   check('the bundle splits as the merged unlock does', JSON.stringify(Object.keys(good.bundle.data).filter(k => k !== 'freeCard').sort()) ===
@@ -9920,7 +9921,7 @@ check('the schema requires evidence on where they align and differ',
       for (let i = 0; i < 100; i++) {
         try { await fetch(base + '/api/status'); break; } catch (error) { await new Promise(r => setTimeout(r, 100)); }
       }
-      const answer = (await require(${JSON.stringify(join(root, 'lib', 'mock.js'))}).analyseMerged({})).data;
+      const answer = (a => { const d = JSON.parse(JSON.stringify(a)); const fix = l => Array.isArray(l) ? l.map(x => typeof x === 'string' ? x + ' (your May 2025 story)' : x) : l; (d.patterns || []).forEach(p => { p.evidence = fix(p.evidence); }); ((d.mbti || {}).letters || []).forEach(l => { l.evidence = fix(l.evidence); }); Object.values(d.wellness || {}).forEach(v => { if (v && Array.isArray(v.evidence)) v.evidence = fix(v.evidence); }); if (d.attachment) d.attachment.derivedFrom = fix(d.attachment.derivedFrom); return d; })((await require(${JSON.stringify(join(root, 'lib', 'mock.js'))}).analyseMerged({})).data);
       const send = (auth, body) => fetch(base + '/api/import', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth ? { Authorization: auth } : {}), body: JSON.stringify(body) });
       const out = {};
       out.noAuth = (await send(null, { answer })).status;
@@ -10015,13 +10016,22 @@ check('the schema requires evidence on where they align and differ',
     out.syncPdfNoAuth === 401 && out.syncPdfEmpty === 422 && (await import('../lib/musepdf.js')).default.syncFileName('Mei', 'Ana', new Date(Date.UTC(2026, 9, 29))) === 'Psyche Sync - Mei & Ana - 29102026.pdf', JSON.stringify([out.syncPdf, out.syncPdfNoAuth, out.syncPdfEmpty]));
   check('import: nothing a Muse read writes for its report file is lost: each Big Five trait\'s evidence, an interest\'s evidence, attachment\'s implications and the work situation and style come from the checked answer where the site\'s schema trims them, and rhythm and activity is the sixth wellbeing area',
     await (async () => { const mp = (await import('../lib/musepdf.js')).default; const mi = (await import('../lib/museimport.js')).default;
-      const a = (await mock.analyseMerged({})).data;
-      a.wellness.rhythmAndActivity = { band: 'mixed', confidence: 'low', reading: 'RHYTHM-READING across your evenings.', evidence: ['RHYTHM-EVIDENCE at 23:00'] };
+      const a = (a => { const d = JSON.parse(JSON.stringify(a)); const fix = l => Array.isArray(l) ? l.map(x => typeof x === 'string' ? x + ' (your May 2025 story)' : x) : l; (d.patterns || []).forEach(p => { p.evidence = fix(p.evidence); }); ((d.mbti || {}).letters || []).forEach(l => { l.evidence = fix(l.evidence); }); Object.values(d.wellness || {}).forEach(v => { if (v && Array.isArray(v.evidence)) v.evidence = fix(v.evidence); }); if (d.attachment) d.attachment.derivedFrom = fix(d.attachment.derivedFrom); return d; })((await mock.analyseMerged({})).data);
+      a.wellness.rhythmAndActivity = { band: 'mixed', confidence: 'low', reading: 'RHYTHM-READING across your evenings.', evidence: ['RHYTHM-EVIDENCE at 23:00', 'your May 2025 late run'] };
       const b = mi.bundleFrom(a); const f = b.ok && mp.fullView(b.bundle.data, 'Mei Tan', b.answer);
       return !!f && f.whoYouAre.bigFive.every(t => t.evidence.length > 0) && f.whatDrivesYou.interestsFull.every(x => x.evidence.length > 0) &&
         f.howYouConnect.implications.length === 2 && /^Mock read of where they appear/.test(f.howYouWork.situation) && /^Mock work style/.test(f.howYouWork.workStyle) &&
         f.whoYouAre.wellbeing.areas.some(x => x.area === 'Rhythm and activity' && /RHYTHM-READING/.test(x.reading) && x.evidence.includes('RHYTHM-EVIDENCE at 23:00')) &&
         /full: musePdf\.fullView\(result\.bundle\.data, name, result\.answer\)/.test(readFileSync(join(root, 'server.js'), 'utf8')); })());
+  check('import: evidence that is a summary rather than a moment ("across years", "spanning 2012 to 2026", words with no date or count) is sent back for the MBTI letters, wellbeing, attachment and patterns, where a Muse read once cited "Threads spanning 2012 to 2026"; a count or rhythm passes outside patterns, and bin/psyche.py runs the same check',
+    await (async () => { const mi = (await import('../lib/museimport.js')).default;
+      const bad = mi.evidenceProblems({ mbti: { letters: [{ evidence: ['Starts threads and proposes outings across years', 'Your October 2022 story'] }] }, wellness: { meaning: { evidence: ['Threads spanning 2012 to 2026'] } },
+        attachment: { derivedFrom: ['Mostly warm replies'] }, patterns: [{ evidence: ['Your May 2025 comment', 'Hosts dinners often'] }] });
+      const good = mi.evidenceProblems({ mbti: { letters: [{ evidence: ['Your October 2022 story', 'Evening peak, 21:00 to 00:00'] }] }, wellness: { meaning: { evidence: ['Your April 2025 caption'] } },
+        attachment: { derivedFrom: ['Replies within minutes in your 2025 chats'] }, patterns: [{ evidence: ['Your May 2025 comment'] }] });
+      return bad.length === 4 && /^patterns\[0\]\.evidence: "Hosts dinners often" is a summary of many, not a moment/.test(bad.join('\n').split('\n').find(x => x.startsWith('patterns')) || '') &&
+        bad.some(x => /^wellness\.meaning\.evidence: "Threads spanning 2012 to 2026"/.test(x)) && good.length === 0 &&
+        /\.\.\.listProblems\(checked\.data\), \.\.\.evidenceProblems\(checked\.data\)\]/.test(readFileSync(join(root, 'lib', 'museimport.js'), 'utf8')); })());
   check('import: the chat\'s one-line readings lose their dated moments ("…, as in March 2026"), since a date is evidence',
     await (async () => { const u = (await import('../lib/musepdf.js')).default.undated;
       return u('You stay steady, with spikes when a debate turns personal, as in March 2026.') === 'You stay steady, with spikes when a debate turns personal.' &&
