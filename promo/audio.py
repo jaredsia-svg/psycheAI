@@ -19,7 +19,11 @@ def load(path):
 
 # Nine shared lines, then this version's closing line.
 SHARED = 9
-lines = [load(f'{VO}/l{i:02d}.wav') for i in range(1, SHARED + 1)] + [load(f'{VO}/l{SHARED + 1:02d}-{VERSION}.wav')]
+# A version with its own script says some lines its own way (vo.py SCRIPTS): those take its takes.
+SCRIPT = json.load(open(HERE + '/config.json')).get(VERSION, {}).get('script')
+ALT = (json.load(open(VO + '/marks.json')).get('alt') or {}).get(SCRIPT, {}) if SCRIPT else {}
+name = lambda i: f'l{i:02d}-{SCRIPT}' if str(i) in ALT else f'l{i:02d}'
+lines = [load(f'{VO}/{name(i)}.wav') for i in range(1, SHARED + 1)] + [load(f'{VO}/l{SHARED + 1:02d}-{VERSION}.wav')]
 dur = [len(x) / SR for x in lines]
 
 # Each scene starts just as the last line ends and its own voice comes 0.2 s later: the same 0.22 s between
@@ -27,8 +31,8 @@ dur = [len(x) / SR for x in lines]
 GAP, LEAD = 0.02, 0.2
 marks = json.load(open(VO + '/marks.json'))
 # When each word is said, per line, for the on-screen words to appear in time with the voice.
-word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, SHARED + 1)] + [marks['words'][f'l{SHARED + 1:02d}-' + VERSION]]
-marks = marks['lines'] + [marks['end'][VERSION]]
+word_marks = [marks['words'][name(i)] for i in range(1, SHARED + 1)] + [marks['words'][f'l{SHARED + 1:02d}-' + VERSION]]
+marks = [ALT.get(str(i), m) for i, m in enumerate(marks['lines'], 1)] + [marks['end'][VERSION]]
 # The question scene holds on a little after its line, for the questionnaire being ripped up.
 minimum = {0: 1.5, 2: LEAD + dur[2] + 0.61}
 # The Psyche Card scene lets the card land before the voice names it; the end card starts

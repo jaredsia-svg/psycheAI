@@ -60,6 +60,14 @@ LINES = [
 # The closing line: this, then each version's own words from config.json.
 END = 'Your first Psyche Card is free!'
 
+# A version with "script" in config.json says some lines its own way (README "The Muse reel"), by line number:
+# in Muse, the Instagram is read where they are, the report comes with the card, and privacy is Muse's own.
+SCRIPTS = {'muse': {
+    5: (['{B} reads your Instagram,', 'right here in Muse,', ('and your Whatsapp and Facebook, if you add them.', 0.92)], 1.0, True, [0.05, 0.06]),
+    7: (['And your private Psyche Report,', 'with the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
+    9: (["It's read in Muse, on your own account.", 'Names are removed,', 'and {B} keeps no copy of your report.'], 0.92, None),
+}}
+
 # Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen"; "Moo-larn", as the
 # owner says it, since 24 October 2026, where it was "moo-lan") and {Odysseus} ("Utysis"). The recogniser hears
 # them as the plain word.
@@ -220,7 +228,10 @@ def write(name, phrases, ls, split, pause=0.06):
 # (privacy.py imports this file for the voice and writes its own lines.)
 word_marks = {}
 if __name__ == '__main__':
-    marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}, 'words': word_marks}
+    marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}, 'alt': {}, 'words': word_marks}
     for version, settings in CONFIG.items():
-        marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [END, settings['spoken']], 0.9, True)
+        script = settings.get('script')
+        if script and script not in marks['alt']:
+            marks['alt'][script] = {str(i): write(f'l{i:02d}-{script}', *line) for i, line in SCRIPTS[script].items()}
+        marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [settings.get('end', END), settings['spoken']], 0.9, True)
     json.dump(marks, open(OUT + '/marks.json', 'w'))
