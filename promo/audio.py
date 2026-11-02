@@ -52,7 +52,10 @@ for i, d in enumerate(dur):
     length = max(lead + d + GAP + HOLD.get(i, 0), minimum.get(i, 0))
     # The end card holds a little longer, on the card the carousel landed on.
     # The end card holds a little longer, on the card the carousel landed on.
-    if i == len(dur) - 1: end = t + lead + d + 1.2
+    if i == len(dur) - 1:
+        end = t + lead + d + 1.2
+        # The Muse reel ends on one chord on the beat after the voice, ringing out (README "The Muse reel").
+        if SCRIPT == 'muse': END_HIT = snap(t + lead + d + 0.15, BEAT); end = END_HIT + 2.2
     else: end = snap(t + length, SNAP[i + 1])
     scenes.append({'start': round(t, 3), 'end': round(end, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
@@ -143,6 +146,11 @@ def impact():
     return (boom + noise) * 0.55
 
 sc = scenes
+MUSE = SCRIPT == 'muse'
+if not MUSE: END_HIT = TOTAL
+# Muse: the crescendo peaks as the three sources are pulled into the orb (stage.html: `suck`, from 0.86 of
+# scene 4's line, 0.6 s long), rather than at the cut into the scene.
+SUCK_END = sc[4]['vo'] + 0.86 * (sc[4]['voEnd'] - sc[4]['vo']) + 0.6
 INTRO_END = sc[3]['start']      # the hook: plucks and a light pulse
 DROP = sc[4]['start']           # the data goes in: full beat
 BREAK = sc[8]['start']          # privacy: pads, plucks, no kick
@@ -154,14 +162,17 @@ pump = np.ones(n, np.float32)   # sidechain from the kick
 b = 0.0; step = 0
 while b < TOTAL + BEAT:
     bar_i = int(b / BAR) % 4; beat_i = int(round(b / BEAT)) % 4
+    if MUSE and b >= END_HIT: break
     full = (DROP <= b < BREAK) or (b >= FINAL and b < TOTAL - 1.0)
+    # Muse's ending is lighter: the kick on 1 and 3, no claps or stabs, the bells leading into the last chord.
+    soft_end = MUSE and b >= FINAL
     mid = INTRO_END <= b < DROP
     # Kick: light on 1 in the hook, every beat from the footprint, four on the floor in the drop.
-    if full or mid or (b < INTRO_END and beat_i == 0):
+    if (full or mid or (b < INTRO_END and beat_i == 0)) and not (soft_end and beat_i in (1, 3)):
         at(b, K, 0.95 if full else 0.6)
         a = int(b * SR); L = int(0.22 * SR)
         if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
-    if full and beat_i in (1, 3): at(b, C, 0.9)
+    if full and beat_i in (1, 3) and not soft_end: at(b, C, 0.9)
     if full or mid:
         for k in range(4 if full else 2):
             at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
@@ -178,7 +189,7 @@ while b < TOTAL + BEAT:
         m = notes[(beat_i * 2 + k) % 4] + 12
         at(b + k * BEAT / 2, pluck(m, 0.1 if b < DROP else 0.08), 1.0, 0.4 if k else -0.4)
     # Chord stabs on the beat in the drop.
-    if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
+    if full and beat_i in (0, 2) and not soft_end: at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
     # Bell melody in the drop and in the break; on the end card it leads, a little louder each beat
     # (see the crescendo below).
     if (full or BREAK <= b < FINAL) and b >= DROP:
@@ -198,14 +209,26 @@ for bar in range(int(TOTAL / BAR) + 2):
 # The two big moments, the data going in and the end card, get the riser and the hit; the card and
 # report cuts a soft swoosh into them, which sat better than a hit on every cut. Sync follows the
 # report with nothing at the cut, the beat simply carrying on, and the break is a plain drop-out.
-at(DROP - 2.2, riser(2.2), 1.0); at(DROP, impact(), 1.0)
-for k in (5, 6): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
-at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
+if MUSE:
+    # Into the data scene: the swoosh the other cuts have, and the beat drops. The crescendo is the sources
+    # going into the orb: the riser ends there, on a bright hit (a soft boom and a bell chord).
+    at(DROP - 0.5, swell(0.5), 1.0); at(DROP, impact(), 0.7)
+    at(SUCK_END - 1.8, riser(1.8), 1.0); at(SUCK_END, impact(), 0.8)
+    for m in (72, 76, 79, 84): at(SUCK_END, bell(m), 1.1)
+    at(sc[6]['start'] - 0.5, swell(0.5), 1.0)
+    # The end card comes in on a gentle swell, not a second big riser, and the last chord rings out.
+    at(FINAL - 0.8, swell(0.8), 1.0); at(FINAL, impact(), 0.55)
+    at(END_HIT, stab([60, 64, 67], 2.2) * 2.4, 1.0); at(END_HIT, bass(36, 1.8), 0.9); at(END_HIT, impact(), 0.45)
+    for k, m in enumerate((72, 76, 79, 84)): at(END_HIT + k * 0.11, bell(m), 1.2, 0.2 if k % 2 else -0.2)
+else:
+    at(DROP - 2.2, riser(2.2), 1.0); at(DROP, impact(), 1.0)
+    for k in (5, 6): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
+    at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)
 fi = int(0.4 * SR); fade[:fi] = np.linspace(0, 1, fi)
-fo = int((TOTAL - 1.4) * SR); fade[fo:] = np.clip(np.linspace(1, 0, n - fo) * 1.6, 0, 1)
+fo = int((TOTAL - (0.3 if MUSE else 1.4)) * SR); fade[fo:] = np.clip(np.linspace(1, 0, n - fo) * 1.6, 0, 1)
 music *= fade[:, None]
 music /= max(1e-6, np.abs(music).max())
 

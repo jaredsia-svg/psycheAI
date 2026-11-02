@@ -224,46 +224,6 @@ const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 const DROP = S[4].start, BREAK = S[8].start, FINAL = S[9].start;
 
-// The Muse version (config.json "script": "muse", vo.py SCRIPTS): its own words for the data, the report,
-// privacy and the ending, and the sources Muse reads (no Google).
-if (CONFIG.script === 'muse') {
-  document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> analyses your <span class="grad">Instagram,</span> right here in <span class="grad">Muse,</span> with <span class="grad">no uploading</span> required.';
-  $('f1').querySelector('.ext').textContent = 'MUSE'; $('f1').querySelector('.sub').textContent = 'posts, stories, chats';
-  $('f3').querySelector('.ext').textContent = 'MUSE'; $('f3').querySelector('.sub').textContent = 'if you add it';
-  $('f4').querySelector('.sub').textContent = 'if you add it';
-  $('f2').style.display = 'none';
-  // The Muse mascot beside the mark, when config.json names an image for it ("mascot").
-  if (CONFIG.mascot) { const m = document.createElement('img'); m.id = 'mascot'; m.src = CONFIG.mascot;
-    m.style.cssText = 'position:absolute;left:650px;top:620px;width:240px;opacity:0'; document.querySelector('#s4').appendChild(m); }
-  // Sync: two rings meeting, not a tick (the scene has ticks enough).
-  $('ringTick').style.display = 'none';
-  $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="10"><circle cx="82" cy="100" r="30" stroke-dasharray="189" stroke-dashoffset="189"/><circle cx="118" cy="100" r="30" stroke-dasharray="189" stroke-dashoffset="189"/></g>');
-  // The ending says the address on screen; the voice only says where.
-  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste into your Muse app:</div>');
-  $('cta').style.top = '1450px';
-  document.querySelector('#s6 .big').innerHTML = 'And your<br><span class="grad">Psyche Report</span>';
-  $('p1').innerHTML = 'Your data is processed directly in <span class="grad">your Muse app.</span>';
-  $('p2').innerHTML = 'Your data is <span class="grad">de-identified.</span>';
-  $('p3').innerHTML = 'PsycheAI keeps <span class="grad">no copy.</span>';
-  $('sw1').children[1].textContent = '"Friend A"'; $('sw2').children[1].textContent = '"[email]"'; $('sw3').children[1].textContent = '[handle]';
-  document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche</span> is free in Muse!';
-}
-
-// Word-by-word pop: wrap every word of [data-words] in its own span, keeping the colour spans.
-document.querySelectorAll('[data-words]').forEach(el => {
-  const walk = node => [...node.childNodes].forEach(ch => {
-    if (ch.nodeType === 3) {
-      const frag = document.createDocumentFragment();
-      ch.textContent.split(/(\s+)/).forEach(part => {
-        if (!part) return;
-        if (/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
-        else { const w = document.createElement('span'); w.className = 'w'; w.textContent = part; frag.appendChild(w); }
-      });
-      ch.replaceWith(frag);
-    } else walk(ch);
-  });
-  walk(el);
-});
 
 // Scene palettes: the two lead colours of the background, shifting scene to scene.
 const LIGHT = CONFIG.theme === 'light';
@@ -299,6 +259,65 @@ const scraps = Array.from({ length: 18 }, (_, i) => { const d = document.createE
   return { el: d, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed - 500, spin: ((i * 53) % 720) - 360, dx: ((i * 41) % 160) - 80, dy: ((i * 67) % 400) - 200 }; });
 const markSvg = MARK.paths.map(d => '<path d="' + d + '"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
 $('mark').innerHTML = markSvg; $('mark2').innerHTML = markSvg.replace(/<path /g, '<path fill="none" stroke="' + (LIGHT ? '#7b3fa0' : '#fff') + '" stroke-width="3.4" ');
+// The Muse version (config.json "script": "muse", vo.py SCRIPTS): its own words for the data, the report,
+// privacy and the ending, and the sources Muse reads (no Google).
+if (CONFIG.script === 'muse') {
+  document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> analyses your data that is already connected to your <span class="grad">Muse app,</span> with <span class="grad">no uploading</span> required.';
+  document.querySelector('#s4 .big').style.fontSize = '66px';
+  $('f1').querySelector('.ext').textContent = 'MUSE'; $('f1').querySelector('.sub').textContent = 'posts, stories, chats';
+  $('f3').querySelector('.ext').textContent = 'MUSE'; $('f3').querySelector('.sub').textContent = 'posts, Messenger';
+  $('f4').querySelector('.ext').textContent = 'MUSE'; $('f4').querySelector('.sub').textContent = 'chats';
+  $('f2').style.display = 'none'; $('mark').style.display = 'none';
+  // PsycheAI's own character (original, in the brand's colours): soft and furry, holding an orb with the mark inside.
+  document.querySelector('#s4').insertAdjacentHTML('beforeend', `<svg id="buddy" viewBox="0 0 600 900" style="position:absolute;left:240px;top:760px;width:600px;height:900px;opacity:0">
+    <defs><filter id="fur" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="16"/></filter>
+      <radialGradient id="orbg" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#e9ddff"/><stop offset=".65" stop-color="#bfe6ff"/><stop offset="1" stop-color="#ffbfe3"/></radialGradient>
+      <radialGradient id="bodyg" cx="50%" cy="30%" r="75%"><stop offset="0" stop-color="#f3eafb"/><stop offset="1" stop-color="#d9c6ee"/></radialGradient></defs>
+    <path d="M300 40 C440 40 515 150 520 330 L540 760 C540 850 460 885 300 885 C140 885 60 850 60 760 L80 330 C85 150 160 40 300 40Z" fill="url(#bodyg)" filter="url(#fur)"/>
+    <ellipse cx="300" cy="265" rx="148" ry="128" fill="#fdf8ff"/>
+    <circle cx="246" cy="262" r="17" fill="#2a1b33"/><circle cx="354" cy="262" r="17" fill="#2a1b33"/>
+    <circle cx="251" cy="256" r="5" fill="#fff"/><circle cx="359" cy="256" r="5" fill="#fff"/>
+    <ellipse cx="212" cy="312" rx="28" ry="14" fill="#f5b3cc" opacity=".75"/><ellipse cx="388" cy="312" rx="28" ry="14" fill="#f5b3cc" opacity=".75"/>
+    <path d="M272 318 Q300 352 328 318 Q300 330 272 318Z" fill="#7b2f57"/>
+    <ellipse cx="160" cy="560" rx="62" ry="120" fill="url(#bodyg)" filter="url(#fur)" transform="rotate(18 160 560)"/>
+    <ellipse cx="440" cy="560" rx="62" ry="120" fill="url(#bodyg)" filter="url(#fur)" transform="rotate(-18 440 560)"/>
+    <circle id="orb" cx="300" cy="560" r="125" fill="url(#orbg)" opacity=".95"/>
+    <g id="orbMark" transform="translate(300 560) scale(1.25) translate(-70 -70)">${markSvg.replace(/<path /g, '<path fill="none" stroke="#7b3fa0" stroke-width="5" ')}</g>
+    <circle cx="300" cy="560" r="125" fill="none" stroke="#fff" stroke-width="4" opacity=".7"/>
+    <ellipse cx="192" cy="610" rx="46" ry="38" fill="#ead9f6" filter="url(#fur)"/><ellipse cx="408" cy="610" rx="46" ry="38" fill="#ead9f6" filter="url(#fur)"/>
+  </svg>`);
+  // Behind the orb's light, over the character: centred on the orb (page 540, 1320).
+  Object.assign($('glow').style, { left: '360px', top: '1140px', width: '360px', height: '360px', zIndex: '3' });
+  // Sync: two rings meeting, not a tick (the scene has ticks enough).
+  $('ringTick').style.display = 'none';
+  $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="10"><circle cx="82" cy="100" r="30" stroke-dasharray="189" stroke-dashoffset="189"/><circle cx="118" cy="100" r="30" stroke-dasharray="189" stroke-dashoffset="189"/></g>');
+  // The ending says the address on screen; the voice only says where.
+  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste this into your Muse app:</div>');
+  $('cta').style.top = '1450px';
+  document.querySelector('#s6 .big').innerHTML = 'And your<br><span class="grad">Psyche Report</span>';
+  $('p1').innerHTML = 'Your data is processed directly in <span class="grad">your Muse app,</span>';
+  $('p2').innerHTML = 'and <span class="grad">stays within Muse.</span>';
+  $('p3').innerHTML = 'Your messages are <span class="grad" style="white-space:nowrap">de&#8209;identified</span> before analysis.';
+  $('sw1').children[1].textContent = '"Friend A"'; $('sw2').children[1].textContent = '"[email]"'; $('sw3').children[1].textContent = '[handle]';
+  document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche</span> is free in Muse!';
+}
+
+// Word-by-word pop: wrap every word of [data-words] in its own span, keeping the colour spans.
+document.querySelectorAll('[data-words]').forEach(el => {
+  const walk = node => [...node.childNodes].forEach(ch => {
+    if (ch.nodeType === 3) {
+      const frag = document.createDocumentFragment();
+      ch.textContent.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
+        else { const w = document.createElement('span'); w.className = 'w'; w.textContent = part; frag.appendChild(w); }
+      });
+      ch.replaceWith(frag);
+    } else walk(ch);
+  });
+  walk(el);
+});
+
 // A digital footprint drawn like a fingerprint: a right foot's sole as rings
 // of broken ridges shrinking to a core, and five toes, each a small whorl.
 const prints = [];
@@ -574,21 +593,38 @@ function render(t) {
     // Each card as its name is said, two by two.
     const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
     const last = M[M.length - 1];
-    // Muse: Instagram in front, WhatsApp and Facebook small and faded behind it (added only if they choose).
+    if (CONFIG.script === 'muse') {
+      // PsycheAI's character holds the orb; Instagram, Facebook and WhatsApp circle it, then are pulled in as the
+      // music's crescendo peaks (audio.py: the riser ends where `suck` does), with a flash of the orb.
+      const k = back(prog(c.local, 0.15, 0.75)), bob = Math.sin(c.local * 3) * 8;
+      $('buddy').style.opacity = clamp(k * 2); $('buddy').style.transform = 'translateY(' + ((1 - Math.min(1, k)) * 220 + bob) + 'px) scale(' + (0.7 + 0.3 * k) + ')';
+      const flash = prog(suck, 0.85, 1) * (1 - prog(t, at(0.86) + 0.6, at(0.86) + 1.1));
+      $('orb').setAttribute('r', (125 * (1 + pulse * 0.05 + flash * 0.18)).toFixed(1));
+      $('orbMark').setAttribute('transform', 'translate(300 560) rotate(' + (c.local * 50).toFixed(1) + ') scale(' + (1.25 * (1 + flash * 0.2)).toFixed(3) + ') translate(-70 -70)');
+      const start = said('connected', M[0] + 1.6), cx = 390, cy = 1180;
+      [['f1', start, 0], ['f3', start + 0.3, 2.094], ['f4', start + 0.6, 4.189]].forEach(([id, when, phase]) => {
+        const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
+        const ang = phase + c.local * 0.9, r = 360 * (1 - suck);
+        el.style.left = (cx + Math.cos(ang) * r * 1.05) + 'px'; el.style.top = (cy - 60 + Math.sin(ang) * r * 0.62 + bob) + 'px';
+        // Always in front, so a name is never half-hidden; the far side of the orbit smaller and fainter.
+        const near = (Math.sin(ang) + 1) / 2;
+        el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.7, 1)) * (0.65 + 0.35 * near);
+        el.style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.1, pop)) * (0.6 + 0.16 * near) * (1 - 0.8 * suck) + ') rotate(' + Math.sin(ang) * 6 + 'deg)';
+        el.style.zIndex = '4';
+      });
+      $('buddy').style.zIndex = '2';
+      $('glow').style.opacity = 0.35 + pulse * 0.35 + flash * 0.9; $('glow').style.transform = 'scale(' + (1 + pulse * 0.15 + flash * 0.6) + ')';
+    } else {
     const ig = said('instagram', M[0] + 1.45);
-    (CONFIG.script === 'muse'
-      ? [['f4', ig + 0.35, 120, 1470, 8, 0.6, 0.45], ['f3', ig + 0.6, 660, 1470, -8, 0.6, 0.45], ['f1', ig, 390, 1200, -6, 1, 1]]
-      : [['f1', ig, 190, 1120, -6, 1, 1], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4, 1, 1],
-         ['f2', said('google', last), 190, 1420, -3, 1, 1], ['f3', said('facebook', last + 0.8), 590, 1420, 6, 1, 1]]).forEach(([id, when, x, y, rot, size, fade]) => {
+    [['f1', ig, 190, 1120, -6], ['f4', said('whatsapp', M[0] + 2.2), 590, 1120, 4],
+     ['f2', said('google', last), 190, 1420, -3], ['f3', said('facebook', last + 0.8), 590, 1420, 6]].forEach(([id, when, x, y, rot]) => {
       const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
       el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (y + (800 - y) * suck) + 'px';
-      el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1)) * fade;
-      el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) * size + ') rotate(' + rot * (1 - suck) + 'deg)';
-      el.style.zIndex = fade < 1 ? '1' : '2';
+      el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1));
+      el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) + ') rotate(' + rot * (1 - suck) + 'deg)';
     });
-    if ($('mascot')) { const k = back(prog(c.local, 0.2, 0.7)); $('mascot').style.opacity = clamp(k * 2) * (1 - prog(suck, 0.5, 1));
-      $('mascot').style.transform = 'scale(' + (0.6 + 0.4 * k) * (1 + pulse * 0.04) + ')'; }
-    $('glow').style.opacity = 0.45 + pulse * 0.55; $('glow').style.transform = 'scale(' + (1 + pulse * 0.2) + ')';
+    }
+    if (CONFIG.script !== 'muse') { $('glow').style.opacity = 0.45 + pulse * 0.55; $('glow').style.transform = 'scale(' + (1 + pulse * 0.2) + ')'; }
     $('mark').style.transform = 'rotate(' + c.local * 60 + 'deg) scale(' + (1 + pulse * 0.1) + ')';
   }
   c = scene(5, t);

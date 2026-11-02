@@ -64,10 +64,10 @@ END = 'Your first Psyche Card is free!'
 # in Muse, the Instagram is read where they are, the report comes with the card, and privacy is Muse's own.
 SCRIPTS = {'muse': {
     # "Muse" mid-phrase: ending a phrase, its quiet "z" was trimmed off and it sounded like "mew".
-    5: (['{B} analyses your Instagram,', 'right here in Muse, with no uploading required.'], 0.95, True, 0.06),
+    5: (['{B} analyses your data that is already connected to your Muse app,', 'with no uploading required.'], 0.95, True, 0.06),
     7: (['And your Psyche Report,', 'with the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
     # "processed", not "read": in "is read" the word is always said like "red", which sounded like the past tense.
-    9: (['Your data is processed directly in your Muse app.', 'Your data is de-identified,', 'and {B} keeps no copy of your data or report.'], 0.92, None),
+    9: (['Your data is processed directly in your Muse app,', 'and stays within Muse.', 'Your messages are de-identified before analysis.'], 0.92, None),
 }}
 
 # Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen"; "Moo-larn", as the

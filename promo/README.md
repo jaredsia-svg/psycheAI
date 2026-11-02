@@ -23,19 +23,24 @@ frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright)
 
 ## The Muse reel
 
-`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`, about 55 s).
-Its `"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`):
-- the data: "PsycheAI analyses your Instagram, right here in Muse, with no uploading required", the Instagram card
-  (marked MUSE) in front and WhatsApp and Facebook small and faded behind it, no Google. "Muse" sits mid-phrase:
-  ending a phrase, its quiet "z" was trimmed off and it sounded like "mew". A `mascot` image in its config entry
-  shows beside the mark; there is none yet (the avatar in Muse screenshots is a user's own character).
+`muse` in `config.json` is the same reel for people using PsycheAI in Meta Muse (`out/PsycheAI-muse.mp4`, about 57 s).
+Its `"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`), and
+`audio.py` gives it its own sound in two places:
+- the data: "PsycheAI analyses your data that is already connected to your Muse app, with no uploading required."
+  PsycheAI's own character (drawn in `stage.html`, original, in the brand's lilac: Meta's own characters are left out,
+  since one in our ad would read as Meta's endorsement) holds an orb with the mark inside; Instagram, Facebook and
+  WhatsApp circle it and are pulled in. The crescendo was a riser into the cut at the scene's start, well before the
+  pull: the cut now has the plain swoosh, and the riser ends exactly as the sources vanish (`SUCK_END`, matching
+  `suck` in `stage.html`), on a soft boom and a bell chord, with the orb flaring. "Muse" sits mid-phrase: ending a
+  phrase, its quiet "z" was trimmed off and it sounded like "mew".
 - the report: "And your Psyche Report…", since it is free there, not unlocked.
-- privacy: "Your data is processed directly in your Muse app. Your data is de-identified, and PsycheAI keeps no copy
-  of your data or report". "processed", since "is read" is always said like "red" and sounded past tense; "report",
-  since a locked card summary is kept for the card picture and Syncs.
+- privacy: "Your data is processed directly in your Muse app, and stays within Muse. Your messages are de-identified
+  before analysis." ("processed": "is read" is always said like "red" and sounded past tense.)
 - Sync: two rings meeting between the cards instead of the tick.
-- the ending (`end`, `spoken`): "Your Psyche is free in Muse! Try it at PsycheAI dot I O.", with "Paste into your
-  Muse app:" over the psycheai.io/muse button on screen.
+- the ending (`end`, `spoken`): "Your Psyche is free in Muse! Paste the link below into your Muse app to begin.", with
+  "Paste this into your Muse app:" over the psycheai.io/muse button. The music is lighter there (kick on 1 and 3, no
+  claps or stabs, the bells leading, a swell rather than a second big riser into it) and ends on one C chord on the
+  beat after the voice (`END_HIT`), ringing out for about 2 s instead of a full beat fading mid-bar.
 
 The other versions are unchanged. `npm run promo -- muse` builds it.
 
