@@ -1434,9 +1434,9 @@ check('the card schema scores its letters from the same ledger and strength rule
 // The prompt half: one section, shared word for word by the report and the
 // card, carrying the method, the rubric and what never goes in a ledger.
 const sys = prompts.PROFILE_SYSTEM;
-check('E/I has its introvert signals: what being with people costs them in their own words ("can\'t stand small talk") is the strong own-words row, things done alone by choice and said so are solo-by-choice (medium, I only), and taking what matters to one person at length is one-to-one (weak), kept apart from loyalty, which still counts for neither letter',
+check('E/I has its introvert signals: what being with people costs them in their own words ("can\'t stand small talk") is the strong own-words row, things done alone by choice and said so are solo-by-choice (weak, I only), plans started again and again across years or friends introduced to each other are keeps-reaching-out (weak, E), and taking what matters to one person at length is one-to-one (weak), kept apart from loyalty, which still counts for neither letter',
   /can\'t stand small talk/.test(mbtiScore.RUBRIC['E/I']['own-words'].text) && mbtiScore.RUBRIC['E/I']['own-words'].weight === 'strong' &&
-  mbtiScore.RUBRIC['E/I']['solo-by-choice'].weight === 'medium' && mbtiScore.RUBRIC['E/I']['solo-by-choice'].to.join() === 'I' && /Alone because nobody was free/.test(mbtiScore.RUBRIC['E/I']['solo-by-choice'].text) &&
+  mbtiScore.RUBRIC['E/I']['solo-by-choice'].weight === 'weak' && mbtiScore.RUBRIC['E/I']['keeps-reaching-out'].weight === 'weak' && mbtiScore.RUBRIC['E/I']['keeps-reaching-out'].to.join() === 'E' && /introduces friends to each other/.test(mbtiScore.RUBRIC['E/I']['keeps-reaching-out'].text) && mbtiScore.RUBRIC['E/I']['solo-by-choice'].to.join() === 'I' && /Alone because nobody was free/.test(mbtiScore.RUBRIC['E/I']['solo-by-choice'].text) &&
   mbtiScore.RUBRIC['E/I']['one-to-one'].weight === 'weak' && /that is loyalty, never counted/.test(mbtiScore.RUBRIC['E/I']['one-to-one'].text) &&
   /is \`one-to-one\`, a different thing/.test(prompts.MERGED_SYSTEM) && /Look as hard for I: "can't stand small talk"/.test(readFileSync(join(here, '..', 'lib', 'museimport.js'), 'utf8')));
 check('the report and the card prompts carry the one MBTI ledger section, rubric included',
