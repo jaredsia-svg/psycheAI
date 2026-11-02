@@ -33,8 +33,8 @@ and taken out: both sounded worse).
   its orb, while Instagram, Facebook and WhatsApp circle it and are pulled into the orb. Meta's own characters, and
   close copies or blends of them and others' (Jolly, Labubu), are left out: one in our ad would copy their design and
   read as their endorsement. Drawn-in-code plush characters were tried and looked poor.
-  It is never still: it hops in from below and lands on a beat with a little squash, then breathes, sways from its
-  feet and bobs on every beat; a swirl of light turns inside the orb and sparkles circle it. Once the sources are in,
+  It hops in from below and lands on a beat with a little squash, then bobs on every beat (breathing and a sway were
+  tried and taken out); a swirl of light turns inside the orb and sparkles circle it. Once the sources are in,
   the camera pushes into the orb (`museLayer`, its own layer, since `scene()` scales the scene) and flashes white
   into the Psyche Card. The mark sits on the orb's centre measured on a grid over the image (631, 976 of 1152 × 1728). "Muse" sits mid-phrase: ending a phrase, its quiet "z"
   was trimmed off and it sounded like "mew".

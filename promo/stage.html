@@ -597,16 +597,15 @@ function render(t) {
     if (CONFIG.script === 'muse') {
       // PsycheAI's character holds the orb; Instagram, Facebook and WhatsApp circle it, then are pulled in as the
       // music's crescendo peaks (audio.py: the riser ends where `suck` does), with a flash of the orb.
-      // Hop in from below, landing on a beat with a little squash; then it breathes, sways from its feet and bobs
-      // on every beat, so it is never still.
+      // Hop in from below, landing on a beat with a little squash; then it bobs on every beat (breathing and a sway
+      // were tried and taken out).
       const land = 0.2 + BEAT, hop = prog(c.local, 0.12, land), rise = 1 - Math.pow(1 - hop, 2.2);
       const squash = Math.exp(-Math.max(0, c.local - land) * 9) * (c.local >= land ? 1 : 0);
-      const breathe = Math.sin(c.local * 2 * Math.PI / 2.2), sway = Math.sin(c.local * 2 * Math.PI / 3.1);
       const bob = -12 * pulse * (c.local >= land ? 1 : 0) - Math.sin(hop * Math.PI) * 140 * (hop < 1 ? 1 : 0);
       $('buddy').style.transformOrigin = '50% 92%';
       $('buddy').style.opacity = clamp(hop * 3);
-      $('buddy').style.transform = 'translateY(' + ((1 - rise) * 520 + bob).toFixed(1) + 'px) rotate(' + (sway * 1.6).toFixed(2) + 'deg) scale(' +
-        (1 + squash * 0.08 - breathe * 0.008).toFixed(4) + ',' + (1 - squash * 0.1 + breathe * 0.02).toFixed(4) + ')';
+      $('buddy').style.transform = 'translateY(' + ((1 - rise) * 520 + bob).toFixed(1) + 'px) scale(' +
+        (1 + squash * 0.08).toFixed(4) + ',' + (1 - squash * 0.1).toFixed(4) + ')';
       const flash = prog(suck, 0.85, 1) * (1 - prog(t, at(0.86) + 0.6, at(0.86) + 1.1));
       $('orb').setAttribute('r', (76 * (1 + pulse * 0.06 + flash * 0.35)).toFixed(1));
       $('orbMark').setAttribute('transform', 'translate(329 508) rotate(' + (c.local * 50).toFixed(1) + ') scale(' + (0.62 * (1 + flash * 0.25 + pulse * 0.04)).toFixed(3) + ') translate(-70 -70)');
