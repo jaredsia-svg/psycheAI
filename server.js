@@ -9,6 +9,7 @@
 const http = require('node:http');
 // Where psycheai.io/muse leads: the skill's install link (psycheai-app).
 const MUSE_INSTALL_URL = process.env.PSYCHEAI_MUSE_INSTALL_URL || 'https://app.psycheai.io/install';
+const MUSE_SAMPLE_URL = 'https://app.psycheai.io/sample';
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -2307,6 +2308,14 @@ function routeRequest(route, url, request, response) {
   const museInBrowser = request.headers['sec-fetch-dest'] === 'document' && /text\/html/.test(String(request.headers.accept || ''));
   if (/^\/muse\/?$/i.test(route) && !museInBrowser && (request.method === 'GET' || request.method === 'HEAD')) {
     museInstall(request, response);
+    return;
+  }
+
+  // A sample of the report file the Muse skill makes (psycheai-app README "A sample report"):
+  // it lives at app.psycheai.io/sample, where its inline style and script are allowed.
+  if (/^\/muse-sample\/?$/i.test(route) && (request.method === 'GET' || request.method === 'HEAD')) {
+    response.writeHead(302, { Location: MUSE_SAMPLE_URL, 'Cache-Control': 'public, max-age=3600' });
+    response.end();
     return;
   }
 

@@ -9740,6 +9740,10 @@ check('the schema requires evidence on where they align and differ',
   check('the docs page lists every tool, with the sign-in and the public client id', /<code>start<\/code>/.test(museDocs) && /<code>publish_psyche<\/code>/.test(museDocs) &&
     /<code>delete_my_data<\/code>/.test(museDocs) && /<code>psycheai<\/code>/.test(museDocs) && /PKCE \(S256\)/.test(museDocs));
   check('the site lets "Use for Psyche Pair" post to the plugin, and nowhere else', /"form-action 'self' https:\/\/app\.psycheai\.io"/.test(readFileSync(join(root, 'server.js'), 'utf8')));
+  check('the Muse page shows the outcome first and a scope box: a sample report link (psycheai.io/muse-sample, forwarded to app.psycheai.io/sample), then what it reads, never does without a tap, shares and keeps, with the way out',
+    /<a class="btn" href="\/muse-sample">See a sample report<\/a>/.test(muse) && /const MUSE_SAMPLE_URL = 'https:\/\/app\.psycheai\.io\/sample';/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
+      /<dt>Reads<\/dt>/.test(muse) && /<dt>Never<\/dt><dd>Posts, comments, likes, follows, or messages anyone without your tap\.<\/dd>/.test(muse) &&
+      /<dt>Shares<\/dt><dd>Only when you choose Sync, and then only your card\.<\/dd>/.test(muse) && /<dt>Keeps<\/dt><dd>No copy of your report\. Delete it all any time: say "Delete my PsycheAI data" in Muse\.<\/dd>/.test(muse));
   check('it stays out of search until launch, with the usual footer note',
     /<meta name="robots" content="noindex">/.test(muse) && /class="footer-note"/.test(muse) && !readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8').includes('/muse'));
 }
