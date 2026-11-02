@@ -28,11 +28,11 @@ frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright)
 music is the main reel's (a crescendo moved onto the sources being pulled in, and a ringing last chord, were tried
 and taken out: both sounded worse).
 - the data: "PsycheAI analyses your data that is already connected to your Muse app, with no uploading required."
-  PsycheAI's own character holds an orb with the mark inside while Instagram, Facebook and WhatsApp circle it and are
-  pulled in. The character is original and drawn in `stage.html`: a pink, shaggy, egg-shaped plush with short legs,
-  its face on the fur, determined brows and the PsycheAI orbit as an antenna; its fur is strands drawn once from a
-  seeded random, so every frame matches. Meta's own characters, and close copies of them, are left out: one in our
-  ad would copy their design and read as Meta's endorsement. "Muse" sits mid-phrase: ending a phrase, its quiet "z"
+  The mascot (`assets/muse-mascot.jpg`, an original image the owner supplied: a fluffy pastel creature holding an orb)
+  stands below the words, its background faded into the reel's (a radial mask), with the PsycheAI mark glowing inside
+  its orb, while Instagram, Facebook and WhatsApp circle it and are pulled into the orb. Meta's own characters, and
+  close copies or blends of them and others' (Jolly, Labubu), are left out: one in our ad would copy their design and
+  read as their endorsement. Drawn-in-code plush characters were tried and looked poor. "Muse" sits mid-phrase: ending a phrase, its quiet "z"
   was trimmed off and it sounded like "mew".
 - the report: "And your Psyche Report…", since it is free there, not unlocked.
 - privacy: the voice says "Your data is processed directly in your Muse app, and stays within Muse. Your messages are

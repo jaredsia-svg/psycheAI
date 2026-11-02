@@ -269,75 +269,17 @@ if (CONFIG.script === 'muse') {
   $('f4').querySelector('.ext').textContent = 'MUSE'; $('f4').querySelector('.sub').textContent = 'chats';
   $('f2').style.display = 'none'; $('mark').style.display = 'none';
   // PsycheAI's own character (original, in the brand's colours): soft and furry, holding an orb with the mark inside.
-  document.querySelector('#s4').insertAdjacentHTML('beforeend', `<svg id="buddy" viewBox="0 0 600 960" style="position:absolute;left:240px;top:740px;width:600px;height:960px;opacity:0">
-    <defs>
-      <radialGradient id="bodyg" cx="36%" cy="28%" r="78%"><stop offset="0" stop-color="#ffd9ea"/><stop offset=".45" stop-color="#ff9cc8"/><stop offset=".82" stop-color="#f06aa6"/><stop offset="1" stop-color="#d84d8e"/></radialGradient>
-      <radialGradient id="limbg" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#ffc7e0"/><stop offset=".6" stop-color="#f784b8"/><stop offset="1" stop-color="#d9508f"/></radialGradient>
-      <radialGradient id="orbg" cx="45%" cy="40%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#ffd2fb"/><stop offset=".55" stop-color="#d45cf0"/><stop offset=".85" stop-color="#8a2ad0"/><stop offset="1" stop-color="#b44ff0"/></radialGradient>
-      <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
-      <filter id="soft2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
-      <filter id="plush" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.35 2.4" numOctaves="3" seed="7"/><feColorMatrix values="0 0 0 0 .3  0 0 0 0 .18  0 0 0 0 .45  0 0 0 .9 -.1"/></filter>
-      <filter id="plushLight" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="2.4 0.35" numOctaves="3" seed="11"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .8 -.15"/></filter>
-      <filter id="fuzz" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="38" xChannelSelector="R" yChannelSelector="G"/></filter>
-      <filter id="fuzzHalo" x="-15%" y="-15%" width="130%" height="130%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="42" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="1.5"/></filter>
-      <clipPath id="bodyClip"><path d="M300 120 C452 120 522 270 522 468 C522 692 432 800 300 800 C168 800 78 692 78 468 C78 270 148 120 300 120Z"/></clipPath>
-    </defs>
-    <ellipse cx="300" cy="912" rx="200" ry="28" fill="#5a2a7a" opacity=".22" filter="url(#soft)"/>
-    <ellipse cx="222" cy="830" rx="62" ry="78" fill="url(#limbg)" filter="url(#fuzz)"/><ellipse cx="378" cy="830" rx="62" ry="78" fill="url(#limbg)" filter="url(#fuzz)"/>
-    <ellipse cx="222" cy="884" rx="58" ry="22" fill="#d9508f" filter="url(#fuzz)"/><ellipse cx="378" cy="884" rx="58" ry="22" fill="#d9508f" filter="url(#fuzz)"/>
-    <path d="M300 122 C300 92 306 70 300 48" fill="none" stroke="#f06aa6" stroke-width="10" stroke-linecap="round"/>
-    <ellipse cx="300" cy="40" rx="30" ry="11" fill="none" stroke="#7b3fa0" stroke-width="6" transform="rotate(-18 300 40)"/>
-    <circle cx="300" cy="40" r="10" fill="#ffd36e"/>
-    <path d="M300 112 C460 112 532 266 532 468 C532 700 438 812 300 812 C162 812 68 700 68 468 C68 266 140 112 300 112Z" fill="#ffb3d4" opacity=".9" filter="url(#fuzzHalo)"/>
-    <path d="M300 120 C452 120 522 270 522 468 C522 692 432 800 300 800 C168 800 78 692 78 468 C78 270 148 120 300 120Z" fill="url(#bodyg)" filter="url(#fuzz)"/>
-    <rect x="70" y="110" width="460" height="700" filter="url(#plush)" clip-path="url(#bodyClip)" opacity=".55"/>
-    <rect x="70" y="110" width="460" height="700" filter="url(#plushLight)" clip-path="url(#bodyClip)" opacity=".35"/>
-    <ellipse cx="225" cy="240" rx="90" ry="60" fill="#fff" opacity=".22" filter="url(#soft)" transform="rotate(-24 225 240)"/>
-    <ellipse cx="244" cy="332" rx="21" ry="26" fill="#2a1b33"/><ellipse cx="356" cy="332" rx="21" ry="26" fill="#2a1b33"/>
-    <circle cx="251" cy="321" r="7.5" fill="#fff"/><circle cx="363" cy="321" r="7.5" fill="#fff"/><circle cx="238" cy="342" r="3" fill="#fff" opacity=".8"/><circle cx="350" cy="342" r="3" fill="#fff" opacity=".8"/>
-    <ellipse cx="210" cy="388" rx="32" ry="15" fill="#ff98bf" opacity=".5" filter="url(#soft2)"/><ellipse cx="390" cy="388" rx="32" ry="15" fill="#ff98bf" opacity=".5" filter="url(#soft2)"/>
-    <path d="M284 386 Q300 402 316 386" fill="none" stroke="#5a2a4a" stroke-width="6" stroke-linecap="round"/>
-    <path d="M214 286 L268 300" stroke="#b8235f" stroke-width="9" stroke-linecap="round"/><path d="M386 286 L332 300" stroke="#b8235f" stroke-width="9" stroke-linecap="round"/>
-    <g id="furTop"></g>
-    <ellipse cx="168" cy="560" rx="60" ry="104" fill="url(#limbg)" transform="rotate(26 168 560)" filter="url(#fuzz)"/>
-    <ellipse cx="432" cy="560" rx="60" ry="104" fill="url(#limbg)" transform="rotate(-26 432 560)" filter="url(#fuzz)"/>
-    <circle cx="300" cy="600" r="170" fill="#e14cf2" opacity=".55" filter="url(#soft)"/><g id="sparks"></g>
-    <circle id="orb" cx="300" cy="600" r="122" fill="url(#orbg)" opacity=".96"/>
-    <g id="orbMark" transform="translate(300 600) scale(1.2) translate(-70 -70)">${markSvg.replace(/<path /g, '<path fill="none" stroke="#7b3fa0" stroke-width="5" ')}</g>
-    <ellipse cx="254" cy="548" rx="42" ry="22" fill="#fff" opacity=".85" filter="url(#soft2)" transform="rotate(-28 254 548)"/>
-    <circle cx="300" cy="600" r="122" fill="none" stroke="#fff" stroke-width="3" opacity=".75"/>
-    <ellipse cx="186" cy="648" rx="48" ry="38" fill="url(#limbg)" filter="url(#fuzz)"/><ellipse cx="414" cy="648" rx="48" ry="38" fill="url(#limbg)" filter="url(#fuzz)"/>
+  // The mascot (assets/muse-mascot.jpg, the owner's own image): its pastel background fades into the reel's, and
+  // the PsycheAI mark glows inside the orb it already holds (orb centre 322, 525 of 600 x 900; radius about 78).
+  document.querySelector('#s4').insertAdjacentHTML('beforeend', `<svg id="buddy" viewBox="0 0 600 900" style="position:absolute;left:160px;top:660px;width:760px;height:1140px;opacity:0;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 52%, #000 62%, transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 52%, #000 62%, transparent 100%)">
+    <defs><radialGradient id="orbGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".7" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <filter id="markGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <image href="assets/muse-mascot.jpg" x="0" y="0" width="600" height="900" preserveAspectRatio="xMidYMid slice"/>
+    <circle id="orb" cx="322" cy="525" r="78" fill="url(#orbGlow)"/>
+    <g id="orbMark" opacity=".9" filter="url(#markGlow)" transform="translate(322 525) scale(0.62) translate(-70 -70)">${markSvg.replace(/<path /g, '<path fill="none" stroke="#8a4fc8" stroke-width="6" ')}</g>
   </svg>`);
   // Behind the orb's light, over the character: centred on the orb (page 540, 1320).
-  (() => {
-    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    const NS = 'http://www.w3.org/2000/svg', buddy = $('buddy');
-    const body = buddy.querySelector('path[fill="url(#bodyg)"]');
-    const cols = ['#ffb8d6', '#ffa2cb', '#fb8fbf', '#ffc6df', '#f57fb5'];
-    const strand = (g, x, y, ang, len, w, col, op) => { const e = document.createElementNS(NS, 'path');
-      const bend = (rnd() - 0.5) * len * 0.6, x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
-      e.setAttribute('d', `M${x.toFixed(1)} ${y.toFixed(1)} Q${((x + x2) / 2 + Math.cos(ang + 1.57) * bend).toFixed(1)} ${((y + y2) / 2 + Math.sin(ang + 1.57) * bend).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
-      e.setAttribute('stroke', col); e.setAttribute('stroke-width', w); e.setAttribute('stroke-linecap', 'round'); e.setAttribute('fill', 'none'); e.setAttribute('opacity', op); g.appendChild(e); };
-    const fur = document.createElementNS(NS, 'g'); body.after(fur);
-    // Shaggy outline: strands leaning out and down all round the body.
-    const L = body.getTotalLength();
-    for (let k = 0; k < 700; k++) { const pt = body.getPointAtLength(L * k / 700), ang = Math.atan2(pt.y - 470, pt.x - 300) * 0.6 + 1.57 * 0.4;
-      strand(fur, pt.x - Math.cos(ang) * 10, pt.y - Math.sin(ang) * 10, ang + (rnd() - 0.5) * 0.6, 16 + rnd() * 16, 7 + rnd() * 5, cols[k % cols.length], 0.9); }
-    // The arms, paws and legs get the same soft fur round their edges.
-    buddy.querySelectorAll('ellipse[fill="url(#limbg)"]').forEach(el => { const cx = +el.getAttribute('cx'), cy = +el.getAttribute('cy'), rx = +el.getAttribute('rx'), ry = +el.getAttribute('ry');
-      const g = document.createElementNS(NS, 'g'); if (el.getAttribute('transform')) g.setAttribute('transform', el.getAttribute('transform')); el.after(g);
-      for (let k = 0; k < 90; k++) { const a = k / 90 * 6.283, x = cx + Math.cos(a) * rx * 0.9, y = cy + Math.sin(a) * ry * 0.9;
-        strand(g, x, y, a * 0.6 + 1.57 * 0.4 + (rnd() - 0.5) * 0.5, 10 + rnd() * 10, 6 + rnd() * 4, cols[k % cols.length], 0.9); } });
-    // Fur over the body, falling downwards, kept off the face.
-    for (let k = 0; k < 1400; k++) { const x = 90 + rnd() * 420, y = 130 + rnd() * 660, fx = (x - 300) / 165, fy = (y - 345) / 105;
-      if (!body.isPointInFill(new DOMPoint(x, y)) || fx * fx + fy * fy < 1) continue;
-      strand(fur, x, y, 1.57 + (rnd() - 0.5) * 0.7, 10 + rnd() * 12, 4 + rnd() * 3, cols[(k * 7) % cols.length], 0.35 + rnd() * 0.3); }
-    // Sparks round the orb.
-    const sp = $('sparks'); for (let k = 0; k < 26; k++) { const a = rnd() * 6.283, r = 135 + rnd() * 70, c = document.createElementNS(NS, 'circle');
-      c.setAttribute('cx', (300 + Math.cos(a) * r).toFixed(1)); c.setAttribute('cy', (600 + Math.sin(a) * r * 0.8).toFixed(1)); c.setAttribute('r', (1.5 + rnd() * 3).toFixed(1));
-      c.setAttribute('fill', k % 3 ? '#ffd2fb' : '#fff'); c.setAttribute('opacity', (0.5 + rnd() * 0.5).toFixed(2)); sp.appendChild(c); }
-  })();
-  Object.assign($('glow').style, { left: '360px', top: '1180px', width: '360px', height: '360px', zIndex: '3' });
+  Object.assign($('glow').style, { left: '418px', top: '1200px', width: '300px', height: '300px', zIndex: '3' });
   // Sync: two rings meeting, not a tick (the scene has ticks enough).
   ['ringTick', 'ringBg', 'ringArc'].forEach(id => { $(id).style.display = 'none'; });
   $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="14"><circle cx="74" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/><circle cx="126" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/></g>');
@@ -649,9 +591,9 @@ function render(t) {
       const k = back(prog(c.local, 0.15, 0.75)), bob = Math.sin(c.local * 3) * 8;
       $('buddy').style.opacity = clamp(k * 2); $('buddy').style.transform = 'translateY(' + ((1 - Math.min(1, k)) * 220 + bob) + 'px) scale(' + (0.7 + 0.3 * k) + ')';
       const flash = prog(suck, 0.85, 1) * (1 - prog(t, at(0.86) + 0.6, at(0.86) + 1.1));
-      $('orb').setAttribute('r', (122 * (1 + pulse * 0.05 + flash * 0.18)).toFixed(1));
-      $('orbMark').setAttribute('transform', 'translate(300 600) rotate(' + (c.local * 50).toFixed(1) + ') scale(' + (1.2 * (1 + flash * 0.2)).toFixed(3) + ') translate(-70 -70)');
-      const start = said('connected', M[0] + 1.6), cx = 390, cy = 1180;
+      $('orb').setAttribute('r', (78 * (1 + pulse * 0.06 + flash * 0.35)).toFixed(1));
+      $('orbMark').setAttribute('transform', 'translate(322 525) rotate(' + (c.local * 50).toFixed(1) + ') scale(' + (0.62 * (1 + flash * 0.25)).toFixed(3) + ') translate(-70 -70)');
+      const start = said('connected', M[0] + 1.6), cx = 418, cy = 1292;
       [['f1', start, 0], ['f3', start + 0.3, 2.094], ['f4', start + 0.6, 4.189]].forEach(([id, when, phase]) => {
         const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
         const ang = phase + c.local * 0.9, r = 360 * (1 - suck);
