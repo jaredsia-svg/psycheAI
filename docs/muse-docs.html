@@ -47,7 +47,7 @@
     <h2>What a user does</h2>
     <ol>
       <li><b>Start:</b> the <code>start</code> tool gives any news and a four-option menu.</li>
-      <li><b>Their read:</b> <code>get_report_guide</code> gives the format (a short spec and a JSON schema); the assistant writes the read from the user's own Instagram and publishes it with <code>publish_psyche</code>, which checks it, returns their card image, the report for the chat and its PDF, and keeps none of it.</li>
+      <li><b>Their read:</b> <code>get_report_guide</code> gives the format (a short spec and a JSON schema); the assistant writes the read from the user's own Instagram and publishes it with <code>publish_psyche</code>, which checks it, returns their card image and the report for the chat, and keeps none of it.</li>
       <li><b>Sync:</b> two people both ask (<code>sync_with</code>); either can then see how they sync (<code>get_sync</code>).</li>
       <li><b>Psyche Pair:</b> the user checks their card and answers what only they can (<code>save_profile</code>, <code>confirm_profile</code>); each week, a few matches above a fixed bar (<code>get_weekly_matches</code>), up to 2 picks, and a mutual yes opens a private chat or an Instagram swap.</li>
     </ol>
@@ -60,7 +60,7 @@
       <tbody>
       <tr><td><code>start</code></td><td>Start PsycheAI</td><td>Read</td><td>Call this first, whenever the user connects or opens PsycheAI without saying what they want. Returns what to show them: any news, then a short menu of options to show as buttons. Read-only.</td></tr>
       <tr><td><code>get_report_guide</code></td><td>Get the PsycheAI guide</td><td>Read</td><td>The format of the PsycheAI read the user asked for: a short specification (spec) and the JSON schema the finished read must match, for publish_psyche.</td></tr>
-      <tr><td><code>publish_psyche</code></td><td>Publish your Psyche</td><td>Writes</td><td>Publish the read you wrote (one JSON object following get_report_guide&#x27;s schema) to PsycheAI, which checks it and makes its PDF and keeps none of it. Returns their card image, the PDF&#x27;s link (it works for 30 minutes), the report in short and view. If it returns problems, fix them and call again.</td></tr>
+      <tr><td><code>publish_psyche</code></td><td>Publish your Psyche</td><td>Writes</td><td>Publish the read you wrote (one JSON object following get_report_guide&#x27;s schema) to PsycheAI, which checks it, makes their card and keeps none of it. Returns their card image, the report in short and view. If it returns problems, fix them and call again.</td></tr>
       <tr><td><code>sync_with</code></td><td>Sync with a friend</td><td>Writes</td><td>Ask to sync with someone by Instagram handle, or say yes to their ask (same call). The first time it returns an ask for consent to keep the user&#x27;s card: show it, and call again with consent true on Yes.</td></tr>
       <tr><td><code>get_syncs</code></td><td>See your Syncs</td><td>Read</td><td>Who wants to sync with the user (incoming), whom they asked (sent), and their Syncs with card images.</td></tr>
       <tr><td><code>get_sync</code></td><td>Open a Sync</td><td>Read</td><td>Everything needed to write the user&#x27;s Sync with someone: PsycheAI&#x27;s Sync guide, the two card-level profiles, the derived facts and the Sync card image. Write it in the chat as the guide says.</td></tr>
@@ -79,7 +79,7 @@
       <tr><td><code>get_intros</code></td><td>See who picked you</td><td>Read</td><td>People who picked this user and are waiting for an answer (with a fuller card), intros the user sent, and mutual matches with their Instagram swap state (handles appear once both have offered).</td></tr>
       <tr><td><code>respond_to_intro</code></td><td>Answer an intro</td><td>Writes</td><td>Answer an intro from someone who picked the user. Yes on both sides shares Instagram handles.</td></tr>
       <tr><td><code>share_instagram</code></td><td>Swap Instagram</td><td>Writes</td><td>Offer (share: true) or withdraw (share: false) the user&#x27;s Instagram to one mutual match. Handles show to both only once both have offered. Ask the user first, for each match.</td></tr>
-      <tr><td><code>make_psyche_pdf</code></td><td>Make your PDF</td><td>Writes</td><td>Retired: PsycheAI no longer keeps a copy of a read, even locked. The report is delivered by publish_psyche, in the chat and as a PDF.</td></tr>
+      <tr><td><code>make_psyche_pdf</code></td><td>Make your PDF</td><td>Writes</td><td>Retired: PsycheAI no longer keeps a copy of a read, even locked. The report is delivered by publish_psyche, in the chat and as a report file.</td></tr>
       <tr><td><code>send_message</code></td><td>Send a message</td><td>Writes</td><td>Send a message in the private chat with a mutual match (no contact details shared). Under 1000 characters. Send exactly what the user wrote.</td></tr>
       <tr><td><code>get_messages</code></td><td>Read messages</td><td>Read</td><td>With introId: the private chat with that match, to show the user word for word. Without: which matches have unread messages.</td></tr>
       <tr><td><code>end_chat</code></td><td>End a chat</td><td>Removes data</td><td>End the private chat with a match (for example once they have swapped numbers). Deletes the messages.</td></tr>

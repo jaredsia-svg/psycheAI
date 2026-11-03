@@ -1609,12 +1609,10 @@ async function handleImport(request, response) {
     return;
   }
   stats.count('muse_import');
-  // The report's PDF, the page's own (lib/musepdf.js), made in memory and handed
-  // back with the rest; the plugin holds it in memory until Muse attaches it.
+  // No PDF any more (README "Muse reads: the report file, not a PDF"): the report
+  // is the HTML file the skill writes in the reader's workspace, from full below.
   const name = String((body && body.name) || '').slice(0, 60);
-  const pdf = await musePdf.build(result.bundle.data, name);
   sendJson(response, 200, {
-    ...(pdf ? { pdfData: pdf.toString('base64'), pdfName: musePdf.fileName(name) } : {}),
     // The report in short, one line per section, for Muse to show under the card.
     sections: musePdf.summary(result.bundle.data, name),
     // The whole report for Muse's one widget: scores, readings and write-ups, never the evidence.

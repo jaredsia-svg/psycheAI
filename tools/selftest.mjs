@@ -9726,10 +9726,9 @@ check('the schema requires evidence on where they align and differ',
   check('the Muse page has the sections the plugin redirects to, the connector only on the docs page; Psyche Pair, Plus and safety are on their own page, not this one',
     ['add', 'privacy', 'terms'].every(id => muse.includes('id="' + id + '"')) && ['pair', 'plus', 'safety'].every(id => musePair.includes('id="' + id + '"')) && !/pair|plus/i.test(muse.replace(/<script[^]*?<\/script>/g, '')) &&
     museDocs.includes('https://app.psycheai.io/mcp') && !muse.includes('app.psycheai.io/mcp') && muse.includes('<pre class="paste" id="install-prompt">Install psycheai.io/muse</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(museDocs));
-  check('it says what the plugin never receives or guesses, that the read is checked and made into a PDF in memory and kept nowhere, and that older reads were sealed under their link\'s key',
+  check('it says what the plugin never receives or guesses, that the read is checked and made into a card in memory and kept nowhere, that there is no PDF, and that older reads were sealed under their link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
-      /key that exists only in their link/.test(musePrivacy) && /send both back, and keep none of it: no copy of your read is stored, locked or not/.test(musePrivacy) &&
-      /for at most 30 minutes or three downloads, whichever comes first/.test(musePrivacy) &&
+      /key that exists only in their link/.test(musePrivacy) && /send it back, and keep none of it: no copy of your read is stored, locked or not\. There is no PDF: your report is a file made in your own Muse workspace\./.test(musePrivacy) &&
       !/to make your private link/.test(musePrivacy) &&
       /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&
@@ -9967,9 +9966,9 @@ check('the schema requires evidence on where they align and differ',
   `;
   const out = JSON.parse(execFileSync(process.execPath, ['-e', script], { env: { PATH: process.env.PATH } }).toString());
   check('import: no secret, no entry', out.noAuth === 401 && out.wrongAuth === 401, JSON.stringify([out.noAuth, out.wrongAuth]));
-  check('import: a good read comes back checked, with its PDF, the report in short, view and the full report for the skill\'s file (evidence, never the roast), and no link: nothing is kept (README "Muse reads: nothing kept")',
+  check('import: a good read comes back checked, with no PDF (README "Muse reads: the report file, not a PDF"), the report in short, view and the full report for the skill\'s file (evidence, never the roast), and no link: nothing is kept (README "Muse reads: nothing kept")',
     out.ok.status === 200 && !('url' in out.ok.json) && !('expiresInDays' in out.ok.json) && !('pdf' in out.ok.json) &&
-    out.pdf.head === '%PDF-' && out.pdf.name && /^Psyche Report - Mei Tan - \d{8}\.pdf$/.test(out.pdf.file) && Array.isArray(out.ok.json.sections) && out.ok.json.view && out.ok.json.view.overview &&
+    !('pdfData' in out.ok.json) && !('pdfName' in out.ok.json) && Array.isArray(out.ok.json.sections) && out.ok.json.view && out.ok.json.view.overview &&
     out.ok.json.full && out.ok.json.full.overview && Array.isArray(out.ok.json.full.overview.patterns) && out.ok.json.full.overview.patterns.every(p => Array.isArray(p.evidence)) && out.ok.json.full.overview.patterns.every(p => Array.isArray(p.showsUpIn) && p.showsUpIn.every(n => !/^[a-z]+[A-Z]|^[a-z]+$/.test(n))) &&
     out.ok.json.full.whoYouAre.mbti.every(l => Array.isArray(l.evidence)) && out.ok.json.full.method && !/"(harsh|advice|ledger)"/.test(JSON.stringify(out.ok.json.full)),
     JSON.stringify({ keys: Object.keys(out.ok.json), pdf: out.pdf }));
