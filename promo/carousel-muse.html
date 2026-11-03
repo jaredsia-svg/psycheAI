@@ -31,10 +31,10 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
   filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 22px rgba(255, 190, 240, .9)); opacity: .92; }
 #s1 h1 { top: 128px; }
 #s1 .lede { top: 236px; font-size: 30px; left: 60px; right: 60px; }
-/* What the study covers, as on psycheai.io's front page: four words on one line, dots between. */
-#s1 .hpills { position: absolute; left: 0; right: 0; top: 330px; z-index: 3; display: flex; justify-content: center; list-style: none;
-  font-size: 30px; font-weight: 750; letter-spacing: .01em; color: #8a3fd0; white-space: nowrap; }
-#s1 .hpills li + li::before { content: "·"; margin: 0 16px; color: #e0457b; font-weight: 900; }
+/* What the study covers: four small pills, smaller than the line above them. */
+#s1 .hpills { position: absolute; left: 0; right: 0; top: 336px; z-index: 3; display: flex; justify-content: center; gap: 12px; list-style: none; white-space: nowrap; }
+#s1 .hpills li { padding: 9px 20px; border-radius: 999px; font-size: 23px; font-weight: 750; letter-spacing: .01em; color: #7a2fc0;
+  background: rgba(255, 255, 255, .78); border: 2px solid #e6d2f7; box-shadow: 0 6px 16px rgba(90, 40, 120, .10); }
 #s1 .swipe { position: absolute; right: 64px; bottom: 96px; z-index: 3; padding: 16px 30px; border-radius: 999px; background: #fff;
   font-size: 30px; font-weight: 800; color: #8a3fd0; box-shadow: 0 12px 30px rgba(90, 40, 120, .18); }
 #s1 .free { position: absolute; left: 64px; bottom: 96px; z-index: 3; padding: 16px 30px; border-radius: 999px;
@@ -88,7 +88,7 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
   <div class="blob" style="width:620px;height:620px;right:-250px;top:620px;background:#e2d6ff;opacity:.7"></div>
   <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
   <h1>Your <span class="grad">Psyche</span>, in Muse</h1>
-  <p class="lede">Get a full personality study directly from your Muse app.<br>No questions asked.</p>
+  <p class="lede">Get a full personality study directly from your Muse app.<br>No questions asked. No upload required.</p>
   <ul class="hpills"><li>MBTI</li><li>Attachment Style</li><li>Career Strengths</li><li>Blind Spots</li></ul>
   <div class="mascot"></div>
   <svg class="orbmark mark" viewBox="0 0 140 140" id="orbmark"></svg>
