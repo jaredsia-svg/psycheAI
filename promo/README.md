@@ -27,7 +27,10 @@ frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright)
 `"script": "muse"` swaps three lines for its own (`SCRIPTS` in `vo.py`, the words on screen in `stage.html`); the
 music is the main reel's (a crescendo moved onto the sources being pulled in, and a ringing last chord, were tried
 and taken out: both sounded worse).
-- the data: "PsycheAI analyses your data that is already connected to your Muse app, with no uploading required."
+- the hook: "…you could get a full personality study, without answering a single question?" ("of yourself" dropped, 4 Nov 2026),
+  and "And what if your digital footprint could show you patterns you've never noticed before?"
+- the data: "PsycheAI reads what's already in your Muse app with no upload required." (shortened from "PsycheAI analyses your
+  data that is already connected to your Muse app, with no uploading required.", 4 Nov 2026)
   The mascot (`assets/muse-mascot.jpg`, an original image the owner supplied: a fluffy pastel creature holding an orb)
   stands below the words, its background faded into the reel's (a radial mask), with the PsycheAI mark glowing inside
   its orb, while Instagram, Facebook and WhatsApp circle it and are pulled into the orb. Meta's own characters, and
@@ -38,12 +41,26 @@ and taken out: both sounded worse).
   the camera pushes into the orb (`museLayer`, its own layer, since `scene()` scales the scene) and flashes white
   into the Psyche Card. The mark sits on the orb's centre measured on a grid over the image (631, 976 of 1152 × 1728). "Muse" sits mid-phrase: ending a phrase, its quiet "z"
   was trimmed off and it sounded like "mew".
+- the card: "Your character, signature patterns, motivations…", the list without the repeated "your", and the first
+  highlight's tag "Your character" (the main reel keeps "Which character you're most like").
 - the report: "And your Psyche Report…", since it is free there, not unlocked.
-- privacy: "Your data is processed directly in your Muse app. Your messages are de-identified. And PsycheAI keeps no
-  copy of your data or report." ("processed": "is read" is always said like "red" and sounded past tense.)
+- privacy: "Your data is processed directly in your Muse app. Your messages are de-identified. And none of your data
+  or report goes to PsycheAI." ("processed": "is read" is always said like "red" and sounded past tense.) It said
+  "PsycheAI keeps no copy of your data or report" until 4 Nov 2026: the skill now writes the report and draws the card
+  in Muse, so neither reaches PsycheAI at all, and "keeps no copy" undersold it.
 - Sync: two linked rings between the cards, larger, with no ring round them, instead of the tick.
-- the ending (`end`, `spoken`): "Your Psyche is free in Muse! Paste the link below into your Muse app to begin.", with
-  "Paste this into your Muse app:" over the psycheai.io/muse button.
+- the ending (`end`, `spoken`): "Your Psyche is free in Muse! Paste the prompt below into Muse to begin.", with
+  "Paste this prompt into Muse:" over the whole prompt on two lines, "Install psycheai.io/muse and generate my
+  Psyche": the prompt that brings the welcome most reliably in Muse (psycheai-app README "The welcome, word for word
+  again"). It was the psycheai.io/muse button until 4 Nov 2026.
+
+- **On the beat** (`"onBeat": true`, 4 Nov 2026): every line starts with its first sound on the music's half-beat grid
+  (118 BPM, so every 0.254 s), and each phrase inside a line waits for the next half-beat after its least gap (vo.py
+  `speak(beat=True)`, audio.py `ONBEAT`), so the lists and sentences fall in with the music instead of drifting
+  across it. Lines 4 and 8 are the main reel's words, recorded again for it only to be said this way, and the privacy
+  line is now three phrases recorded one by one. The privacy break then fell on a bar line, so the drums stopped and
+  the first pad came in full at the same instant, which sounded abrupt: on the beat, a soft swoosh leads into the
+  break, a low, quiet hit lands on it, and its first pad fades in over two beats.
 
 The other versions are unchanged. `npm run promo -- muse` builds it.
 

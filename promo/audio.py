@@ -47,8 +47,14 @@ SNAP = {1: BEAT / 2, 2: BEAT / 2, 3: BEAT / 2, 4: BEAT, 5: BEAT, 6: BEAT, 7: BEA
 HOLD = {}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
+# On the beat (config.json "onBeat", vo.py): each line's first sound lands on the half-beat grid, as its
+# phrases do inside it. A take starts PRE before its first sound (vo.py trim), and the lead moves by at most
+# a fraction of a beat to get there.
+ONBEAT = bool(json.load(open(HERE + '/config.json')).get(VERSION, {}).get('onBeat'))
+PRE = 0.06
 for i, d in enumerate(dur):
     lead = 0.35 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
+    if ONBEAT: lead = snap(t + lead + PRE - 0.03, BEAT / 2) - PRE - t
     length = max(lead + d + GAP + HOLD.get(i, 0), minimum.get(i, 0))
     # The end card holds a little longer, on the card the carousel landed on.
     # The end card holds a little longer, on the card the carousel landed on.
@@ -193,7 +199,12 @@ for bar in range(int(TOTAL / BAR) + 2):
     a0 = bar * BAR
     if a0 >= TOTAL: break
     if a0 < DROP or BREAK <= a0 < FINAL:
-        at(a0, stab(CHORDS[bar % 4], BAR * 1.05) * 1.6, 0.8)
+        pad = stab(CHORDS[bar % 4], BAR * 1.05) * 1.6
+        # On the beat, the break lands on a bar line, so its first pad came in full at the very moment the
+        # drums stopped, and the cut sounded abrupt: it fades in over two beats instead.
+        if ONBEAT and abs(a0 - BREAK) < 0.02:
+            k = min(len(pad), int(2 * BEAT * SR)); pad[:k] *= np.linspace(0, 1, k) ** 1.5
+        at(a0, pad, 0.8)
 
 # The two big moments, the data going in and the end card, get the riser and the hit; the card and
 # report cuts a soft swoosh into them, which sat better than a hit on every cut. Sync follows the
@@ -201,6 +212,10 @@ for bar in range(int(TOTAL / BAR) + 2):
 at(DROP - 2.2, riser(2.2), 1.0); at(DROP, impact(), 1.0)
 for k in (5, 6): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
 at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
+# On the beat, into the privacy break: a soft swoosh over the last beat and a low, quiet hit on the cut,
+# so the beat lands into the break rather than stopping dead (4 Nov 2026, the Muse reel).
+if ONBEAT:
+    at(BREAK - BEAT, swell(BEAT), 0.9); at(BREAK, lowpass(impact(), 500), 0.5)
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)

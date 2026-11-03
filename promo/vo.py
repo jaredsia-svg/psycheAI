@@ -7,7 +7,7 @@ The voice varies from take to take, so each line is spoken several times, a spee
 recogniser transcribes every take, and the one closest to the script is kept. Phrase
 starts come from that take's pauses: the longest silences, one per phrase boundary.
 """
-import json, os, re, difflib, numpy as np, soundfile as sf, sherpa_onnx
+import json, math, os, re, difflib, numpy as np, soundfile as sf, sherpa_onnx
 from piper import PiperVoice, SynthesisConfig
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -62,13 +62,25 @@ END = 'Your first Psyche Card is free!'
 
 # A version with "script" in config.json says some lines its own way (README "The Muse reel"), by line number:
 # in Muse, the Instagram is read where they are, the report comes with the card, and privacy is Muse's own.
+# A script's lines can also be said on the beat (config.json "onBeat"): each phrase starts on the music's half-beat
+# grid (BEAT in audio.py), and audio.py starts each line on it too, so the voice falls in with the music.
 SCRIPTS = {'muse': {
+    # Shorter than the main reel's (4 Nov 2026): "of yourself" said nothing more.
+    2: (['you could get a full personality study,'], 0.87, None),
+    4: (["And what if your digital footprint,", "could show you patterns you've never noticed before?"], 1.0, True, 0.38),
     # "Muse" mid-phrase: ending a phrase, its quiet "z" was trimmed off and it sounded like "mew".
-    5: (['{B} analyses your data that is already connected to your Muse app,', 'with no uploading required.'], 0.95, True, 0.06),
-    7: (['And your Psyche Report,', 'with the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True),
+    5: (["{B} reads what's already in your Muse app", 'with no upload required.'], 0.95, True, 0.06),
+    6: ([("You will get a Psyche Card.", 1.0), "Your character,", 'signature patterns,', 'motivations,',
+         'type and traits,', 'interests and values,', 'love languages,', "and who you sync with."],
+        0.87, True, [0.45] + [0.02] * 6),
+    7: (['And your Psyche Report,', 'with the full explanations,', 'how you connect,', 'how you work,', 'and a plan to grow.'], 0.87, True, 0.02),
+    # Line 8 as the main reel says it, recorded again here only to be said on the beat.
+    8: (['Then sync with a friend', 'to see what clicks.'], 0.92, True, 0.06),
     # "processed", not "read": in "is read" the word is always said like "red", which sounded like the past tense.
-    9: (['Your data is processed directly in your Muse app.', 'Your messages are de-identified.', 'And {B} keeps no copy of your data or report.'], 0.92, None),
+    9: (['Your data is processed directly in your Muse app.', 'Your messages are de-identified.', 'And none of your data or report goes to {B}.'], 0.92, True, 0.2),
 }}
+# The music's tempo (audio.py BPM), for lines said on the beat.
+BPM = 118; HALF = 60 / BPM / 2
 
 # Other names the voice gets wrong, given as sounds the same way: {Mulan} (it said "Meellen"; "Moo-larn", as the
 # owner says it, since 24 October 2026, where it was "moo-lan") and {Odysseus} ("Utysis"). The recogniser hears
@@ -165,15 +177,17 @@ def best_take(text, ls):
         if score == 1.0: break
     return best
 
-def speak(phrases, ls, split, pause=0.06):
-    """One line: its audio, where each phrase after the first starts, and how it scored."""
+def speak(phrases, ls, split, pause=0.06, beat=False):
+    """One line: its audio, where each phrase after the first starts, and how it scored. On the beat, the
+    pause is the least gap, and each phrase waits for the next half-beat from the line's own start."""
     if split:
         out, cuts, t, scores = [], [], 0.0, []
         for k, p in enumerate(phrases):
             text, pace = p if isinstance(p, tuple) else (p, ls)
             score, a = best_take(text, pace)
             gap = (pause[k - 1] if isinstance(pause, list) else pause) if k else 0
-            if k: out.append(np.zeros(int(gap * SR), np.float32)); t += gap; cuts.append(round(t, 3))
+            if k and beat: gap = math.ceil((t + gap) / HALF - 1e-6) * HALF - t
+            if k: out.append(np.zeros(int(round(gap * SR)), np.float32)); t += gap; cuts.append(round(t, 3))
             out.append(a); t += len(a) / SR; scores.append(round(score, 2))
         return np.concatenate(out), cuts, True, min(scores), 'phrase scores ' + str(scores)
     best = None
@@ -218,8 +232,8 @@ def word_times(a, script):
         else: out.append(len(a) / SR * i / max(1, len(want)))
     return [[w, round(t, 3)] for w, t in zip(want, out)]
 
-def write(name, phrases, ls, split, pause=0.06):
-    a, cuts, ok, score, got = speak(phrases, ls, split, pause)
+def write(name, phrases, ls, split, pause=0.06, beat=False):
+    a, cuts, ok, score, got = speak(phrases, ls, split, pause, beat)
     a = a / np.max(np.abs(a)) * 0.9
     sf.write(f'{OUT}/{name}.wav', a, SR, subtype='PCM_16')
     print(name, f'{len(a) / SR:.2f}s', 'score', round(score, 3), 'pauses ok' if ok else 'PAUSES?', [0.0] + cuts, '|', got)
@@ -234,6 +248,8 @@ if __name__ == '__main__':
     for version, settings in CONFIG.items():
         script = settings.get('script')
         if script and script not in marks['alt']:
-            marks['alt'][script] = {str(i): write(f'l{i:02d}-{script}', *line) for i, line in SCRIPTS[script].items()}
-        marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [settings.get('end', END), settings['spoken']], 0.9, True)
+            marks['alt'][script] = {str(i): write(f'l{i:02d}-{script}', *line, beat=bool(settings.get('onBeat')))
+                                    for i, line in SCRIPTS[script].items()}
+        marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [settings.get('end', END), settings['spoken']], 0.9, True,
+                                      beat=bool(settings.get('onBeat')))
     json.dump(marks, open(OUT + '/marks.json', 'w'))

@@ -262,8 +262,10 @@ $('mark').innerHTML = markSvg; $('mark2').innerHTML = markSvg.replace(/<path /g,
 // The Muse version (config.json "script": "muse", vo.py SCRIPTS): its own words for the data, the report,
 // privacy and the ending, and the sources Muse reads (no Google).
 if (CONFIG.script === 'muse') {
-  document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> analyses your data that is already connected to your <span class="grad">Muse app,</span> with <span class="grad">no uploading</span> required.';
-  document.querySelector('#s4 .big').style.fontSize = '66px';
+  document.querySelector('#s4 .big').innerHTML = '<span class="grad">PsycheAI</span> reads what\'s already in your <span class="grad">Muse app</span> with <span class="grad">no upload</span> required.';
+  document.querySelector('#s4 .big').style.fontSize = '72px';
+  document.querySelector('#s3 .big').innerHTML = '<span class="soft">And what if your</span> <span class="grad">digital footprint</span> could show you patterns you\'ve never noticed before?';
+  document.querySelector('#s1 .big').innerHTML = '<span class="soft">…you could get a</span> <span class="grad">full personality study…</span>';
   $('f1').querySelector('.ext').textContent = 'MUSE'; $('f1').querySelector('.sub').textContent = 'posts, stories, chats';
   $('f3').querySelector('.ext').textContent = 'MUSE'; $('f3').querySelector('.sub').textContent = 'posts, Messenger';
   $('f4').querySelector('.ext').textContent = 'MUSE'; $('f4').querySelector('.sub').textContent = 'chats';
@@ -293,12 +295,13 @@ if (CONFIG.script === 'muse') {
   ['ringTick', 'ringBg', 'ringArc'].forEach(id => { $(id).style.display = 'none'; });
   $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="14"><circle cx="74" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/><circle cx="126" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/></g>');
   // The ending says the address on screen; the voice only says where.
-  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste this into your Muse app:</div>');
-  $('cta').style.top = '1450px';
+  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste this prompt into Muse:</div>');
+  // The whole prompt, the one that works best in Muse, on two lines (README "The Muse reel").
+  Object.assign($('cta').style, { top: '1450px', whiteSpace: 'normal', width: '820px', textAlign: 'center', lineHeight: '1.18', borderRadius: '48px', fontSize: '46px', padding: '26px 50px' });
   document.querySelector('#s6 .big').innerHTML = 'And your<br><span class="grad">Psyche Report</span>';
   $('p1').innerHTML = 'Your data is processed directly in <span class="grad">your Muse app.</span>';
   $('p2').innerHTML = 'Your messages are <span class="grad" style="white-space:nowrap">de&#8209;identified.</span>';
-  $('p3').innerHTML = 'PsycheAI keeps <span class="grad">no copy</span> of your data or report.';
+  $('p3').innerHTML = 'None of your data or report goes to <span class="grad">PsycheAI.</span>';
   $('sw1').children[1].textContent = '"Friend A"'; $('sw2').children[1].textContent = '"[email]"'; $('sw3').children[1].textContent = '[handle]';
   document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche</span> is free in Muse!';
 }
@@ -370,7 +373,7 @@ PARTS.interestsValues = { x: PARTS.standFor.x, y: PARTS.standFor.y, w: PARTS.big
 PARTS.typeTraits = { x: PARTS.type.x, y: Math.min(PARTS.type.y, PARTS.bigFive.y), w: PARTS.bigFive.x + PARTS.bigFive.w - PARTS.type.x,
   h: Math.max(PARTS.type.y + PARTS.type.h, PARTS.bigFive.y + PARTS.bigFive.h) - Math.min(PARTS.type.y, PARTS.bigFive.y) };
 // One box per phrase of the card line, after "You'll get a Psyche Card."
-const HL = [['character', 'Which character you are most like'], ['patterns', 'Signature patterns'], ['motives', 'Your motivations'],
+const HL = [['character', CONFIG.script === 'muse' ? 'Your character' : 'Which character you are most like'], ['patterns', 'Signature patterns'], ['motives', 'Your motivations'],
   ['typeTraits', 'Type & Traits'], ['interestsValues', 'Interests & values'], ['love', 'Love languages'],
   ['syncs', 'Most in sync with']];
 const hlEls = HL.map(([key, label]) => {
