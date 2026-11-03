@@ -3,7 +3,7 @@
 <style>
 /* The Instagram carousel for PsycheAI in Muse (three slides, 1080 x 1350, 4:5): node promo/carousel-muse.mjs
    Slide 2's words are the Muse welcome's four privacy lines (psycheai-app lib/mcp.js GO_AHEAD), shortened
-   to fit; slide 3 is the install line (psycheai-app lib/skill.js installPrompt) and the welcome's buttons.
+   to fit; slide 3 is the install line (psycheai-app lib/skill.js installPrompt), Muse's permission card ("Always allow this site", as /install says) and the welcome's buttons.
    Change them together. The mascot is promo/assets/muse-mascot.jpg, as in the Muse reel. */
 @font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -50,7 +50,11 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
 #s2 .lede, #s3 .lede { top: 240px; }
 #s2 .cards { top: 350px; gap: 30px; }
 #s2 .card { padding-top: 34px; padding-bottom: 34px; }
-#s3 .cards { top: 310px; gap: 26px; }
+#s3 .cards { top: 262px; gap: 16px; }
+#s3 .card { padding-top: 18px; padding-bottom: 18px; }
+#s3 .foot { bottom: 84px; }
+#s3 .card span.d { margin-top: 6px; }
+.btns em.pick { border: 3px solid #8a3fd0; color: #8a3fd0; font-weight: 800; background: #faf5ff; }
 .paste { margin-top: 14px; padding: 18px 24px; border-radius: 22px; background: #f6effc; border: 3px dashed #c9a6e6;
   font-size: 29px; font-weight: 800; color: #4b1f6e; line-height: 1.3; }
 .btns { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
@@ -92,12 +96,13 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
   <div class="blob" style="width:640px;height:640px;left:-260px;top:-140px;background:#ffd6e7;opacity:.55"></div>
   <div class="blob" style="width:620px;height:620px;right:-260px;top:760px;background:#e2d6ff;opacity:.65"></div>
   <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
-  <h1>Start in <span class="grad">4 steps</span></h1>
+  <h1>Start in <span class="grad">5 steps</span></h1>
   <div class="cards">
     <div class="card"><span class="num">1</span><div><b>Open Muse</b><span class="d">Start a new chat in the Muse app.</span></div></div>
     <div class="card"><span class="num">2</span><div><b>Paste this message</b><div class="paste">Install psycheai.io/muse and generate my Psyche</div></div></div>
-    <div class="card"><span class="num">3</span><div><b>Choose what to read</b><div class="btns"><em>Include my messages</em><em>Posts only</em></div></div></div>
-    <div class="card"><span class="num">4</span><div><b>Your Psyche in ~5 minutes</b><span class="d">Your card and private report. Then ask anything, or sync with a friend.</span></div></div>
+    <div class="card"><span class="num">3</span><div><b>Allow the install</b><span class="d">When Muse asks for permission, tap</span><div class="btns"><em class="pick">Always allow this site</em></div></div></div>
+    <div class="card"><span class="num">4</span><div><b>Choose what to read</b><div class="btns"><em>Include my messages</em><em>Posts only</em></div></div></div>
+    <div class="card"><span class="num">5</span><div><b>Your Psyche in ~5 minutes</b><span class="d">Your card and private report. Then ask anything, or sync with a friend.</span></div></div>
   </div>
   <div class="foot">Free · <em>psycheai.io/muse</em></div>
   <div class="dots"><i></i><i></i><i class="on"></i></div>
