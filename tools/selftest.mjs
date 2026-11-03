@@ -9726,9 +9726,9 @@ check('the schema requires evidence on where they align and differ',
   check('the Muse page has the sections the plugin redirects to, the connector only on the docs page; Psyche Pair, Plus and safety are on their own page, not this one',
     ['add', 'privacy', 'terms'].every(id => muse.includes('id="' + id + '"')) && ['pair', 'plus', 'safety'].every(id => musePair.includes('id="' + id + '"')) && !/pair|plus/i.test(muse.replace(/<script[^]*?<\/script>/g, '')) &&
     museDocs.includes('https://app.psycheai.io/mcp') && !muse.includes('app.psycheai.io/mcp') && muse.includes('<pre class="paste" id="install-prompt">Install psycheai.io/muse</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse) && /<b>Client ID<\/b> box, type <code>psycheai<\/code> and tap <b>Add<\/b>/.test(museDocs));
-  check('it says what the plugin never receives or guesses, that the read is checked and made into a card in memory and kept nowhere, that there is no PDF, and that older reads were sealed under their link\'s key',
+  check('it says what the plugin never receives or guesses, that with the skill only the card\'s summary reaches us and the report never leaves Muse, that there is no PDF, and that older reads were sealed under their link\'s key',
     /never receive your posts, captions, comments, stories or messages/.test(musePrivacy) && /never guess your religion, ethnicity, politics/.test(musePrivacy) &&
-      /key that exists only in their link/.test(musePrivacy) && /send it back, and keep none of it: no copy of your read is stored, locked or not\. There is no PDF: your report is a file made in your own Muse workspace\./.test(musePrivacy) &&
+      /key that exists only in their link/.test(musePrivacy) && /Your report itself, its evidence and your own words never reach us: the PsycheAI skill checks your report and lays it out as a file in your own Muse workspace\. There is no PDF\./.test(musePrivacy) && /Your report never leaves Muse\./.test(musePrivacy) &&
       !/to make your private link/.test(musePrivacy) &&
       /locked under a key that is kept in your own Muse workspace and in your card picture's link, never on our server/.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /our server unlocks it for that moment/.test(musePrivacy) &&
@@ -10756,7 +10756,7 @@ console.log('  stills counted    : ' + withPhotos.coverage.stillsInArchive + ' (
     const museImport = (await import('../lib/museimport.js')).default;
     const r = museImport.guide('read'), dp = museImport.guide('read', 'deep'), sy = museImport.guide('sync');
     check('the Muse skill\'s pinned guide is this guide (in psycheai-app: node tools/pin-guide.mjs, then sign the skill)',
-      readFileSync(app, 'utf8').trim() === JSON.stringify({ read: { spec: r.spec, rubric: r.rubric, schema: r.schema }, deepSpec: dp.spec.slice(r.spec.length), sync: { spec: sy.spec, brief: sy.brief, schema: sy.schema } }, null, 1));
+      readFileSync(app, 'utf8').trim() === JSON.stringify({ read: { spec: r.spec, rubric: r.rubric, schema: r.schema }, deepSpec: dp.spec.slice(r.spec.length), sync: { spec: sy.spec, brief: sy.brief, schema: sy.schema }, labels: (await import('../lib/musepdf.js')).default.labels() }, null, 1));
   }
 }
 
