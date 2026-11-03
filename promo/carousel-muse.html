@@ -1,0 +1,122 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The Instagram carousel for PsycheAI in Muse (three slides, 1080 x 1350, 4:5): node promo/carousel-muse.mjs
+   Slide 2's words are the Muse welcome's four privacy lines (psycheai-app lib/mcp.js GO_AHEAD), shortened
+   to fit; slide 3 is the install line (psycheai-app lib/skill.js installPrompt) and the welcome's buttons.
+   Change them together. The mascot is promo/assets/muse-mascot.jpg, as in the Muse reel. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; background: #f4ecfb; }
+body { font-family: Inter, sans-serif; color: #2a1238; }
+.slide { position: relative; width: 1080px; height: 1350px; overflow: hidden;
+  background: radial-gradient(120% 75% at 50% 0%, #f1dcff 0%, #f9f1fd 55%, #f3e8fb 100%); }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand { position: absolute; left: 0; right: 0; top: 60px; display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 34px; font-weight: 850; z-index: 3; }
+.brand svg { width: 54px; height: 54px; }
+.brand .in { font-weight: 650; color: #8a6aa3; }
+h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size: 82px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.03; z-index: 3; }
+.lede { position: absolute; left: 100px; right: 100px; text-align: center; font-size: 31px; font-weight: 600; line-height: 1.38; color: #6b3f8f; z-index: 3; }
+.dots { position: absolute; left: 0; right: 0; bottom: 42px; display: flex; justify-content: center; gap: 12px; z-index: 3; }
+.dots i { width: 13px; height: 13px; border-radius: 50%; background: #dcc8ec; }
+.dots i.on { width: 38px; border-radius: 7px; background: linear-gradient(90deg, #e0457b, #8a3fd0); }
+
+/* 1: the mascot, the PsycheAI mark glowing in its orb */
+#s1 .mascot { position: absolute; width: 780px; height: 1170px; left: 150px; top: 215px; z-index: 1;
+  background: url('assets/muse-mascot.jpg') center / cover;
+  -webkit-mask-image: radial-gradient(ellipse 50% 46% at 50% 50%, #000 62%, transparent 100%);
+          mask-image: radial-gradient(ellipse 50% 46% at 50% 50%, #000 62%, transparent 100%); }
+#s1 .orbmark { position: absolute; z-index: 2; width: 92px; height: 92px; transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 22px rgba(255, 190, 240, .9)); opacity: .92; }
+#s1 h1 { top: 128px; }
+#s1 .lede { top: 236px; font-size: 30px; }
+#s1 .swipe { position: absolute; right: 64px; bottom: 96px; z-index: 3; padding: 16px 30px; border-radius: 999px; background: #fff;
+  font-size: 30px; font-weight: 800; color: #8a3fd0; box-shadow: 0 12px 30px rgba(90, 40, 120, .18); }
+#s1 .free { position: absolute; left: 64px; bottom: 96px; z-index: 3; padding: 16px 30px; border-radius: 999px;
+  background: linear-gradient(90deg, #e0457b, #8a3fd0); color: #fff; font-size: 30px; font-weight: 850; box-shadow: 0 12px 30px rgba(224, 69, 123, .28); }
+
+/* 2 and 3: a column of white cards */
+.cards { position: absolute; left: 70px; right: 70px; display: grid; gap: 22px; z-index: 2; }
+.card { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 26px; padding: 26px 34px 26px 26px;
+  border-radius: 34px; background: #fff; box-shadow: 0 16px 40px rgba(90, 40, 120, .11); }
+.icon { width: 100px; height: 100px; border-radius: 50%; display: grid; place-items: center; font-size: 50px;
+  background: linear-gradient(140deg, #f6e6ff, #ffe3ee); box-shadow: inset 0 0 0 3px #efdcfb; }
+.num { width: 92px; height: 92px; margin: 4px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 44px; font-weight: 900;
+  background: linear-gradient(140deg, #8a3fd0, #e0457b); box-shadow: 0 0 0 9px #f1e3fb, 0 12px 26px rgba(224, 69, 123, .28); }
+.card b { display: block; font-size: 38px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
+.card span.d { display: block; margin-top: 8px; font-size: 26px; font-weight: 550; line-height: 1.36; color: #6b5a7b; }
+#s2 h1, #s3 h1 { top: 138px; }
+#s2 .lede, #s3 .lede { top: 240px; }
+#s2 .cards { top: 350px; gap: 30px; }
+#s2 .card { padding-top: 34px; padding-bottom: 34px; }
+#s3 .cards { top: 310px; gap: 26px; }
+.paste { margin-top: 14px; padding: 18px 24px; border-radius: 22px; background: #f6effc; border: 3px dashed #c9a6e6;
+  font-size: 29px; font-weight: 800; color: #4b1f6e; line-height: 1.3; }
+.btns { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.btns em { font-style: normal; padding: 11px 20px; border-radius: 16px; border: 2.5px dashed #b9b1c2; font-size: 24px; font-weight: 650; color: #3b2a48; background: #fff; }
+.foot { position: absolute; left: 0; right: 0; bottom: 92px; text-align: center; font-size: 31px; font-weight: 750; color: #6b3f8f; z-index: 3; }
+.foot em { font-style: normal; color: #e0457b; }
+</style></head>
+<body>
+
+<section class="slide" id="s1">
+  <div class="blob" style="width:640px;height:640px;left:-260px;top:-140px;background:#ffd6e7;opacity:.6"></div>
+  <div class="blob" style="width:620px;height:620px;right:-250px;top:620px;background:#e2d6ff;opacity:.7"></div>
+  <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
+  <h1>Your <span class="grad">Psyche</span>, in Muse</h1>
+  <p class="lede">A Psyche Card to share, and a private report on your MBTI, attachment style and strengths, from your Instagram.</p>
+  <div class="mascot"></div>
+  <svg class="orbmark mark" viewBox="0 0 140 140" id="orbmark"></svg>
+  <div class="free">Free</div>
+  <div class="swipe">Swipe to start →</div>
+  <div class="dots"><i class="on"></i><i></i><i></i></div>
+</section>
+
+<section class="slide" id="s2">
+  <div class="blob" style="width:620px;height:620px;right:-240px;top:-160px;background:#ffd6e7;opacity:.55"></div>
+  <div class="blob" style="width:640px;height:640px;left:-280px;top:700px;background:#e2d6ff;opacity:.6"></div>
+  <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
+  <h1>Private by <span class="grad">design</span></h1>
+  <p class="lede">Your Instagram is read inside Muse, never uploaded.</p>
+  <div class="cards">
+    <div class="card"><span class="icon">🔒</span><div><b>Stays in your Muse</b><span class="d">Analysed right in your own Muse account. No upload, no export.</span></div></div>
+    <div class="card"><span class="icon">🙈</span><div><b>De-identified first</b><span class="d">Names, handles, numbers and links removed, and no one else is quoted.</span></div></div>
+    <div class="card"><span class="icon">🗑️</span><div><b>No copy kept</b><span class="d">PsycheAI keeps no copy of your data or report.</span></div></div>
+    <div class="card"><span class="icon">✋</span><div><b>Private to you</b><span class="d">Nothing is posted or sent unless you choose to. Delete it all any time.</span></div></div>
+  </div>
+  <div class="dots"><i></i><i class="on"></i><i></i></div>
+</section>
+
+<section class="slide" id="s3">
+  <div class="blob" style="width:640px;height:640px;left:-260px;top:-140px;background:#ffd6e7;opacity:.55"></div>
+  <div class="blob" style="width:620px;height:620px;right:-260px;top:760px;background:#e2d6ff;opacity:.65"></div>
+  <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
+  <h1>Start in <span class="grad">4 steps</span></h1>
+  <div class="cards">
+    <div class="card"><span class="num">1</span><div><b>Open Muse</b><span class="d">Start a new chat in the Muse app.</span></div></div>
+    <div class="card"><span class="num">2</span><div><b>Paste this message</b><div class="paste">Install psycheai.io/muse and generate my Psyche</div></div></div>
+    <div class="card"><span class="num">3</span><div><b>Choose what to read</b><div class="btns"><em>Include my messages</em><em>Posts only</em></div></div></div>
+    <div class="card"><span class="num">4</span><div><b>Your Psyche in ~5 minutes</b><span class="d">Your card and private report. Then ask anything, or sync with a friend.</span></div></div>
+  </div>
+  <div class="foot">Free · <em>psycheai.io/muse</em></div>
+  <div class="dots"><i></i><i></i><i class="on"></i></div>
+</section>
+
+<script>
+const MARK = __MARK__;
+const draw = (stroke, dot) => MARK.paths.map(d => '<path d="' + d + '" fill="none" stroke="' + stroke + '" stroke-width="4"/>').join('') +
+  '<circle cx="70" cy="70" r="12" fill="' + dot + '"/>';
+document.querySelectorAll('.brand .mark').forEach(svg => { svg.innerHTML = draw('#7b3fa0', '#ffd36e'); });
+document.getElementById('orbmark').innerHTML = draw('#ffffff', '#ffe9a8');
+// The orb's centre in the mascot image (1152 x 1728), placed as the image is shown on slide 1.
+const ORB = { x: 627, y: 910 };
+window.ready = document.fonts.ready.then(() => {
+  const m = document.querySelector('#s1 .mascot'), box = m.getBoundingClientRect();
+  const scale = Math.max(box.width / 1152, box.height / 1728);
+  const ox = box.left + (box.width - 1152 * scale) / 2, oy = box.top + (box.height - 1728 * scale) / 2;
+  const o = document.getElementById('orbmark');
+  o.style.left = (ox + ORB.x * scale) + 'px';
+  o.style.top = (oy + ORB.y * scale) + 'px';
+});
+</script></body></html>

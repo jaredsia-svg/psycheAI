@@ -10,6 +10,7 @@ promo/build/
 promo/out/
 promo/stage-built.html
 promo/post-built.html
+promo/carousel-muse-built.html
 # compare:unlock's answers: a real person's reading.
 compare-unlock-out/
 promo/__pycache__/
