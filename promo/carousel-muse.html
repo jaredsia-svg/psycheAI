@@ -114,7 +114,7 @@ const draw = (stroke, dot) => MARK.paths.map(d => '<path d="' + d + '" fill="non
 document.querySelectorAll('.brand .mark').forEach(svg => { svg.innerHTML = draw('#7b3fa0', '#ffd36e'); });
 document.getElementById('orbmark').innerHTML = draw('#ffffff', '#ffe9a8');
 // The orb's centre in the mascot image (1152 x 1728), placed as the image is shown on slide 1.
-const ORB = { x: 627, y: 910 };
+const ORB = { x: 630, y: 976 };
 window.ready = document.fonts.ready.then(() => {
   const m = document.querySelector('#s1 .mascot'), box = m.getBoundingClientRect();
   const scale = Math.max(box.width / 1152, box.height / 1728);
