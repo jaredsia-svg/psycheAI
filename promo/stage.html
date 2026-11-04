@@ -295,7 +295,7 @@ if (CONFIG.script === 'muse') {
   ['ringTick', 'ringBg', 'ringArc'].forEach(id => { $(id).style.display = 'none'; });
   $('ring').insertAdjacentHTML('beforeend', '<g id="venn" fill="none" stroke="url(#rg)" stroke-width="14"><circle cx="74" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/><circle cx="126" cy="100" r="44" stroke-dasharray="277" stroke-dashoffset="277"/></g>');
   // The ending says the address on screen; the voice only says where.
-  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste this prompt into Muse:</div>');
+  document.querySelector('#s9').insertAdjacentHTML('beforeend', '<div class="big" id="pasteNote" style="top:1375px;font-size:40px;text-align:center;opacity:0">Paste this prompt to begin:</div>');
   // The whole prompt, the one that works best in Muse, on two lines (README "The Muse reel").
   Object.assign($('cta').style, { top: '1450px', whiteSpace: 'normal', width: '820px', textAlign: 'center', lineHeight: '1.18', borderRadius: '48px', fontSize: '46px', padding: '26px 50px' });
   document.querySelector('#s6 .big').innerHTML = 'And your<br><span class="grad">Psyche Report</span>';
@@ -303,7 +303,7 @@ if (CONFIG.script === 'muse') {
   $('p2').innerHTML = 'Your messages are <span class="grad" style="white-space:nowrap">de&#8209;identified.</span>';
   $('p3').innerHTML = 'None of your data or report goes to <span class="grad">PsycheAI.</span>';
   $('sw1').children[1].textContent = '"Friend A"'; $('sw2').children[1].textContent = '"[email]"'; $('sw3').children[1].textContent = '[handle]';
-  document.querySelector('#s9 .big[data-words]').innerHTML = 'Your <span class="grad">Psyche</span> is free in Muse!';
+  document.querySelector('#s9 .big[data-words]').innerHTML = 'Get your <span class="grad">Psyche</span> in Muse.';
 }
 
 // Word-by-word pop: wrap every word of [data-words] in its own span, keeping the colour spans.

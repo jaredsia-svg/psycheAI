@@ -2,8 +2,8 @@
 <html><head><meta charset="utf-8">
 <style>
 /* The Instagram carousel for PsycheAI in Muse (four slides, 1080 x 1350, 4:5): node promo/carousel-muse.mjs
-   Slide 2 is the Psyche Card beside the report's five parts (as the reel shows them); slide 3's words are the Muse welcome's four privacy lines (psycheai-app lib/mcp.js GO_AHEAD), shortened
-   to fit; slide 4 is the full install prompt ("Install psycheai.io/muse and generate my Psyche", the one that brings the welcome most reliably), Muse's permission card ("Always allow this site", as /install says) and the welcome's messages choice.
+   Slide 2 is the Psyche Card beside the report's five parts (as the reel shows them); slide 4's words are the Muse welcome's four privacy lines (psycheai-app lib/mcp.js GO_AHEAD), shortened
+   to fit; slide 3 is the full install prompt ("Install psycheai.io/muse and generate my Psyche", the one that brings the welcome most reliably), Muse's permission card ("Always allow this site", as /install says) and the welcome's messages choice.
    Change them together. The mascot is promo/assets/muse-mascot.jpg, as in the Muse reel. */
 @font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,6 +51,8 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
 .card b { display: block; font-size: 38px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
 .card span.d { display: block; margin-top: 8px; font-size: 26px; font-weight: 550; line-height: 1.36; color: #6b5a7b; }
 #s2 h1, #s3 h1 { top: 138px; }
+/* "Your data is private by design" on one line (4 Nov 2026). */
+#s2 h1 { font-size: 68px; top: 150px; }
 #s2 .cards { top: 290px; gap: 34px; }
 #s2 .card { padding-top: 34px; padding-bottom: 34px; }
 #s3 .cards { top: 300px; gap: 26px; }
@@ -116,20 +118,6 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
   <div class="dots"><i></i><i class="on"></i><i></i><i></i></div>
 </section>
 
-<section class="slide" id="s2">
-  <div class="blob" style="width:620px;height:620px;right:-240px;top:-160px;background:#ffd6e7;opacity:.55"></div>
-  <div class="blob" style="width:640px;height:640px;left:-280px;top:700px;background:#e2d6ff;opacity:.6"></div>
-  <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
-  <h1>Private by <span class="grad">design</span></h1>
-  <div class="cards">
-    <div class="card"><span class="icon">🔒</span><div><b>Stays in your Muse</b><span class="d">Your Instagram is read right in your own Muse account. Nothing to export or upload.</span></div></div>
-    <div class="card"><span class="icon">🙈</span><div><b>De-identified first</b><span class="d">Names, handles, numbers and links removed, and no one else is quoted.</span></div></div>
-    <div class="card"><span class="icon">🗑️</span><div><b>Made in Muse</b><span class="d">Your Psyche Card and Report are made right in Muse. None of your posts, messages or report go to PsycheAI.</span></div></div>
-    <div class="card"><span class="icon">✋</span><div><b>Private to you</b><span class="d">Nothing is posted or shared with other people unless you choose to. Delete it all any time.</span></div></div>
-  </div>
-  <div class="dots"><i></i><i></i><i class="on"></i><i></i></div>
-</section>
-
 <section class="slide" id="s3">
   <div class="blob" style="width:640px;height:640px;left:-260px;top:-140px;background:#ffd6e7;opacity:.55"></div>
   <div class="blob" style="width:620px;height:620px;right:-260px;top:760px;background:#e2d6ff;opacity:.65"></div>
@@ -142,6 +130,20 @@ h1 { position: absolute; left: 60px; right: 60px; text-align: center; font-size:
     <div class="card"><span class="num">4</span><div><b>Your Psyche in ~5 minutes</b><span class="d">Choose to include direct messages or just posts. You will get a Psyche card and report. Then sync with a friend.</span></div></div>
   </div>
   <div class="foot">Free · <em>psycheai.io/muse</em></div>
+  <div class="dots"><i></i><i></i><i class="on"></i><i></i></div>
+</section>
+
+<section class="slide" id="s2">
+  <div class="blob" style="width:620px;height:620px;right:-240px;top:-160px;background:#ffd6e7;opacity:.55"></div>
+  <div class="blob" style="width:640px;height:640px;left:-280px;top:700px;background:#e2d6ff;opacity:.6"></div>
+  <div class="brand"><svg viewBox="0 0 140 140" class="mark"></svg>PsycheAI <span class="in">· in Muse</span></div>
+  <h1>Your data is private by <span class="grad">design</span></h1>
+  <div class="cards">
+    <div class="card"><span class="icon">🔒</span><div><b>Stays in your Muse</b><span class="d">Your Instagram is read right in your own Muse account. Nothing to export or upload.</span></div></div>
+    <div class="card"><span class="icon">🙈</span><div><b>De-identified first</b><span class="d">Names, handles, numbers and links removed, and no one else is quoted.</span></div></div>
+    <div class="card"><span class="icon">🗑️</span><div><b>Processed within Muse</b><span class="d">Your Psyche Card and Report are made right in Muse. None of your posts, messages or report go to PsycheAI.</span></div></div>
+    <div class="card"><span class="icon">✋</span><div><b>Private to you</b><span class="d">Nothing is posted or shared with other people unless you choose to. Delete it all any time.</span></div></div>
+  </div>
   <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
 </section>
 

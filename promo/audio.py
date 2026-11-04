@@ -93,12 +93,15 @@ def env(L, a, r):
     e[:na] = np.linspace(0, 1, na); e[-nr:] *= np.linspace(1, 0, nr); return e
 
 music = np.zeros((n, 2), np.float32)
-def at(sec, sig, gain=1.0, pan=0.0):
+# The drop's drums and bass on a bus of their own, so they can be filtered down into the privacy break.
+drums = np.zeros((n, 2), np.float32)
+def at(sec, sig, gain=1.0, pan=0.0, bus=None):
+    bus = music if bus is None else bus
     a = int(sec * SR)
     if a >= n or a < 0: return
     end = min(n, a + len(sig))
-    music[a:end, 0] += sig[:end - a] * gain * (1 - max(0, pan))
-    music[a:end, 1] += sig[:end - a] * gain * (1 + min(0, pan))
+    bus[a:end, 0] += sig[:end - a] * gain * (1 - max(0, pan))
+    bus[a:end, 1] += sig[:end - a] * gain * (1 + min(0, pan))
 
 def kick():
     L = int(0.3 * SR); x = np.arange(L) / SR
@@ -153,6 +156,15 @@ INTRO_END = sc[3]['start']      # the hook: plucks and a light pulse
 DROP = sc[4]['start']           # the data goes in: full beat
 BREAK = sc[8]['start']          # privacy: pads, plucks, no kick
 FINAL = sc[9]['start']          # the end card: back in, then out
+# On the beat (the Muse reel), the privacy break is its own section (4 Nov 2026): the drop's drums are filtered
+# down over the bar before it rather than stopping dead, the break's pad starts a beat early and carries across
+# the cut, and the break turns to the relative minor (Am F C G) with slower plucks and a lower bell, so the
+# change of mood is plain without a jolt. Back to C G Am F on the end card.
+SMOOTH = ONBEAT
+BREAK_CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]  # Am F C G
+BREAK_ROOTS = [33, 41, 36, 43]
+BREAK_MELODY = [[72, 69, 64, 69], [72, 69, 65, 69], [72, 67, 64, 67], [71, 67, 62, 67]]
+in_break = lambda x: SMOOTH and BREAK <= x < FINAL
 
 K, C = kick(), clap()
 H, HO = hat(), hat(True)
@@ -164,31 +176,43 @@ while b < TOTAL + BEAT:
     mid = INTRO_END <= b < DROP
     # Kick: light on 1 in the hook, every beat from the footprint, four on the floor in the drop.
     if full or mid or (b < INTRO_END and beat_i == 0):
-        at(b, K, 0.95 if full else 0.6)
+        at(b, K, 0.95 if full else 0.6, bus=drums if full and b < BREAK else None)
         a = int(b * SR); L = int(0.22 * SR)
         if full and a < n: pump[a:a + L] = np.minimum(pump[a:a + L], 0.35 + 0.65 * np.linspace(0, 1, min(L, n - a)) ** 0.6)
-    if full and beat_i in (1, 3): at(b, C, 0.9)
+    dbus = drums if full and b < BREAK else None
+    if full and beat_i in (1, 3): at(b, C, 0.9, bus=dbus)
     if full or mid:
         for k in range(4 if full else 2):
-            at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3)
-        if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3)
+            at(b + k * BEAT / (4 if full else 2), H, 0.7 if k % 2 else 0.45, 0.3, bus=dbus)
+        if full and beat_i == 3: at(b + BEAT / 2, HO, 0.5, -0.3, bus=dbus)
     # Bass: offbeat pumping in the drop, roots elsewhere after the hook.
     if full:
-        at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0)
-        at(b, bass(ROOTS[bar_i], BEAT * 0.3), 0.7)
+        at(b + BEAT / 2, bass(ROOTS[bar_i] + 12, BEAT * 0.45), 1.0, bus=dbus)
+        at(b, bass(ROOTS[bar_i], BEAT * 0.3), 0.7, bus=dbus)
+    elif in_break(b):
+        # The break's bass: one long, soft root a bar, from the minor progression.
+        if beat_i == 0: at(b, lowpass(bass(BREAK_ROOTS[bar_i], BAR * 0.95), 400), 0.55)
     elif b >= INTRO_END or b >= BREAK:
         at(b, bass(ROOTS[bar_i], BEAT * 0.8), 0.6)
-    # Plucked arpeggio everywhere, eighths.
-    notes = CHORDS[bar_i] + [CHORDS[bar_i][0] + 12]
-    for k in range(2):
-        m = notes[(beat_i * 2 + k) % 4] + 12
-        at(b + k * BEAT / 2, pluck(m, 0.1 if b < DROP else 0.08), 1.0, 0.4 if k else -0.4)
+    # Plucked arpeggio everywhere, eighths (quarters, softer, in the break).
+    if in_break(b):
+        notes = BREAK_CHORDS[bar_i] + [BREAK_CHORDS[bar_i][0] + 12]
+        at(b, pluck(notes[beat_i % 4] + 12, 0.07), 1.0, -0.3 if beat_i % 2 else 0.3)
+    else:
+        notes = CHORDS[bar_i] + [CHORDS[bar_i][0] + 12]
+        for k in range(2):
+            m = notes[(beat_i * 2 + k) % 4] + 12
+            at(b + k * BEAT / 2, pluck(m, 0.1 if b < DROP else 0.08), 1.0, 0.4 if k else -0.4)
     # Chord stabs on the beat in the drop.
-    if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0)
+    if full and beat_i in (0, 2): at(b, stab(CHORDS[bar_i], BEAT * 0.9), 1.0, bus=dbus)
     # Bell melody in the drop and in the break; on the end card it leads, a little louder each beat
     # (see the crescendo below).
     if (full or BREAK <= b < FINAL) and b >= DROP:
         lead = min(1, (b - FINAL + BEAT) / (2 * BEAT)) if b >= FINAL else 0
+        if in_break(b):
+            # The tune an octave down and on every other beat: the break is quieter than the drop either side.
+            if beat_i in (0, 2): at(b, bell(BREAK_MELODY[bar_i][beat_i] - 12), 0.8, 0.15)
+            b += BEAT; continue
         at(b, bell(MELODY[bar_i][beat_i]), 0.9 + 0.6 * lead, 0.15)
         # A soft octave above the tune on the end card, for a brighter, happier finish.
         if lead: at(b, bell(MELODY[bar_i][beat_i] + 12), 0.28 * lead, -0.15)
@@ -199,12 +223,30 @@ for bar in range(int(TOTAL / BAR) + 2):
     a0 = bar * BAR
     if a0 >= TOTAL: break
     if a0 < DROP or BREAK <= a0 < FINAL:
+        if SMOOTH and BREAK <= a0 < FINAL: continue
         pad = stab(CHORDS[bar % 4], BAR * 1.05) * 1.6
         # On the beat, the break lands on a bar line, so its first pad came in full at the very moment the
         # drums stopped, and the cut sounded abrupt: it fades in over two beats instead.
         if ONBEAT and abs(a0 - BREAK) < 0.02:
             k = min(len(pad), int(2 * BEAT * SR)); pad[:k] *= np.linspace(0, 1, k) ** 1.5
         at(a0, pad, 0.8)
+
+# The break's pads, from the cut itself (it needn't fall on a bar line): the minor chords, warmer (filtered
+# lower) and a little longer, so they overlap. The first starts a beat early, under the drums filtering away,
+# and swells across the cut.
+if SMOOTH:
+    p0 = BREAK
+    while p0 < FINAL:
+        chord = BREAK_CHORDS[int(round(p0 / BAR - 1e-6)) % 4 if abs(p0 / BAR - round(p0 / BAR)) < 0.01 else int(p0 / BAR) % 4]
+        length = min(BAR, FINAL - p0)
+        pad = lowpass(stab(chord, length + BAR * 0.15), 1500) * 2.0
+        if p0 == BREAK:
+            pad = np.concatenate([np.zeros(int(BEAT * SR), np.float32), pad])
+            k = min(len(pad), int(3 * BEAT * SR)); pad[:k] *= np.linspace(0, 1, k) ** 1.2
+            at(p0 - BEAT, pad, 0.8)
+        else:
+            at(p0, pad, 0.8)
+        p0 = (math.floor(p0 / BAR + 1e-6) + 1) * BAR
 
 # The two big moments, the data going in and the end card, get the riser and the hit; the card and
 # report cuts a soft swoosh into them, which sat better than a hit on every cut. Sync follows the
@@ -214,8 +256,28 @@ for k in (5, 6): at(sc[k]['start'] - 0.5, swell(0.5), 1.0)
 at(FINAL - 1.6, riser(1.6), 0.9); at(FINAL, impact(), 1.0)
 # On the beat, into the privacy break: a soft swoosh over the last beat and a low, quiet hit on the cut,
 # so the beat lands into the break rather than stopping dead (4 Nov 2026, the Muse reel).
-if ONBEAT:
+if SMOOTH:
+    # Over the bar before the break the drums are filtered down (a low-pass closing from 9 kHz to 250 Hz) and
+    # fade to a third, so they recede rather than stop; a reversed-cymbal swell over the last two beats peaks
+    # on the cut, and a long, soft wash of noise rings out from it instead of a hit.
+    a0, a1 = int((BREAK - BAR) * SR), min(n, int(BREAK * SR))
+    if a0 > 0 and a1 > a0:
+        seg = drums[a0:a1].copy(); L = a1 - a0; frac = np.arange(L) / L
+        cut = 9000 * (250 / 9000) ** (frac ** 1.3)
+        coef = np.exp(-2 * np.pi * cut / SR).astype(np.float32)
+        for ch in range(2):
+            prev = 0.0; x = seg[:, ch]; y = np.empty_like(x)
+            for i in range(L):
+                prev = (1 - coef[i]) * x[i] + coef[i] * prev; y[i] = prev
+            seg[:, ch] = y * (1 - 0.67 * frac ** 1.5)
+        drums[a0:a1] = seg
+        drums[a1:] = 0
+    at(BREAK - 2 * BEAT, swell(2 * BEAT), 0.8)
+    L = int(2.5 * SR); x = np.arange(L) / SR
+    at(BREAK, lowpass(rng.standard_normal(L).astype(np.float32), 3500) * np.exp(-x * 1.8) * 0.12, 1.0)
+elif ONBEAT:
     at(BREAK - BEAT, swell(BEAT), 0.9); at(BREAK, lowpass(impact(), 500), 0.5)
+music += drums
 
 music[:, 0] *= pump[:n]; music[:, 1] *= pump[:n]
 fade = np.ones(n, np.float32)

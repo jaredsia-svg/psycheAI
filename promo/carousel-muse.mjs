@@ -2,7 +2,7 @@
 //
 //   node promo/carousel-muse.mjs
 //
-// Slide 1 is the mascot, slide 2 the Psyche Card and the report's five parts, slide 3 the welcome's privacy lines, slide 4 how to start in Muse
+// Slide 1 is the mascot, slide 2 the Psyche Card and the report's five parts, slide 3 how to start in Muse, slide 4 the welcome's privacy lines
 // (promo/carousel-muse.html says where each one's words come from). The brand mark comes from docs/copy.js.
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -26,8 +26,8 @@ page.on('pageerror', e => errors.push(e.message));
 await page.goto('file://' + dir + '/carousel-muse-built.html');
 await page.evaluate(() => window.ready);
 await page.evaluate(() => Promise.all([...document.images].map(im => im.decode().catch(() => {}))));
-// In order: the mascot, the Card and Report, privacy, the steps.
-for (const [i, id] of ['s1', 'sCard', 's2', 's3'].entries()) {
+// In order: the mascot, the Card and Report, the steps, privacy (moved to the back, 4 Nov 2026).
+for (const [i, id] of ['s1', 'sCard', 's3', 's2'].entries()) {
   await page.locator('#' + id).screenshot({ path: dir + '/out/PsycheAI-muse-carousel-' + (i + 1) + '.png' });
   console.log('wrote out/PsycheAI-muse-carousel-' + (i + 1) + '.png');
 }

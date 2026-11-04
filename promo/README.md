@@ -49,8 +49,9 @@ and taken out: both sounded worse).
   "PsycheAI keeps no copy of your data or report" until 4 Nov 2026: the skill now writes the report and draws the card
   in Muse, so neither reaches PsycheAI at all, and "keeps no copy" undersold it.
 - Sync: two linked rings between the cards, larger, with no ring round them, instead of the tick.
-- the ending (`end`, `spoken`): "Your Psyche is free in Muse! Paste the prompt below into Muse to begin.", with
-  "Paste this prompt into Muse:" over the whole prompt on two lines, "Install psycheai.io/muse and generate my
+- the ending (`end`, `spoken`): "Get your Psyche in Muse. Paste this prompt to begin.", with "Paste this prompt to
+  begin:" over the whole prompt on two lines (until 4 Nov 2026 "Your Psyche is free in Muse! Paste the prompt below
+  into Muse to begin.", under "Paste this prompt into Muse:"), "Install psycheai.io/muse and generate my
   Psyche": the prompt that brings the welcome most reliably in Muse (psycheai-app README "The welcome, word for word
   again"). It was the psycheai.io/muse button until 4 Nov 2026.
 
@@ -61,6 +62,14 @@ and taken out: both sounded worse).
   line is now three phrases recorded one by one. The privacy break then fell on a bar line, so the drums stopped and
   the first pad came in full at the same instant, which sounded abrupt: on the beat, a soft swoosh leads into the
   break, a low, quiet hit lands on it, and its first pad fades in over two beats.
+- **The privacy break as its own section** (4 Nov 2026, `SMOOTH` in audio.py, on the beat only): at 38 to 40 s the
+  change still sounded odd and sudden, the drums stopping dead while the same chords went on underneath. Now the
+  drop's drums and bass are on a bus of their own and are filtered down over the bar before the break (a low-pass
+  closing from 9 kHz to 250 Hz, fading to a third), so they recede instead of stopping; a reversed-cymbal swell over
+  the last two beats peaks on the cut, with a long soft wash after it in place of the hit; the break's first pad
+  starts a beat early and swells across the cut. The break itself is now clearly another section: the relative minor
+  (Am F C G, `BREAK_CHORDS`) on warmer pads, one long bass note a bar, plucks on the beat instead of eighths, and the
+  bell an octave lower on every other beat. The end card goes back to C G Am F with its riser and hit.
 
 The other versions are unchanged. `npm run promo -- muse` builds it.
 
