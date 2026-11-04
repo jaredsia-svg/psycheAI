@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PsycheAI in Muse: how it works | PsycheAI</title>
-<meta name="description" content="How the PsycheAI connector for Meta Muse works: connecting, signing in, what a user does, and every tool it offers.">
+<meta name="description" content="How the PsycheAI skill for Meta Muse works: what it reads and writes in your Muse, what it sends, and how updates are signed.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://psycheai.io/muse-docs">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="PsycheAI">
 <meta property="og:url" content="https://psycheai.io/muse-docs">
 <meta property="og:title" content="PsycheAI in Muse: how it works | PsycheAI">
-<meta property="og:description" content="How the PsycheAI connector for Meta Muse works: connecting, signing in, what a user does, and every tool it offers.">
+<meta property="og:description" content="How the PsycheAI skill for Meta Muse works: what it reads and writes in your Muse, what it sends, and how updates are signed.">
 <meta property="og:image" content="https://psycheai.io/media/og-card.jpg?v=3">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#7b3fa0">
@@ -30,66 +30,33 @@
 <main class="container guide legal">
   <header class="hero profile-hero guide-hero">
     <h1>PsycheAI in Muse: how it works</h1>
-    <p class="lede">How the PsycheAI connector works: connecting, signing in, and every tool it offers.</p>
-    <p class="legal-meta">PsycheAI · Singapore · Last updated 2 November 2026 · <a href="/muse">PsycheAI in Muse</a></p>
+    <p class="lede">What the PsycheAI skill does in your Muse, what it sends us, and how you can check it.</p>
+    <p class="legal-meta">PsycheAI · Singapore · Last updated 4 November 2026 · <a href="/muse">PsycheAI in Muse</a></p>
   </header>
-  <section class="card section-card" id="connect">
-    <h2>Connecting</h2>
-    <ul>
-      <li><b>Address:</b> <code>https://app.psycheai.io/mcp</code>, MCP over HTTP (Streamable HTTP, JSON replies, POST only).</li>
-      <li><b>Sign-in:</b> OAuth 2.1 with PKCE (S256). Hosts register themselves (RFC 7591, <code>/oauth/register</code>); client ID metadata documents are accepted (an https <code>client_id</code>); a host that asks for a client ID uses <code>psycheai</code>, a public client that returns only to Meta's own hosts. Discovery: <code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code>.</li>
-      <li><b>Accounts:</b> made on connect, with no email and no code: authorize returns the code at once, and a signed cookie brings the same browser back to the same account. Email sign-in (a 6-digit code, Google or Apple) is at <code>/oauth/authorize?…&amp;signin=email</code>, and an email can be added later from Muse for nudges. No password, no API key.</li>
-      <li><b>As a Muse connector</b> (the skill at psycheai.io/muse is the way to install it; the connector alone has no reading script, so Muse reads Instagram by hand, more slowly, and can't de-identify added chats): paste <code>Add a custom connector: https://app.psycheai.io/mcp. If it asks for a Client ID, use psycheai. Once it's connected, open PsycheAI.</code> If Muse shows a <b>Client ID</b> box, type <code>psycheai</code> and tap <b>Add</b>.</li>
-      <li><b>Health:</b> <code>/health</code>.</li>
-    </ul>
+  <section class="card section-card" id="install">
+    <h2>Installing</h2>
+    <p>Paste <b>Install psycheai.io/muse and generate my Psyche</b> into Muse. Muse fetches three files from app.psycheai.io into <code>~/workspace/skills/psycheai/</code>: <code>SKILL.md</code> (what Muse follows), <code>bin/psyche.py</code> (the script) and <code>guide.json</code> (how a Psyche is written). When Muse asks to share information with app.psycheai.io, tap <b>Always allow this site</b>. There's no sign-up: no email, password or key.</p>
   </section>
   <section class="card section-card" id="flow">
-    <h2>What a user does</h2>
-    <ol>
-      <li><b>Start:</b> the <code>start</code> tool gives any news and a four-option menu.</li>
-      <li><b>Their read:</b> <code>get_report_guide</code> gives the format (a short spec and a JSON schema); the assistant writes the read from the user's own Instagram and publishes it with <code>publish_psyche</code>, which checks it, returns their card image and the report for the chat, and keeps none of it.</li>
-      <li><b>Sync:</b> two people both ask (<code>sync_with</code>); either can then see how they sync (<code>get_sync</code>).</li>
-      <li><b>Psyche Pair:</b> the user checks their card and answers what only they can (<code>save_profile</code>, <code>confirm_profile</code>); each week, a few matches above a fixed bar (<code>get_weekly_matches</code>), up to 2 picks, and a mutual yes opens a private chat or an Instagram swap.</li>
-    </ol>
-    <p>Most results end with a next step: one line and the buttons to offer.</p>
+    <h2>What happens in your Muse</h2>
+    <ul>
+      <li><b>Reading.</b> The script reads your Instagram posts, stories and comments through Muse's own Instagram tools, and your busiest chats if you choose. WhatsApp, Facebook or Messenger only if you add them.</li>
+      <li><b>De-identifying.</b> It removes names, handles, phone numbers, emails and links, and keeps other people's words only as context for your replies, never quoted. What it read is kept as one de-identified file, the digest.</li>
+      <li><b>Writing.</b> Muse writes your Psyche from the digest, following <code>guide.json</code>, and the script checks it.</li>
+      <li><b>Your card and report.</b> The script draws your Psyche Card and lays out your report as a file, both in your workspace.</li>
+    </ul>
   </section>
-  <section class="card section-card" id="tools">
-    <h2>Tools</h2>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>Tool</th><th>Title</th><th>Kind</th><th>What it does</th></tr></thead>
-      <tbody>
-      <tr><td><code>start</code></td><td>Start PsycheAI</td><td>Read</td><td>Call this first, whenever the user connects or opens PsycheAI without saying what they want. Returns what to show them: any news, then a short menu of options to show as buttons. Read-only.</td></tr>
-      <tr><td><code>get_report_guide</code></td><td>Get the PsycheAI guide</td><td>Read</td><td>The format of the PsycheAI read the user asked for: a short specification (spec) and the JSON schema the finished read must match, for publish_psyche.</td></tr>
-      <tr><td><code>publish_psyche</code></td><td>Publish your Psyche</td><td>Writes</td><td>Publish the read you wrote (one JSON object following get_report_guide&#x27;s schema) to PsycheAI, which checks it, makes their card and keeps none of it. Returns their card image, the report in short and view. If it returns problems, fix them and call again.</td></tr>
-      <tr><td><code>sync_with</code></td><td>Sync with a friend</td><td>Writes</td><td>Ask to sync with someone by Instagram handle, or say yes to their ask (same call). The first time it returns an ask for consent to keep the user&#x27;s card: show it, and call again with consent true on Yes.</td></tr>
-      <tr><td><code>get_syncs</code></td><td>See your Syncs</td><td>Read</td><td>Who wants to sync with the user (incoming), whom they asked (sent), and their Syncs with card images.</td></tr>
-      <tr><td><code>get_sync</code></td><td>Open a Sync</td><td>Read</td><td>Everything needed to write the user&#x27;s Sync with someone: PsycheAI&#x27;s Sync guide, the two card-level profiles, the derived facts and the Sync card image. Write it in the chat as the guide says.</td></tr>
-      <tr><td><code>remove_sync</code></td><td>Remove a Sync</td><td>Removes data</td><td>Say no to someone&#x27;s Sync ask, take back the user&#x27;s own, or end a Sync. The other side is not told.</td></tr>
-      <tr><td><code>get_pair_guide</code></td><td>Get the Psyche Pair guide</td><td>Read</td><td>How to run Psyche Pair for this user: the one message that sets it up, the matching fields, and what to do on every later visit. Call it when they say yes to Psyche Pair, and on later visits if you no longer have it.</td></tr>
-      <tr><td><code>get_instructions</code></td><td>Get the steps</td><td>Read</td><td>The step-by-step procedure for building this user&#x27;s Psyche Pair profile. Call it first, and follow it.</td></tr>
-      <tr><td><code>save_profile</code></td><td>Save your profile</td><td>Writes</td><td>Save a draft of the user&#x27;s matching profile (structured fields only, never post text or quotes). Returns any issues to fix. The draft is not matched until confirm_profile.</td></tr>
-      <tr><td><code>get_my_card</code></td><td>See your card</td><td>Read</td><td>The user&#x27;s own Psyche Card as an image to show in the chat, and its page: how matches will see them. Works on the saved draft before confirm_profile, for the review.</td></tr>
-      <tr><td><code>confirm_profile</code></td><td>Confirm your profile</td><td>Writes</td><td>The user has read their profile and said it is right. Makes the saved draft their live profile so it can be matched. Only call after their clear yes.</td></tr>
-      <tr><td><code>set_preferences</code></td><td>Save who you want to meet</td><td>Writes</td><td>Save who the user wants to meet: their own words (brief) plus must-haves (filters) and nice-to-haves (extra points) as rules over profile fields. Read the rules back to the user before calling. Must-haves on a field the other person left empty pass. Returns the pool size the rules leave.</td></tr>
-      <tr><td><code>add_custom_question</code></td><td>Add a must-have question</td><td>Writes</td><td>For a must-have the profile has no field for (e.g. &quot;must be okay with pet reptiles&quot;): add a yes/maybe/no question to the shared bank, or get the existing one it duplicates. Then use it in set_preferences as a must rule with field &quot;q.&lt;key&gt;&quot;. Not for sex, money, race, religion, health, looks, kids, marriage, legal status or politics.</td></tr>
-      <tr><td><code>get_pending_questions</code></td><td>Quick questions</td><td>Read</td><td>Quick questions that would sharpen this user&#x27;s matches (at most 3 a week), each with fixed options. Call at the start of each visit. Show each as a question with its options as buttons, or as a short numbered list if buttons are not available. Ask openly as matching questions; never say or hint that a particular person asked.</td></tr>
-      <tr><td><code>answer_question</code></td><td>Answer a question</td><td>Writes</td><td>Save the user&#x27;s answer to a pending question, using one of its options, or skip.</td></tr>
-      <tr><td><code>get_weekly_matches</code></td><td>See this week&#x27;s matches</td><td>Read</td><td>This week&#x27;s matches: a few people who scored above the bar, best first, each with a photo, first name, fit % and one line on what they share. The user may pick up to 2 a week.</td></tr>
-      <tr><td><code>pick_match</code></td><td>Pick a match</td><td>Writes</td><td>The user picks someone from this week&#x27;s matches. Sends that person an intro. Uses one of the user&#x27;s 2 weekly picks.</td></tr>
-      <tr><td><code>get_intros</code></td><td>See who picked you</td><td>Read</td><td>People who picked this user and are waiting for an answer (with a fuller card), intros the user sent, and mutual matches with their Instagram swap state (handles appear once both have offered).</td></tr>
-      <tr><td><code>respond_to_intro</code></td><td>Answer an intro</td><td>Writes</td><td>Answer an intro from someone who picked the user. Yes on both sides shares Instagram handles.</td></tr>
-      <tr><td><code>share_instagram</code></td><td>Swap Instagram</td><td>Writes</td><td>Offer (share: true) or withdraw (share: false) the user&#x27;s Instagram to one mutual match. Handles show to both only once both have offered. Ask the user first, for each match.</td></tr>
-      <tr><td><code>make_psyche_pdf</code></td><td>Make your PDF</td><td>Writes</td><td>Retired: PsycheAI no longer keeps a copy of a read, even locked. The report is delivered by publish_psyche, in the chat and as a report file.</td></tr>
-      <tr><td><code>send_message</code></td><td>Send a message</td><td>Writes</td><td>Send a message in the private chat with a mutual match (no contact details shared). Under 1000 characters. Send exactly what the user wrote.</td></tr>
-      <tr><td><code>get_messages</code></td><td>Read messages</td><td>Read</td><td>With introId: the private chat with that match, to show the user word for word. Without: which matches have unread messages.</td></tr>
-      <tr><td><code>end_chat</code></td><td>End a chat</td><td>Removes data</td><td>End the private chat with a match (for example once they have swapped numbers). Deletes the messages.</td></tr>
-      <tr><td><code>log_date</code></td><td>Log a date</td><td>Writes</td><td>After a date with a mutual match: did they meet, and would they see them again (yes/maybe/no). Only these answers are saved; any reflection stays in this chat.</td></tr>
-      <tr><td><code>block_or_report</code></td><td>Block or report</td><td>Writes</td><td>Block someone so neither sees the other again, optionally reporting them with a reason. A report on a match you chat with keeps that chat for our safety team to review.</td></tr>
-      <tr><td><code>pause_matching</code></td><td>Pause matching</td><td>Writes</td><td>Pause or resume being matched (paused people get no drops and appear in none).</td></tr>
-      <tr><td><code>delete_my_data</code></td><td>Delete your data</td><td>Removes data</td><td>Permanently delete everything PsycheAI keeps about the user: their card, profile, preferences, matches, intros, chats and Syncs. Confirm with the user first.</td></tr>
-      </tbody>
-    </table></div>
-    <p>Every tool carries MCP's hints: reads are read-only, and only removing things is destructive.</p>
+  <section class="card section-card" id="sends">
+    <h2>What it sends us</h2>
+    <p>None of your posts, messages or report. The script asks app.psycheai.io only for its own account (no name or email), its menus, signed updates and the art your card is drawn with. If you choose to Sync with a friend, your card's few lines are sent, locked under your Sync link.</p>
+  </section>
+  <section class="card section-card" id="signed">
+    <h2>Signed updates</h2>
+    <p>Every release is signed, and the script checks the signature against a key built into it before it installs an update. It never installs an older release over a newer one. The code is public at <a href="https://github.com/jaredsia-svg/psycheai-app">github.com/jaredsia-svg/psycheai-app</a>.</p>
+  </section>
+  <section class="card section-card" id="never">
+    <h2>What it never does</h2>
+    <p>It never posts, comments, likes, follows or messages anyone. It never reads Muse's own side chat, and it never guesses your religion, ethnicity, politics, health or height.</p>
   </section>
   <section class="card section-card" id="support">
     <h2>Policies and support</h2>
