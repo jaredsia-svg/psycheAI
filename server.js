@@ -1652,8 +1652,8 @@ async function handleImportStatus(request, response, url) {
 // only the locked copy, for /report-pdf to open in the browser with the key
 // after its #. Otherwise the PDF itself, for the Muse skill, which sends the
 // key in X-Psyche-Key: a header, so the key is never in an address or a log.
-// A ?k= link, as links were made until 30 Oct 2026, still opens until the
-// last of those expires (7 days).
+// The key only ever comes in that header: the old ?k= links (made until 30 Oct
+// 2026, kept 7 days) are retired (README "The ?k= links retired").
 async function handleImportPdf(request, response, url) {
   const id = url.searchParams.get('id');
   if (url.searchParams.get('raw') === '1') {
@@ -1666,7 +1666,7 @@ async function handleImportPdf(request, response, url) {
     sendJson(response, 200, sealed);
     return;
   }
-  const pdf = await museImport.openPdf(id, request.headers['x-psyche-key'] || url.searchParams.get('k'));
+  const pdf = await museImport.openPdf(id, request.headers['x-psyche-key']);
   if (!pdf) {
     sendJson(response, 404, { error: 'This report has expired. Ask Muse for a new one.' });
     return;

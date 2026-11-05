@@ -51,8 +51,11 @@
     <p>None of your posts, messages or report. The script asks app.psycheai.io only for its own account (no name or email), its menus, signed updates and the art your card is drawn with. If you choose to Sync with a friend, your card's few lines are sent, locked under your Sync link.</p>
   </section>
   <section class="card section-card" id="signed">
-    <h2>Signed updates</h2>
+    <h2>Check it yourself</h2>
     <p>Every release is signed, and the script checks the signature against a key built into it before it installs an update. It never installs an older release over a newer one. The code is public at <a href="https://github.com/jaredsia-svg/psycheai-app">github.com/jaredsia-svg/psycheai-app</a>.</p>
+    <p>To check that your copy is the one we published, ask Muse:</p>
+    <pre class="paste">Run sha256sum on SKILL.md, bin/psyche.py and guide.json in ~/workspace/skills/psycheai, and compare them with github.com/jaredsia-svg/psycheai-app/blob/main/skill/RELEASES.md</pre>
+    <p>All three must match one row of <a href="https://github.com/jaredsia-svg/psycheai-app/blob/main/skill/RELEASES.md">the release list on GitHub</a>. <code>sha256sum</code> is part of the system, not our code, and the list is on GitHub, not our server, so the check holds even if our server were in someone else's hands. The signing key's public half is <code>ff295f50202afe5313924d4ed60e397996164ad8db9aa8079d937c17d0bcbb8d</code>.</p>
   </section>
   <section class="card section-card" id="never">
     <h2>What it never does</h2>

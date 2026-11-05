@@ -62,6 +62,10 @@ and taken out: both sounded worse).
   line is now three phrases recorded one by one. The privacy break then fell on a bar line, so the drums stopped and
   the first pad came in full at the same instant, which sounded abrupt: on the beat, a soft swoosh leads into the
   break, a low, quiet hit lands on it, and its first pad fades in over two beats.
+- **The launch reel's music again** (5 Nov 2026): the music below (the swoosh and hit into the break, the pad fading in,
+  then the minor-key break) didn't work, so the Muse reel's music is the launch reel's, unchanged; only the on-the-beat
+  timing of each line stays (`ONBEAT` in audio.py moves where a line starts, nothing in the music). The two entries
+  below are kept for the record.
 - **The privacy break as its own section** (4 Nov 2026, `SMOOTH` in audio.py, on the beat only): at 38 to 40 s the
   change still sounded odd and sudden, the drums stopping dead while the same chords went on underneath. Now the
   drop's drums and bass are on a bus of their own and are filtered down over the bar before the break (a low-pass
