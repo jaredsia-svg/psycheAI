@@ -53,9 +53,14 @@ for V in $VERSIONS; do
         -c:a aac -b:a 96k -movflags +faststart out/PsycheAI-site.mp4
       # The poster as WebP, which is what the front page loads (a third smaller than the JPEG).
       "$FF" -y -v error -ss "$COVER" -i build/site/video.mp4 -frames:v 1 -vf scale=720:-2 -c:v libwebp -quality 85 out/PsycheAI-site-poster.webp
-      mkdir -p ../docs/media
-      cp out/PsycheAI-site.mp4 ../docs/media/psycheai-intro.mp4
-      cp out/PsycheAI-site-poster.webp ../docs/media/psycheai-intro-poster.webp
+      # Not copied into the site since 5 Nov 2026: the front page plays the Muse reel (the muse case below).
+      ;;
+    muse)
+      cp "build/$V/video.mp4" "out/PsycheAI-$V.mp4"
+      # The front page's video since 5 Nov 2026 (README "Muse first on the front page"): 720 wide, about 4 MB.
+      "$FF" -y -v error -i build/muse/video.mp4 -vf scale=720:-2 -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p \
+        -c:a aac -b:a 96k -movflags +faststart ../docs/media/psycheai-intro.mp4
+      "$FF" -y -v error -ss "$COVER" -i build/muse/video.mp4 -frames:v 1 -vf scale=720:-2 -c:v libwebp -quality 85 ../docs/media/psycheai-intro-poster.webp
       ;;
     *)
       cp "build/$V/video.mp4" "out/PsycheAI-$V.mp4"

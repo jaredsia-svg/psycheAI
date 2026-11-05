@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PsycheAI – Psyche personality test and AI coach</title>
-<meta name="description" content="The Psyche AI personality test reads your Instagram, no quiz: MBTI, attachment style, career strengths, blind spots, and an AI coach that already knows you">
+<meta name="description" content="The Psyche AI personality test reads your Instagram in Meta Muse, no quiz: MBTI, attachment style, career strengths and blind spots. Free.">
 <!-- One address for everything: psycheai.io, whichever host served the page. -->
 <link rel="canonical" href="https://psycheai.io/">
 <meta name="theme-color" content="#7b3fa0">
@@ -15,14 +15,14 @@
 <meta property="og:site_name" content="PsycheAI">
 <meta property="og:url" content="https://psycheai.io/">
 <meta property="og:title" content="PsycheAI – Your personal AI coach that already knows you">
-<meta property="og:description" content="A full personality study from your own Instagram and WhatsApp data. No questions asked: MBTI, attachment style, career strengths and blind spots. Your first Psyche Card is free.">
+<meta property="og:description" content="A full personality study from your Instagram, made in Meta Muse. No questions asked: MBTI, attachment style, career strengths and blind spots. Free.">
 <meta property="og:image" content="https://psycheai.io/media/og-card.jpg?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Your personal AI coach that already knows you. A sample Psyche Card: most like Mulan, with MBTI, Big Five, values, interests and love languages">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="PsycheAI – Your personal AI coach that already knows you">
-<meta name="twitter:description" content="Your personal AI coach that already knows you, built from your Instagram and WhatsApp data. Your first Psyche Card is free.">
+<meta name="twitter:description" content="Your personal AI coach that already knows you, built from your Instagram in Meta Muse. Free.">
 <meta name="twitter:image" content="https://psycheai.io/media/og-card.jpg?v=4">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
@@ -186,24 +186,22 @@
            role="heading" aria-level="1" (class .h1): one <h1> in the document for
            search engines, and still a level-1 heading per view for screen readers. -->
       <h1>Your personal AI coach<br><span class="accent">that already knows you.</span></h1>
-      <p class="lede">A full personality study from your own Instagram and WhatsApp data. No questions asked. No sign-up.</p>
-      <!-- What the reading covers, as four pills on one line above the buttons. -->
+      <p class="lede">A full personality study from your Instagram, made in Meta Muse. No questions asked. Free.</p>
+      <!-- What the reading covers, as four pills on one line above the prompt. -->
       <ul class="hero-pills" aria-label="What you get">
         <li>MBTI</li><li>Attachment Style</li><li>Career Strengths</li><li>Blind Spots</li>
       </ul>
-      <!-- One button for each kind of visitor: one who still has to ask
-           Instagram for their data (it takes hours to arrive, so that is the
-           first useful thing to do), and one who has the file already, who
-           used to scroll about five screens to find where to load it. The
-           sample report is one tap away in the gallery below. -->
-      <!-- Since 26 October 2026 WhatsApp first: two chats read in minutes, where Instagram's export
-           takes its email. Each button opens its own way in Two ways to start; a reader who already
-           has a file goes straight to Load my data, under them. -->
-      <div class="btn-row hero-actions">
-        <button class="btn" id="hero-wa" type="button">Start with WhatsApp</button>
-        <button class="btn btn-outline" id="hero-start" type="button">Request my IG data</button>
+      <!-- Muse first (5 Nov 2026, README "Muse first on the front page"): the one thing to do is paste
+           the prompt into Muse, copied in one tap. Loading files is the way in for someone without Muse. -->
+      <div class="muse-prompt" id="muse-start">
+        <p class="muse-prompt-head">Paste into Muse</p>
+        <div class="muse-prompt-row">
+          <pre class="paste" id="hero-prompt">Install psycheai.io/muse and generate my Psyche</pre>
+          <button class="btn" type="button" data-copy="hero-prompt" data-done="Copied">Copy</button>
+        </div>
+        <p class="muse-prompt-note">Ready in about 5 minutes. No sign-up, no upload.</p>
       </div>
-      <p class="hero-have">Already have your files? <button class="link-btn" id="hero-load" type="button">Load here</button></p>
+      <p class="hero-have">No Muse? <button class="link-btn" id="hero-wa" type="button">Load your WhatsApp or Instagram files</button></p>
     </div>
 
     <!-- The promo video, built by promo/ (npm run promo). Muted, so it may play
@@ -238,16 +236,16 @@
        which left four <h3> cards hanging directly off the hero's heading — a
        screen reader navigating by heading met level 3 with no level 2 above it.
        The heading fixes the outline and names the section at the same time. -->
-  <h2 class="row-head">How it works</h2>
+  <h2 class="row-head">How it works in Muse</h2>
   <div class="steps-row">
-    <div class="step-card"><span class="step-num">1</span><h3>Load your data</h3>
-      <p>Download your data from Instagram, or export 2–3 WhatsApp chats. See <a href="#request-data" class="step-below">below</a> for instructions.</p></div>
-    <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
-      <p>A short, de-identified summary of your data is analysed by Google Vertex AI. No data is stored by PsycheAI.</p></div>
-    <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
-      <p>Learn more about your personality, relationships, and career. Ask PsycheAI anything about yourself.</p></div>
-    <div class="step-card"><span class="step-num">4</span><h3>Psyche Sync</h3>
-      <p>Send connections your link and see what clicks between you, and how to relate better to each other.</p></div>
+    <div class="step-card"><span class="step-num">1</span><h3>Paste the prompt</h3>
+      <p>Open a new chat in the Muse app and paste: Install psycheai.io/muse and generate my Psyche.</p></div>
+    <div class="step-card"><span class="step-num">2</span><h3>Allow it once</h3>
+      <p>When Muse asks, tap Always allow this site. It covers app.psycheai.io, PsycheAI’s own server, only.</p></div>
+    <div class="step-card"><span class="step-num">3</span><h3>Your Psyche in 5 minutes</h3>
+      <p>Choose whether to include your messages. You get your Psyche Card and a full private report.</p></div>
+    <div class="step-card"><span class="step-num">4</span><h3>Ask and sync</h3>
+      <p>Ask PsycheAI anything about yourself, or sync with a friend to see how you click.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -293,20 +291,28 @@
     <p class="vs-note">Real answers, trimmed.</p>
   </div>
 
-  <div class="card vs-card" id="vs-chatgpt">
-    <!-- "Where does your data go?" since 27 October 2026 (it was "Why not just upload my data to ChatGPT?",
-         a question many visitors never had): ChatGPT stays as the comparison that shows what private means. -->
+  <!-- Where the data goes in Muse: the welcome's four lines (psycheai-app lib/mcp.js GO_AHEAD), each literally
+       true of the skill. The website's own comparison with ChatGPT is with the file upload, below. -->
+  <div class="card muse-data-card" id="muse-data">
     <h2>Where does your data go?</h2>
-    <p class="vs-sub">Compared with uploading the same files to ChatGPT.</p>
-    <div class="vs-diff" role="table" aria-label="ChatGPT and PsycheAI compared">
-      <div class="vs-row vs-headrow" role="row"><span role="columnheader"></span><span class="vs-c1" role="columnheader">ChatGPT</span><span class="vs-c2" role="columnheader">PsycheAI</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Service</span><span class="vs-c1" role="cell">Consumer plan</span><span class="vs-c2" role="cell">Enterprise tier (Google Vertex AI)</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">What’s sent</span><span class="vs-c1" role="cell">Your raw export: photos, videos, friends’ messages</span><span class="vs-c2" role="cell">A 100–200 KB de-identified text summary you review first</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Trains on it?</span><span class="vs-c1" role="cell">May, unless you turn it off</span><span class="vs-c2" role="cell">No</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Kept</span><span class="vs-c1" role="cell">Until you delete it, then up to 30 days</span><span class="vs-c2" role="cell">Nowhere. No accounts</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Who can read your results</span><span class="vs-c1" role="cell">OpenAI, for safety or legal reasons</span><span class="vs-c2" role="cell">Only you</span></div>
+    <p class="vs-sub">In Muse, nowhere beyond your own account.</p>
+    <ul class="muse-points">
+      <li><b>Read in your Muse account.</b> Your Instagram is read right there. Nothing to export or upload.</li>
+      <li><b>De-identified first.</b> Names, handles, numbers and links removed, and no one else is quoted.</li>
+      <li><b>Made in Muse.</b> Your report and Psyche Card are made there. None of your posts, messages or report go to PsycheAI.</li>
+      <li><b>Private to you.</b> Nothing is shared unless you choose to. Delete it all any time.</li>
+    </ul>
+    <p class="vs-more"><a href="/muse-privacy">Muse privacy in full →</a> · <a href="/muse-docs#signed">Check your copy against the public code →</a></p>
+  </div>
+
+  <div class="card muse-cta" id="muse-cta">
+    <h2>Get your Psyche in Muse</h2>
+    <p>Open a new chat in the Muse app and paste this. Your Psyche Card and report arrive in about 5 minutes. Free.</p>
+    <div class="muse-prompt-row">
+      <pre class="paste" id="cta-prompt">Install psycheai.io/muse and generate my Psyche</pre>
+      <button class="btn" type="button" data-copy="cta-prompt" data-done="Copied">Copy</button>
     </div>
-    <p class="vs-more"><a href="/privacy#flow-title">How your data flows →</a></p>
+    <p class="muse-prompt-note">When Muse asks, tap Always allow this site. 18 and over.</p>
   </div>
 
   <!-- Two ways in, side by side on a laptop and as two tabs on a phone (26 October 2026): two WhatsApp
@@ -315,8 +321,9 @@
   <div class="card help help-card" id="request-data">
     <div class="help-head">
       <div>
-        <h2>Two ways to start</h2>
-        <p class="help-lede">Choose to load your WhatsApp chats, your IG data, or both.</p>
+        <p class="files-eyebrow">No Muse?</p>
+        <h2>Load your files instead</h2>
+        <p class="help-lede">Use your WhatsApp chats, your Instagram data, or both, on this website. Your first Psyche Card and Report are free; a re-run is <span data-price="unlock">US$5</span>.</p>
       </div>
     </div>
     <div class="ways-tabs" role="tablist" aria-label="Two ways to start">
@@ -346,6 +353,22 @@
       </section>
     </div>
     <p class="ways-both">💡 Get best of both worlds and the highest signal score by requesting your Instagram data now, and loading it together with your WhatsApp chats.</p>
+  </div>
+
+  <div class="card vs-card" id="vs-chatgpt">
+    <!-- "Where does your data go?" since 27 October 2026 (it was "Why not just upload my data to ChatGPT?",
+         a question many visitors never had): ChatGPT stays as the comparison that shows what private means. -->
+    <h2>Where do your files go?</h2>
+    <p class="vs-sub">Compared with uploading the same files to ChatGPT.</p>
+    <div class="vs-diff" role="table" aria-label="ChatGPT and PsycheAI compared">
+      <div class="vs-row vs-headrow" role="row"><span role="columnheader"></span><span class="vs-c1" role="columnheader">ChatGPT</span><span class="vs-c2" role="columnheader">PsycheAI</span></div>
+      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Service</span><span class="vs-c1" role="cell">Consumer plan</span><span class="vs-c2" role="cell">Enterprise tier (Google Vertex AI)</span></div>
+      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">What’s sent</span><span class="vs-c1" role="cell">Your raw export: photos, videos, friends’ messages</span><span class="vs-c2" role="cell">A 100–200 KB de-identified text summary you review first</span></div>
+      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Trains on it?</span><span class="vs-c1" role="cell">May, unless you turn it off</span><span class="vs-c2" role="cell">No</span></div>
+      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Kept</span><span class="vs-c1" role="cell">Until you delete it, then up to 30 days</span><span class="vs-c2" role="cell">Nowhere. No accounts</span></div>
+      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Who can read your results</span><span class="vs-c1" role="cell">OpenAI, for safety or legal reasons</span><span class="vs-c2" role="cell">Only you</span></div>
+    </div>
+    <p class="vs-more"><a href="/privacy#flow-title">How your data flows →</a></p>
   </div>
 
   <div class="card upload-card">
@@ -1805,6 +1828,7 @@
 <script src="pdf.js"></script>
 </template>
 <script src="llm.js"></script>
+<script src="copybutton.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

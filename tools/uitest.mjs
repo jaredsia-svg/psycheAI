@@ -869,25 +869,25 @@ try {
       google: /Google(?! Drive)/.test(card.textContent) };
   });
   check('Two ways to start: WhatsApp and Instagram side by side on a laptop, each with its time, no tabs, nothing about Google',
-    ways.head === 'Two ways to start' && ways.lede === 'Choose to load your WhatsApp chats, your IG data, or both.' && ways.both &&
+    ways.head === 'Load your files instead' && /^Use your WhatsApp chats, your Instagram data, or both, on this website\. Your first Psyche Card and Report are free; a re-run is \S+\.$/.test(ways.lede) && ways.both &&
       ways.tabs === 'none' && ways.tags.join('|') === '⚡ About 2 minutes|🎯 Most complete · 2 hours' &&
       ways.note === '💡 Get best of both worlds and the highest signal score by requesting your Instagram data now, and loading it together with your WhatsApp chats.' && !ways.google &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), JSON.stringify(ways));
-  check('and "How it works" no longer calls Google recommended',
-    /Download your data from Instagram, or export 2–3 WhatsApp chats\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
+  check('"How it works in Muse": paste the prompt, allow once, your Psyche in 5 minutes, ask and sync (README "Muse first on the front page"), and nothing calls Google recommended',
+    /How it works in Muse/.test(await page.locator('#view-welcome').innerText()) && /Open a new chat in the Muse app and paste: Install psycheai\.io\/muse and generate my Psyche\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   {
-    // "below" goes to the request steps, on this page.
+    // The hero's "No Muse?" link goes to the files' steps, on this page.
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.click('#view-welcome .steps-row a.step-below');
+    await page.click('#hero-wa');
     await scrollSettled(page);
     const landed = await page.evaluate(() => ({
-      text: document.querySelector('#view-welcome .steps-row a.step-below').textContent,
+      text: document.querySelector('#hero-wa').textContent,
       top: Math.round(document.querySelector('#request-data').getBoundingClientRect().top),
       hash: location.hash,
     }));
-    check('and its "below" goes to the request steps, without touching the link in the address bar',
-      landed.text === 'below' && landed.top >= -2 && landed.top < 200 && landed.hash === '', JSON.stringify(landed));
+    check('the hero\'s "No Muse?" link goes to the files\' steps, without touching the link in the address bar',
+      landed.text === 'Load your WhatsApp or Instagram files' && landed.top >= -2 && landed.top < 200 && landed.hash === '', JSON.stringify(landed));
     await page.evaluate(() => window.scrollTo(0, 0));
   }
   {
@@ -897,14 +897,15 @@ try {
       const coach = document.querySelector('#view-welcome #vs-coach'), gpt = document.querySelector('#view-welcome #vs-chatgpt');
       const req = document.querySelector('#request-data');
       const rows = gpt ? [...gpt.querySelectorAll('.vs-row')].map(r => [...r.children].map(c => c.textContent.trim())) : [];
-      return { order: !!(coach && gpt) && !!(coach.compareDocumentPosition(gpt) & 4) && !!(gpt.compareDocumentPosition(req) & 4),
+      const museData = document.querySelector('#view-welcome #muse-data');
+      return { order: !!(coach && gpt && museData) && !!(coach.compareDocumentPosition(museData) & 4) && !!(museData.compareDocumentPosition(req) & 4) && !!(req.compareDocumentPosition(gpt) & 4),
         heads: [coach && coach.querySelector('h2').textContent, gpt && gpt.querySelector('h2').textContent],
         q: coach && coach.querySelector('.vs-q').textContent, who: coach ? [...coach.querySelectorAll('.vs-ans h3')].map(h => h.textContent) : [],
         side: coach ? [...coach.querySelectorAll('.vs-ans')].map(e => Math.round(e.getBoundingClientRect().top)) : [], rows,
         note: coach && coach.querySelector('.vs-note').textContent };
     });
-    check('the front page asks "why PsycheAI" and "where does your data go" in two sections, just above the Instagram steps',
-      vs.order && vs.heads[0] === 'Why PsycheAI stands out?' && vs.heads[1] === 'Where does your data go?',
+    check('the front page asks "why PsycheAI", then where your data goes in Muse, and the ChatGPT comparison is with the files, after their steps',
+      vs.order && vs.heads[0] === 'Why PsycheAI stands out?' && vs.heads[1] === 'Where do your files go?',
       JSON.stringify(vs.heads));
     check('the coach section puts one question to ChatGPT and PsycheAI, their answers side by side on a laptop',
       vs.q === 'What would I regret most about my life when I’m old?' && vs.who.join('|') === 'ChatGPT|PsycheAI' &&
@@ -2637,11 +2638,11 @@ try {
         !drawnCard.name && drawnCard.title === '⭐ This is Ava’s Psyche Card', drawnCard.title);
       await invitePage.click('#invite-guide');
       await scrollSettled(invitePage);
-      check('"Get my free Psyche Card" scrolls to "Two ways to start", and opens nothing over it',
+      check('"Get my free Psyche Card" scrolls to the files\' steps ("Load your files instead"), and opens nothing over it',
         await invitePage.evaluate(() => {
           const top = document.querySelector('.help-card').getBoundingClientRect().top;
           return top >= -2 && top < window.innerHeight / 2 && !document.querySelector('#guide-dialog').open &&
-            /Two ways to start/.test(document.querySelector('.help-card h2').textContent);
+            /Load your files instead/.test(document.querySelector('.help-card h2').textContent);
         }));
       await invitePage.evaluate(() => window.scrollTo(0, 0));
       await invitePage.click('#invite-card-open');
@@ -2851,30 +2852,32 @@ try {
       // the hero's second button says so, and the steps card is titled for it.
       check('a new reader sees the guide links at the foot of the main page',
         await guidePage.locator('.footer-guides').isVisible());
-      // Since 26 October 2026: WhatsApp first, then Instagram's request; Load my data a link under them.
-      check('the hero\'s buttons are "Start with WhatsApp" and "Request my IG data", "Load here" a link under them, and no "New here?" line',
-        (await guidePage.locator('#hero-wa').innerText()).trim() === 'Start with WhatsApp' &&
-          (await guidePage.locator('#hero-start').innerText()).trim() === 'Request my IG data' &&
-          (await guidePage.locator('.hero-have #hero-load').innerText()).trim() === 'Load here' &&
-          /^Already have your files\?/.test((await guidePage.locator('.hero-have').innerText()).trim()) &&
-          (await guidePage.locator('.hero-request, #hero-request').count()) === 0);
-      check('above the buttons, four pills on one line: MBTI, Attachment Style, Career Strengths, Blind Spots',
+      // Muse first since 5 Nov 2026 (README "Muse first on the front page"): the prompt to paste into Muse with a
+      // Copy button, then one "No Muse?" link to the files' steps.
+      check('the hero gives the prompt to paste into Muse with a Copy button, then "No Muse? Load your WhatsApp or Instagram files", and no other buttons',
+        (await guidePage.locator('#hero-prompt').innerText()).trim() === 'Install psycheai.io/muse and generate my Psyche' &&
+          (await guidePage.locator('.muse-prompt button[data-copy="hero-prompt"]').innerText()).trim() === 'Copy' &&
+          (await guidePage.locator('.hero-have #hero-wa').innerText()).trim() === 'Load your WhatsApp or Instagram files' &&
+          /^No Muse\?/.test((await guidePage.locator('.hero-have').innerText()).trim()) &&
+          (await guidePage.locator('#hero-start, #hero-load, .hero-actions').count()) === 0 &&
+          /A full personality study from your Instagram, made in Meta Muse\. No questions asked\. Free\./.test(await guidePage.locator('.hero .lede').innerText()));
+      check('above the prompt, four pills on one line: MBTI, Attachment Style, Career Strengths, Blind Spots',
         await guidePage.evaluate(() => { const lis = [...document.querySelectorAll('.hero-pills li')];
           return lis.map(l => l.textContent).join('|') === 'MBTI|Attachment Style|Career Strengths|Blind Spots' &&
             new Set(lis.map(l => Math.round(l.getBoundingClientRect().top))).size === 1 &&
             lis.at(-1).getBoundingClientRect().right <= innerWidth &&
-            (document.querySelector('.hero-pills').compareDocumentPosition(document.querySelector('#hero-start')) & Node.DOCUMENT_POSITION_FOLLOWING) > 0; }));
-      check('the steps card is titled "Two ways to start" and offers the chats, IG data or both',
-        (await guidePage.locator('.help-card h2').innerText()).trim() === 'Two ways to start' &&
-          /Choose to load your WhatsApp chats, your IG data, or both\./.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
+            (document.querySelector('.hero-pills').compareDocumentPosition(document.querySelector('#hero-prompt')) & Node.DOCUMENT_POSITION_FOLLOWING) > 0; }));
+      check('further down, the Muse way again: where the data goes in Muse (the welcome\'s four points) and the prompt with its Copy button before the files',
+        await guidePage.evaluate(() => {
+          const data = document.querySelector('#muse-data'), cta = document.querySelector('#muse-cta'), files = document.querySelector('#request-data');
+          return !!(data && cta && files) && /Made in Muse\. Your report and Psyche Card are made there\. None of your posts, messages or report go to PsycheAI\./.test(data.textContent.replace(/\s+/g, ' ')) &&
+            cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/muse and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
+            (cta.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
+        }));
+      check('the files\' card is titled "Load your files instead", under "No Muse?", and offers the chats, IG data or both',
+        (await guidePage.locator('.help-card h2').innerText()).trim() === 'Load your files instead' &&
+          /Use your WhatsApp chats, your Instagram data, or both, on this website\./.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
           !/How do I get my Instagram data/.test(await guidePage.locator('#view-welcome').innerText()));
-      // Load my data: the Add your data popout, without scrolling to Start here.
-      await guidePage.click('#hero-load');
-      await guidePage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
-      check('"Load my data" opens the Add your data popout straight from the hero',
-        await guidePage.evaluate(() => document.querySelector('#datasources-dialog').open));
-      await guidePage.keyboard.press('Escape');
-      await dialogClosed(guidePage, '#datasources-dialog');
       await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
       await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
       check('/#sample opens the sample report straight away, and tidies the address',
@@ -3024,7 +3027,7 @@ try {
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       return Boolean(lede) && lede.textContent.replace(/\s+/g, ' ').trim() ===
-        'A full personality study from your own Instagram and WhatsApp data. No questions asked. No sign-up.';
+        'A full personality study from your Instagram, made in Meta Muse. No questions asked. Free.';
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
@@ -3105,9 +3108,11 @@ try {
       if (slip > 0) return 'page slipped ' + slip + 'px sideways';
       // The primary action sits over the mark. Whatever is on top at its
       // centre must be the button, not the artwork.
-      const cta = document.querySelector('#hero-start').getBoundingClientRect();
+      const ctaEl = document.querySelector('.muse-prompt button[data-copy="hero-prompt"]');
+      ctaEl.scrollIntoView({ block: 'center' });
+      const cta = ctaEl.getBoundingClientRect();
       const onTop = document.elementFromPoint(cta.left + cta.width / 2, cta.top + cta.height / 2);
-      if (!onTop || !onTop.closest('#hero-start')) return 'artwork over the button';
+      if (!onTop || !onTop.closest('.muse-prompt button[data-copy="hero-prompt"]')) return 'artwork over the button';
       return Math.round(mark.width) + 'px, behind';
     });
   }
@@ -3147,7 +3152,7 @@ try {
   // was 48px, it is 26 now.
   const bandBelow = () => page.evaluate(() => {
     const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-    const last = Math.max(...['.hero-actions', '.hero-video']
+    const last = Math.max(...['.hero-have', '.hero-video']
       .map(selector => document.querySelector(selector).getBoundingClientRect().bottom));
     return Math.round(hero.bottom - last);
   });
@@ -3168,7 +3173,7 @@ try {
         const r = el => document.querySelector(el).getBoundingClientRect();
         const v = r('.hero-video');
         return { left: v.left, right: v.right, top: v.top, bottom: v.bottom, width: v.width, height: v.height,
-          actionsBottom: r('.hero-actions').bottom, h1Right: r('#view-welcome h1').right, h1Top: r('#view-welcome h1').top,
+          actionsBottom: r('.hero-have').bottom, h1Right: r('#view-welcome h1').right, h1Top: r('#view-welcome h1').top,
           viewport: innerWidth, scroll: document.documentElement.scrollWidth };
       });
       check('the hero video keeps its 9:16 shape on a ' + label,
@@ -3337,27 +3342,11 @@ try {
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('.row-head')).color +
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
-  check('the four steps say what you get, not how it works, and step 2 names Vertex AI alone',
-    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
-    'Load your data | PsycheAI reads it | Gain insights | Psyche Sync' &&
-    /summary of your data is analysed by Google Vertex AI\. No data is stored by PsycheAI\./.test(await page.locator('.step-card').nth(1).innerText()) &&
-    !/Claude/.test(await page.locator('.step-card').nth(1).innerText()),
+  // How it works in Muse (5 Nov 2026, README "Muse first on the front page"): paste, allow once, the Psyche, ask and sync.
+  check('the four steps are the Muse way: paste the prompt, allow it once, your Psyche in 5 minutes, ask and sync',
+    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') === 'Paste the prompt | Allow it once | Your Psyche in 5 minutes | Ask and sync' &&
+      /It covers app\.psycheai\.io, PsycheAI’s own server, only\./.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
-  // Step one points the reader downwards for the how-to. A directional
-  // reference is a claim about the page, so it is checked as one: the card it
-  // points at has to be below it in document order, not merely present.
-  check('step one sends the reader to instructions that are actually below it',
-    /below\b.{0,20}\binstructions|instructions\b.{0,20}\bbelow/i.test(
-      await page.locator('.step-card').nth(0).innerText()) &&
-    await page.evaluate(() => {
-      const step = document.querySelector('#view-welcome .step-card');
-      const help = document.querySelector('#view-welcome .help-card');
-      if (!step || !help) return false;
-      return Boolean(step.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING);
-    }),
-    // Collapsed: the card's own text starts "1\nLoad your data\n\n…", and a
-    // detail that breaks across lines gets cut off wherever it is read back.
-    (await page.locator('.step-card').nth(0).innerText()).replace(/\s+/g, ' ').trim());
   // ---- the footer ----
   const footer = await page.evaluate(() => {
     const nav = document.querySelector('.nav-links a[data-nav="about"]');
@@ -4453,7 +4442,7 @@ try {
         return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
       };
       const root = getComputedStyle(document.documentElement);
-      const text = parse(getComputedStyle(document.querySelector('#hero-wa')).color);
+      const text = parse(getComputedStyle(document.querySelector('.muse-prompt button[data-copy="hero-prompt"]')).color);
       return {
         start: ratio(text, parse(root.getPropertyValue('--accent'))),
         end: ratio(text, parse(root.getPropertyValue('--accent-2'))),
@@ -4472,16 +4461,8 @@ try {
   check('the filled button does not get darker at the pink end in the light theme',
     buttonLight.start >= 4.5 && buttonLight.end >= 4.25, JSON.stringify(buttonLight));
 
-  // Its privacy line went on 26 October 2026 (step 2 and the review say it); it offers Ask PsycheAI instead.
-  check('step three promises insight and offers Ask PsycheAI',
-    (await page.locator('.step-card').nth(2).locator('p').innerText()).trim() ===
-      'Learn more about your personality, relationships, and career. Ask PsycheAI anything about yourself.');
-  const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
-    .replace(/\s+/g, ' ').trim();
-  // "Free." went on 26 October 2026.
-  check('step four is Psyche Sync, between friends, started by sending your link',
-    /^send connections your link and see what clicks between you/i.test(stepFour) && !/Free\./.test(stepFour) &&
-      !/partner|colleague|romantic/i.test(stepFour), stepFour);
+  check('step four offers Ask PsycheAI and Sync with a friend',
+    /^Ask PsycheAI anything about yourself, or sync with a friend to see how you click\.$/.test((await page.locator('.step-card').nth(3).locator('p').innerText()).replace(/\s+/g, ' ').trim()));
 
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.
@@ -4489,99 +4470,42 @@ try {
   check('a first-time visitor sees only the FAQ link',
     (await visibleNav()).join('|') === 'FAQ', (await visibleNav()).join('|'));
 
-  // The two hero actions share one row on a phone. Left to wrap they stack,
-  // and everything below them — the privacy badge included — drops a button's
-  // height further down the first screen. Swept, and the labels are checked
-  // for overflow too: they are `nowrap`, so a button too narrow for its text
-  // spills it rather than wrapping, and only scrollWidth shows that.
+  // The prompt and its Copy button (Muse first, 5 Nov 2026): at every phone width the prompt is whole (it wraps,
+  // never spills), the button is a full touch target, and the page does not slip sideways.
   const heroRowAtWidths = {};
   for (const width of [460, 412, 390, 375, 360, 320]) {
     await page.setViewportSize({ width, height: 800 });
     heroRowAtWidths[width] = await page.evaluate(() => {
-      const start = document.querySelector('#hero-wa');
-      const sample = document.querySelector('#hero-start');
-      const a = start.getBoundingClientRect();
-      const b = sample.getBoundingClientRect();
-      if (Math.abs(a.top - b.top) > 2) return 'stacked';
-      if (start.scrollWidth > start.clientWidth + 1) return 'first label clipped';
-      if (sample.scrollWidth > sample.clientWidth + 1) return 'second label clipped';
-      if (document.documentElement.scrollWidth > document.documentElement.clientWidth) {
-        return 'page slipped sideways';
-      }
-      return 'one row';
+      const prompt = document.querySelector('#hero-prompt');
+      const copy = document.querySelector('.muse-prompt button[data-copy="hero-prompt"]');
+      if (prompt.scrollWidth > prompt.clientWidth + 1) return 'prompt clipped';
+      if (copy.getBoundingClientRect().height < 44) return 'button too small';
+      if (copy.scrollWidth > copy.clientWidth + 1) return 'label clipped';
+      if (document.documentElement.scrollWidth > document.documentElement.clientWidth) return 'page slipped sideways';
+      return 'fits';
     });
   }
   await page.setViewportSize({ width: 1100, height: 900 });
-  check('the two hero buttons share one row at every phone width',
-    Object.values(heroRowAtWidths).every(v => v === 'one row'), JSON.stringify(heroRowAtWidths));
-
-  // Get my data leads. Checked in both document order and rendered position —
-  // a flex `order` or `row-reverse` would move it visually while leaving it
-  // second to a screen reader and to anything tabbing through.
-  check('Start with WhatsApp comes first, then Request my IG data, in the markup and on the screen',
+  check('the hero\'s prompt and Copy button fit at every phone width',
+    Object.values(heroRowAtWidths).every(v => v === 'fits'), JSON.stringify(heroRowAtWidths));
+  check('the Copy button is the filled one, and the prompt comes before it in the markup',
     await page.evaluate(() => {
-      const buttons = [...document.querySelectorAll('.hero-actions button')].map(b => b.id);
-      const start = document.querySelector('#hero-wa').getBoundingClientRect();
-      const load = document.querySelector('#hero-start').getBoundingClientRect();
-      return buttons.join() === 'hero-wa,hero-start' && start.left < load.left;
-    }),
-    (await page.locator('.hero-actions button').allInnerTexts()).join(' → '));
-
-  // The two actions are told apart by treatment, not position: Get my data is
-  // filled, Load my data an outline heavy enough to hold its own next to it.
-  // A hairline border would leave the pair looking like one button and one
-  // afterthought, so the weight is asserted rather than assumed.
-  check('Start with WhatsApp is the filled one and Request my IG data a thick outline',
-    await page.evaluate(() => {
-      const outline = getComputedStyle(document.querySelector('#hero-start'));
-      const filled = getComputedStyle(document.querySelector('#hero-wa'));
-      const transparent = /rgba\(0, 0, 0, 0\)|transparent/.test(outline.backgroundColor) &&
-        outline.backgroundImage === 'none';
-      return filled.backgroundImage.includes('gradient') &&
-        transparent && parseFloat(outline.borderTopWidth) >= 2;
-    }),
-    await page.evaluate(() => {
-      const outline = getComputedStyle(document.querySelector('#hero-start'));
-      return 'outline border ' + outline.borderTopWidth + ', bg ' + outline.backgroundColor;
-    }));
-  // The thicker border has to be paid for out of the padding. Asserting the
-  // two buttons render the same height would prove nothing — the row is a flex
-  // container, so a taller button simply stretches its neighbour to match and
-  // they agree either way, at 49px instead of 47. What is checked is the box
-  // each one asks for: padding plus border, which is where the difference
-  // actually lives.
-  check('the outlined button asks for the same box as the filled one',
-    await page.evaluate(() => {
-      const box = node => {
-        const s = getComputedStyle(node);
-        return parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) +
-          parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth);
-      };
-      return Math.abs(box(document.querySelector('#hero-wa')) -
-        box(document.querySelector('#hero-start'))) < 0.5;
-    }),
-    await page.evaluate(() => {
-      const box = node => {
-        const s = getComputedStyle(node);
-        return Math.round((parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) +
-          parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth)) * 100) / 100;
-      };
-      return box(document.querySelector('#hero-wa')) + ' vs ' +
-        box(document.querySelector('#hero-start'));
+      const copy = document.querySelector('.muse-prompt button[data-copy="hero-prompt"]');
+      return getComputedStyle(copy).backgroundImage.includes('gradient') || !/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(copy).backgroundColor)
+        ? (document.querySelector('#hero-prompt').compareDocumentPosition(copy) & Node.DOCUMENT_POSITION_FOLLOWING) > 0 : false;
     }));
 
-  // The reader pressing this on a first visit has no export yet — the file is
-  // an email from Instagram that takes hours — so it lands on the how-to, not
-  // on a dropzone they cannot use.
+  // "No Muse? Load your WhatsApp or Instagram files": it lands on the how-to, not
+  // on a dropzone a reader without their files yet cannot use.
   // Settled first: the phone widths swept above leave resize work (the
   // deck's refit) that would otherwise cut the smooth scroll short.
   await settle(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await frames(page);
-  await page.click('#hero-start');
+  await page.click('#hero-wa');
   // Until the smooth scroll has arrived and come to rest.
   await scrollSettled(page, null, 250);
-  check('the primary action lands on the instructions for getting the export',
+  check('"No Muse?" lands on the instructions for loading files',
     await page.evaluate(() => {
       const help = document.querySelector('#view-welcome .help-card').getBoundingClientRect();
       const nav = document.querySelector('.nav').getBoundingClientRect();
@@ -4616,7 +4540,7 @@ try {
         return real.call(this, opts);
       };
     });
-    await motionPage.click('#hero-start');
+    await motionPage.click('#hero-wa');
     scrollArgs[setting] = await motionPage.evaluate(() => window.__scrolls);
     await motionPage.close();
   }
@@ -4634,9 +4558,9 @@ try {
   // Its whole value is that it is the real report layout rather than a mockup,
   // which is also the danger: a reader must never be able to mistake it for
   // theirs, and must never be handed the controls that belong to a real one.
-  check('the hero offers a way to get the data and a way to load it, and the sample is a tap below',
-    (await page.locator('#hero-start').isVisible()) &&
-    (await page.locator('#hero-load').isVisible()) &&
+  check('the hero offers the prompt for Muse and a way to load files, and the sample is a tap below',
+    (await page.locator('#hero-prompt').isVisible()) &&
+    (await page.locator('#hero-wa').isVisible()) &&
     (await page.locator('#insight-sample').isVisible()));
 
   const beforeSample = analyseBodies.length;
@@ -8440,7 +8364,7 @@ try {
   await page.click('.nav .brand');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
   check('the PsycheAI logo takes a reader with a card to the main page',
-    await page.locator('#hero-load').isVisible() && !(await page.locator('#view-profile').isVisible()));
+    await page.locator('#hero-prompt').isVisible() && !(await page.locator('#view-profile').isVisible()));
   await settle(page);
   check('the sample card there is fitted to its box, not left at full size off the page',
     await page.evaluate(() => {
@@ -8475,12 +8399,7 @@ try {
     await page.evaluate(() => document.querySelector('#view-welcome').classList.contains('is-returning')) &&
       !(await page.locator('#view-welcome .help-card').isVisible()) &&
       !(await page.locator('#view-welcome .upload-card').isVisible()));
-  await page.click('#hero-start');
-  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
-  check('and "Get my data" opens the illustrated guide instead',
-    await page.evaluate(() => document.querySelector('#guide-dialog').open));
-  await afterOwnBack(page, () => page.keyboard.press('Escape'));
-  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+  check('and the hero still gives them the prompt for Muse', await page.locator('#hero-prompt').isVisible());
   await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
   await afterOwnBack(page, () => page.click('#sample-close'));
@@ -11364,7 +11283,7 @@ try {
   const runsBefore = await page.evaluate(() => localStorage.getItem('psycheai_runs'));
   check('the main page itself no longer carries a restore link',
     (await page.locator('#view-welcome #restore-open').count()) === 0);
-  await page.click('#hero-load');
+  await page.click('#open-sources');
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
   // Continue with no Instagram: said inside the popout, which stays open.
   await page.click('#datasources-continue');
@@ -11434,7 +11353,7 @@ try {
   check('a browser with a card is not offered a restore over it', await (async () => {
     await page.click('[data-nav="main"]').catch(() => {});
     await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 5000 }).catch(() => {});
-    await page.click('#hero-load');
+    await page.evaluate(() => document.querySelector('#open-sources').click());
     await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 }).catch(() => {});
     const offered = await page.locator('#restore-open').isVisible();
     await page.click('#datasources-back').catch(() => {});

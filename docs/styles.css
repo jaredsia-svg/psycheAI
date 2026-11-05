@@ -5668,3 +5668,21 @@ details.more[open] > summary::after { content: ' ▴'; }
 #short .privacy-points { list-style: none; padding: 0; display: grid; gap: .7rem; }
 #short .privacy-points b { display: block; }
 @media (max-width: 560px) { .install-actions > * { flex: 1 1 100%; } }
+
+/* Muse first on the front page (5 Nov 2026, README "Muse first on the front page"): the prompt to paste
+   into Muse with its Copy button in the hero and again before the files, the Muse steps and data points. */
+.muse-prompt { background: var(--bg-alt); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: .9rem 1rem; margin: 0 0 .2rem; }
+.muse-prompt-head { margin: 0 0 .45rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.muse-prompt-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+.muse-prompt-row .paste { flex: 999 1 15rem; min-width: 0; margin: 0; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.muse-prompt-row .btn { flex: 1 0 6.5rem; margin: 0; min-height: 44px; }
+.muse-prompt-note { margin: .5rem 0 0; font-size: .82rem; color: var(--ink-soft); }
+.card .muse-points { list-style: none; margin: .4rem 0 .6rem; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .6rem; }
+.muse-points li { border: 1px solid var(--line); border-radius: 14px; padding: .75rem .85rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.45; }
+.muse-points b { display: block; color: var(--ink); margin-bottom: .15rem; }
+.muse-cta { background: var(--ink); color: var(--bg); border: 0; }
+.muse-cta h2 { color: var(--bg); margin-top: 0; }
+.muse-cta p { color: color-mix(in srgb, var(--bg) 82%, transparent); }
+.muse-cta .muse-prompt-row .paste { background: color-mix(in srgb, var(--bg) 12%, var(--ink)); color: var(--bg); border-color: color-mix(in srgb, var(--bg) 35%, transparent); }
+.muse-cta .muse-prompt-row .btn { background: var(--bg); color: var(--accent); }
+.files-eyebrow { margin: 0 0 .2rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }

@@ -4219,7 +4219,7 @@
   // "Get my data": to the steps for getting the export. A reader who already
   // has a card has no steps card on this page (see .is-returning), so for them
   // it opens the illustrated guide instead.
-  $('#hero-start').addEventListener('click', () => {
+  $('#hero-start')?.addEventListener('click', () => {
     if (state.profile) { showGuide(); return; }
     // Already here (the hero is on this page): show() would only jump to the
     // top and redraw the sample card first, for nothing.
@@ -4253,7 +4253,7 @@
   });
   // "Load my data": the Add your data popout, as Start here's button opens it.
   // A reader with a card already adds to it from their report instead.
-  $('#hero-load').addEventListener('click', () => {
+  $('#hero-load')?.addEventListener('click', () => {
     if (state.profile) { go('profile'); startRerun(); return; }
     startFromSources();
   });
