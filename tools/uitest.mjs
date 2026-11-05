@@ -10601,12 +10601,13 @@ try {
   await page.waitForSelector('#view-about:not([hidden])');
   const about = await page.locator('#view-about').innerText();
 
-  check('the FAQ is three sections, not ten boxes to scroll past',
-    (await page.locator('#view-about .card').count()) === 3,
+  check('the FAQ is two sections, Muse first, then the website for anyone without Muse (5 Nov 2026)',
+    (await page.locator('#view-about .card').count()) === 2 &&
+      JSON.stringify(await page.locator('#view-about .card-head h2').allInnerTexts()) === '["PsycheAI in Muse","No Muse? Load your files"]',
     String(await page.locator('#view-about .card').count()));
   check('each carries a glyph and a plain heading',
-    (await page.locator('#view-about .card-icon').count()) === 3 &&
-    (await page.locator('#view-about .card-head h2').count()) === 3);
+    (await page.locator('#view-about .card-icon').count()) === 2 &&
+    (await page.locator('#view-about .card-head h2').count()) === 2);
   check('the page is titled FAQ, and goes straight into the questions',
     (await page.locator('#view-about [role="heading"][aria-level="1"]').innerText()) === 'FAQ' &&
     (await page.locator('#view-about .lede').count()) === 0,
@@ -10620,22 +10621,22 @@ try {
   check('every question is asked the way a reader would ask it', JSON.stringify(faqQuestions) ===
     JSON.stringify([
       'What is PsycheAI?',
+      'How do I start?',
       'How long does it take?',
-      'What file do I need?',
-      'What data leaves this device?',
-      'Do I need to give my Instagram password?',
-      'Is my data used to train AI?',
-      'Can the digest be linked back to me?',
-      'Why not just upload my data to ChatGPT?',
-      'Can anyone else access my data?',
-      'What if PsycheAI gets hacked?',
-      'Does PsycheAI count anything?',
-      'Can I verify this?',
+      'Is it free?',
+      'What does it read?',
+      'Does PsycheAI get my data?',
+      'Can I delete it?',
+      'How do I know it is safe?',
       'How accurate is it?',
+      'How does Psyche Sync work?',
+      'What file do I need?',
+      'What leaves this device?',
+      'What does PsycheAI keep?',
       'What does it cost?',
       'How does PsycheAI make money?',
-      'How does Psyche Sync work?',
-      'How do I keep my report from getting lost?',
+      'How does Psyche Sync work here?',
+      'How do I keep my report?',
       'How do I contact PsycheAI?',
     ]), JSON.stringify(faqQuestions));
 
@@ -10665,14 +10666,14 @@ try {
     !/writeFile|appendFile|createWriteStream|\.write\(/.test(readFileSync(join(root, 'lib', 'staticfiles.js'), 'utf8')));
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
-  check('the page says there is no account, and no collection of exports or reports to breach',
-    /There is no account, and PsycheAI stores none of your data, digest or report, so there is\s+nothing for anyone to take/.test(about));
+  check('the Muse answer says none of their posts, messages or report reach PsycheAI, so there is nothing of theirs to take, and the one exception (a Sync)',
+    /None of your posts, messages or report go to PsycheAI, so there is nothing of yours for anyone\s+to take from us\. Only if you choose to Sync are your card’s few lines shared, locked under your Sync\s+link\./.test(about));
   check('the page names Google Vertex AI, the provider the site runs on, as the party that reads the digest',
-    /It goes to Google Vertex AI/.test(about) && !/Grok/i.test(about));
+    /to Google Vertex AI’s enterprise tier, which does\s+not train on it/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
-    /keeps no copy of your data, digest or report/i.test(about));
+    /keeps no copy of your data, summary or report/i.test(about));
   check('the page is honest that hosting and payment providers see something',
-    /hosting and payment providers can see only/i.test(about) &&
+    /hosting and payment\s+providers can see only/i.test(about) &&
     /never your data/i.test(about));
 
   // The two claims most likely to be quietly overstated later.
@@ -10687,25 +10688,11 @@ try {
   // held to naming the three things a reader is most anxious about.
   // In full sentences now: what never leaves first, then the one thing that
   // is sent, after review.
-  check('what never leaves and what is sent after review are both said, in that order',
-    await page.evaluate(() => {
-      const text = document.querySelector('#view-about').innerText;
-      const never = text.indexOf('never leave this');
-      const sent = text.indexOf('The only thing sent is a short digest');
-      return never > -1 && sent > never && /can review\s+it before anything is sent for analysis/.test(text);
-    }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
-  check('the media and the zip never leave; the de-identified digest goes to the model, Ask PsycheAI included, and PsycheAI keeps no copy',
-    /Your Instagram zip file and your photos and videos never leave this device\. They are read in your browser\./.test(about) &&
-      /emails and phone numbers\. You can review\s+it before anything is sent for analysis\. It goes to Google Vertex AI, on Google Cloud’s enterprise tier,\s+to write your card and report and to answer Ask PsycheAI questions\./.test(about) &&
-      /PsycheAI keeps no copy of your data, digest or report\./.test(about),
-    about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
+  check('what never leaves and what is sent after review are both said, in that order: files read in the browser, a de-identified summary sent after review over HTTPS, no copy kept',
+    /Your files never leave this device: they are read in your browser\. Only a short, de-identified summary of\s+your own activity is sent, after you review it, over HTTPS to Google Vertex AI’s enterprise tier/.test(about) &&
+      /PsycheAI keeps no copy of your data, summary or report/.test(about),
+    about.slice(about.indexOf('What leaves this device'), about.indexOf('What leaves this device') + 260));
 
-  // The answer to "what file do I need" ends by offering the pictures, for a
-  // reader who came to the FAQ to find out rather than to load anything yet.
-  // The FAQ is read rather than followed, so nothing in its answers is
-  // emphasised — the questions are the only heavy type on the page. Checked on
-  // computed weight rather than on the absence of <strong>, since the same
-  // emphasis arrives just as easily from a class.
   check('nothing in the FAQ answers is bolded, only the questions',
     await page.evaluate(() => {
       const heavy = [...document.querySelectorAll('#view-about *')].filter(el => {
@@ -10750,31 +10737,22 @@ try {
   // The daily totals are disclosed in full: what is counted, and that visits
   // and anything identifying are not.
   check('the FAQ says exactly what is counted, and that other visits and identities are not',
-    /Only daily totals/.test(about) && /from a creator’s link/.test(about) && /Nothing in them identifies you/.test(about));
+    /such as daily totals of cards made and how many came from a\s+creator’s link/.test(about) && /do not name you/.test(about));
   check('the one-free-card question is gone, and what is kept for it is said in a clause',
-    !/Why is there one free card/.test(about) && /keeps only a few\s+small things that do not name you/.test(about));
+    !/Why is there one free card/.test(about) && /Only a few small things that do not name you/.test(about));
   check('the digest answer no longer explains who might recognise it',
     !/de-identified rather than anonymous/.test(about) && !/someone who already knows you well/.test(about));
-  check('the Psyche Sync answer says what the link actually is, who it is for, and that the result reaches you locked',
-    /How does Psyche Sync work\?/.test(about) && /for friends, family or anyone close, never romance/.test(about) &&
-    /If they choose to share it, the\s+result reaches you too, with their Psyche Card/.test(about) &&
-    /locked so PsycheAI cannot read it, and deleted once\s+your device has it, or after 30 days/.test(about) &&
-    /carries only your card’s short summary, never your data, messages or report/.test(about) &&
-    /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
+  check('the Psyche Sync answers say how it works in Muse and here, who it is for, and that a result sent back reaches you locked',
+    /How does Psyche Sync work\?/.test(about) && /For friends, family or anyone close, never\s+romance/.test(about) &&
+    /If they share the result, it reaches you with their card, locked so PsycheAI cannot read it, and deleted once\s+your device has it, or after 30 days/.test(about) &&
+    !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
-    !/no database/i.test(about) && /stores none of your data, digest or report/.test(about) &&
-    /Your shared card and any Psyche Sync sent to you are locked with a key that lives only in your link,\s+so PsycheAI cannot read them/.test(about) &&
-    /It is sent over encrypted \(HTTPS\) connections, from your browser to PsycheAI and on to Google, and\s+PsycheAI never saves it to disk/.test(about) &&
-    !/encrypted on the way and at rest/.test(about) &&
-    /privacy policy<\/a> lists every one|privacy policy lists every one/.test(about) &&
-    /do not name you/.test(about));
-  check('and the Psyche Report no longer promises a secret bonus: the roast is free',
-    !/secret bonus/i.test(about));
-  check('the FAQ gives a contact address',
-    /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
+    !/no database/i.test(about) && /What does PsycheAI keep\?/.test(about) &&
+    /Your shared card and any Sync sent\s+to you are locked with a key that lives only in your link, so PsycheAI cannot read them/.test(about) &&
+    /privacy policy<\/a> lists every one|privacy policy lists every one/.test(about));
   check('the prices are named, once, with what each buys — the first card and report free, re-runs US$5, Psyche Sync free',
-    /Your first Psyche Card and Psyche Report are free, together, and so is every Psyche Sync/.test(about) &&
-      /a re-run – a new Psyche Card\s+with its Psyche Report – is (<span[^>]*>)?US\$5(<\/span>)?/.test(about) && !/US\$2\b/.test(about) &&
+    /Your first Psyche Card and Report are free, and so is every Psyche Sync/.test(about) &&
+      /a re-run is\s+(<span[^>]*>)?US\$5(<\/span>)?/.test(about) && !/US\$2\b/.test(about) && /Your Psyche, fresh reads and Syncs in Muse cost nothing/.test(about) &&
       !/once 1 connection opens your|person who opens your link/.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));

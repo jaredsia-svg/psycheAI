@@ -4,108 +4,90 @@ description: "Answers about PsycheAI: what it is, what file you need, what happe
 canonical: https://psycheai.io/faq
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-27
+updated: 2026-11-05
 ---
 
 # Frequently asked questions
 
 What PsycheAI is, what happens to your data, and what it costs.
 
-## The basics
+## PsycheAI in Muse
 
 ### What is PsycheAI?
 
-A reading of yourself already sitting in your Instagram data and WhatsApp chats (and, if you like, Google or Facebook). Your free summary card names the character you are most like, your signature patterns, what motivates you, your MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part of it with evidence from your data. It is not a test and not a diagnosis.
+A personal AI coach that already knows you. It reads your own Instagram and writes your Psyche: a card with the character you are most like, your patterns, motivations, MBTI and Big Five, and a full report with the evidence and a plan. No quiz: it is not a test and not a diagnosis.
+
+### How do I start?
+
+Open a new chat in Meta Muse and paste “Install psycheai.io/muse and generate my Psyche”. When Muse asks, tap Always allow this site. No sign-up, no password, no upload.
 
 ### How long does it take?
 
-Instagram usually takes 1–2 hours to prepare the data zip file. The analysis takes a few minutes. Request your data first and come back when the email arrives. No time to wait? Two WhatsApp chats export in seconds.
+About 5 minutes.
 
-### What file do I need?
+### Is it free?
 
-Your Instagram data as a .zip, in JSON format (not HTML), or 2–3 WhatsApp chats, each exported from the chat itself (Without media). [See the illustration](https://psycheai.io/download-instagram-data) for every step.
+Yes. Your Psyche, fresh reads and Syncs in Muse cost nothing.
 
-## Your data
+### What does it read?
 
-### What data leaves this device?
+Your Instagram posts, stories and comments, and your messages if you choose. WhatsApp, Facebook or Messenger only if you add them.
 
-Your Instagram zip file and your photos and videos never leave this device. They are read in your browser.
+### Does PsycheAI get my data?
 
-The only thing sent is a short digest of your own activity, about 100–200 KB of text, which has removed your personal details such as your name, other people’s handles, emails and phone numbers. You can review it before anything is sent for analysis. It goes to Google Vertex AI, on Google Cloud’s enterprise tier, to write your card and report and to answer Ask PsycheAI questions.
+No. Your data is de-identified first, and your report and Psyche Card are made right in your Muse account. None of your posts, messages or report go to PsycheAI, so there is nothing of yours for anyone to take from us. Only if you choose to Sync are your card’s few lines shared, locked under your Sync link.
 
-PsycheAI keeps no copy of your data, digest or report. They stay in your browser until you press Delete everything. There is no account to create, and our hosting and payment providers can see only that the site was used or a payment made, never your data.
+### Can I delete it?
 
-### Do I need to give my Instagram password?
+Yes, any time. Say “Delete my PsycheAI data” in Muse, or tap My data and privacy.
 
-No. PsycheAI never asks for your password and never logs in to any of your accounts. You download your own data from Instagram, WhatsApp, Google or Facebook yourself, and choose the file here.
+### How do I know it is safe?
 
-### Is my data used to train AI?
-
-No. PsycheAI uses Google Vertex AI on Google Cloud’s enterprise tier, where Google does not train its AI on your digest, questions or report, and uses them only to answer you.
-
-### Can the digest be linked back to me?
-
-The digest is de-identified on your device before it is sent. Your name and username become a blank, and email addresses, phone numbers, ID, card, bank and postal numbers, passwords, login codes and usernames, and street addresses are removed. In your posts, comments and messages, everyone else’s @handles become numbers like [P1], and the names of people you message become numbers like [N1]. Links are dropped, and dates are cut to the month.
-
-It is sent over encrypted (HTTPS) connections, from your browser to PsycheAI and on to Google, and PsycheAI never saves it to disk. Anything Google keeps for a short time is stored encrypted.
-
-### Why not just upload my data to ChatGPT?
-
-You can, and it is a capable assistant. But your raw export holds your name, your contacts, other people’s @handles, the messages friends wrote to you, and your photos and videos. Upload it to ChatGPT and all of it goes straight to its servers as it is: nothing is de-identified first. On its personal plans, what you share may be used to train its models unless you turn that off in its settings, and turning it off does not delete anything. Your chats and files stay on its servers, in your history until you delete them, and for up to 30 days after you do, or longer when it is required to keep them for legal or security reasons.
-
-PsycheAI does it the other way round. Your files are read on this device and never leave it. Only a de-identified digest of your own activity is sent, with your name gone and everyone else turned into numbers like [P1], and you can review it first. It goes to an enterprise AI service that does not train on it, and PsycheAI keeps no copy and has no account to keep it in. The people in your messages never agreed to be uploaded anywhere; this way, they stay numbers, and only a short, de-identified line of what you replied to goes with some of your messages.
-
-It also works better. A full export is thousands of files, usually more than a chatbot can take in at once. PsycheAI reads all of it on your device and draws out the patterns across years before anything is written.
-
-### Can anyone else access my data?
-
-No. There is no account, and PsycheAI stores none of your data, digest or report, so there is nothing for anyone to take. Even PsycheAI’s administrator cannot see them. PsycheAI keeps only a few small things that do not name you, and the [privacy policy](https://psycheai.io/privacy) lists every one.
-
-Your shared card and any Psyche Sync sent to you are locked with a key that lives only in your link, so PsycheAI cannot read them.
-
-### What if PsycheAI gets hacked?
-
-There would be none of your data to take. PsycheAI has no accounts or passwords, and no store of exports, digests or reports. A report being written waits only in encrypted form that PsycheAI cannot read, until your device collects it, usually within seconds. Shared cards and syncs are locked with a key that only your link holds.
-
-### Does PsycheAI count anything?
-
-Only daily totals, such as how many cards, reports and syncs were made, and how many people arrived from a creator’s link. Nothing in them identifies you.
-
-### Can I verify this?
-
-Yes. Open Load my data, turn on airplane mode, then pick your file: it is still read and summarised, because that all happens on your device. Turn your connection back on only to send.
-
-The site is also open source, so you can [read what the browser sends](https://github.com/jaredsia-svg/psycheAI/tree/claude/instagram-personality-compatibility-oqhpa3).
-
-## The report
+The code is public, every update is signed, and you can check your copy against the public release list. [Here is how](https://psycheai.io/muse-docs#signed).
 
 ### How accurate is it?
 
-It is a large language model reading traces and patterns in your data, not a lab result. You can raise the report’s confidence by adding more sources. Instagram and Google together are the ideal combination – Instagram reads your outward persona, the self you present; Google reads your inward self, what you search and watch when no one is looking.
-
-### What does it cost?
-
-Your first Psyche Card and Psyche Report are free, together, and so is every Psyche Sync. The Psyche Report is every section explained, plus your wellbeing, attachment style, ideal partner, career coaching and development plan. After your first, a re-run – a new Psyche Card with its Psyche Report – is US$5. Ask PsycheAI, your coach, answers one question free, then five for US$5. You see the price before you pay.
-
-### How does PsycheAI make money?
-
-From paid re-runs and Ask PsycheAI questions, never from your data. There are no ads, and nothing about you is sold or shared.
+It is AI reading patterns in your own words over years, not a lab test. Adding your messages, WhatsApp or Facebook makes it sharper.
 
 ### How does Psyche Sync work?
 
-You get one personal link, also printed on your Psyche Card as a QR code. Send it to a connection: they see your Psyche Card and can make their own for free. Then one tap shows your Psyche Sync – what clicks between you, where you differ, and how to relate better to each other. It is free, for friends, family or anyone close, never romance. If they choose to share it, the result reaches you too, with their Psyche Card, locked so PsycheAI cannot read it, and deleted once your device has it, or after 30 days.
+Send a connection your Sync link. They paste it into their own Muse, and you both see what clicks between you, where you differ and how to get on better. For friends, family or anyone close, never romance.
 
-Your link carries only your card’s short summary, never your data, messages or report. The first person who makes their card from your link unlocks your first Psyche Report free, and every connection who makes a card from it earns you a credit: five questions for PsycheAI, or a Psyche Report to gift.
+## No Muse? Load your files
 
-### How do I keep my report from getting lost?
+### What file do I need?
 
-Your card, report and syncs are saved only in this browser. Press Save a backup on My Psyche (or Backup on My Report) to keep a copy as a file, and restore it in another browser from Load my data, then Restore from a backup. Keep the file private: it holds your link’s key.
+Two or three WhatsApp chats, each exported Without media, ready in minutes. Or your Instagram data as a .zip in JSON format, which Instagram takes 1–2 hours to prepare. [See the illustration](https://psycheai.io/download-instagram-data) for every step.
+
+### What leaves this device?
+
+Your files never leave this device: they are read in your browser. Only a short, de-identified summary of your own activity is sent, after you review it, over HTTPS to Google Vertex AI’s enterprise tier, which does not train on it. PsycheAI keeps no copy of your data, summary or report, and our hosting and payment providers can see only that the site was used or a payment made, never your data.
+
+### What does PsycheAI keep?
+
+Only a few small things that do not name you, such as daily totals of cards made and how many came from a creator’s link. The [privacy policy](https://psycheai.io/privacy) lists every one. Your shared card and any Sync sent to you are locked with a key that lives only in your link, so PsycheAI cannot read them.
+
+### What does it cost?
+
+Your first Psyche Card and Report are free, and so is every Psyche Sync. After that, a re-run is US$5, and Ask PsycheAI answers one question free, then five for US$5.
+
+### How does PsycheAI make money?
+
+From paid re-runs and questions on this website, never from your data. No ads, and nothing about you is sold or shared.
+
+### How does Psyche Sync work here?
+
+Send a connection your personal link. They make their own card free, then see what clicks between you. If they share the result, it reaches you with their card, locked so PsycheAI cannot read it, and deleted once your device has it, or after 30 days.
+
+### How do I keep my report?
+
+On this website it is saved only in this browser. Press Save a backup on My Psyche to keep a copy as a file, and restore it from Load my data.
 
 ⚠️ Clearing website data or removing the app deletes your Psyche. Save a backup first.
 
 ### How do I contact PsycheAI?
 
-Email [admin@psycheai.io](mailto:admin@psycheai.io) – for questions, payment problems or anything about your data. A re-run is refunded in full if you ask within 24 hours; question packs are non-refundable. The [privacy policy](https://psycheai.io/privacy), [terms](https://psycheai.io/terms) and [refund policy](https://psycheai.io/refunds) are each a page.
+Email [admin@psycheai.io](mailto:admin@psycheai.io). The [privacy policy](https://psycheai.io/privacy), [Muse privacy](https://psycheai.io/muse-privacy), [terms](https://psycheai.io/terms) and [refund policy](https://psycheai.io/refunds) are each a page.
 
 About the founder
 
