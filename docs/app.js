@@ -13610,6 +13610,8 @@
     show('welcome');
     await refreshInvite();
     refreshGiftBanner();
+    // psycheai.io/#files (the search pages' "No Muse?" link): straight to loading files, unfolded.
+    if (location.hash === '#files') { openFiles(); $('#request-data').scrollIntoView({ block: 'start' }); }
   }
 
   // Coming back to the page is not always a page load.

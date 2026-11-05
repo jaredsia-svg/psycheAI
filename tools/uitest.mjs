@@ -3407,7 +3407,7 @@ try {
       return out;
     });
     check('the three policy pages are served, dated, and name the operator and Singapore',
-      Object.values(policies).every(html => /Last updated \d{1,2} October 2026/.test(html) && /PsycheAI · Singapore/.test(html) &&
+      Object.values(policies).every(html => /Last updated \d{1,2} (October|November) 2026/.test(html) && /PsycheAI · Singapore/.test(html) &&
         /admin@psycheai\.io/.test(html)), Object.keys(policies).filter(k => !policies[k]).join(', '));
     check('the refund policy gives a 24-hour window and how to ask',
       /within 24 hours of payment/.test(policies.refunds) && /last four digits/.test(policies.refunds));

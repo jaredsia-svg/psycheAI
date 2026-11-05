@@ -55,4 +55,6 @@ MBTI sorts people into 16 types; the Big Five scores five traits on a scale. You
 
 ---
 
-[Get your free Psyche Card](https://psycheai.io/) · [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)
+Get your Psyche free in Muse: paste "Install psycheai.io/muse and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+
+[See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)

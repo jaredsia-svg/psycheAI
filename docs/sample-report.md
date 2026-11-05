@@ -4,7 +4,7 @@ description: "A full sample PsycheAI reading for a fictional reader: the charact
 canonical: https://psycheai.io/sample-report
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-10-29
+updated: 2026-11-05
 ---
 
 # A sample PsycheAI report
@@ -59,8 +59,10 @@ Steadier than most, with one tell: your posting drops sharply for a week or two 
 
 ## The Psyche Report goes further
 
-The Psyche Report, free with your first Psyche Card (re-runs US$5), explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. [Start with your free card](https://psycheai.io/).
+The Psyche Report, free in Muse with your Psyche Card, explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. [Start with your free card](https://psycheai.io/).
 
 ---
 
-[Get your free Psyche Card](https://psycheai.io/) · [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)
+Get your Psyche free in Muse: paste "Install psycheai.io/muse and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+
+[See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)

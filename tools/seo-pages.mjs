@@ -115,17 +115,22 @@ ${ld({ '@context': 'https://schema.org', '@graph': graph })}
 ${draft ? '' : '    ' + BYLINE + '\n'}    <p class="btn-row"><a class="btn" href="/">Get your free Psyche Card</a> <a class="btn btn-outline" href="/sample-report">See a sample report</a></p>
   </header>
 ${body}
-  <section class="guide-cta">
-    <h2>Your first Psyche Card is free</h2>
-    <p>No questionnaire, no account. About a minute once your Instagram data is ready, or straight away with two WhatsApp chats.</p>
-    <p><a class="btn" href="/">Get your free Psyche Card</a></p>
-  </section>
+${GUIDE_CTA}
 </main>
 ${FOOTER}
 </body>
 </html>
 `;
 }
+
+// The closing box on every search page: Muse first, the website's files for anyone without Muse.
+// Script-free, so the prompt is selected whole by a tap (.paste) rather than copied by a button.
+const GUIDE_CTA = `  <section class="guide-cta">
+    <h2>Get your Psyche free in Muse</h2>
+    <p>No questionnaire, no sign-up, ready in about 5 minutes. Paste this into Meta Muse:</p>
+    <pre class="paste">Install psycheai.io/muse and generate my Psyche</pre>
+    <p class="note">No Muse? <a href="/#files">Load your WhatsApp or Instagram files</a> on the website instead.</p>
+  </section>`;
 
 const FOOTER = `<footer class="footer">
   <p><a href="/">PsycheAI</a> · <a href="/instagram-personality-test">Instagram personality test</a> ·
@@ -286,7 +291,7 @@ for (const t of TOPICS) {
       section(`MBTI: ${esc((s.mbti || {}).type || '')}`, `<ul class="ticks">${letters}</ul>`) +
       section('Values and interests', `<p><strong>Values:</strong> ${list(s.values, 'value')}</p><p><strong>Interests:</strong> ${list(s.interests, 'name')}</p>`) +
       section('Love languages', `<p><strong>Receives care as:</strong> ${list(love.receiving, 'language')}</p><p><strong>Shows care as:</strong> ${list(love.giving, 'language')}</p>`) +
-      section('The Psyche Report goes further', '<p>The Psyche Report, free with your first Psyche Card (re-runs US$5), explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. <a href="/">Start with your free card</a>.</p>'),
+      section('The Psyche Report goes further', '<p>The Psyche Report, free in Muse with your Psyche Card, explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. <a href="/">Start with your free card</a>.</p>'),
   }));
 }
 
@@ -423,7 +428,9 @@ ${markdown(main)}
 
 ---
 
-[Get your free Psyche Card](${SITE}/) · [See a sample report](${SITE}/sample-report) · [FAQ](${SITE}/faq)
+Get your Psyche free in Muse: paste "Install psycheai.io/muse and generate my Psyche" into Meta Muse ([how it works](${SITE}/muse)). No Muse? [Load your files on the website](${SITE}/#files).
+
+[See a sample report](${SITE}/sample-report) · [FAQ](${SITE}/faq)
 `);
 }
 
@@ -441,12 +448,17 @@ ${LEGAL.map(s => url(s, 'yearly', '0.3')).join('\n')}
 `;
 const llms = `# PsycheAI
 
-> A free personality reading from your own Instagram data or two or three WhatsApp chats, with no questionnaire. Your browser reads your Instagram data download or chat exports, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. Your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram, with no questionnaire: a Psyche Card (the character you are most like, MBTI, Big Five, values, interests and love languages) and a Psyche Report (attachment style, career strengths, blind spots and more).
+>
+> The main way in is Meta Muse: paste "Install psycheai.io/muse and generate my Psyche" into Muse. Muse reads your Instagram on your own account, de-identified first, and writes your card and report there, in about 5 minutes. It is free, with no sign-up, and none of your data is sent to PsycheAI; only if you choose Psyche Sync are your card's few lines shared.
+>
+> Without Muse, the website reads your Instagram data download or two or three WhatsApp chat exports in your browser, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes the card. There, your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 Every page below is also plain Markdown at the same address with .md on the end.
 
 ## Start here
 - [PsycheAI](${SITE}/): make your free Psyche Card
+- [PsycheAI in Muse](${SITE}/muse): the Muse skill, what it reads and what it shares
 - [FAQ](${SITE}/faq.md): privacy, pricing and how it works
 - [Sample report](${SITE}/sample-report.md): what a reading looks like
 - [Download your Instagram data](${SITE}/download-instagram-data.md): the steps, in JSON format
