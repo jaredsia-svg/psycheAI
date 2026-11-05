@@ -79,6 +79,10 @@ SCRIPTS = {'muse': {
     # "processed", not "read": in "is read" the word is always said like "red", which sounded like the past tense.
     9: (['Your data is processed directly in your Muse app.', 'Your messages are de-identified.', 'And none of your data or report goes to {B}.'], 0.92, True, 0.2),
 }}
+# Lines whose phrases run at their own pace even on the beat (5 Nov 2026): waiting for each half-beat left
+# pauses inside the card's list, before "interests and values", "love languages" and "who you sync with".
+# The line still starts on the beat (audio.py); only the gaps inside it are its own.
+OFF_BEAT = {'muse': {6}}
 # The music's tempo (audio.py BPM), for lines said on the beat.
 BPM = 118; HALF = 60 / BPM / 2
 
@@ -248,7 +252,7 @@ if __name__ == '__main__':
     for version, settings in CONFIG.items():
         script = settings.get('script')
         if script and script not in marks['alt']:
-            marks['alt'][script] = {str(i): write(f'l{i:02d}-{script}', *line, beat=bool(settings.get('onBeat')))
+            marks['alt'][script] = {str(i): write(f'l{i:02d}-{script}', *line, beat=bool(settings.get('onBeat')) and i not in OFF_BEAT.get(script, ()))
                                     for i, line in SCRIPTS[script].items()}
         marks['end'][version] = write(f'l{len(LINES) + 1:02d}-' + version, [settings.get('end', END), settings['spoken']], 0.9, True,
                                       beat=bool(settings.get('onBeat')))

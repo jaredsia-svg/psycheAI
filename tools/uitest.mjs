@@ -2875,6 +2875,9 @@ try {
       check('the hero gives the prompt to paste into Muse with a Copy button, then "No Muse? Load your WhatsApp or Instagram files", and no other buttons',
         (await guidePage.locator('#hero-prompt').innerText()).trim() === 'Install psycheai.io/muse and generate my Psyche' &&
           (await guidePage.locator('.muse-prompt button[data-copy="hero-prompt"]').innerText()).trim() === 'Copy' &&
+          (await guidePage.locator('#hero-prompt[data-copy-by="hero-copy"]').count()) === 1 &&
+          (await guidePage.locator('.muse-prompt-head').textContent()).trim() === 'Paste prompt into Muse' &&
+          (await guidePage.locator('#muse-start .muse-prompt-note').textContent()).replace(/\s+/g, ' ').trim() === 'Tap Always allow this site · ~5 minutes' &&
           (await guidePage.locator('.hero-have #hero-wa').innerText()).trim() === 'Load your WhatsApp or Instagram files' &&
           /^No Muse\?/.test((await guidePage.locator('.hero-have').innerText()).trim()) &&
           (await guidePage.locator('#hero-start, #hero-load, .hero-actions').count()) === 0 &&
@@ -2888,7 +2891,7 @@ try {
       check('further down, the Muse way again: where the data goes in Muse (the welcome\'s four points) and the prompt with its Copy button before the files',
         await guidePage.evaluate(() => {
           const data = document.querySelector('#muse-data'), cta = document.querySelector('#muse-cta'), files = document.querySelector('#request-data');
-          return !!(data && cta && files) && /Made in Muse\. Your report and Psyche Card are made there\. None of your posts, messages or report go to PsycheAI\./.test(data.textContent.replace(/\s+/g, ' ')) &&
+          return !!(data && cta && files) && /No posts or report sent to PsycheAI\. Your Psyche Card and Report are made right in Muse\. None of your posts, messages or report go to PsycheAI\./.test(data.textContent.replace(/\s+/g, ' ')) &&
             cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/muse and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
             (cta.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
         }));
@@ -3362,7 +3365,7 @@ try {
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
   // How it works in Muse (5 Nov 2026, README "Muse first on the front page"): paste, allow once, the Psyche, ask and sync.
   check('the four steps are the Muse way: paste the prompt, allow it once, your Psyche in 5 minutes, ask and sync',
-    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') === 'Paste the prompt | Allow it once | Your Psyche in 5 minutes | Ask and sync' &&
+    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') === 'Paste the prompt | Always allow this site | Your Psyche in 5 minutes | Ask and sync' &&
       /It covers app\.psycheai\.io, PsycheAI’s own server, only\./.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // ---- the footer ----
@@ -4479,8 +4482,8 @@ try {
   check('the filled button does not get darker at the pink end in the light theme',
     buttonLight.start >= 4.5 && buttonLight.end >= 4.25, JSON.stringify(buttonLight));
 
-  check('step four offers Ask PsycheAI and Sync with a friend',
-    /^Ask PsycheAI anything about yourself, or sync with a friend to see how you click\.$/.test((await page.locator('.step-card').nth(3).locator('p').innerText()).replace(/\s+/g, ' ').trim()));
+  check('step four offers Ask PsycheAI and Sync with a connection',
+    /^Ask PsycheAI anything about yourself, or sync with a connection to see how you click\.$/.test((await page.locator('.step-card').nth(3).locator('p').innerText()).replace(/\s+/g, ' ').trim()));
 
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.

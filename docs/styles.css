@@ -5675,7 +5675,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .muse-prompt-head { margin: 0 0 .45rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 .muse-prompt-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
 .muse-prompt-row .paste { flex: 999 1 15rem; min-width: 0; margin: 0; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
-.muse-prompt-row .btn { flex: 1 0 6.5rem; margin: 0; min-height: 44px; }
+.muse-prompt-row .btn { flex: 1 0 7.5rem; margin: 0; min-height: 44px; white-space: nowrap; }
 .muse-prompt-note { margin: .5rem 0 0; font-size: .82rem; color: var(--ink-soft); }
 .card .muse-points { list-style: none; margin: .4rem 0 .6rem; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .6rem; }
 .muse-points li { border: 1px solid var(--line); border-radius: 14px; padding: .75rem .85rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.45; }
@@ -5693,3 +5693,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .files-more[open] > summary::after { content: "−"; }
 .files-summary-q { color: var(--ink-soft); font-weight: 500; }
 #view-welcome.is-returning .files-more { display: none; }
+.muse-prompt-row .paste[data-copy-by] { cursor: pointer; }
+.muse-copied { margin: .55rem 0 0; font-size: .86rem; font-weight: 700; color: var(--good); }
+/* The hero prompt on white inside its dotted line (5 Nov 2026). */
+.muse-prompt .muse-prompt-row .paste { background: var(--bg-alt); }

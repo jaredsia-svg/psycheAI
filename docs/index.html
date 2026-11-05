@@ -194,12 +194,13 @@
       <!-- Muse first (5 Nov 2026, README "Muse first on the front page"): the one thing to do is paste
            the prompt into Muse, copied in one tap. Loading files is the way in for someone without Muse. -->
       <div class="muse-prompt" id="muse-start">
-        <p class="muse-prompt-head">Paste into Muse</p>
+        <p class="muse-prompt-head">Paste prompt into Muse</p>
         <div class="muse-prompt-row">
-          <pre class="paste" id="hero-prompt">Install psycheai.io/muse and generate my Psyche</pre>
-          <button class="btn" type="button" data-copy="hero-prompt" data-done="Copied">Copy</button>
+          <pre class="paste" id="hero-prompt" data-copy-by="hero-copy" title="Tap to copy">Install psycheai.io/muse and generate my Psyche</pre>
+          <button class="btn" type="button" id="hero-copy" data-copy="hero-prompt" data-done="Copied ✓" data-done-note="hero-copied">Copy</button>
         </div>
-        <p class="muse-prompt-note">Ready in about 5 minutes. No sign-up, no upload.</p>
+        <p class="muse-copied" id="hero-copied" role="status" hidden>Copied. Now open Muse and paste it.</p>
+        <p class="muse-prompt-note">Tap <b>Always allow this site</b> · ~5 minutes</p>
       </div>
       <p class="hero-have">No Muse? <button class="link-btn" id="hero-wa" type="button">Load your WhatsApp or Instagram files</button></p>
     </div>
@@ -240,12 +241,12 @@
   <div class="steps-row">
     <div class="step-card"><span class="step-num">1</span><h3>Paste the prompt</h3>
       <p>Open a new chat in the Muse app and paste: Install psycheai.io/muse and generate my Psyche.</p></div>
-    <div class="step-card"><span class="step-num">2</span><h3>Allow it once</h3>
+    <div class="step-card"><span class="step-num">2</span><h3>Always allow this site</h3>
       <p>When Muse asks, tap Always allow this site. It covers app.psycheai.io, PsycheAI’s own server, only.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Your Psyche in 5 minutes</h3>
       <p>Choose whether to include your messages. You get your Psyche Card and a full private report.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Ask and sync</h3>
-      <p>Ask PsycheAI anything about yourself, or sync with a friend to see how you click.</p></div>
+      <p>Ask PsycheAI anything about yourself, or sync with a connection to see how you click.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -297,10 +298,10 @@
     <h2>Where does your data go?</h2>
     <p class="vs-sub">In Muse, nowhere beyond your own account.</p>
     <ul class="muse-points">
-      <li><b>Read in your Muse account.</b> Your Instagram is read right there. Nothing to export or upload.</li>
-      <li><b>De-identified first.</b> Names, handles, numbers and links removed, and no one else is quoted.</li>
-      <li><b>Made in Muse.</b> Your report and Psyche Card are made there. None of your posts, messages or report go to PsycheAI.</li>
-      <li><b>Private to you.</b> Nothing is shared unless you choose to. Delete it all any time.</li>
+      <li><b>Read in your own Muse account.</b> Your Instagram is read right where it is. Nothing to export or upload.</li>
+      <li><b>De-identified first before analysis.</b> Names, handles, numbers and links removed, and no one else is quoted.</li>
+      <li><b>No posts or report sent to PsycheAI.</b> Your Psyche Card and Report are made right in Muse. None of your posts, messages or report go to PsycheAI.</li>
+      <li><b>Private to you.</b> Nothing is posted or shared unless you choose to. Delete it all any time.</li>
     </ul>
     <p class="vs-more"><a href="/muse-privacy">Muse privacy in full →</a> · <a href="/muse-docs#signed">Check your copy against the public code →</a></p>
   </div>
