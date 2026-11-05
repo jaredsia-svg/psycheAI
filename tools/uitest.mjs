@@ -2891,7 +2891,7 @@ try {
       check('further down, the Muse way again: where the data goes in Muse (the welcome\'s four points) and the prompt with its Copy button before the files',
         await guidePage.evaluate(() => {
           const data = document.querySelector('#muse-data'), cta = document.querySelector('#muse-cta'), files = document.querySelector('#request-data');
-          return !!(data && cta && files) && /No posts or report sent to PsycheAI\. Your Psyche Card and Report are made right in Muse\. None of your posts, messages or report go to PsycheAI\./.test(data.textContent.replace(/\s+/g, ' ')) &&
+          return !!(data && cta && files) && /None of your data sent to PsycheAI\. Your Psyche Card and Report are made right in Muse\. Only if you choose to Sync are your card’s few lines shared\./.test(data.textContent.replace(/\s+/g, ' ')) &&
             cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/muse and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
             (cta.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
         }));
