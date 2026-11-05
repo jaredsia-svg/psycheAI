@@ -1899,7 +1899,7 @@
     const go = event.target.closest && event.target.closest('.gift-banner-go');
     if (!go) return;
     if (!go.closest('#view-profile')) {
-      $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+      openFiles(); $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
       return;
     }
     const target = document.querySelector('#profile-body .premium-unlock');
@@ -3877,9 +3877,16 @@
     go(nav.dataset.nav);
   });
 
+  // Loading files is folded away on the front page (README "Muse first on the front page"): opened before
+  // anything scrolls into it or says something inside it.
+  function openFiles() {
+    const more = $('#files-more');
+    if (more) more.open = true;
+  }
   function flash(selector, message) {
     const node = $(selector);
     if (!node) return;
+    if (message && node.closest('#files-more')) openFiles();
     node.textContent = message || '';
     node.hidden = !message;
     // A message is a warning unless its caller marks it a note again.
@@ -4226,7 +4233,7 @@
     if ($('#view-welcome').hidden) show('welcome');
     // The request steps, Instagram's way chosen (on a phone, its tab).
     chooseWay('instagram');
-    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    openFiles(); $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   // "Start with WhatsApp": the chats' way in Two ways to start. A reader with a
   // card already adds chats to it from their report instead.
@@ -4234,7 +4241,7 @@
     if (state.profile) { go('profile'); startRerun(); return; }
     if ($('#view-welcome').hidden) show('welcome');
     chooseWay('whatsapp');
-    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    openFiles(); $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   // Two ways to start: on a phone, the tabs show one way at a time (on a
   // laptop both are open side by side, and the tabs are not drawn).
@@ -4249,7 +4256,7 @@
     const below = event.target.closest('a.step-below');
     if (!below) return;
     event.preventDefault();
-    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    openFiles(); $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   // "Load my data": the Add your data popout, as Start here's button opens it.
   // A reader with a card already adds to it from their report instead.
@@ -13150,7 +13157,7 @@
   });
 
   $('#invite-guide').addEventListener('click', () => {
-    $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    openFiles(); $('#request-data').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   $('#invite-card-open').addEventListener('click', openInviteCard);
   $('#invite-banner-close').addEventListener('click', () => {

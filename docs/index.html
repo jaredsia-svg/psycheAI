@@ -315,128 +315,118 @@
     <p class="muse-prompt-note">When Muse asks, tap Always allow this site. 18 and over.</p>
   </div>
 
-  <!-- Two ways in, side by side on a laptop and as two tabs on a phone (26 October 2026): two WhatsApp
-       chats, ready in minutes, or the Instagram export, which takes Instagram's email but reads more.
-       It was "Request your Instagram data first", with WhatsApp folded away under it. -->
-  <div class="card help help-card" id="request-data">
-    <div class="help-head">
-      <div>
-        <p class="files-eyebrow">No Muse?</p>
-        <h2>Load your files instead</h2>
-        <p class="help-lede">Use your WhatsApp chats, your Instagram data, or both, on this website. Your first Psyche Card and Report are free; a re-run is <span data-price="unlock">US$5</span>.</p>
-      </div>
-    </div>
-    <div class="ways-tabs" role="tablist" aria-label="Two ways to start">
-      <button type="button" role="tab" class="ways-tab" id="ways-tab-whatsapp" data-way="whatsapp" aria-selected="true" aria-controls="way-whatsapp">⚡ WhatsApp · now</button>
-      <button type="button" role="tab" class="ways-tab" id="ways-tab-instagram" data-way="instagram" aria-selected="false" aria-controls="way-instagram">🎯 Instagram · 2hrs</button>
-    </div>
-    <div class="ways">
-      <section class="way way-whatsapp" id="way-whatsapp" role="tabpanel" aria-labelledby="ways-tab-whatsapp">
-        <h3>2 WhatsApp chats</h3>
-        <p class="way-tag">⚡ About 2 minutes</p>
-        <!-- No button of its own since 27 October 2026: the steps end "load it below", at Start here. -->
-        <ol data-howto="whatsapp"></ol>
-      </section>
-      <section class="way way-instagram is-off" id="way-instagram" role="tabpanel" aria-labelledby="ways-tab-instagram">
-        <div class="way-head">
-          <div><h3>Your Instagram data</h3>
-            <p class="way-tag">🎯 Most complete · 2 hours</p></div>
-          <!-- The same journey in pictures, every tap ringed: a place to go and come back from. -->
-          <button class="btn btn-outline help-guide-open" id="guide-open" type="button">See illustration</button>
+  <!-- Muse is the way in (README "Muse first on the front page"): loading files, the steps and Start here together,
+       is folded away until asked for. app.js openFiles() opens it before anything scrolls to it or shows a
+       message inside it. -->
+  <!-- Whether the server can analyse: said above the folded files, so it shows without opening them. -->
+  <div id="server-status" class="alert" hidden></div>
+  <details class="files-more" id="files-more">
+    <summary class="files-summary"><span class="files-summary-q">No Muse?</span> Load your WhatsApp or Instagram files</summary>
+    <!-- Two ways in, side by side on a laptop and as two tabs on a phone (26 October 2026): two WhatsApp
+         chats, ready in minutes, or the Instagram export, which takes Instagram's email but reads more.
+         It was "Request your Instagram data first", with WhatsApp folded away under it. -->
+    <div class="card help help-card" id="request-data">
+      <div class="help-head">
+        <div>
+          <h2>Load your files instead</h2>
+          <p class="help-lede">Use your WhatsApp chats, your Instagram data, or both, on this website. Your first Psyche Card and Report are free; a re-run is <span data-price="unlock">US$5</span>.</p>
         </div>
-        <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
-        <p class="howto-hint"><span class="hint-touch">Tap a purple label to see that screen.</span><span class="hint-mouse">Hover over a purple label to see that screen.</span></p>
-        <ol class="howto-rows" data-howto="instagram"></ol>
-        <!-- On a phone the button above is gone and this link takes its place,
-             after the steps (styles.css, .help-steps-guide). -->
-        <p class="help-steps-guide"><button type="button" class="link-btn" id="steps-guide-open">See the illustrated walkthrough</button></p>
-      </section>
-    </div>
-    <p class="ways-both">💡 Get best of both worlds and the highest signal score by requesting your Instagram data now, and loading it together with your WhatsApp chats.</p>
-  </div>
-
-  <div class="card vs-card" id="vs-chatgpt">
-    <!-- "Where does your data go?" since 27 October 2026 (it was "Why not just upload my data to ChatGPT?",
-         a question many visitors never had): ChatGPT stays as the comparison that shows what private means. -->
-    <h2>Where do your files go?</h2>
-    <p class="vs-sub">Compared with uploading the same files to ChatGPT.</p>
-    <div class="vs-diff" role="table" aria-label="ChatGPT and PsycheAI compared">
-      <div class="vs-row vs-headrow" role="row"><span role="columnheader"></span><span class="vs-c1" role="columnheader">ChatGPT</span><span class="vs-c2" role="columnheader">PsycheAI</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Service</span><span class="vs-c1" role="cell">Consumer plan</span><span class="vs-c2" role="cell">Enterprise tier (Google Vertex AI)</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">What’s sent</span><span class="vs-c1" role="cell">Your raw export: photos, videos, friends’ messages</span><span class="vs-c2" role="cell">A 100–200 KB de-identified text summary you review first</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Trains on it?</span><span class="vs-c1" role="cell">May, unless you turn it off</span><span class="vs-c2" role="cell">No</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Kept</span><span class="vs-c1" role="cell">Until you delete it, then up to 30 days</span><span class="vs-c2" role="cell">Nowhere. No accounts</span></div>
-      <div class="vs-row" role="row"><span class="vs-k" role="rowheader">Who can read your results</span><span class="vs-c1" role="cell">OpenAI, for safety or legal reasons</span><span class="vs-c2" role="cell">Only you</span></div>
-    </div>
-    <p class="vs-more"><a href="/privacy#flow-title">How your data flows →</a></p>
-  </div>
-
-  <div class="card upload-card">
-    <h2>Start here</h2>
-    <!-- The line that used to sit here — "you will be able to review exactly
-         what it contains" — moved into the Add your data popout, which is
-         where the reader is actually choosing to hand anything over. It said
-         "load your data below" while standing above a button that opens a
-         dialog, and a promise about a review step lands better one screen
-         later, immediately before the step it is promising. -->
-    <div id="server-status" class="alert" hidden></div>
-
-    <!-- A button opening the same "Add or change your data" popout the report
-         page uses, rather than a dropzone that only ever took Instagram.
-         Two things fall out of sharing that popout, and the second is the
-         reason for the change:
-         · all three sources are offered in one place on the first upload,
-           instead of Instagram here and the other two in a later dialog;
-         · every source already loaded is ticked. An analysis that fails does
-           not lose anything — the digest is written to localStorage before the
-           model is called — but the welcome page had no way to say so, and no
-           way back in except the dropzone, which read as "upload it all
-           again". Now the reader reopens the popout, sees the ticks, and
-           presses Continue.
-         The file input stays for drag-and-drop, which is kept: an Instagram
-         export arrives as several .zip parts and dropping them together is
-         genuinely faster than a picker. The card is the drop target now, so
-         the box that used to advertise it is not needed. -->
-    <div class="upload-actions">
-      <button class="btn btn-lg btn-block" id="open-sources" type="button">Load my data</button>
-      <p class="upload-loaded muted" id="upload-loaded" hidden></p>
-    </div>
-    <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
-
-    <!-- The promise sits at the point of the ask: this is the moment somebody
-         is deciding whether to hand over their Instagram history, not the
-         moment they arrive on the page. One bar covers both worries: what
-         happens to the data, and whether anyone is watching. Every clause is
-         literally true: the export never leaves the browser; what is sent is
-         the reviewed, de-identified digest, to Google Vertex AI; PsycheAI
-         keeps neither it nor the report. It used to say "No one can see that
-         you visited", which was not true — the host sees an IP address, and
-         PsycheAI counts daily totals — so that promise is gone. -->
-    <div class="eyebrow privacy-points">
-      <p class="privacy-points-head">Your data stays private</p>
-      <!-- The privacy page's data flow, in four icons (docs/privacy.html, #flow-title). -->
-      <ol class="mini-flow">
-        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h14l8 8v26a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M28 6v8h8"/><path d="M17 25h14M17 32h10"/></svg></span><span>Files loaded on your phone, not uploaded</span></li>
-        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 14h28M10 22h22M10 30h14"/><path d="M30 30l9 9M39 30l-9 9"/></svg></span><span>Names removed. You choose what is sent</span></li>
-        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg></span><span>Summary sent encrypted to Vertex AI</span></li>
-        <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg></span><span>Results saved on your phone only</span></li>
-      </ol>
-      <!-- Short on purpose: the details (no copy kept, how PsycheAI makes money, Vertex AI) are one tap away,
-           on the privacy page and in the FAQ. -->
-      <p class="privacy-points-foot">No sign-up, no password, no trackers.
-        <a href="/privacy#flow-title">How your data flows →</a></p>
+      </div>
+      <div class="ways-tabs" role="tablist" aria-label="Two ways to start">
+        <button type="button" role="tab" class="ways-tab" id="ways-tab-whatsapp" data-way="whatsapp" aria-selected="true" aria-controls="way-whatsapp">⚡ WhatsApp · now</button>
+        <button type="button" role="tab" class="ways-tab" id="ways-tab-instagram" data-way="instagram" aria-selected="false" aria-controls="way-instagram">🎯 Instagram · 2hrs</button>
+      </div>
+      <div class="ways">
+        <section class="way way-whatsapp" id="way-whatsapp" role="tabpanel" aria-labelledby="ways-tab-whatsapp">
+          <h3>2 WhatsApp chats</h3>
+          <p class="way-tag">⚡ About 2 minutes</p>
+          <!-- No button of its own since 27 October 2026: the steps end "load it below", at Start here. -->
+          <ol data-howto="whatsapp"></ol>
+        </section>
+        <section class="way way-instagram is-off" id="way-instagram" role="tabpanel" aria-labelledby="ways-tab-instagram">
+          <div class="way-head">
+            <div><h3>Your Instagram data</h3>
+              <p class="way-tag">🎯 Most complete · 2 hours</p></div>
+            <!-- The same journey in pictures, every tap ringed: a place to go and come back from. -->
+            <button class="btn btn-outline help-guide-open" id="guide-open" type="button">See illustration</button>
+          </div>
+          <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
+          <p class="howto-hint"><span class="hint-touch">Tap a purple label to see that screen.</span><span class="hint-mouse">Hover over a purple label to see that screen.</span></p>
+          <ol class="howto-rows" data-howto="instagram"></ol>
+          <!-- On a phone the button above is gone and this link takes its place,
+               after the steps (styles.css, .help-steps-guide). -->
+          <p class="help-steps-guide"><button type="button" class="link-btn" id="steps-guide-open">See the illustrated walkthrough</button></p>
+        </section>
+      </div>
+      <p class="ways-both">💡 Get best of both worlds and the highest signal score by requesting your Instagram data now, and loading it together with your WhatsApp chats.</p>
     </div>
 
-    <div id="upload-error" class="alert" hidden></div>
-    <!-- The way back from a failed analysis. It runs the digest already in
-         hand — no popout, no review, no rebuild — which is what makes it both
-         one press and free: the server keys its result cache on the digest, so
-         an unchanged one either returns the report that finished after the
-         connection died or joins the generation still producing it. The route
-         through "Continue with your data" above rebuilds the digest instead,
-         and a rebuilt digest is a different question. -->
-    <button id="upload-retry" class="btn btn-primary btn-block" hidden>Try again</button>
-  </div>
+    <div class="card upload-card">
+      <h2>Start here</h2>
+      <!-- The line that used to sit here — "you will be able to review exactly
+           what it contains" — moved into the Add your data popout, which is
+           where the reader is actually choosing to hand anything over. It said
+           "load your data below" while standing above a button that opens a
+           dialog, and a promise about a review step lands better one screen
+           later, immediately before the step it is promising. -->
+  
+      <!-- A button opening the same "Add or change your data" popout the report
+           page uses, rather than a dropzone that only ever took Instagram.
+           Two things fall out of sharing that popout, and the second is the
+           reason for the change:
+           · all three sources are offered in one place on the first upload,
+             instead of Instagram here and the other two in a later dialog;
+           · every source already loaded is ticked. An analysis that fails does
+             not lose anything — the digest is written to localStorage before the
+             model is called — but the welcome page had no way to say so, and no
+             way back in except the dropzone, which read as "upload it all
+             again". Now the reader reopens the popout, sees the ticks, and
+             presses Continue.
+           The file input stays for drag-and-drop, which is kept: an Instagram
+           export arrives as several .zip parts and dropping them together is
+           genuinely faster than a picker. The card is the drop target now, so
+           the box that used to advertise it is not needed. -->
+      <div class="upload-actions">
+        <button class="btn btn-lg btn-block" id="open-sources" type="button">Load my data</button>
+        <p class="upload-loaded muted" id="upload-loaded" hidden></p>
+      </div>
+      <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
+
+      <!-- The promise sits at the point of the ask: this is the moment somebody
+           is deciding whether to hand over their Instagram history, not the
+           moment they arrive on the page. One bar covers both worries: what
+           happens to the data, and whether anyone is watching. Every clause is
+           literally true: the export never leaves the browser; what is sent is
+           the reviewed, de-identified digest, to Google Vertex AI; PsycheAI
+           keeps neither it nor the report. It used to say "No one can see that
+           you visited", which was not true — the host sees an IP address, and
+           PsycheAI counts daily totals — so that promise is gone. -->
+      <div class="eyebrow privacy-points">
+        <p class="privacy-points-head">Your data stays private</p>
+        <!-- The privacy page's data flow, in four icons (docs/privacy.html, #flow-title). -->
+        <ol class="mini-flow">
+          <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h14l8 8v26a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M28 6v8h8"/><path d="M17 25h14M17 32h10"/></svg></span><span>Files loaded on your phone, not uploaded</span></li>
+          <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 14h28M10 22h22M10 30h14"/><path d="M30 30l9 9M39 30l-9 9"/></svg></span><span>Names removed. You choose what is sent</span></li>
+          <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg></span><span>Summary sent encrypted to Vertex AI</span></li>
+          <li><span class="mini-flow-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg></span><span>Results saved on your phone only</span></li>
+        </ol>
+        <!-- Short on purpose: the details (no copy kept, how PsycheAI makes money, Vertex AI) are one tap away,
+             on the privacy page and in the FAQ. -->
+        <p class="privacy-points-foot">No sign-up, no password, no trackers.
+          <a href="/privacy#flow-title">How your data flows →</a></p>
+      </div>
+
+      <div id="upload-error" class="alert" hidden></div>
+      <!-- The way back from a failed analysis. It runs the digest already in
+           hand — no popout, no review, no rebuild — which is what makes it both
+           one press and free: the server keys its result cache on the digest, so
+           an unchanged one either returns the report that finished after the
+           connection died or joins the generation still producing it. The route
+           through "Continue with your data" above rebuilds the digest instead,
+           and a rebuilt digest is a different question. -->
+      <button id="upload-retry" class="btn btn-primary btn-block" hidden>Try again</button>
+    </div>
+  </details>
 </section>
 
 <!-- ══════════════ working ══════════════ -->

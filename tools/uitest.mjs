@@ -20,6 +20,15 @@ function pdfInfoTitle(text) {
   return literal ? literal[1].replace(/\\(.)/g, '$1') : '';
 }
 
+// "Load my data" sits in the folded files section (README "Muse first on the front page"): opened first, then pressed.
+async function clickIn(pg, selector) {
+  await pg.evaluate(() => { const more = document.querySelector('#files-more'); if (more) more.open = true; });
+  await pg.click(selector);
+}
+async function clickLoad(pg) {
+  await pg.evaluate(() => { const more = document.querySelector('#files-more'); if (more) more.open = true; });
+  await pg.click('#open-sources');
+}
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const shots = process.argv.includes('--shots');
@@ -735,7 +744,7 @@ try {
   // duplicated rather than moved.
   check('the welcome card no longer makes the promise a screen too early',
     (await page.locator('.upload-card .card-sub').count()) === 0);
-  await page.click('#open-sources');
+  await clickLoad(page);
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
   const askBlurb = await page.locator('#datasources-dialog-blurb').innerText();
   // One line since the redesign (October 2026): read here, reviewed first.
@@ -897,28 +906,36 @@ try {
       const coach = document.querySelector('#view-welcome #vs-coach'), gpt = document.querySelector('#view-welcome #vs-chatgpt');
       const req = document.querySelector('#request-data');
       const rows = gpt ? [...gpt.querySelectorAll('.vs-row')].map(r => [...r.children].map(c => c.textContent.trim())) : [];
-      const museData = document.querySelector('#view-welcome #muse-data');
-      return { order: !!(coach && gpt && museData) && !!(coach.compareDocumentPosition(museData) & 4) && !!(museData.compareDocumentPosition(req) & 4) && !!(req.compareDocumentPosition(gpt) & 4),
+      window.__museData0 = !!document.querySelector('#view-welcome #muse-data');
+      return { museData: window.__museData0,
         heads: [coach && coach.querySelector('h2').textContent, gpt && gpt.querySelector('h2').textContent],
         q: coach && coach.querySelector('.vs-q').textContent, who: coach ? [...coach.querySelectorAll('.vs-ans h3')].map(h => h.textContent) : [],
         side: coach ? [...coach.querySelectorAll('.vs-ans')].map(e => Math.round(e.getBoundingClientRect().top)) : [], rows,
         note: coach && coach.querySelector('.vs-note').textContent };
     });
-    check('the front page asks "why PsycheAI", then where your data goes in Muse, and the ChatGPT comparison is with the files, after their steps',
-      vs.order && vs.heads[0] === 'Why PsycheAI stands out?' && vs.heads[1] === 'Where do your files go?',
+    check('the front page asks "why PsycheAI", then where your data goes in Muse, and has no ChatGPT comparison for files any more (5 Nov 2026)',
+      vs.museData && vs.heads[0] === 'Why PsycheAI stands out?' && !vs.heads[1] && (await page.locator('#vs-chatgpt').count()) === 0,
       JSON.stringify(vs.heads));
     check('the coach section puts one question to ChatGPT and PsycheAI, their answers side by side on a laptop',
       vs.q === 'What would I regret most about my life when I’m old?' && vs.who.join('|') === 'ChatGPT|PsycheAI' &&
         vs.side.length === 2 && Math.abs(vs.side[0] - vs.side[1]) < 2, JSON.stringify(vs));
-    const row = k => (vs.rows.find(r => r[0] === k) || []).slice(1).join(' | '), coachNote = vs.note;
-    check('the ChatGPT comparison keeps to the FAQ: consumer against enterprise, raw against a reviewed summary, may train, 30 days, no accounts, who can read the results (five rows, no "Reads"), with a link to how data flows; the answers\' note is only "Real answers, trimmed."',
-      vs.rows[0].join('|') === '|ChatGPT|PsycheAI' && row('Service') === 'Consumer plan | Enterprise tier (Google Vertex AI)' &&
-        row('What’s sent') === 'Your raw export: photos, videos, friends’ messages | A 100–200 KB de-identified text summary you review first' &&
-        row('Trains on it?') === 'May, unless you turn it off | No' && row('Kept') === 'Until you delete it, then up to 30 days | Nowhere. No accounts' &&
-        row('Who can read your results') === 'OpenAI, for safety or legal reasons | Only you' &&
-        vs.rows.length === 6 && !row('Reads') && coachNote === 'Real answers, trimmed.' &&
-        await page.locator('#vs-chatgpt .vs-more a[href="/privacy#flow-title"]').count() === 1,
-      JSON.stringify(vs.rows));
+    check('the coach section\'s note is only "Real answers, trimmed."', vs.note === 'Real answers, trimmed.', vs.note);
+  }
+  {
+    // Loading files, steps and Start here together, is folded away by default and opens on a tap (README "Muse first on the front page").
+    await page.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+    await booted(page);
+    const before = await page.evaluate(() => ({ open: document.querySelector('#files-more').open,
+      inside: ['#request-data', '.upload-card', '#open-sources'].every(sel => !!document.querySelector('#files-more ' + sel)),
+      summary: document.querySelector('#files-more > summary').textContent.replace(/\s+/g, ' ').trim(),
+      shown: document.querySelector('#open-sources').checkVisibility() }));
+    await page.click('#files-more > summary');
+    const after = await page.evaluate(() => ({ open: document.querySelector('#files-more').open, shown: document.querySelector('#open-sources').checkVisibility() }));
+    check('loading files and Start here are folded away together by default, and open on a tap',
+      before.open === false && before.inside && before.shown === false && before.summary === 'No Muse? Load your WhatsApp or Instagram files' && after.open === true && after.shown === true,
+      JSON.stringify({ before, after }));
+    await page.click('#files-more > summary');
+    await page.evaluate(() => window.scrollTo(0, 0));
   }
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Export chat/.test(optionalCard) && /Without media/.test(optionalCard));
@@ -947,6 +964,7 @@ try {
     ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-sections > :not([hidden])', /\S/],
   ]) {
     const reopen = async () => {
+      await page.evaluate(() => { const more = document.querySelector('#files-more'); if (more) more.open = true; });
       await page.locator(opener).scrollIntoViewIfNeeded();
       await page.click(opener);
       await page.waitForSelector(dialogId + '[open]', { timeout: 20000 });
@@ -1304,7 +1322,7 @@ try {
       const asked = [];
       pg.on('dialog', d => asked.push(d.type()));
       await pg.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await pg.click('#open-sources');
+      await clickLoad(pg);
       await pg.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [pick] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 15000 }), pg.click('#datasources-drop')]);
       await pick.setFiles({ name: 'journal.md', mimeType: 'text/markdown',
@@ -1391,7 +1409,7 @@ try {
       check('in Instagram\'s own browser, a note asks to open the site in Safari, with a Copy link button',
         /^Instagram’s browser can erase your Psyche Card\. Tap ⋯, then Open in Safari\./.test(warned) && /Open in Safari/.test(warned) && /Copy link/.test(warned) &&
           await igPage.locator('#inapp-open-chrome').isHidden(), warned);
-      await igPage.click('#open-sources');
+      await clickLoad(igPage);
       await igPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('and the Add your data popout says so before any data is loaded',
         /Instagram’s browser can erase what you make here\. Open psycheai\.io in Safari or Chrome first\./.test(await igPage.locator('#datasources-inapp').innerText()));
@@ -1477,7 +1495,7 @@ try {
     const off = await offContext.newPage();
     try {
       await off.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await off.click('#open-sources');
+      await clickLoad(off);
       await off.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       await off.waitForSelector('#datasources-offline:not([hidden])', { timeout: 15000 });
       check('"Add your data" says this step works offline, once the readers are in',
@@ -1530,7 +1548,7 @@ try {
     try {
       await thinPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await thinPage.evaluate(() => sessionStorage.removeItem('psycheai_thin_said'));
-      await thinPage.click('#open-sources');
+      await clickLoad(thinPage);
       await thinPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [pick] = await Promise.all([
         thinPage.waitForEvent('filechooser', { timeout: 15000 }),
@@ -1570,7 +1588,7 @@ try {
     const newPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     try {
       await newPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
-      await newPage.click('#open-sources');
+      await clickLoad(newPage);
       await newPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const shown = await newPage.evaluate(() => ({
         rows: [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')]
@@ -1988,7 +2006,7 @@ try {
         await route.continue();
       });
 
-      await jobPage.click('#open-sources');
+      await clickLoad(jobPage);
       await jobPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [jobChooser] = await Promise.all([
         jobPage.waitForEvent('filechooser', { timeout: 15000 }),
@@ -2166,7 +2184,7 @@ try {
       const igTicked = () => keepPage.evaluate(sel =>
         document.querySelector(sel).classList.contains('is-added'), igRow);
 
-      await keepPage.click('#open-sources');
+      await clickLoad(keepPage);
       await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('a first-timer opens the popout with Instagram genuinely unticked',
         (await igTicked()) === false);
@@ -2191,7 +2209,7 @@ try {
       let pickerReopened = false;
       const notePicker = () => { pickerReopened = true; };
       keepPage.on('filechooser', notePicker);
-      await keepPage.click('#open-sources');
+      await clickLoad(keepPage);
       await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       keepPage.off('filechooser', notePicker);
       check('Back does not cost a first-timer the export they just loaded',
@@ -2237,7 +2255,7 @@ try {
         await route.continue();
       });
 
-      await keepPage.click('#open-sources');
+      await clickLoad(keepPage);
       await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('a returning reader opens on a tick that comes from the stored digest',
         await igTicked());
@@ -2254,7 +2272,7 @@ try {
       await keepPage.waitForFunction(() => !document.querySelector('#datasources-dialog').open,
         { timeout: 15000 });
 
-      await keepPage.click('#open-sources');
+      await clickLoad(keepPage);
       await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       await continueFromDataSources(keepPage);
       await answerReview(keepPage);
@@ -2290,7 +2308,7 @@ try {
         note: !document.querySelector('#datasources-instagram-note').hidden,
       }), googleRow);
 
-      await keepPage.click('#open-sources');
+      await clickLoad(keepPage);
       await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const before = await state();
       check('Google rides in on the stored digest, unwarned about until anything changes',
@@ -2312,7 +2330,7 @@ try {
       await keepPage.click('#datasources-back');
       await keepPage.waitForFunction(() => !document.querySelector('#datasources-dialog').open,
         { timeout: 15000 });
-      await keepPage.click('#open-sources');
+      await clickLoad(keepPage);
       await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const after = await state();
       check('and Back does not quietly withdraw that warning while the replacement still stands',
@@ -2377,7 +2395,7 @@ try {
         await route.continue();
       });
 
-      await retryPage.click('#open-sources');
+      await clickLoad(retryPage);
       await retryPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [retryChooser] = await Promise.all([
         retryPage.waitForEvent('filechooser', { timeout: 15000 }),
@@ -2415,7 +2433,7 @@ try {
       check('and the error is still written there, so the page explains itself',
         /provider fell over/i.test(await retryPage.locator('#upload-error').innerText()));
 
-      await retryPage.click('#upload-retry');
+      await clickIn(retryPage, '#upload-retry');
 
       // Second failure: this time the reader stays with the dialog and uses
       // the button in it, which is the path somebody on a phone actually
@@ -2692,7 +2710,7 @@ try {
         }
       });
       await invitePage.evaluate(() => localStorage.removeItem('psycheai_runs'));
-      await invitePage.click('#open-sources');
+      await clickLoad(invitePage);
       await invitePage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [inviteChooser] = await Promise.all([
         invitePage.waitForEvent('filechooser', { timeout: 15000 }),
@@ -2874,9 +2892,9 @@ try {
             cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/muse and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
             (cta.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
         }));
-      check('the files\' card is titled "Load your files instead", under "No Muse?", and offers the chats, IG data or both',
-        (await guidePage.locator('.help-card h2').innerText()).trim() === 'Load your files instead' &&
-          /Use your WhatsApp chats, your Instagram data, or both, on this website\./.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
+      check('the files\' card is titled "Load your files instead" and offers the chats, IG data or both',
+        (await guidePage.locator('.help-card h2').textContent()).trim() === 'Load your files instead' &&
+          /Use your WhatsApp chats, your Instagram data, or both, on this website\./.test(await guidePage.locator('.help-card .help-lede').textContent()) &&
           !/How do I get my Instagram data/.test(await guidePage.locator('#view-welcome').innerText()));
       await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
       await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
@@ -3004,8 +3022,8 @@ try {
     }));
   // One card between the Instagram steps and the upload box, not two.
   check('the welcome page did not gain a second instructions card',
-    (await page.locator('#view-welcome > .card.help').count()) === 1,
-    String(await page.locator('#view-welcome > .card.help').count()));
+    (await page.locator('#view-welcome .card.help').count()) === 1,
+    String(await page.locator('#view-welcome .card.help').count()));
 
   // Nothing is asked for before the upload — the export carries the name.
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
@@ -3512,7 +3530,7 @@ try {
   // which is not itself scrollable — because that is where the gesture used to
   // fall through to the page. Asserting the CSS rule exists would prove much
   // less than proving the page does not move.
-  await page.click('#guide-open');
+  await clickIn(page, '#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
   await settle(page, '#guide-dialog');
   // Read after the dialog is up, not before: clicking the button makes
@@ -3589,7 +3607,7 @@ try {
         wa: getComputedStyle(document.querySelector('#way-whatsapp')).display, ig: getComputedStyle(document.querySelector('#way-instagram')).display,
         labels: [...document.querySelectorAll('.ways-tab')].map(t => t.textContent).join('|'),
         oneLine: [...document.querySelectorAll('.ways-tab')].every(t => t.scrollWidth <= t.clientWidth + 1 && t.getBoundingClientRect().height < 40) }));
-      await phone.click('#ways-tab-instagram');
+      await clickIn(phone, '#ways-tab-instagram');
       const switched = await phone.evaluate(() => getComputedStyle(document.querySelector('#way-whatsapp')).display === 'none' &&
         getComputedStyle(document.querySelector('#way-instagram')).display !== 'none' &&
         document.querySelector('#ways-tab-instagram').getAttribute('aria-selected') === 'true');
@@ -3606,14 +3624,14 @@ try {
       check('on a phone, See illustration is a link under the steps: "See the illustrated walkthrough"',
         placed.button === 'none' && placed.shown && placed.after && placed.text === 'See the illustrated walkthrough', JSON.stringify(placed));
       await phone.locator('#steps-guide-open').scrollIntoViewIfNeeded();
-      await phone.click('#steps-guide-open');
+      await clickIn(phone, '#steps-guide-open');
       check('and it opens the same guide',
         await phone.waitForSelector('#guide-dialog[open]', { timeout: 10000 }).then(() => true).catch(() => false));
     } finally {
       await phone.close();
     }
   }
-  await page.click('#guide-open');
+  await clickIn(page, '#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
   check('pressing it opens the guide over the page rather than navigating away',
     (await page.locator('#guide-dialog').isVisible()) &&
@@ -3887,7 +3905,7 @@ try {
     'was ' + historyBeforeGuide + ', now ' + (await page.evaluate(() => history.length)));
   // Reopening has to work, and has to start at the top rather than wherever
   // the reader had scrolled to last time.
-  await page.click('#guide-open');
+  await clickIn(page, '#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
   check('the guide reopens cleanly, scrolled back to the first step',
     (await page.evaluate(() => document.querySelector('.guide-body').scrollTop)) === 0);
@@ -3910,7 +3928,7 @@ try {
   // check is simpler and stricter — the guide closes, and the thing it hands
   // off to is actually open.
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.click('#guide-open');
+  await clickIn(page, '#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
   check('the guide ends with a Load your data button, the same one the page offers',
     (await page.locator('#guide-start').isVisible()) &&
@@ -8535,6 +8553,7 @@ try {
   // change, which is right for arriving somewhere and wrong for backing out.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
+  await page.evaluate(() => { document.querySelector('#files-more').open = true; });
   await page.locator('.upload-card').scrollIntoViewIfNeeded();
   await frames(page);
   const scrollAtDropzone = await page.evaluate(() => window.scrollY);
@@ -8640,7 +8659,7 @@ try {
     startAfter.label);
   // The popout is the way back in, and its ticks are what make the claim on
   // the card checkable by the reader.
-  await page.click('#open-sources');
+  await clickLoad(page);
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
   check('and the popout it opens ticks those same sources',
     await page.evaluate(() => {
@@ -8659,7 +8678,7 @@ try {
   // popout rather than behind the card, which is the point of the button — one
   // place that offers all three sources instead of Instagram here and the rest
   // in a later dialog.
-  await page.click('#open-sources');
+  await clickLoad(page);
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
 
   // ---- the popout on a first upload ----
@@ -8852,6 +8871,7 @@ try {
   // <dialog> is still in the document, and an unscoped `display: flex` beats
   // the user agent's `dialog:not([open]) { display: none }`, leaving it laid
   // out over the page and swallowing clicks even though nothing looks open.
+  await page.evaluate(() => { document.querySelector('#files-more').open = true; });
   await page.locator('.upload-card').scrollIntoViewIfNeeded();
   check('the closed review dialog is not still covering the page',
     await page.evaluate(() => {
@@ -11283,7 +11303,7 @@ try {
   const runsBefore = await page.evaluate(() => localStorage.getItem('psycheai_runs'));
   check('the main page itself no longer carries a restore link',
     (await page.locator('#view-welcome #restore-open').count()) === 0);
-  await page.click('#open-sources');
+  await clickLoad(page);
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
   // Continue with no Instagram: said inside the popout, which stays open.
   await page.click('#datasources-continue');
@@ -13872,7 +13892,7 @@ try {
         if (request.method() === 'POST' && /\/api\/analyse$/.test(request.url())) bodies.push(request.postDataJSON());
       });
       await pg.goto('http://localhost:' + waPort + '/', { waitUntil: 'load' });
-      await pg.click('#open-sources');
+      await clickLoad(pg);
       await pg.waitForSelector('#datasources-dialog[open]');
       if (look) await look(pg, 'empty');
       const [pick] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 15000 }), pg.click('#datasources-drop')]);
@@ -13931,7 +13951,7 @@ try {
       {
         const pg = await (await browser.newContext()).newPage();
         await pg.goto('http://localhost:' + waPort + '/', { waitUntil: 'load' });
-        await pg.click('#open-sources');
+        await clickLoad(pg);
         await pg.waitForSelector('#datasources-dialog[open]');
         const [pick] = await Promise.all([pg.waitForEvent('filechooser', { timeout: 15000 }), pg.click('#datasources-drop')]);
         await pick.setFiles(waFiles(['Mia Wong'], 'q'));

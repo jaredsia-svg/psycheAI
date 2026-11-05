@@ -5685,4 +5685,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 .muse-cta p { color: color-mix(in srgb, var(--bg) 82%, transparent); }
 .muse-cta .muse-prompt-row .paste { background: color-mix(in srgb, var(--bg) 12%, var(--ink)); color: var(--bg); border-color: color-mix(in srgb, var(--bg) 35%, transparent); }
 .muse-cta .muse-prompt-row .btn { background: var(--bg); color: var(--accent); }
-.files-eyebrow { margin: 0 0 .2rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.files-more { margin: 0 0 1.6rem; }
+.files-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .7rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-alt); font-weight: 650; color: var(--ink); }
+.files-more > summary::-webkit-details-marker { display: none; }
+.files-more > summary::after { content: "+"; margin-left: auto; font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+.files-more[open] > summary { margin-bottom: 1rem; }
+.files-more[open] > summary::after { content: "−"; }
+.files-summary-q { color: var(--ink-soft); font-weight: 500; }
+#view-welcome.is-returning .files-more { display: none; }
