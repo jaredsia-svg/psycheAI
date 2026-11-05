@@ -4267,7 +4267,7 @@ try {
     });
     check('on a laptop "See sample" shares the last line of what comes with the report, the re-run footnote',
       row.sameLine && row.text === 'See sample' &&
-        row.extras.join('|') === 'A PDF to keep|Evidence behind every finding' && row.icons === 2, JSON.stringify(row));
+        row.extras.join('|') === 'A report file to keep|Evidence behind every finding' && row.icons === 2, JSON.stringify(row));
   }
   for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });

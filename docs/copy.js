@@ -1315,7 +1315,7 @@
       partChips: { together: ['Your development plan'] },
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',
-      extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],
+      extras: [['📄', 'A report file to keep'], ['🔍', 'Evidence behind every finding']],
       compatTitle: 'Psyche Sync',
       compatFree: 'Free in Muse',
       // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
