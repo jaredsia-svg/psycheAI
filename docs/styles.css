@@ -5680,11 +5680,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .card .muse-points { list-style: none; margin: .4rem 0 .6rem; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .6rem; }
 .muse-points li { border: 1px solid var(--line); border-radius: 14px; padding: .75rem .85rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.45; }
 .muse-points b { display: block; color: var(--ink); margin-bottom: .15rem; }
-.muse-cta { background: var(--ink); color: var(--bg); border: 0; }
-.muse-cta h2 { color: var(--bg); margin-top: 0; }
-.muse-cta p { color: color-mix(in srgb, var(--bg) 82%, transparent); }
-.muse-cta .muse-prompt-row .paste { background: color-mix(in srgb, var(--bg) 12%, var(--ink)); color: var(--bg); border-color: color-mix(in srgb, var(--bg) 35%, transparent); }
-.muse-cta .muse-prompt-row .btn { background: var(--bg); color: var(--accent); }
+.muse-cta { text-align: center; border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); background: radial-gradient(120% 140% at 50% 0%, color-mix(in srgb, var(--accent-2) 12%, var(--bg-alt)) 0%, color-mix(in srgb, var(--accent) 8%, var(--bg-alt)) 55%, var(--bg-alt) 100%); padding: 1.8rem 1.4rem 1.5rem; }
+.muse-cta-mark { width: 44px; height: 44px; margin: 0 auto .4rem; display: block; }
+.muse-cta h2 { margin: 0 0 .3rem; font-size: 1.5rem; letter-spacing: -.01em; }
+.muse-cta-sub { margin: 0 0 1rem; color: var(--ink-soft); font-size: .95rem; }
+.muse-cta .muse-prompt-row { max-width: 36rem; margin: 0 auto; text-align: left; }
+.muse-cta .muse-prompt-note { margin-top: .7rem; }
 .files-more { margin: 0 0 1.6rem; }
 .files-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .7rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-alt); font-weight: 650; color: var(--ink); }
 .files-more > summary::-webkit-details-marker { display: none; }
@@ -5694,6 +5695,3 @@ details.more[open] > summary::after { content: ' ▴'; }
 .files-summary-q { color: var(--ink-soft); font-weight: 500; }
 #view-welcome.is-returning .files-more { display: none; }
 .muse-prompt-row .paste[data-copy-by] { cursor: pointer; }
-.muse-copied { margin: .55rem 0 0; font-size: .86rem; font-weight: 700; color: var(--good); }
-/* The hero prompt on white inside its dotted line (5 Nov 2026). */
-.muse-prompt .muse-prompt-row .paste { background: var(--bg-alt); }

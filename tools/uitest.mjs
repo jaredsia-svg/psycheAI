@@ -3364,8 +3364,8 @@ try {
     await page.evaluate(() => getComputedStyle(document.querySelector('.row-head')).color +
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
   // How it works in Muse (5 Nov 2026, README "Muse first on the front page"): paste, allow once, the Psyche, ask and sync.
-  check('the four steps are the Muse way: paste the prompt, allow it once, your Psyche in 5 minutes, ask and sync',
-    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') === 'Paste the prompt | Always allow this site | Your Psyche in 5 minutes | Ask and sync' &&
+  check('the four steps are the Muse way: paste the prompt, always allow this site, gain insights, ask and sync',
+    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') === 'Paste the prompt | Always allow this site | Gain insights | Ask and sync' &&
       /It covers app\.psycheai\.io, PsycheAI’s own server, only\./.test(await page.locator('.step-card').nth(1).innerText()),
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // ---- the footer ----
