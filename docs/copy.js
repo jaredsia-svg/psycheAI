@@ -1279,7 +1279,8 @@
     // full report by its five parts. Section names are taken from the report's
     // own labels in app.js, so these hold only what the page says around them.
     insights: {
-      freeBadge: 'Free',
+      // "Free in Muse" since 5 Nov 2026 (README "Free in Muse, on the front page"): Muse is the way in.
+      freeBadge: 'Free in Muse',
       freeTitle: 'Your Psyche Card',
       freeBlurb: 'One card that sums you up, ready to share.',
       cardItems: [
@@ -1307,7 +1308,6 @@
       // one comes free with the first card (PSYCHEAI_FIRST_RUN merged). The price
       // of a re-run is a footnote under what comes with it, in the reader's own
       // currency, the one checkout charges.
-      premiumRerun: price => 'Re-runs are ' + price + '.',
       // A part's one line, only where it says something its pills do not (26 October 2026: the other four
       // questions went; the plan's stays). None since 27 October: the last part's is a pill (partChips).
       partBlurbs: {},
@@ -1317,12 +1317,12 @@
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],
       compatTitle: 'Psyche Sync',
-      compatFree: 'Free',
+      compatFree: 'Free in Muse',
       // Under Psyche Sync: Ask PsycheAI, the coach, with its price for five questions.
       askTitle: 'Ask PsycheAI',
       askBlurb: 'Your personal coach that already knows you from your results. Ask it anything about yourself.',
       // Short enough to sit beside the name on a phone (27 October 2026).
-      askPrice: price => '1 free, then ' + price + ' for 5',
+      askFree: 'Free in Muse',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',

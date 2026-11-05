@@ -5695,3 +5695,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .files-summary-q { color: var(--ink-soft); font-weight: 500; }
 #view-welcome.is-returning .files-more { display: none; }
 .muse-prompt-row .paste[data-copy-by] { cursor: pointer; }
+/* On a phone the Copy button sits beside the prompt, which is a little smaller (5 Nov 2026). */
+@media (max-width: 560px) {
+  .muse-prompt { padding: .75rem .8rem; }
+  .muse-prompt-row { flex-wrap: nowrap; gap: .45rem; }
+  .muse-prompt-row .paste { flex: 1 1 auto; font-size: .86rem; padding: .55rem .65rem; line-height: 1.35; }
+  .muse-prompt-row .btn { flex: 0 0 auto; padding-left: .9rem; padding-right: .9rem; min-width: 4.6rem; }
+}

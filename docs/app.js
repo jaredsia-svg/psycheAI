@@ -2993,7 +2993,7 @@
         // What comes with it, then the price of a re-run as a footnote under it.
         '<div class="insight-premium-what"><ul class="insight-extras">' + I.extras.map(([icon, text]) =>
           '<li><span aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' + esc(text) + '</li>').join('') + '</ul>' +
-        '<p class="insight-rerun">' + esc(I.premiumRerun(TEXT.premiumPriceLabel)) + '</p></div>' +
+        '</div>' +
         '<button class="btn btn-outline" id="insight-sample" type="button">' + esc(I.sampleButton) + '</button>' +
       '</div>' +
     '</div>' +
@@ -3004,7 +3004,7 @@
     // Ask PsycheAI, the coach, under it, with its price for five questions.
     '<div class="insight-compat insight-ask">' +
       '<span class="insight-compat-icon" aria-hidden="true"><span class="ask-mark"></span></span>' +
-      '<div><h3>' + esc(I.askTitle) + ' <span class="insight-price">' + esc(I.askPrice(Prices.label(CURRENCY, 'ask'))) + '</span></h3>' +
+      '<div><h3>' + esc(I.askTitle) + ' <span class="insight-free-pill">' + esc(I.askFree) + '</span></h3>' +
         '<p>' + esc(I.askBlurb) + '</p></div>' +
     '</div>';
   }

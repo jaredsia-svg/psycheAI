@@ -1757,7 +1757,7 @@ try {
         dollars: /US\$\d/.test(document.body.innerText),
       }));
       check('a reader in Singapore is shown the Psyche Report at S$7',
-        shown.tiers.length > 0 && shown.tiers.every(text => /^(Re-runs are )?S\$7\b/.test(text)), shown.tiers.join(' | '));
+        shown.tiers.every(text => /^(Re-runs are )?S\$7\b/.test(text)), shown.tiers.join(' | '));
       check('and the FAQ quotes the same local prices',
         shown.faq.length > 0 && shown.faq.every(entry => /^(unlock|ask)=S\$7$/.test(entry)) && !shown.faq.some(entry => /^analysis=/.test(entry)),
         shown.faq.join(' | '));
@@ -4076,7 +4076,7 @@ try {
     };
   });
   check('the free tier is the summary card: everything on it, by the card\'s own labels',
-    freeTier.badge === 'Free' && freeTier.items.length === 8 &&
+    freeTier.badge === 'Free in Muse' && freeTier.items.length === 8 &&
     freeTier.want.every(label => freeTier.items.includes(label)), JSON.stringify(freeTier));
   check('and a real card from the sample is drawn beside the list', freeTier.preview);
   check('with no caption under it',
@@ -4144,7 +4144,7 @@ try {
     };
   });
   // Free, as the card is: the card's own green badge over the title, and no price in the head.
-  check('the front page\'s Psyche Report wears the card\'s green "Free" badge to the right of its title, as the card does, with no price in its head',
+  check('the front page\'s Psyche Report wears the card\'s green "Free in Muse" badge to the right of its title, as the card does, with no price in its head',
     await page.evaluate(() => {
       const tier = document.querySelector('#view-welcome .insight-premium');
       const badge = tier && tier.querySelector('.premium-tier-head .tier-badge-free');
@@ -4153,19 +4153,14 @@ try {
       // On the title's line, to its right (26 October 2026), for the report and the card alike.
       const beside = (b, t) => { const x = b.getBoundingClientRect(), y = t.getBoundingClientRect();
         return x.left >= y.right - 1 && Math.abs((x.top + x.bottom) / 2 - (y.top + y.bottom) / 2) <= 8; };
-      return Boolean(badge && card) && badge.textContent === 'Free' && look(badge) === look(card) &&
+      return Boolean(badge && card) && badge.textContent === 'Free in Muse' && card.textContent === 'Free in Muse' && look(badge) === look(card) &&
         beside(badge, tier.querySelector('.tier-title')) &&
         beside(card, document.querySelector('#view-welcome .insight-free .tier-title')) &&
         !tier.querySelector('.premium-tier-head .premium-tier-price') && !/first one is free/i.test(tier.textContent);
     }) && premiumTier.oldLine === 0);
-  // The price of a re-run: a footnote under what comes with the report, in the currency checkout charges.
-  check('and under "Evidence behind every finding", a footnote gives the price of a re-run',
-    await page.evaluate(() => {
-      const note = document.querySelector('#view-welcome .insight-premium .insight-rerun');
-      const last = [...document.querySelectorAll('#view-welcome .insight-premium .insight-extras li')].pop();
-      return Boolean(note && last) && note.textContent === 'Re-runs are ' + window.PsycheCopy.TEXT.premiumPriceLabel + '.' &&
-        /US\$5/.test(note.textContent) && note.getBoundingClientRect().top >= last.getBoundingClientRect().bottom - 1;
-    }));
+  // No re-run price on the front page since 5 Nov 2026: in Muse a fresh read is free (README "Free in Muse, on the front page").
+  check('the front page names no re-run price under the Psyche Report',
+    await page.evaluate(() => !document.querySelector('#view-welcome .insight-rerun') && !/Re-runs are/.test(document.querySelector('#view-welcome .insight-premium').textContent)));
   check('the premium tier is the Psyche Report, by its five numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04,05' &&
       premiumTier.parts.join('|') === 'Who you are|What drives you|How you connect|How you work|Putting it together',
@@ -4178,17 +4173,17 @@ try {
   check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
     premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
     premiumTier.careerChips.join('|'));
-  check('and Psyche Sync is offered as free, and Ask PsycheAI\'s price, both in the card tier\'s faint green "Free" design',
+  check('and Psyche Sync and Ask PsycheAI are both "Free in Muse", in the card tier\'s faint green design',
     await page.evaluate(() => { const c = document.querySelector('#view-welcome .insight-compat'), pill = c && c.querySelector('h3 .insight-free-pill');
-      const price = document.querySelector('#view-welcome .insight-ask .insight-price');
+      const price = document.querySelector('#view-welcome .insight-ask .insight-free-pill');
       const badge = document.querySelector('#view-welcome .tier-badge-free');
       const look = el => el && [getComputedStyle(el).backgroundColor, getComputedStyle(el).color].join();
-      return Boolean(pill && price && badge) && pill.textContent === 'Free' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
+      return Boolean(pill && price && badge) && pill.textContent === 'Free in Muse' && price.textContent === 'Free in Muse' && /Psyche Sync/.test(c.querySelector('h3').textContent) &&
         getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)' && look(pill) === look(badge) && look(price) === look(badge); }));
-  check('and under it, Ask PsycheAI: a personal coach that already knows you, at its price for five questions',
+  check('and under it, Ask PsycheAI: a personal coach that already knows you, with no price on the front page',
     await page.evaluate(() => { const a = document.querySelector('#view-welcome .insight-ask');
       return Boolean(a) && /Ask PsycheAI/.test(a.textContent) && /already knows you/.test(a.textContent) &&
-        /1 free, then US\$5 for 5/.test(a.textContent); }));
+        !/for 5|US\$/.test(a.textContent); }));
 
   // ---- the premium tier block ----
   //
@@ -4264,7 +4259,7 @@ try {
     await settle(page);
     const row = await page.evaluate(() => {
       const button = document.querySelector('#insight-sample').getBoundingClientRect();
-      const last = document.querySelector('.insight-premium .insight-rerun').getBoundingClientRect();
+      const last = [...document.querySelectorAll('.insight-premium .insight-extras li')].pop().getBoundingClientRect();
       return { sameLine: Math.abs((button.top + button.bottom) / 2 - (last.top + last.bottom) / 2) < 14,
         text: document.querySelector('#insight-sample').textContent.trim(),
         extras: [...document.querySelectorAll('.insight-premium .insight-extras li')].map(li => li.textContent.trim()),
