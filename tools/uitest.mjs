@@ -883,7 +883,7 @@ try {
       ways.note === '💡 Get best of both worlds and the highest signal score by requesting your Instagram data now, and loading it together with your WhatsApp chats.' && !ways.google &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), JSON.stringify(ways));
   check('"How it works in Muse": paste the prompt, allow once, your Psyche in 5 minutes, ask and sync (README "Muse first on the front page"), and nothing calls Google recommended',
-    /How it works in Muse/.test(await page.locator('#view-welcome').innerText()) && /Open a new chat in the Muse app and paste: Install psycheai\.io\/muse and generate my Psyche\./.test(await page.locator('#view-welcome').innerText()) &&
+    /How it works in Muse/.test(await page.locator('#view-welcome').innerText()) && /Open a new chat in the Muse app and paste: Install psycheai\.io\/skill and generate my Psyche\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   {
     // The hero's "No Muse?" link goes to the files' steps, on this page.
@@ -1721,8 +1721,18 @@ try {
       br[0] === 200 && JSON.parse(br[2]).dest === 'document' && JSON.parse(br[2]).ua === 'Mozilla/5.0' &&
       /catch \(error\) \{\n    response\.writeHead\(302, \{ Location: MUSE_INSTALL_URL/.test(readFileSync(join(root, 'server.js'), 'utf8')), JSON.stringify([wa, br]).slice(0, 300));
     check('psycheai.io/muse in a person\'s browser is the PsycheAI in Muse page, with the full prompt to paste and no Psyche Pair, Plus or dating safety on it',
-      page[0] === 200 && /text\/html/.test(page[1]) && /<h1>PsycheAI in Muse<\/h1>/.test(page[2]) && /<pre class="paste" id="install-prompt">Install psycheai\.io\/muse and generate my Psyche<\/pre>/.test(page[2]) && /tap <b>Always allow this site<\/b>, so it asks only once/.test(page[2]) &&
+      page[0] === 200 && /text\/html/.test(page[1]) && /<h1>PsycheAI in Muse<\/h1>/.test(page[2]) && /<pre class="paste" id="install-prompt">Install psycheai\.io\/skill and generate my Psyche<\/pre>/.test(page[2]) && /tap <b>Always allow this site<\/b>, so it asks only once/.test(page[2]) &&
       !/pair|plus|before you meet|red flags/i.test(page[2].replace(/<script[^]*?<\/script>/g, '')), page[0] + ' ' + String(page[2]).slice(0, 120));
+    // psycheai.io/skill, the install address from 7 Nov 2026 (README "psycheai.io/skill"): the same answer as /muse for Muse, the /muse page for a person.
+    const skillMuse = await ask('/skill', { 'User-Agent': 'Muse/1.0' });
+    const skillSlash = await ask('/Skill/', { 'User-Agent': 'WhatsApp/2.24.20.0 A' });
+    const skillPage = await get('/skill');
+    const { request: rawHead } = await import('node:http');
+    const skillBrowser = await new Promise((resolve, reject) => rawHead({ host: 'localhost', port: PORT, path: '/skill', headers: { 'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Dest': 'document', Accept: 'text/html' } },
+      response => { response.resume(); resolve([response.statusCode, response.headers.location]); }).on('error', reject).end());
+    check('psycheai.io/skill answers Muse and a previewer as psycheai.io/muse does (the skill\'s install link\'s answer), and sends a person\'s browser to the PsycheAI in Muse page',
+      skillMuse[0] === 200 && JSON.parse(skillMuse[2]).path === '/install' && JSON.parse(skillMuse[2]).ua === 'Muse/1.0' && skillSlash[0] === 200 && JSON.parse(skillSlash[2]).path === '/install' &&
+      skillBrowser[0] === 302 && skillBrowser[1] === '/muse' && skillPage[0] === 200, JSON.stringify([skillMuse, skillSlash, skillBrowser, skillPage]).slice(0, 400));
   }
 
   // ---- local prices ----
@@ -2873,7 +2883,7 @@ try {
       // Muse first since 5 Nov 2026 (README "Muse first on the front page"): the prompt to paste into Muse with a
       // Copy button, then one "No Muse?" link to the files' steps.
       check('the hero gives the prompt to paste into Muse with a Copy button, then "No Muse? Load your WhatsApp or Instagram files", and no other buttons',
-        (await guidePage.locator('#hero-prompt').innerText()).trim() === 'Install psycheai.io/muse and generate my Psyche' &&
+        (await guidePage.locator('#hero-prompt').innerText()).trim() === 'Install psycheai.io/skill and generate my Psyche' &&
           (await guidePage.locator('.muse-prompt button[data-copy="hero-prompt"]').innerText()).trim() === 'Copy' &&
           (await guidePage.locator('#hero-prompt[data-copy-by="hero-copy"]').count()) === 1 &&
           (await guidePage.locator('.muse-prompt-head').textContent()).trim() === 'Paste prompt into Muse' &&
@@ -2892,7 +2902,7 @@ try {
         await guidePage.evaluate(() => {
           const data = document.querySelector('#muse-data'), cta = document.querySelector('#muse-cta'), files = document.querySelector('#request-data');
           return !!(data && cta && files) && /None of your data sent to PsycheAI\. Your Psyche Card and Report are made right in Muse\. Only if you choose to Sync are your card’s few lines and motivation scores shared\./.test(data.textContent.replace(/\s+/g, ' ')) &&
-            cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/muse and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
+            cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/skill and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
             (cta.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
         }));
       check('the files\' card is titled "Load your files instead" and offers the chats, IG data or both',

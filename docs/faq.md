@@ -19,7 +19,7 @@ A personal AI coach that already knows you. It reads your own Instagram and writ
 
 ### How do I start?
 
-Open a new chat in Meta Muse and paste “Install psycheai.io/muse and generate my Psyche”. When Muse asks, tap Always allow this site. No sign-up, no password, no upload.
+Open a new chat in Meta Muse and paste “Install psycheai.io/skill and generate my Psyche”. When Muse asks, tap Always allow this site. No sign-up, no password, no upload.
 
 ### How long does it take?
 
@@ -99,6 +99,6 @@ Founder with a private equity and venture capital background, building AI tools 
 
 ---
 
-Get your Psyche free in Muse: paste "Install psycheai.io/muse and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
 
 [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)

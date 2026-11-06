@@ -51,6 +51,6 @@ It can point to patterns. PsycheAI reads the careers that suit you, and the ones
 
 ---
 
-Get your Psyche free in Muse: paste "Install psycheai.io/muse and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
 
 [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)

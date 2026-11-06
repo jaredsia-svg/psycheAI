@@ -51,9 +51,11 @@ and taken out: both sounded worse).
 - Sync: two linked rings between the cards, larger, with no ring round them, instead of the tick.
 - the ending (`end`, `spoken`): "Get your Psyche in Muse. Paste this prompt to begin.", with "Paste this prompt to
   begin:" over the whole prompt on two lines (until 4 Nov 2026 "Your Psyche is free in Muse! Paste the prompt below
-  into Muse to begin.", under "Paste this prompt into Muse:"), "Install psycheai.io/muse and generate my
+  into Muse to begin.", under "Paste this prompt into Muse:"), "Install psycheai.io/skill and generate my
   Psyche": the prompt that brings the welcome most reliably in Muse (psycheai-app README "The welcome, word for word
-  again"). It was the psycheai.io/muse button until 4 Nov 2026.
+  again"), with psycheai.io/skill in place of psycheai.io/muse from 7 Nov 2026 (README "psycheai.io/skill"; the
+  videos already posted still show /muse, which still works, until they are rendered again with npm run promo). It
+  was the psycheai.io/muse button until 4 Nov 2026.
 
 - **On the beat** (`"onBeat": true`, 4 Nov 2026): every line starts with its first sound on the music's half-beat grid
   (118 BPM, so every 0.254 s), and each phrase inside a line waits for the next half-beat after its least gap (vo.py

@@ -10025,6 +10025,17 @@ does the read, and opens it as a file in the browser. The Muse skill fetches the
 an `X-Psyche-Key` header, which isn't logged. A `?k=` link made before 30 Oct 2026 still opens until the
 last of them expires, 7 days on; after that the `k` parameter can go.
 
+### psycheai.io/skill
+
+The prompt to paste into Muse is now "Install psycheai.io/skill and generate my Psyche" (psycheai-app README
+"psycheai.io/skill"): the address names what Muse installs. `server.js` answers /skill exactly as it answers /muse,
+the skill's install link's answer fetched with the caller's user agent (Muse and link previewers), and sends a
+person's browser to the /muse page with a 302. /muse is unchanged and stays for what's already out. Every copy box
+and mention of the install address says /skill: the home page, /muse, /muse-docs, the FAQ, the search pages and
+llms.txt (from `tools/seo-pages.mjs`), and the carousel. The promo config says /skill for the next render; the reels
+already posted still show /muse, which still works. The Cloudflare Worker's /skill/* route doesn't take bare /skill,
+so it stays this server's.
+
 ### A Muse Sync is locked on the device
 
 The PsycheAI skill now locks a Sync in the user's own Muse workspace before anything is sent (psycheai-app README
