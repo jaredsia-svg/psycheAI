@@ -10025,6 +10025,16 @@ does the read, and opens it as a file in the browser. The Muse skill fetches the
 an `X-Psyche-Key` header, which isn't logged. A `?k=` link made before 30 Oct 2026 still opens until the
 last of them expires, 7 days on; after that the `k` parameter can go.
 
+### A Muse Sync is locked on the device
+
+The PsycheAI skill now locks a Sync in the user's own Muse workspace before anything is sent (psycheai-app README
+"Sync, locked on the device"): its server keeps only boxes it can't open, found by a hash of the link's code, and the
+code itself travels after a "#", so no server receives it. The Muse privacy page says what that means and what it
+doesn't: the card's few lines pass through to the friend "with a key we never receive"; we keep the locked copy and
+"can't open it"; Syncs made before 7 November 2026 are still opened by the server while it works on them; and the
+account record now says the server knows which account ids have synced with each other. psycheai.io/muse-docs says
+the script locks the card and the Sync under the link's code, which app.psycheai.io never receives.
+
 ### What you share, in a Muse Sync
 
 A Muse Sync is now a page the PsycheAI skill lays out in the user's own workspace (psycheai-app README "The Sync is a
