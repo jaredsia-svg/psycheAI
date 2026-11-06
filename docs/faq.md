@@ -4,7 +4,7 @@ description: "Answers about PsycheAI: what it is, what file you need, what happe
 canonical: https://psycheai.io/faq
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 
 # Frequently asked questions
@@ -35,7 +35,7 @@ Your Instagram posts, stories and comments, and your messages if you choose. Wha
 
 ### Does PsycheAI get my data?
 
-No. Your data is de-identified first, and your report and Psyche Card are made right in your Muse account. None of your posts, messages or report go to PsycheAI, so there is nothing of yours for anyone to take from us. Only if you choose to Sync are your card’s few lines shared, locked under your Sync link.
+No. Your data is de-identified first, and your report and Psyche Card are made right in your Muse account. None of your posts, messages or report go to PsycheAI, so there is nothing of yours for anyone to take from us. Only if you choose to Sync are your card’s few lines and motivation scores shared, locked under your Sync link.
 
 ### Can I delete it?
 

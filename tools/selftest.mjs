@@ -9727,13 +9727,13 @@ check('the schema requires evidence on where they align and differ',
     ['add', 'privacy', 'terms'].every(id => muse.includes('id="' + id + '"')) && ['pair', 'plus', 'safety'].every(id => musePair.includes('id="' + id + '"')) && !/pair|plus/i.test(muse.replace(/<script[^]*?<\/script>/g, '')) &&
     !/connector|app\.psycheai\.io\/mcp|Client ID|OAuth/i.test(museDocs + muse + musePrivacy) && /<h2>What it sends us<\/h2>/.test(museDocs) && /<h2>Check it yourself<\/h2>/.test(museDocs) && /Run sha256sum on SKILL\.md, bin\/psyche\.py and guide\.json in ~\/workspace\/skills\/psycheai, and compare them with github\.com\/jaredsia-svg\/psycheai-app\/blob\/main\/skill\/RELEASES\.md/.test(museDocs) && /<a href="\/muse-docs#signed">check your copy<\/a>/.test(muse) && muse.includes('<pre class="paste" id="install-prompt">Install psycheai.io/muse and generate my Psyche</pre>') && /data-copy="install-prompt"/.test(muse) && /<script src="copybutton\.js"><\/script>/.test(muse));
   check('the privacy page says it as the welcome does (read in Muse, de-identified, made in Muse, private to you), what we receive in two sentences, what we never guess, and no email, PDF or pre-1-November reads (4 Nov 2026)',
-    /🔒 Read in your own Muse account\.<\/b>[^<]*nothing to export or upload\./ && /🚫 None of your data sent to PsycheAI\.<\/b>[^<]*only if you choose to Sync are your card’s few lines shared\./.test(musePrivacy) && /names, handles, numbers and links removed, and no one else is quoted/.test(musePrivacy) &&
+    /🔒 Read in your own Muse account\.<\/b>[^<]*nothing to export or upload\./ && /🚫 None of your data sent to PsycheAI\.<\/b>[^<]*only if you choose to Sync are your card’s few lines and motivation scores shared\./.test(musePrivacy) && /names, handles, numbers and links removed, and no one else is quoted/.test(musePrivacy) &&
       /Your report and Psyche Card are made in your own Muse workspace\. None of your posts, messages or report go to PsycheAI;/.test(musePrivacy) && /Nothing is posted or shared with other people unless you choose to\. Delete it all any time/.test(musePrivacy) &&
       /never guess your religion, ethnicity, politics/.test(musePrivacy) && !/key that exists only in their link|Your email, only if you add one|\bPDF\b|how long it took/.test(musePrivacy) &&
       /<p>None of your posts, messages or report\. The skill asks our server only for its own account \(no name or email\), its menus, signed updates and the art your card is drawn with\. If you choose to Sync with a friend, your card's few lines come to us, locked:/.test(musePrivacy) &&
-      /None of your posts, messages or report come to us, and your Psyche Card's few lines only if you choose to Sync with a friend\./.test(musePrivacy) && !/Nothing about you/.test(musePrivacy) && /<b>Your account\.<\/b> A random ID for your Muse workspace/.test(musePrivacy) &&
+      /None of your posts, messages or report come to us, and your Psyche Card's few lines and motivation scores only if you choose to Sync with a friend\./.test(musePrivacy) && !/Nothing about you/.test(musePrivacy) && /<b>Your account\.<\/b> A random ID for your Muse workspace/.test(musePrivacy) &&
       !/to make your private link/.test(musePrivacy) &&
-      /<b>Your card, only if you Sync, locked\.<\/b> Your card's few lines, for 7 days, locked under a key kept in your own Muse workspace, never on our server\./.test(musePrivacy) &&
+      /<b>Your card, only if you Sync, locked\.<\/b> Your card's few lines and motivation scores, for 7 days, locked under a key kept in your own Muse workspace, never on our server\./.test(musePrivacy) &&
       /locked under your Sync link's 22-character code, which we never store/.test(musePrivacy) && /Our server unlocks it only while it works on your Syncs, and keeps nothing readable/.test(musePrivacy) &&
       /other skills you install in the same workspace could read them/.test(musePrivacy) && /never installs an older release over a newer one/.test(musePrivacy) && /is public at <a href="https:\/\/github\.com\/jaredsia-svg\/psycheai-app">/.test(musePrivacy) &&
       /PsycheAI installs only from app\.psycheai\.io \(psycheai\.io\/muse is its short link\), and every update is signed/.test(muse));
@@ -9788,7 +9788,10 @@ check('the schema requires evidence on where they align and differ',
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
     !('system' in g) && g.spec.length < 25200 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
-  check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === prompts.COMPATIBILITY_SCHEMA &&
+  check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === museImport.MUSE_SYNC_SCHEMA &&
+    JSON.stringify(Object.keys(sg.schema.properties)) === JSON.stringify([...Object.keys(prompts.COMPATIBILITY_SCHEMA.properties), 'inCommon']) &&
+    !('inCommon' in prompts.COMPATIBILITY_SCHEMA.properties) && !sg.schema.required.includes('inCommon') &&
+    JSON.stringify(sg.schema.properties.inCommon.properties.interests.items.required) === '["theme","a","b"]' &&
     sg.brief.includes(prompts.briefFor().brief) && !('system' in sg) && !roleSetting.test(sg.spec));
   check('the spec keeps other people out, PsycheUser in, and the hard limits', /no other person is named/.test(museImport.READ_SPEC) && /`PsycheUser`/.test(museImport.READ_SPEC) &&
     /never therapy, treatment or a diagnosis/.test(museImport.READ_SPEC) && /sexual orientation, health, immigration status, political affiliation, religion/.test(museImport.READ_SPEC) &&
@@ -9887,7 +9890,8 @@ check('the schema requires evidence on where they align and differ',
       /never fearful-avoidant or disorganised/.test(museImport.READ_SPEC) && /About half of adults lean secure/.test(museImport.READ_SPEC) &&
       /if a line would fit a stranger with a different attachment style, it has not used the read/.test(museImport.READ_SPEC) && /No private person is named/.test(museImport.READ_SPEC));
   check('the Sync spec keeps PsycheAI\'s tone rules', /tension, conflict, clash, friction, struggle, problem and incompatible are not used/.test(museImport.SYNC_SPEC) &&
-    /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC) && /the same as a Sync on psycheai\.io/.test(museImport.SYNC_SPEC) && /shown to both people as one image/.test(museImport.SYNC_SPEC));
+    /No score or percentage/.test(museImport.SYNC_SPEC) && /never romance or dating/.test(museImport.SYNC_SPEC) && /the same as a Sync on psycheai\.io/.test(museImport.SYNC_SPEC) && /shown to both people as one page/.test(museImport.SYNC_SPEC) &&
+    /Nothing is better than a stretch/.test(museImport.SYNC_SPEC) && /pickleball and tennis: "Racquet sports"/.test(museImport.SYNC_SPEC));
 
   const sealed = await museImport.seal(good.bundle, 'Mei Tan', 1000);
   const statusBefore = await museImport.status(sealed.id);

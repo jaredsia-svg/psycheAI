@@ -10025,6 +10025,19 @@ does the read, and opens it as a file in the browser. The Muse skill fetches the
 an `X-Psyche-Key` header, which isn't logged. A `?k=` link made before 30 Oct 2026 still opens until the
 last of them expires, 7 days on; after that the `k` parameter can go.
 
+### What you share, in a Muse Sync
+
+A Muse Sync is now a page the PsycheAI skill lays out in the user's own workspace (psycheai-app README "The Sync is a
+page"), and its "What you share" shows interests and values the two people have in common. The derived facts only
+know exact matches, so pickleball and tennis never met. The Sync schema Muse is given (`MUSE_SYNC_SCHEMA`,
+`lib/museimport.js`) is now `COMPATIBILITY_SCHEMA` plus one optional field, `inCommon`: up to four interests and three
+values, each a theme of a few words with both people's own items word for word ("Racquet sports": pickleball,
+tennis). `SYNC_SPEC` says a theme must honestly cover both and that nothing is better than a stretch, and its
+standard on shared interests now allows those themes. The site's own Syncs (Gemini, Claude, Grok) still use
+`COMPATIBILITY_SCHEMA` unchanged, and `musepdf.buildSync` ignores the field. The spec also says "one page" where it
+said "one image". The Muse privacy page and the skill docs now say a Sync also shares the ten motivation scores,
+which the page draws for both people on one chart.
+
 ### Three rules said plainly
 
 A Muse report missed three things the guide already asked for: its career section described the reader's

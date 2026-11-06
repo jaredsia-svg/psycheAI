@@ -450,7 +450,7 @@ const llms = `# PsycheAI
 
 > A free personality reading from your own Instagram, with no questionnaire: a Psyche Card (the character you are most like, MBTI, Big Five, values, interests and love languages) and a Psyche Report (attachment style, career strengths, blind spots and more).
 >
-> The main way in is Meta Muse: paste "Install psycheai.io/muse and generate my Psyche" into Muse. Muse reads your Instagram on your own account, de-identified first, and writes your card and report there, in about 5 minutes. It is free, with no sign-up, and none of your data is sent to PsycheAI; only if you choose Psyche Sync are your card's few lines shared.
+> The main way in is Meta Muse: paste "Install psycheai.io/muse and generate my Psyche" into Muse. Muse reads your Instagram on your own account, de-identified first, and writes your card and report there, in about 5 minutes. It is free, with no sign-up, and none of your data is sent to PsycheAI; only if you choose Psyche Sync are your card's few lines and motivation scores shared.
 >
 > Without Muse, the website reads your Instagram data download or two or three WhatsApp chat exports in your browser, makes a short de-identified summary you review, and Google Vertex AI (Gemini, on Google Cloud's enterprise tier) writes the card. There, your first Psyche Card and Psyche Report are free; re-runs are US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
