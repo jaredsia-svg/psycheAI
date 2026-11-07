@@ -62,6 +62,15 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #send { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: #2a1238; color: #fff; font-size: 24px; font-weight: 800; }
 #progress { margin-top: 12px; height: 10px; border-radius: 6px; background: #e3dbe9; overflow: hidden; }
 #progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+/* Muse's permission card, drawn */
+.perm { width: 540px; padding: 22px 22px 18px; border-radius: 30px; background: #fff; box-shadow: 0 10px 28px rgba(90,40,120,.16); }
+.permTop { display: flex; gap: 16px; align-items: center; }
+.permIcon { flex: none; width: 58px; height: 58px; border-radius: 16px; background: #f3f0f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a1238' stroke-width='2.2'%3E%3Crect x='4' y='4' width='6.5' height='6.5' rx='1.6'/%3E%3Crect x='13.5' y='4' width='6.5' height='6.5' rx='1.6'/%3E%3Crect x='4' y='13.5' width='6.5' height='6.5' rx='1.6'/%3E%3Crect x='13.5' y='13.5' width='6.5' height='6.5' rx='1.6'/%3E%3C/svg%3E") center / 32px no-repeat; }
+.perm b { font-size: 23px; font-weight: 800; line-height: 1.25; }
+.perm p { margin: 12px 0 14px; font-size: 19px; color: #5d536a; }
+.pbtn { display: block; margin-top: 10px; padding: 14px; border-radius: 999px; background: #f0eef3; text-align: center; font-size: 21px; font-weight: 700; }
+.pbtn.blue { background: #1665d8; color: #fff; }
+#always.on { background: #2a1238; color: #fff; }
 /* a tap, where a finger would press */
 #tap { position: absolute; z-index: 12; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%; background: rgba(138,63,208,.25); border: 4px solid rgba(138,63,208,.6); }
 .pill { position: absolute; left: 50%; padding: 16px 34px; border-radius: 999px; background: #fff; border: 3px solid #e4d2f3; font-size: 34px; font-weight: 850;
@@ -76,7 +85,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #endLine { position: absolute; left: 60px; right: 60px; top: 720px; text-align: center; font-size: 104px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
 #cta { position: absolute; left: 70px; right: 70px; top: 1060px; padding: 34px 46px; border-radius: 48px; font-size: 50px; font-weight: 850; line-height: 1.2; text-align: center;
   color: #fff; background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
-#facts { position: absolute; left: 0; right: 0; top: 1380px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+#facts { position: absolute; left: 0; right: 0; top: 1330px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 #facts div { padding: 14px 30px; border-radius: 999px; background: #fff; border: 2px solid #e4d2f3; font-size: 34px; font-weight: 800; color: #4a2366;
   box-shadow: 0 10px 30px rgba(90,40,120,.1); }
 </style></head>
@@ -86,10 +95,11 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 
   <div class="head" id="h0" style="top:300px;font-size:88px"><div>How do you get your <span class="grad">Psyche</span> in Muse?</div></div>
   <div class="head" id="h1"><div><span class="step">Step 1</span></div><div>Paste <span class="grad">one line</span> into Muse</div></div>
-  <div class="head" id="h2"><div><span class="step">Step 2</span></div><div>Include your <span class="grad">messages</span></div></div>
-  <div class="head" id="h3"><div><span class="step">Step 3</span></div><div>Read <span class="grad">right in your account</span></div></div>
-  <div class="head" id="h4"><div><span class="step">Step 4</span></div><div>Your <span class="grad">Card and Report</span></div></div>
-  <div class="head" id="h5"><div><span class="step">Step 5</span></div><div><span class="grad">Sync</span> with friends</div></div>
+  <div class="head" id="h2"><div><span class="step">Step 2</span></div><div>Tap <span class="grad">Always allow</span></div></div>
+  <div class="head" id="h3"><div><span class="step">Step 3</span></div><div>Include your <span class="grad">messages</span></div></div>
+  <div class="head" id="h4"><div><span class="step">Step 4</span></div><div>Read <span class="grad">right inside Muse</span></div></div>
+  <div class="head" id="h5"><div><span class="step">Step 5</span></div><div>Your <span class="grad">Card and Report</span></div></div>
+  <div class="head" id="h6"><div><span class="step">Step 6</span></div><div><span class="grad">Sync</span> with friends</div></div>
 
   <img id="hookCard" src="assets/card.png">
 
@@ -98,6 +108,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="top"><div id="ava"></div><b>Muse</b></div>
     <div id="view"><div id="chat">
       <div class="msg me" id="m0"><span class="bub">Install psycheai.io/skill and generate my Psyche</span></div>
+      <div class="msg ai" id="mP"><div class="perm"><div class="permTop"><span class="permIcon"></span><b>Allow Muse to share information with app.psycheai.io?</b></div>
+        <p>To install PsycheAI and make your Psyche.</p><span class="pbtn blue">Allow once</span><span class="pbtn" id="always">Always allow this site</span><span class="pbtn">Deny</span></div></div>
       <div class="msg ai" id="m1"><span class="bub"><p>I'm PsycheAI, your personal AI coach that already knows you.</p>
         <p>🔒 Your Instagram is read right here in your Muse account.</p><p>🙈 Names, handles and links removed first.</p>
         <p>Your chat messages make it much sharper.</p>
@@ -116,7 +128,10 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="bar"><span class="plus">+</span><span id="typed"></span><b id="caret"></b><span id="send">↑</span></div>
   </div></div>
   <div id="tap"></div>
-  <div class="pill" id="pRead" style="top:1680px">Names <em>removed</em> · nothing uploaded</div>
+  <div class="pill" id="pSafe" style="top:1668px">✓ Safe: lets Muse fetch PsycheAI's <em>signed</em> files</div>
+  <div class="pill" id="pSafe2" style="top:1760px;font-size:31px">Your posts and messages <em>never</em> go to PsycheAI</div>
+  <div class="pill" id="pRead" style="top:1668px">🔒 Processed right <em>inside Muse</em></div>
+  <div class="pill" id="pRead2" style="top:1760px">🚫 <em>None</em> of your data sent to PsycheAI</div>
   <div class="pill" id="pTime" style="top:1680px">About <em>5 minutes</em></div>
 
   <div id="end">
@@ -124,7 +139,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="endName">PsycheAI</div>
     <div id="endLine">Get your<br><span class="grad">Psyche</span></div>
     <div id="cta"></div>
-    <div id="facts"><div>Paste it into Muse to begin</div><div>Private to you · Delete it any time</div></div>
+    <div id="facts"><div>🔒 Processed right inside Muse</div><div>🚫 None of your data sent to PsycheAI</div><div>✋ Your data is kept private</div></div>
   </div>
 </div>
 <script>
@@ -138,8 +153,8 @@ const prog = (t, a, b) => clamp((t - a) / (b - a));
 const ease = x => 1 - Math.pow(1 - x, 3);
 const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
-const FINAL = S[6].start;
-const PAL = [['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#e2dcff', '#ffd6e8'], ['#dfe3ff', '#f0d6ff'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8']];
+const FINAL = S[7].start;
+const PAL = [['#e9dcff', '#ffdbe6'], ['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#e2dcff', '#ffd6e8'], ['#dfe3ff', '#f0d6ff'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8']];
 const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
   return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
 $('mark').innerHTML = MARK.paths.map(d => '<path d="' + d + '" fill="none" stroke="#7b3fa0" stroke-width="3.4"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
@@ -158,14 +173,15 @@ function head(i, t) {
 // When each message comes in.
 const PROMPT = 'Install psycheai.io/skill and generate my Psyche';
 function times() {
-  const [s0, s1, s2, s3, s4, s5] = S;
+  const [s0, s1, sA, s2, s3, s4, s5] = S;
   const typeA = s1.vo + 0.1, typeB = s1.vo + 1.5, sent = typeB + 0.25;
-  const tapAt = said(2, 'include', s2.vo + 0.6) + 0.1;
-  return { typeA, typeB, sent, m0: sent, m1: s2.start + 0.05, tapAt, m2: s3.start + 0.1, m3: s4.vo + 0.1, m4: s4.marks[1] + 0.1, m5: s4.marks[1] + 0.6,
+  const tapAt = said(3, 'include', s2.vo + 0.6) + 0.1;
+  const alwaysAt = said(2, 'always', sA.vo + 1.2) + 0.1;
+  return { typeA, typeB, sent, alwaysAt, m0: sent, mP: sA.start + 0.1, m1: s2.start + 0.05, tapAt, m2: s3.start + 0.1, m3: s4.vo + 0.1, m4: s4.marks[1] + 0.1, m5: s4.marks[1] + 0.6,
     m6: s5.start + 0.1, m7: s5.vo + 0.5 };
 }
 const T = times();
-const MSGS = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'];
+const MSGS = ['m0', 'mP', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'];
 function render(t) {
   const si = S.findIndex(s => t < s.end); const cur = si < 0 ? S.length - 1 : si;
   const nxt = Math.min(S.length - 1, cur + 1), k = prog(t, S[cur].end - 0.5, S[cur].end + 0.3);
@@ -179,8 +195,8 @@ function render(t) {
   $('b3').style.transform = 'translate(' + Math.sin(t * .7) * 220 + 'px,' + Math.cos(t * .6) * 120 + 'px)';
   sparks.forEach(p => { p.el.style.left = (p.x + Math.sin(t + p.phase * 6) * 30) + 'px'; p.el.style.top = (1980 - ((t * p.speed + p.phase * 2000) % 2080)) + 'px';
     p.el.style.width = p.el.style.height = p.size + 'px'; p.el.style.opacity = 0.5 * (0.6 + pulse * 0.4); });
-  for (let i = 0; i < 6; i++) head(i, t);
-  const [s0, s1, s2, s3, s4, s5] = S;
+  for (let i = 0; i < 7; i++) head(i, t);
+  const [s0, s1, sA, s2, s3, s4, s5] = S;
 
   // The hook: the sample card floats in on "Psyche", then drops into the phone as Step 1 starts.
   const cIn = back(prog(t, said(0, 'psyche', 1.2) - 0.25, said(0, 'psyche', 1.2) + 0.15)), cOut = easeIO(prog(t, s1.start - 0.1, s1.start + 0.35));
@@ -215,15 +231,21 @@ function render(t) {
   // Step 2: "Include my messages" tapped as the voice says it.
   const opt = $('optMsg'), tick = prog(t, T.tapAt + 0.1, T.tapAt + 0.3);
   opt.style.setProperty('--tick', tick); opt.classList.toggle('pick', t >= T.tapAt);
-  const r = opt.getBoundingClientRect();
-  const tapK = prog(t, T.tapAt - 0.25, T.tapAt) * (1 - prog(t, T.tapAt + 0.15, T.tapAt + 0.45));
+  $('always').classList.toggle('on', t >= T.alwaysAt);
+  const useA = t < (T.alwaysAt + T.tapAt) / 2, at = useA ? T.alwaysAt : T.tapAt, r = (useA ? $('always') : opt).getBoundingClientRect();
+  const tapK = prog(t, at - 0.25, at) * (1 - prog(t, at + 0.15, at + 0.45));
   $('tap').style.left = (r.left + r.width * 0.45) + 'px'; $('tap').style.top = (r.top + r.height / 2) + 'px';
-  set('tap', tapK, 'scale(' + (1.3 - 0.4 * prog(t, T.tapAt - 0.25, T.tapAt)) + ')');
+  set('tap', tapK, 'scale(' + (1.3 - 0.4 * prog(t, at - 0.25, at)) + ')');
+  // Step 2's reassurance, as "Always allow" is tapped.
+  [['pSafe', 0], ['pSafe2', 0.45]].forEach(([id, d]) => { const p = back(prog(t, T.alwaysAt + 0.2 + d, T.alwaysAt + 0.55 + d)), out = prog(t, s2.start - 0.1, s2.start + 0.1);
+    set(id, t > T.alwaysAt + 0.2 + d ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.05, p) + ')'); });
 
   // Step 3: the read runs (the bar fills), and what it means, under the phone.
   $('progress').firstChild.style.width = 100 * easeIO(prog(t, T.m2 + 0.3, s4.vo)) + '%';
-  const pr = back(prog(t, s3.marks[1] - 0.2, s3.marks[1] + 0.15)), prOut = prog(t, s4.start - 0.1, s4.start + 0.1);
-  set('pRead', t > s3.marks[1] - 0.2 ? clamp(pr * 2) * (1 - prOut) : 0, 'translateX(-50%) scale(' + Math.min(1.05, pr) + ')');
+  // Step 4's privacy points, from "right in your account".
+  const readAt = said(4, 'right', s3.vo + 1.2);
+  [['pRead', 0], ['pRead2', 0.6]].forEach(([id, d]) => { const p = back(prog(t, readAt + d - 0.1, readAt + d + 0.25)), out = prog(t, s4.start - 0.1, s4.start + 0.1);
+    set(id, t > readAt + d - 0.1 ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.05, p) + ')'); });
   const pt = back(prog(t, s4.vo - 0.1, s4.vo + 0.25)), ptOut = prog(t, s4.marks[1] - 0.1, s4.marks[1] + 0.1);
   set('pTime', t > s4.vo - 0.1 ? clamp(pt * 2) * (1 - ptOut) : 0, 'translateX(-50%) scale(' + Math.min(1.05, pt) + ')');
 
@@ -233,7 +255,7 @@ function render(t) {
   $('mark').style.transform = 'scale(' + back(prog(e, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + e * 50 + 'deg)';
   [['endName', 0.1], ['endLine', 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
     $(id).style.opacity = clamp(p * 2); $(id).style.transform = 'translateY(' + (1 - Math.min(1, p)) * 40 + 'px) scale(' + (0.7 + 0.3 * p) + ')'; });
-  const cta = back(prog(t, said(6, 'prompt', S[6].vo + 0.5) - 0.3, said(6, 'prompt', S[6].vo + 0.5) + 0.05));
+  const cta = back(prog(t, said(7, 'prompt', S[7].vo + 0.5) - 0.3, said(7, 'prompt', S[7].vo + 0.5) + 0.05));
   $('cta').style.opacity = clamp(cta * 2); $('cta').style.transform = 'scale(' + (0.6 + 0.4 * cta + pulse * 0.03 * Math.min(1, cta)) + ')';
   [...$('facts').children].forEach((el, i) => { const p = back(prog(e, 1.4 + i * 0.2, 1.75 + i * 0.2));
     el.style.opacity = clamp(p * 2); el.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px)'; });

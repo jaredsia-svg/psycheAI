@@ -21,6 +21,7 @@ os.makedirs(BUILD, exist_ok=True)
 LINES = [
     (['How do you get your Psyche in Muse?'], 0.92, None),
     (['Paste one line into your Muse chat.'], 0.92, None),
+    (['When Muse asks, tap Always allow.'], 0.92, None),
     (['Choose to include your messages,', 'for a sharper read.'], 0.92, None),
     (['Muse reads your Instagram right in your account,', 'with names removed.'], 0.92, None),
     (['In about five minutes,', 'your Psyche Card and Report are ready.'], 0.92, None),
@@ -64,8 +65,8 @@ BPM = 120 if GROOVE else 94; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 # Step 3 holds a second past its line (26 October 2026), for a chat switched off after the type of data.
-minimum = {1: 3.2, 4: 4.2}
-EXTRA_LEAD = {6: 0.25}
+minimum = {1: 3.2, 2: 3.4, 5: 4.2}
+EXTRA_LEAD = {7: 0.25}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
@@ -169,8 +170,8 @@ if not GROOVE:
     STEPS = sc[1]['start']   # the steps: a soft low pulse comes in
     DROP = sc[3]['start']    # Step 3 on: the gentle groove and the tune
     BRIGHT = sc[5]['start']  # Step 5 on: the tune a touch brighter
-    FINAL = sc[6]['start']   # the last card
-    END = sc[6]['voEnd'] + 0.6
+    FINAL = sc[-1]['start']   # the last card
+    END = sc[-1]['voEnd'] + 0.6
     # The relationship reel's music (shorts.py, mood 'relationship'), its instruments copied as they are: an electric
     # piano with a slow tremolo and a soft pad throughout; a low pulse under Steps 1 and 2; from Step 3 a soft groove of
     # brushed snare, rim and bass with a vibraphone tune; a softly rolled A chord to close.
@@ -236,7 +237,7 @@ else:
     # from Step 3 claps on two and four, hats, offbeat stabs, the octave-bouncing bass and the plucked hook.
     # It ends on one held electric-piano chord.
     sc = scenes
-    STEPS = sc[1]['start']; DROP = sc[3]['start']; FINAL = sc[6]['start']; END = TOTAL
+    STEPS = sc[1]['start']; DROP = sc[3]['start']; FINAL = sc[-1]['start']; END = TOTAL
     EIGHTH = BEAT / 2; SIX = BEAT / 4
     LOOP = [[62, 65, 69], [58, 62, 65], [60, 65, 69], [60, 64, 67]]   # Dm, Bb, F, C
     LOOP_ROOTS = [38, 34, 41, 36]
@@ -257,7 +258,7 @@ else:
     pump = np.ones(n, np.float32)
     HOOK_STEPS = {0: 2, 3: 1, 6: 2, 8: 0, 10: 2, 13: 1, 14: 0}
     b = 0.0
-    last = snap(sc[6]['voEnd'] + 0.4, BAR)
+    last = snap(sc[-1]['voEnd'] + 0.4, BAR)
     while b < END:
         k16 = int(round(b / SIX)); bar_i = k16 // 16 % 4; e = k16 % 16
         chord = LOOP[bar_i]; root = LOOP_ROOTS[bar_i]
