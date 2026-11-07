@@ -12172,7 +12172,8 @@ try {
         });
         check('the downloaded Psyche Report carries the same appendix of questions and answers, after the roast\'s intermission',
           pdfText.includes('(Appendix: Ask PsycheAI)') && pdfText.includes('(What gets in my way most?)') &&
-            pdfText.indexOf('Let us roast you') >= 0 && pdfText.indexOf('(Appendix: Ask PsycheAI)') > pdfText.indexOf('Let us roast you'),
+            // The last mention: the first is the appendix's line on the contents page, which comes before the roast.
+            pdfText.indexOf('Let us roast you') >= 0 && pdfText.lastIndexOf('(Appendix: Ask PsycheAI)') > pdfText.indexOf('Let us roast you'),
           (pdfText.match(/\(Appendix[^)]*\)/) || ['no appendix'])[0]);
       }
       check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
