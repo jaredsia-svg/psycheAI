@@ -93,8 +93,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #ph { flex: 1; color: #9b95a3; }
 #typed { flex: 0 1 auto; }
 #typed:empty { display: none; }
-/* what the voice is talking about, marked */
-.lit { outline: 5px solid rgba(224,69,123,.9); outline-offset: 5px; }
+/* what the voice is talking about: the rest of the screen dims around it, a spotlight */
+#spot { position: absolute; z-index: 9; pointer-events: none; border-radius: 26px; opacity: 0; box-shadow: 0 0 0 2000px rgba(42,18,56,.42); }
 /* Muse's permission card, drawn */
 .perm { width: 540px; padding: 22px 22px 18px; border-radius: 30px; background: #fff; box-shadow: 0 10px 28px rgba(90,40,120,.16); }
 .permTop { display: flex; gap: 16px; align-items: center; }
@@ -176,6 +176,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
           <p>Tap <b>Always allow this site</b> · ~5 minutes</p></div>
         <img class="siteCard" src="assets/card.png"></div>
       <div id="toast">Copied</div></div>
+    <div id="spot"></div>
   </div></div>
   <div id="tap"></div>
   <div class="pill" id="pSafe" style="top:1668px">✓ Safe: lets Muse fetch PsycheAI's <em>signed</em> files</div>
@@ -318,12 +319,24 @@ function render(t) {
   const pt = back(prog(t, s6.vo - 0.1, s6.vo + 0.25)), ptOut = prog(t, s6.marks[1] - 0.1, s6.marks[1] + 0.1);
   set('pTime', t > s6.vo - 0.1 ? clamp(pt * 2) * (1 - ptOut) : 0, 'translateX(-50%) scale(' + Math.min(1.05, pt) + ')');
 
-  // What the voice is talking about, outlined as it's said: the new chat button, Copy, the prompt sent, Always allow,
-  // Include my messages, the read, the card and report, the Sync.
-  const LIT = [['compose', s1.vo, T.sideOut], ['copy', s2.vo, T.backAt], ['m0b', T.sent + 0.2, s3.start], ['always', T.alwaysAt - 0.6, s4.start],
-    ['optMsg', s4.vo - 0.1, s5.start], ['m2b', T.m2 + 0.3, s6.start], ['cardImg', T.m4 + 0.2, s7.start], ['m5h', T.m5 + 0.2, s7.start], ['m7h', T.m7 + 0.2, FINAL]];
-  LIT.forEach(([id, a, b]) => { const el = $(id), k = prog(t, a, a + 0.25) * (1 - prog(t, b - 0.2, b));
-    el.style.outline = k > 0.01 ? (5 * k) + 'px solid rgba(224,69,123,' + (0.9 * k) + ')' : ''; el.style.outlineOffset = (3 + 3 * k) + 'px'; });
+  // What the voice is talking about stays bright and the rest of the screen dims around it, the window gliding from
+  // one to the next: the new chat button, Copy, the sent prompt, Always allow, Include my messages, the read, the card
+  // and report together, the Sync.
+  const LIT = [['compose', s1.vo, T.sideOut, 40], ['copy', s2.vo, T.backAt, 22], ['m0b', T.sent + 0.2, s3.start, 26], ['always', T.alwaysAt - 0.6, s4.start, 30],
+    ['optMsg', s4.vo - 0.1, s5.start, 18], ['m2b', T.m2 + 0.3, s6.start, 26], [['cardImg', 'm5h'], T.m4 + 0.2, s7.start, 22], ['m7h', T.m7 + 0.2, FINAL, 20]];
+  const sc = $('screen').getBoundingClientRect(), scale = sc.width / $('screen').offsetWidth;
+  let spot = null;
+  LIT.forEach(([ids, a, b, rad]) => { const k = prog(t, a, a + 0.3) * (1 - prog(t, b - 0.25, b));
+    if (k <= 0.001 || (spot && spot.k >= k)) return;
+    const rs = [].concat(ids).map(id => $(id).getBoundingClientRect()).filter(r => r.width > 0);
+    if (!rs.length) return;
+    const L = Math.min(...rs.map(r => r.left)), T0 = Math.min(...rs.map(r => r.top)), R = Math.max(...rs.map(r => r.right)), B = Math.max(...rs.map(r => r.bottom));
+    spot = { k, x: (L - sc.left) / scale - 8, y: (T0 - sc.top) / scale - 8, w: (R - L) / scale + 16, h: (B - T0) / scale + 16, rad }; });
+  if (spot) { const prev = render.spot, d = render.last !== undefined && prev && t - (render.spotT || 0) < 0.2 ? 1 - Math.exp(-(t - render.spotT) * 10) : 1;
+    const g = ['x', 'y', 'w', 'h'].reduce((o, key) => (o[key] = prev ? prev[key] + (spot[key] - prev[key]) * d : spot[key], o), {});
+    render.spot = g; render.spotT = t;
+    Object.assign($('spot').style, { left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', borderRadius: spot.rad + 'px', opacity: spot.k }); }
+  else { $('spot').style.opacity = 0; render.spot = null; }
 
   // The last card: the mark spins in, the line, the prompt to paste, the two facts.
   const e = t - FINAL;

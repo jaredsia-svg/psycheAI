@@ -226,7 +226,7 @@ sample Odysseus card), and the mascot (`assets/muse-mascot.jpg`) as Muse's pictu
 | Then sync with friends to see how you click. | Step 7: "Your Sync with Sam is ready." and the Sync, both cards in it |
 | Get your Psyche in Muse. | the mark, *Get your Psyche in Muse*, the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
 
-Whatever the voice is talking about is outlined in pink as it's said (`LIT` in the stage): the new chat button, Copy, the
+Whatever the voice is talking about stays bright while the rest of the phone's screen dims around it, a spotlight whose rounded window glides from one to the next (`LIT` and `#spot` in the stage; a pink outline was tried first and dropped): the new chat button, Copy, the
 sent prompt, Always allow, Include my messages, the read, the card and report, the Sync. The chat eases to each new
 message in time rather than jumping. About 29.6 seconds.
 
