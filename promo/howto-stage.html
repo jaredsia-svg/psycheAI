@@ -120,7 +120,8 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #mark { position: absolute; left: 430px; top: 330px; width: 220px; height: 220px; }
 #endName { position: absolute; left: 0; right: 0; top: 580px; text-align: center; font-size: 56px; font-weight: 850; letter-spacing: .02em; }
 #endLine { position: absolute; left: 50px; right: 50px; top: 720px; text-align: center; font-size: 96px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
-#cta { position: absolute; left: 70px; right: 70px; top: 1060px; padding: 34px 46px; border-radius: 48px; font-size: 50px; font-weight: 850; line-height: 1.2; text-align: center;
+#ctaLbl { position: absolute; left: 0; right: 0; top: 1000px; text-align: center; font-size: 40px; font-weight: 800; color: #4a2366; opacity: 0; }
+#cta { position: absolute; left: 70px; right: 70px; top: 1070px; padding: 34px 46px; border-radius: 48px; font-size: 50px; font-weight: 850; line-height: 1.2; text-align: center;
   color: #fff; background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
 #facts { position: absolute; left: 0; right: 0; top: 1330px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 #facts div { padding: 14px 30px; border-radius: 999px; background: #fff; border: 2px solid #e4d2f3; font-size: 34px; font-weight: 800; color: #4a2366;
@@ -190,6 +191,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <svg id="mark" viewBox="0 0 140 140"></svg>
     <div id="endName">PsycheAI</div>
     <div id="endLine">Get your <span class="grad">Psyche</span><br>in Muse</div>
+    <div id="ctaLbl">Paste this prompt in Muse:</div>
     <div id="cta"></div>
     <div id="facts"><div>🔒 Processed right inside Muse</div><div>🚫 None of your data sent to PsycheAI</div><div>✋ Your data is kept private</div></div>
   </div>
@@ -352,6 +354,7 @@ function render(t) {
   [['endName', 0.1], ['endLine', 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
     $(id).style.opacity = clamp(p * 2); $(id).style.transform = 'translateY(' + (1 - Math.min(1, p)) * 40 + 'px) scale(' + (0.7 + 0.3 * p) + ')'; });
   const cta = back(prog(t, said(8, 'psyche', S[8].vo + 0.4) - 0.3, said(8, 'psyche', S[8].vo + 0.4) + 0.05));
+  $('ctaLbl').style.opacity = prog(t, said(8, 'psyche', S[8].vo + 0.4) - 0.45, said(8, 'psyche', S[8].vo + 0.4) - 0.15);
   $('cta').style.opacity = clamp(cta * 2); $('cta').style.transform = 'scale(' + (0.6 + 0.4 * cta + pulse * 0.03 * Math.min(1, cta)) + ')';
   [...$('facts').children].forEach((el, i) => { const p = back(prog(e, 1.4 + i * 0.2, 1.75 + i * 0.2));
     el.style.opacity = clamp(p * 2); el.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px)'; });
