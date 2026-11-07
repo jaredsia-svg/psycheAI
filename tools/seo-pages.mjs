@@ -428,7 +428,7 @@ ${markdown(main)}
 
 ---
 
-Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](${SITE}/muse)). No Muse? [Load your files on the website](${SITE}/#files).
+Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](${SITE}/skill)). No Muse? [Load your files on the website](${SITE}/#files).
 
 [See a sample report](${SITE}/sample-report) · [FAQ](${SITE}/faq)
 `);
@@ -458,7 +458,7 @@ Every page below is also plain Markdown at the same address with .md on the end.
 
 ## Start here
 - [PsycheAI](${SITE}/): make your free Psyche Card
-- [PsycheAI in Muse](${SITE}/muse): the Muse skill, what it reads and what it shares
+- [PsycheAI in Muse](${SITE}/skill): the Muse skill, what it reads and what it shares
 - [FAQ](${SITE}/faq.md): privacy, pricing and how it works
 - [Sample report](${SITE}/sample-report.md): what a reading looks like
 - [Download your Instagram data](${SITE}/download-instagram-data.md): the steps, in JSON format

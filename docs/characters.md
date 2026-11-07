@@ -29,6 +29,6 @@ Characters belong to their owners. PsycheAI is not affiliated with or endorsed b
 
 ---
 
-Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/muse)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/skill)). No Muse? [Load your files on the website](https://psycheai.io/#files).
 
 [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)
