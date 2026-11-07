@@ -218,12 +218,12 @@ sample Odysseus card), and the mascot (`assets/muse-mascot.jpg`) as Muse's pictu
 | --- | --- |
 | How do you get your Psyche in Muse? | the question; the sample card floats in on "Psyche" |
 | Paste one line into your Muse chat. | Step 1: the phone rises; "Install psycheai.io/skill and generate my Psyche" is typed into the bar and sent |
-| When Muse asks, tap Always allow. | Step 2: Muse's permission card, drawn ("Allow Muse to share information with app.psycheai.io?"); "Always allow this site" is tapped on "always"; under the phone, *✓ Safe: lets Muse fetch PsycheAI's signed files* and *Your posts and messages never go to PsycheAI*. "Fetch PsycheAI's signed files", not "only lets Muse read PsycheAI's files": the same permission also makes the skill's account, checks for updates and carries locked Syncs |
+| When Muse asks, tap Always allow. | Step 2: Muse's permission card, drawn ("Allow Muse to share information with app.psycheai.io?"); "Always allow this site" is tapped on "always", takes a tick, and "Allow once" and "Deny" fold away before Step 3, the chat scrolling smoothly (eased in time, not jumped); under the phone, *✓ Safe: lets Muse fetch PsycheAI's signed files* and *Your posts and messages never go to PsycheAI*. "Fetch PsycheAI's signed files", not "only lets Muse read PsycheAI's files": the same permission also makes the skill's account, checks for updates and carries locked Syncs |
 | Choose to include your messages, for a sharper read. | Step 3: PsycheAI's welcome, shortened, with its two buttons; "Include my messages (Recommended)" is tapped on "include" |
 | Muse reads your Instagram right in your account, with names removed. | Step 4, *Read right inside Muse*: "On it…", a bar filling; from "right", *🔒 Processed right inside Muse* and *🚫 None of your data sent to PsycheAI* (the privacy page's own heading) under the phone |
 | In about five minutes, your Psyche Card and Report are ready. | Step 5: *About 5 minutes*; "Your Psyche Card and Report are ready.", the card, the report and its file |
 | Then sync with friends to see how you click. | Step 6: "Your Sync with Sam is ready." and the Sync, both cards in it |
-| Paste this prompt into Muse to begin. | the mark, *Get your Psyche*, the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
+| Paste this prompt into Muse to begin. | the mark, *Get your Psyche in Muse*, the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
 
 ## The short reels
 
