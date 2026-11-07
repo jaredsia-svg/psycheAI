@@ -27,7 +27,7 @@ LINES = [
     (['Muse reads your Instagram right in your account.'], 0.92, None),
     (['In about five minutes,', 'your Psyche Card and Report are ready.'], 0.92, None),
     (['Then sync with friends', 'to see how you click.'], 0.92, None),
-    (['Get your Psyche in Muse.'], 0.92, None),
+    (['Get your Psyche in Muse now.'], 0.92, None),
 ]
 
 # Each line's take is kept under a name made from its words and pace, so changing or adding a line

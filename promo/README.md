@@ -224,11 +224,11 @@ sample Odysseus card), and the mascot (`assets/muse-mascot.jpg`) as Muse's pictu
 | Muse reads your Instagram right in your account. | Step 5, *Read right inside Muse*: "On it…", a bar filling; from "right", *🔒 Processed right inside Muse* and *🚫 None of your data sent to PsycheAI* (the privacy page's own heading) |
 | In about five minutes, your Psyche Card and Report are ready. | Step 6: *About 5 minutes*; "Your Psyche Card and Report are ready.", the card, the report and its file |
 | Then sync with friends to see how you click. | Step 7: "Your Sync with Sam is ready." and the Sync, both cards in it |
-| Get your Psyche in Muse. | the mark, *Get your Psyche in Muse*, *Paste this prompt in Muse:* over the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
+| Get your Psyche in Muse now. | the mark, *Get your Psyche in Muse now*, *Paste this prompt in Muse:* over the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
 
 Whatever the voice is talking about is marked as it's said (`LIT` in the stage). On the menu and the website, a pink outline (`#ring`): the new chat button, and the prompt with Copy. In the chat, where more is on screen, the rest dims around it, a spotlight whose rounded window glides from one to the next (`#spot`): Always allow, Include my messages, the read. The sent prompt, the card and report, and the Sync fill the screen, so they're left as they are. The two Step 3 pills come in with "When Muse asks". Before, everything had the spotlight: the new chat button, Copy, the
 sent prompt, Always allow, Include my messages, the read, the card and report, the Sync. The chat eases to each new
-message in time rather than jumping. About 29.6 seconds.
+message in time rather than jumping. About 29.7 seconds.
 
 ## The short reels
 
