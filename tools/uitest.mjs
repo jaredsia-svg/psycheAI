@@ -1726,13 +1726,11 @@ try {
     // psycheai.io/skill, the install address from 7 Nov 2026 (README "psycheai.io/skill"): the same answer as /muse for Muse, the /muse page for a person.
     const skillMuse = await ask('/skill', { 'User-Agent': 'Muse/1.0' });
     const skillSlash = await ask('/Skill/', { 'User-Agent': 'WhatsApp/2.24.20.0 A' });
-    const skillPage = await get('/skill');
-    const { request: rawHead } = await import('node:http');
-    const skillBrowser = await new Promise((resolve, reject) => rawHead({ host: 'localhost', port: PORT, path: '/skill', headers: { 'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Dest': 'document', Accept: 'text/html' } },
-      response => { response.resume(); resolve([response.statusCode, response.headers.location]); }).on('error', reject).end());
-    check('psycheai.io/skill answers Muse and a previewer as psycheai.io/muse does (the skill\'s install link\'s answer), and sends a person\'s browser to the PsycheAI in Muse page',
+    const skillBrowser = await ask('/skill', { 'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Dest': 'document', Accept: 'text/html,application/xhtml+xml' });
+    check('psycheai.io/skill answers Muse and a previewer as psycheai.io/muse does (the skill\'s install link\'s answer), and a person\'s browser gets the PsycheAI in Muse page at /skill itself, with no redirect',
       skillMuse[0] === 200 && JSON.parse(skillMuse[2]).path === '/install' && JSON.parse(skillMuse[2]).ua === 'Muse/1.0' && skillSlash[0] === 200 && JSON.parse(skillSlash[2]).path === '/install' &&
-      skillBrowser[0] === 302 && skillBrowser[1] === '/muse' && skillPage[0] === 200, JSON.stringify([skillMuse, skillSlash, skillBrowser, skillPage]).slice(0, 400));
+      skillBrowser[0] === 200 && /text\/html/.test(skillBrowser[1]) && /<h1>PsycheAI in Muse<\/h1>/.test(skillBrowser[2]) && /Install psycheai\.io\/skill and generate my Psyche/.test(skillBrowser[2]),
+      JSON.stringify([skillMuse, skillSlash, skillBrowser.slice(0, 2)]).slice(0, 400));
   }
 
   // ---- local prices ----

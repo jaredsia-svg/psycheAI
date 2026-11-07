@@ -10029,8 +10029,8 @@ last of them expires, 7 days on; after that the `k` parameter can go.
 
 The prompt to paste into Muse is now "Install psycheai.io/skill and generate my Psyche" (psycheai-app README
 "psycheai.io/skill"): the address names what Muse installs. `server.js` answers /skill exactly as it answers /muse,
-the skill's install link's answer fetched with the caller's user agent (Muse and link previewers), and sends a
-person's browser to the /muse page with a 302. /muse is unchanged and stays for what's already out. Every copy box
+the skill's install link's answer fetched with the caller's user agent (Muse and link previewers), and serves a
+person's browser the PsycheAI in Muse page (docs/muse.html) at /skill itself, with no redirect in between. /muse is unchanged and stays for what's already out. Every copy box
 and mention of the install address says /skill: the home page, /muse, /muse-docs, the FAQ, the search pages and
 llms.txt (from `tools/seo-pages.mjs`), and the carousel. The promo config says /skill for the next render; the reels
 already posted still show /muse, which still works. The Cloudflare Worker's /skill/* route doesn't take bare /skill,

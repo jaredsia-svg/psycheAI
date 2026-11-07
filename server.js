@@ -2306,14 +2306,13 @@ function routeRequest(route, url, request, response) {
   const museInBrowser = request.headers['sec-fetch-dest'] === 'document' && /text\/html/.test(String(request.headers.accept || ''));
   // psycheai.io/skill is the install address from 7 Nov 2026 (README "psycheai.io/skill"): the word says what
   // Muse is installing. It answers as /muse does, which stays for invites, reels and posts already out; a
-  // person's browser goes to the /muse page.
+  // person's browser gets the PsycheAI in Muse page at /skill itself, with no redirect in between.
   if (/^\/(?:muse|skill)\/?$/i.test(route) && !museInBrowser && (request.method === 'GET' || request.method === 'HEAD')) {
     museInstall(request, response);
     return;
   }
   if (/^\/skill\/?$/i.test(route) && (request.method === 'GET' || request.method === 'HEAD')) {
-    response.writeHead(302, { Location: '/muse', 'Cache-Control': 'public, max-age=3600' });
-    response.end();
+    serveStatic('/muse', request, response);
     return;
   }
 
