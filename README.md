@@ -10046,6 +10046,16 @@ doesn't: the card's few lines pass through to the friend "with a key we never re
 account record now says the server knows which account ids have synced with each other. psycheai.io/muse-docs says
 the script locks the card and the Sync under the link's code, which app.psycheai.io never receives.
 
+### The daily rhythm, back in a Sync
+
+A Muse Sync shows when each person is active again (psycheai-app README "The daily rhythm, back in a Sync"): the
+shares of the posts, comments and messages each one wrote in four parts of the day, on weekends, and their busiest
+day, as release 175 had it. Release 176 took it out because the Sync failed Muse's safety check, most likely on the
+words "activity times" (sharing when someone is online reads as tracking). The pages now say "daily rhythm (when in
+the day you post and message)" wherever they said "activity times": the FAQ, the home page, llms.txt, /muse-docs and
+the Muse privacy page, whose list of what passes through says "your daily rhythm: what share of your posts, comments
+and messages fall in each part of the day and on weekends".
+
 ### The frame is not the point
 
 The Muse skill's check-answer refused one read's ideal-partner needs four runs in a row, each time a different pair
