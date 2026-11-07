@@ -62,6 +62,39 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #send { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: #2a1238; color: #fff; font-size: 24px; font-weight: 800; }
 #progress { margin-top: 12px; height: 10px; border-radius: 6px; background: #e3dbe9; overflow: hidden; }
 #progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+/* Muse's menu, drawn */
+#side { position: absolute; inset: 0; z-index: 6; background: #fafafa; padding: 90px 30px 0; }
+.sideTitle { display: block; font-size: 42px; font-weight: 850; margin-bottom: 26px; }
+.sideLbl { display: block; margin: 8px 0 10px; font-size: 17px; font-weight: 700; color: #9a94a3; letter-spacing: .06em; }
+.si { display: flex; align-items: center; gap: 18px; padding: 15px 10px; font-size: 27px; font-weight: 600; border-radius: 16px; }
+.si:first-of-type { background: #ececf0; }
+.si i { font-style: normal; font-size: 26px; width: 34px; text-align: center; }
+.sideRule { height: 2px; background: #eceaef; margin: 20px 0 14px; }
+.sideNone { font-size: 21px; color: #9a94a3; }
+.sideFoot { position: absolute; left: 24px; right: 24px; bottom: 34px; display: flex; gap: 14px; align-items: center; }
+.sideFoot .ic { flex: none; width: 74px; height: 74px; border-radius: 50%; background: #eeeef2; display: grid; place-items: center; font-size: 32px; }
+.sideFoot .search { flex: 1; height: 74px; border-radius: 37px; background: #eeeef2; display: flex; align-items: center; padding: 0 22px; font-size: 24px; color: #8b8596; }
+/* psycheai.io, drawn */
+#browser { position: absolute; inset: 0; z-index: 7; background: #fbf6fc; }
+.url { height: 128px; padding: 66px 22px 0; background: #7b3fa0; }
+.url span { display: block; height: 48px; border-radius: 24px; background: rgba(255,255,255,.22); color: #fff; font-size: 22px; line-height: 48px; padding: 0 22px; }
+.site { padding: 18px 26px; }
+.siteNav { display: flex; justify-content: space-between; align-items: center; font-size: 17px; color: #7a6a88; margin-bottom: 22px; }
+.siteNav b { font-size: 26px; color: #2a1238; }
+.site h3 { font-size: 40px; line-height: 1.12; font-weight: 850; letter-spacing: -0.02em; margin-bottom: 22px; }
+.box { padding: 20px; border-radius: 26px; background: #fff; box-shadow: 0 8px 24px rgba(90,40,120,.1); }
+.box small { display: block; font-size: 15px; font-weight: 800; letter-spacing: .1em; color: #6d5a7c; margin-bottom: 12px; }
+.boxRow { display: flex; gap: 12px; }
+.prompt { flex: 1; padding: 14px 16px; border-radius: 18px; border: 2px dashed #c9a6e6; background: #f6ecfb; color: #6a2fb0; font-size: 21px; font-weight: 750; line-height: 1.3; }
+#copy { flex: none; width: 140px; border-radius: 20px; display: grid; place-items: center; color: #fff; font-size: 25px; font-weight: 800; background: linear-gradient(120deg, #8a3fd0, #e0457b); }
+.box p { margin-top: 14px; font-size: 18px; color: #6d5a7c; }
+.siteCard { display: block; width: 300px; margin: 26px auto 0; border-radius: 22px; box-shadow: 0 10px 26px rgba(90,40,120,.2); }
+#toast { position: absolute; left: 50%; bottom: 90px; padding: 16px 30px; border-radius: 30px; background: #4a4550; color: #fff; font-size: 22px; transform: translateX(-50%); opacity: 0; white-space: nowrap; }
+#ph { flex: 1; color: #9b95a3; }
+#typed { flex: 0 1 auto; }
+#typed:empty { display: none; }
+/* what the voice is talking about, marked */
+.lit { outline: 5px solid rgba(224,69,123,.9); outline-offset: 5px; }
 /* Muse's permission card, drawn */
 .perm { width: 540px; padding: 22px 22px 18px; border-radius: 30px; background: #fff; box-shadow: 0 10px 28px rgba(90,40,120,.16); }
 .permTop { display: flex; gap: 16px; align-items: center; }
@@ -97,12 +130,13 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
   <div id="sparks"></div>
 
   <div class="head" id="h0" style="top:300px;font-size:88px"><div>How do you get your <span class="grad">Psyche</span> in Muse?</div></div>
-  <div class="head" id="h1"><div><span class="step">Step 1</span></div><div>Paste <span class="grad">one line</span> into Muse</div></div>
-  <div class="head" id="h2"><div><span class="step">Step 2</span></div><div>Tap <span class="grad">Always allow</span></div></div>
-  <div class="head" id="h3"><div><span class="step">Step 3</span></div><div>Include your <span class="grad">messages</span></div></div>
-  <div class="head" id="h4"><div><span class="step">Step 4</span></div><div>Read <span class="grad">right inside Muse</span></div></div>
-  <div class="head" id="h5"><div><span class="step">Step 5</span></div><div>Your <span class="grad">Card and Report</span></div></div>
-  <div class="head" id="h6"><div><span class="step">Step 6</span></div><div><span class="grad">Sync</span> with friends</div></div>
+  <div class="head" id="h1"><div><span class="step">Step 1</span></div><div>Open a <span class="grad">new side chat</span></div></div>
+  <div class="head" id="h2" style="font-size:60px"><div><span class="step">Step 2</span></div><div>Paste the prompt from<br><span class="grad">our website</span> into Muse</div></div>
+  <div class="head" id="h3"><div><span class="step">Step 3</span></div><div>Tap <span class="grad">Always allow</span></div></div>
+  <div class="head" id="h4"><div><span class="step">Step 4</span></div><div>Include your <span class="grad">messages</span></div></div>
+  <div class="head" id="h5"><div><span class="step">Step 5</span></div><div>Read <span class="grad">right inside Muse</span></div></div>
+  <div class="head" id="h6"><div><span class="step">Step 6</span></div><div>Your <span class="grad">Card and Report</span></div></div>
+  <div class="head" id="h7"><div><span class="step">Step 7</span></div><div><span class="grad">Sync</span> with friends</div></div>
 
   <img id="hookCard" src="assets/card.png">
 
@@ -110,25 +144,38 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="notch"></div>
     <div id="top"><div id="ava"></div><b>Muse</b></div>
     <div id="view"><div id="chat">
-      <div class="msg me" id="m0"><span class="bub">Install psycheai.io/skill and generate my Psyche</span></div>
+      <div class="msg me" id="m0"><span class="bub" id="m0b">Install psycheai.io/skill and generate my Psyche</span></div>
       <div class="msg ai" id="mP"><div class="perm"><div class="permTop"><span class="permIcon"></span><b>Allow Muse to share information with app.psycheai.io?</b></div>
         <p>To install PsycheAI and make your Psyche.</p><span class="pbtn blue fold">Allow once</span><span class="pbtn" id="always">Always allow this site</span><span class="pbtn fold">Deny</span></div></div>
       <div class="msg ai" id="m1"><span class="bub"><p>I'm PsycheAI, your personal AI coach that already knows you.</p>
         <p>🔒 Your Instagram is read right here in your Muse account.</p><p>🙈 Names, handles and links removed first.</p>
         <p>Your chat messages make it much sharper.</p>
         <span class="opt pick" id="optMsg">Include my messages (Recommended)</span><span class="opt">Posts only</span></span></div>
-      <div class="msg ai" id="m2"><span class="bub">On it. Reading your Instagram and writing your Psyche takes about 5 minutes.<div id="progress"><i></i></div></span></div>
+      <div class="msg ai" id="m2"><span class="bub" id="m2b">On it. Reading your Instagram and writing your Psyche takes about 5 minutes.<div id="progress"><i></i></div></span></div>
       <div class="msg ai" id="m3"><span class="bub">Your Psyche Card and Report are ready.</span></div>
       <div class="msg ai" id="m4"><img id="cardImg" src="assets/card.png"></div>
-      <div class="msg ai" id="m5"><div class="repHead"><div class="repTop"><span class="pillx">6 PARTS · 86% SIGNAL STRENGTH</span><b>Emily's Psyche Report</b>
+      <div class="msg ai" id="m5"><div class="repHead" id="m5h"><div class="repTop"><span class="pillx">6 PARTS · 86% SIGNAL STRENGTH</span><b>Emily's Psyche Report</b>
         <span>What each result means and the evidence for it</span></div></div>
         <div class="file"><i>HTML</i><div>Psyche Report - Emily Carter<small>HTML</small></div></div></div>
       <div class="msg ai" id="m6"><span class="bub">Your Sync with Sam is ready.</span></div>
-      <div class="msg ai" id="m7"><div class="repHead"><div class="repTop"><span class="pillx">PSYCHE SYNC</span><b>Emily &amp; Sam</b>
+      <div class="msg ai" id="m7"><div class="repHead" id="m7h"><div class="repTop"><span class="pillx">PSYCHE SYNC</span><b>Emily &amp; Sam</b>
         <span>Where you align, where you differ, and how to make the most of both</span></div>
         <div class="pair"><img src="assets/card.png"><img src="assets/card-odysseus.png"></div></div></div>
     </div></div>
-    <div id="bar"><span class="plus">+</span><span id="typed"></span><b id="caret"></b><span id="send">↑</span></div>
+    <div id="bar"><span class="plus">+</span><span id="typed"></span><span id="ph">Message</span><span id="send">↑</span></div>
+    <!-- Muse's menu, drawn: the new chat button at its bottom right -->
+    <div id="side"><b class="sideTitle">Muse</b><small class="sideLbl">TABS</small>
+      <div class="si"><i>💬</i>Main chat</div><div class="si"><i>📰</i>Feed</div><div class="si"><i>💡</i>Ideas</div><div class="si"><i>☑️</i>Goals</div><div class="si"><i>🗂️</i>Library</div>
+      <div class="sideRule"></div><small class="sideLbl">SIDE CHATS</small><div class="sideNone">Will appear here if you start one.</div>
+      <div class="sideFoot"><span class="ic">⚙</span><span class="search">🔍 Search</span><span class="ic" id="compose">✎</span></div></div>
+    <!-- psycheai.io, drawn: its prompt box and Copy button -->
+    <div id="browser"><div class="url"><span>psycheai.io</span></div>
+      <div class="site"><div class="siteNav"><b>PsycheAI</b><span>Psyche · Report · Syncs</span></div>
+        <h3>Your personal AI coach <span class="grad">that already knows you.</span></h3>
+        <div class="box"><small>PASTE PROMPT INTO MUSE</small><div class="boxRow"><div class="prompt">Install psycheai.io/skill and generate my Psyche</div><div id="copy">Copy</div></div>
+          <p>Tap <b>Always allow this site</b> · ~5 minutes</p></div>
+        <img class="siteCard" src="assets/card.png"></div>
+      <div id="toast">Copied</div></div>
   </div></div>
   <div id="tap"></div>
   <div class="pill" id="pSafe" style="top:1668px">✓ Safe: lets Muse fetch PsycheAI's <em>signed</em> files</div>
@@ -156,8 +203,8 @@ const prog = (t, a, b) => clamp((t - a) / (b - a));
 const ease = x => 1 - Math.pow(1 - x, 3);
 const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
-const FINAL = S[7].start;
-const PAL = [['#e9dcff', '#ffdbe6'], ['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#e2dcff', '#ffd6e8'], ['#dfe3ff', '#f0d6ff'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8']];
+const FINAL = S[8].start;
+const PAL = [['#e9dcff', '#ffdbe6'], ['#efdcff', '#ffd9e6'], ['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#e2dcff', '#ffd6e8'], ['#dfe3ff', '#f0d6ff'], ['#ffd9ec', '#ffe2c7'], ['#f3d6ff', '#ffd9e8']];
 const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
   return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
 $('mark').innerHTML = MARK.paths.map(d => '<path d="' + d + '" fill="none" stroke="#7b3fa0" stroke-width="3.4"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
@@ -173,15 +220,18 @@ function head(i, t) {
   parts.forEach((el, k) => { const p = prog(t, (k === last ? s.vo - 0.2 : s.start - 0.05), (k === last ? s.vo + 0.15 : s.start + 0.25));
     el.style.opacity = clamp(p * 2) * out; el.style.transform = 'translateY(' + (1 - ease(p)) * 40 + 'px) scale(' + (0.7 + 0.3 * back(p)) + ')'; });
 }
-// When each message comes in.
+// When each thing happens. S[1] the side chat, S[2] the website, S[3] Always allow, S[4] messages, S[5] the read,
+// S[6] the card and report, S[7] the Sync, S[8] the end.
 const PROMPT = 'Install psycheai.io/skill and generate my Psyche';
 function times() {
-  const [s0, s1, sA, s2, s3, s4, s5] = S;
-  const typeA = s1.vo + 0.1, typeB = s1.vo + 1.5, sent = typeB + 0.25;
-  const tapAt = said(3, 'include', s2.vo + 0.6) + 0.1;
-  const alwaysAt = said(2, 'always', sA.vo + 1.2) + 0.1;
-  return { typeA, typeB, sent, alwaysAt, m0: sent, mP: sA.start + 0.1, m1: s2.start + 0.05, tapAt, m2: s3.start + 0.1, m3: s4.vo + 0.1, m4: s4.marks[1] + 0.1, m5: s4.marks[1] + 0.6,
-    m6: s5.start + 0.1, m7: s5.vo + 0.5 };
+  const [s0, s1, s2, s3, s4, s5, s6, s7] = S;
+  const newAt = said(1, 'new', s1.vo + 1) + 0.05;
+  const copyAt = said(2, 'prompt', s2.vo + 0.6) + 0.1, backAt = said(2, 'into', copyAt + 1.1) - 0.15;
+  const pasteAt = backAt + 0.5, sent = pasteAt + 0.75;
+  const alwaysAt = said(3, 'always', s3.vo + 1.2) + 0.1, tapAt = said(4, 'include', s4.vo) + 0.15;
+  return { newAt, sideOut: newAt + 0.35, browserIn: s2.start + 0.05, copyAt, backAt, pasteAt, sent, alwaysAt, tapAt,
+    m0: sent, mP: s3.start + 0.1, m1: s4.start + 0.05, m2: s5.start + 0.1, m3: s6.vo + 0.1, m4: s6.marks[1] + 0.1, m5: s6.marks[1] + 0.6,
+    m6: s7.start + 0.1, m7: s7.vo + 0.5 };
 }
 const T = times();
 const MSGS = ['m0', 'mP', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'];
@@ -198,8 +248,8 @@ function render(t) {
   $('b3').style.transform = 'translate(' + Math.sin(t * .7) * 220 + 'px,' + Math.cos(t * .6) * 120 + 'px)';
   sparks.forEach(p => { p.el.style.left = (p.x + Math.sin(t + p.phase * 6) * 30) + 'px'; p.el.style.top = (1980 - ((t * p.speed + p.phase * 2000) % 2080)) + 'px';
     p.el.style.width = p.el.style.height = p.size + 'px'; p.el.style.opacity = 0.5 * (0.6 + pulse * 0.4); });
-  for (let i = 0; i < 7; i++) head(i, t);
-  const [s0, s1, sA, s2, s3, s4, s5] = S;
+  for (let i = 0; i < 8; i++) head(i, t);
+  const [s0, s1, s2, s3, s4, s5, s6, s7] = S;
 
   // The hook: the sample card floats in on "Psyche", then drops into the phone as Step 1 starts.
   const cIn = back(prog(t, said(0, 'psyche', 1.2) - 0.25, said(0, 'psyche', 1.2) + 0.15)), cOut = easeIO(prog(t, s1.start - 0.1, s1.start + 0.35));
@@ -210,11 +260,18 @@ function render(t) {
   const phoneIn = back(prog(t, s1.start - 0.2, s1.start + 0.3)), phoneOut = prog(t, FINAL - 0.15, FINAL + 0.15);
   set('phone', clamp(phoneIn * 2) * (1 - phoneOut), 'translateY(' + (1 - Math.min(1, phoneIn)) * 400 + 'px) scale(' + (1.18 + pulse * 0.01) + ')');
 
-  // Step 1: the prompt typed into the bar, then sent.
-  const typing = prog(t, T.typeA, T.typeB);
-  $('typed').textContent = t < T.sent ? PROMPT.slice(0, Math.round(PROMPT.length * typing)) : '';
-  $('typed').style.direction = typing > 0.55 && t < T.sent ? 'rtl' : 'ltr';
-  $('caret').style.opacity = t < T.sent && Math.floor(t * 2.6) % 2 === 0 && t > s1.start ? 1 : 0;
+  // Step 1: Muse's menu, the new chat button tapped, and the menu slides away to an empty chat.
+  const sideGo = easeIO(prog(t, T.sideOut, T.sideOut + 0.45));
+  set('side', 1 - prog(sideGo, 0.9, 1), 'translateX(' + (-100 * sideGo) + '%)');
+  // Step 2: the website slides in, Copy is tapped ("Copied ✓"), back to Muse, the prompt is pasted and sent.
+  const bIn = easeIO(prog(t, T.browserIn, T.browserIn + 0.45)), bOut = easeIO(prog(t, T.backAt, T.backAt + 0.45));
+  set('browser', bIn > 0 && bOut < 1 ? 1 : 0, 'translateX(' + (100 * (1 - bIn) - 100 * bOut) + '%)');
+  $('copy').textContent = t >= T.copyAt ? 'Copied ✓' : 'Copy';
+  $('copy').style.transform = 'scale(' + (1 - 0.08 * prog(t, T.copyAt - 0.15, T.copyAt) * (1 - prog(t, T.copyAt, T.copyAt + 0.15))) + ')';
+  $('toast').style.opacity = prog(t, T.copyAt + 0.05, T.copyAt + 0.2) * (1 - prog(t, T.backAt - 0.15, T.backAt));
+  const pasted = t >= T.pasteAt && t < T.sent;
+  $('typed').textContent = pasted ? PROMPT : ''; $('ph').style.display = pasted ? 'none' : '';
+  $('typed').style.direction = pasted ? 'rtl' : 'ltr';
   const sendPress = prog(t, T.sent - 0.2, T.sent - 0.05) * (1 - prog(t, T.sent - 0.05, T.sent + 0.1));
   $('send').style.transform = 'scale(' + (1 - 0.15 * sendPress) + ')';
 
@@ -241,22 +298,32 @@ function render(t) {
   const fold = easeIO(prog(t, T.alwaysAt + 0.55, T.alwaysAt + 1.05));
   document.querySelectorAll('.pbtn.fold').forEach(el => { el.style.maxHeight = (1 - fold) * 60 + 'px'; el.style.marginTop = (1 - fold) * 10 + 'px';
     el.style.paddingTop = el.style.paddingBottom = (1 - fold) * 14 + 'px'; el.style.opacity = 1 - prog(fold, 0, 0.6); });
-  const useA = t < (T.alwaysAt + T.tapAt) / 2, at = useA ? T.alwaysAt : T.tapAt, r = (useA ? $('always') : opt).getBoundingClientRect();
+  // A tap for each press: the new chat button, Copy, send, Always allow, Include my messages.
+  const TAPS = [[T.newAt, 'compose'], [T.copyAt, 'copy'], [T.sent - 0.1, 'send'], [T.alwaysAt, 'always'], [T.tapAt, 'optMsg']];
+  const [at, tid] = TAPS.reduce((best, x) => (Math.abs(t - x[0]) < Math.abs(t - best[0]) ? x : best));
+  const r = $(tid).getBoundingClientRect();
   const tapK = prog(t, at - 0.25, at) * (1 - prog(t, at + 0.15, at + 0.45));
-  $('tap').style.left = (r.left + r.width * 0.45) + 'px'; $('tap').style.top = (r.top + r.height / 2) + 'px';
+  $('tap').style.left = (r.left + r.width * (tid === 'optMsg' || tid === 'always' ? 0.45 : 0.5)) + 'px'; $('tap').style.top = (r.top + r.height / 2) + 'px';
   set('tap', tapK, 'scale(' + (1.3 - 0.4 * prog(t, at - 0.25, at)) + ')');
   // Step 2's reassurance, as "Always allow" is tapped.
-  [['pSafe', 0], ['pSafe2', 0.45]].forEach(([id, d]) => { const p = back(prog(t, T.alwaysAt + 0.2 + d, T.alwaysAt + 0.55 + d)), out = prog(t, s2.start - 0.1, s2.start + 0.1);
+  [['pSafe', 0], ['pSafe2', 0.45]].forEach(([id, d]) => { const p = back(prog(t, T.alwaysAt + 0.2 + d, T.alwaysAt + 0.55 + d)), out = prog(t, s4.start - 0.1, s4.start + 0.1);
     set(id, t > T.alwaysAt + 0.2 + d ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.05, p) + ')'); });
 
   // Step 3: the read runs (the bar fills), and what it means, under the phone.
-  $('progress').firstChild.style.width = 100 * easeIO(prog(t, T.m2 + 0.3, s4.vo)) + '%';
+  $('progress').firstChild.style.width = 100 * easeIO(prog(t, T.m2 + 0.3, s6.vo)) + '%';
   // Step 4's privacy points, from "right in your account".
-  const readAt = said(4, 'right', s3.vo + 1.2);
-  [['pRead', 0], ['pRead2', 0.6]].forEach(([id, d]) => { const p = back(prog(t, readAt + d - 0.1, readAt + d + 0.25)), out = prog(t, s4.start - 0.1, s4.start + 0.1);
+  const readAt = said(5, 'right', s5.vo + 1.2);
+  [['pRead', 0], ['pRead2', 0.6]].forEach(([id, d]) => { const p = back(prog(t, readAt + d - 0.1, readAt + d + 0.25)), out = prog(t, s6.start - 0.1, s6.start + 0.1);
     set(id, t > readAt + d - 0.1 ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.05, p) + ')'); });
-  const pt = back(prog(t, s4.vo - 0.1, s4.vo + 0.25)), ptOut = prog(t, s4.marks[1] - 0.1, s4.marks[1] + 0.1);
-  set('pTime', t > s4.vo - 0.1 ? clamp(pt * 2) * (1 - ptOut) : 0, 'translateX(-50%) scale(' + Math.min(1.05, pt) + ')');
+  const pt = back(prog(t, s6.vo - 0.1, s6.vo + 0.25)), ptOut = prog(t, s6.marks[1] - 0.1, s6.marks[1] + 0.1);
+  set('pTime', t > s6.vo - 0.1 ? clamp(pt * 2) * (1 - ptOut) : 0, 'translateX(-50%) scale(' + Math.min(1.05, pt) + ')');
+
+  // What the voice is talking about, outlined as it's said: the new chat button, Copy, the prompt sent, Always allow,
+  // Include my messages, the read, the card and report, the Sync.
+  const LIT = [['compose', s1.vo, T.sideOut], ['copy', s2.vo, T.backAt], ['m0b', T.sent + 0.2, s3.start], ['always', T.alwaysAt - 0.6, s4.start],
+    ['optMsg', s4.vo - 0.1, s5.start], ['m2b', T.m2 + 0.3, s6.start], ['cardImg', T.m4 + 0.2, s7.start], ['m5h', T.m5 + 0.2, s7.start], ['m7h', T.m7 + 0.2, FINAL]];
+  LIT.forEach(([id, a, b]) => { const el = $(id), k = prog(t, a, a + 0.25) * (1 - prog(t, b - 0.2, b));
+    el.style.outline = k > 0.01 ? (5 * k) + 'px solid rgba(224,69,123,' + (0.9 * k) + ')' : ''; el.style.outlineOffset = (3 + 3 * k) + 'px'; });
 
   // The last card: the mark spins in, the line, the prompt to paste, the two facts.
   const e = t - FINAL;
@@ -264,7 +331,7 @@ function render(t) {
   $('mark').style.transform = 'scale(' + back(prog(e, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + e * 50 + 'deg)';
   [['endName', 0.1], ['endLine', 0.25]].forEach(([id, d]) => { const p = back(prog(e, d, d + 0.35));
     $(id).style.opacity = clamp(p * 2); $(id).style.transform = 'translateY(' + (1 - Math.min(1, p)) * 40 + 'px) scale(' + (0.7 + 0.3 * p) + ')'; });
-  const cta = back(prog(t, said(7, 'prompt', S[7].vo + 0.5) - 0.3, said(7, 'prompt', S[7].vo + 0.5) + 0.05));
+  const cta = back(prog(t, said(8, 'psyche', S[8].vo + 0.4) - 0.3, said(8, 'psyche', S[8].vo + 0.4) + 0.05));
   $('cta').style.opacity = clamp(cta * 2); $('cta').style.transform = 'scale(' + (0.6 + 0.4 * cta + pulse * 0.03 * Math.min(1, cta)) + ')';
   [...$('facts').children].forEach((el, i) => { const p = back(prog(e, 1.4 + i * 0.2, 1.75 + i * 0.2));
     el.style.opacity = clamp(p * 2); el.style.transform = 'translateY(' + (1 - Math.min(1, p)) * 30 + 'px)'; });

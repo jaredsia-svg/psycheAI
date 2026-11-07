@@ -20,13 +20,14 @@ os.makedirs(BUILD, exist_ok=True)
 # said in one take at the main video's pace (0.92, its privacy line's): phrase by phrase, or faster, sounded clipped.
 LINES = [
     (['How do you get your Psyche in Muse?'], 0.92, None),
-    (['Paste one line into your Muse chat.'], 0.92, None),
+    (['First, open a new side chat.'], 0.92, None),
+    (['Paste the prompt from our website into Muse.'], 0.92, None),
     (['When Muse asks, tap Always allow.'], 0.92, None),
-    (['Choose to include your messages,', 'for a sharper read.'], 0.92, None),
-    (['Muse reads your Instagram right in your account,', 'with names removed.'], 0.92, None),
+    (['Include your messages, for a sharper read.'], 0.92, None),
+    (['Muse reads your Instagram right in your account.'], 0.92, None),
     (['In about five minutes,', 'your Psyche Card and Report are ready.'], 0.92, None),
     (['Then sync with friends', 'to see how you click.'], 0.92, None),
-    (['Paste this prompt into Muse to begin.'], 0.92, None),
+    (['Get your Psyche in Muse.'], 0.92, None),
 ]
 
 # Each line's take is kept under a name made from its words and pace, so changing or adding a line
@@ -65,8 +66,8 @@ BPM = 120 if GROOVE else 94; BEAT = 60 / BPM; BAR = 4 * BEAT
 GAP, LEAD = 0.02, 0.2
 # Each step snaps to the half beat, as in the main video's hook.
 # Step 3 holds a second past its line (26 October 2026), for a chat switched off after the type of data.
-minimum = {1: 3.2, 2: 3.4, 5: 4.2}
-EXTRA_LEAD = {7: 0.25}
+minimum = {1: 2.6, 2: 4.2, 3: 3.0, 6: 4.0}
+EXTRA_LEAD = {8: 0.25}
 snap = lambda x, step: math.ceil(x / step - 1e-6) * step
 scenes, t = [], 0.0
 for i, d in enumerate(dur):

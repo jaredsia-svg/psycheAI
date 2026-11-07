@@ -198,7 +198,7 @@ rather than word by word: on "It's sent encrypted to Google Vertex AI" the word 
 
 ## The Muse how-to reel
 
-A short reel (about 29 seconds) showing how PsycheAI works in Muse, step by step:
+A short reel (under 30 seconds) showing how PsycheAI works in Muse, step by step:
 
 ```
 npm run promo:howto              # after a first npm run promo, which sets up .cache
@@ -217,13 +217,18 @@ sample Odysseus card), and the mascot (`assets/muse-mascot.jpg`) as Muse's pictu
 | Line | On screen |
 | --- | --- |
 | How do you get your Psyche in Muse? | the question; the sample card floats in on "Psyche" |
-| Paste one line into your Muse chat. | Step 1: the phone rises; "Install psycheai.io/skill and generate my Psyche" is typed into the bar and sent |
-| When Muse asks, tap Always allow. | Step 2: Muse's permission card, drawn ("Allow Muse to share information with app.psycheai.io?"); "Always allow this site" is tapped on "always", takes a tick, and "Allow once" and "Deny" fold away before Step 3, the chat scrolling smoothly (eased in time, not jumped); under the phone, *✓ Safe: lets Muse fetch PsycheAI's signed files* and *Your posts and messages never go to PsycheAI*. "Fetch PsycheAI's signed files", not "only lets Muse read PsycheAI's files": the same permission also makes the skill's account, checks for updates and carries locked Syncs |
-| Choose to include your messages, for a sharper read. | Step 3: PsycheAI's welcome, shortened, with its two buttons; "Include my messages (Recommended)" is tapped on "include" |
-| Muse reads your Instagram right in your account, with names removed. | Step 4, *Read right inside Muse*: "On it…", a bar filling; from "right", *🔒 Processed right inside Muse* and *🚫 None of your data sent to PsycheAI* (the privacy page's own heading) under the phone |
-| In about five minutes, your Psyche Card and Report are ready. | Step 5: *About 5 minutes*; "Your Psyche Card and Report are ready.", the card, the report and its file |
-| Then sync with friends to see how you click. | Step 6: "Your Sync with Sam is ready." and the Sync, both cards in it |
-| Paste this prompt into Muse to begin. | the mark, *Get your Psyche in Muse*, the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
+| First, open a new side chat. | Step 1: Muse's menu, drawn (no person's name), its new chat button at the bottom right tapped on "new"; the menu slides away to an empty chat |
+| Paste the prompt from our website into Muse. | Step 2: psycheai.io, drawn, slides in; Copy is tapped on "prompt" and turns *Copied ✓*; back to Muse on "into", the prompt appears in the bar (pasted, not typed) and is sent |
+| When Muse asks, tap Always allow. | Step 3: Muse's permission card ("Allow Muse to share information with app.psycheai.io?"); "Always allow this site" tapped on "always" takes a tick, and "Allow once" and "Deny" fold away; under the phone, *✓ Safe: lets Muse fetch PsycheAI's signed files* and *Your posts and messages never go to PsycheAI*. "Fetch PsycheAI's signed files", not "only lets Muse read PsycheAI's files": the same permission also makes the skill's account, checks for updates and carries locked Syncs |
+| Include your messages, for a sharper read. | Step 4: PsycheAI's welcome, shortened; "Include my messages (Recommended)" tapped on "include" |
+| Muse reads your Instagram right in your account. | Step 5, *Read right inside Muse*: "On it…", a bar filling; from "right", *🔒 Processed right inside Muse* and *🚫 None of your data sent to PsycheAI* (the privacy page's own heading) |
+| In about five minutes, your Psyche Card and Report are ready. | Step 6: *About 5 minutes*; "Your Psyche Card and Report are ready.", the card, the report and its file |
+| Then sync with friends to see how you click. | Step 7: "Your Sync with Sam is ready." and the Sync, both cards in it |
+| Get your Psyche in Muse. | the mark, *Get your Psyche in Muse*, the prompt as the button, and the three claims, not said: *🔒 Processed right inside Muse*, *🚫 None of your data sent to PsycheAI*, *✋ Your data is kept private* |
+
+Whatever the voice is talking about is outlined in pink as it's said (`LIT` in the stage): the new chat button, Copy, the
+sent prompt, Always allow, Include my messages, the read, the card and report, the Sync. The chat eases to each new
+message in time rather than jumping. About 29.6 seconds.
 
 ## The short reels
 
