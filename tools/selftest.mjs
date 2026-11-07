@@ -9824,6 +9824,13 @@ check('the schema requires evidence on where they align and differ',
       museImport.samePoint({ title: 'Close one debate sooner', detail: 'x' }, { title: 'Close debates sooner', detail: 'y' }) &&
       museImport.bundleFrom(answer).ok === true;
   })());
+  // README "The frame is not the point" and "Every summary at once" (the same tests as the Muse skill's check-answer).
+  check('samePoint: needs that share only "so you need a partner who…" or "rather than someone who…" are different points, the same words of substance still the same; evidenceProblems names every summary in a list',
+    !museImport.samePoint({ title: 'Someone who names feelings plainly', detail: 'You hide low moods behind jokes, so you need a partner who asks once more, rather than someone who takes the first joke as the answer.' },
+      { title: 'Someone steady about money and plans', detail: 'You swing between holding for a twenty-fold gain and eyeing a move to Thailand, so you need a partner who can plan a month ahead, rather than someone who chases the next idea.' }) &&
+    museImport.samePoint({ title: 'Someone who argues back, kindly', detail: 'Debate is how you think, so a partner who holds a different view without taking it personally suits you.' },
+      { title: 'Someone who disagrees out loud', detail: 'Debate is how you think, so a partner who holds a different view without taking it personally suits you.' }) &&
+    museImport.evidenceProblems({ attachment: { derivedFrom: ['fifteen threads running 2018 to 2026', 'you met their parents three weeks in, then pulled back', 'you hide sadness in jokes, January 2023'] } }).length === 2);
   check('the Muse schema gives the signature patterns the site\'s limits (a name under 40 characters like "The quiet organiser", a plain line under 160, evidence as dated moments), by path, leaving every other name and line as it was',
     ((P) => /^A name for them in this pattern, under 40 characters: "The" and a noun/.test(P.name.description) && /One plain sentence, under 160 characters: what they do, then what it gives them and what it costs/.test(P.line.description) &&
       /Not the frame "which…, but can also…"/.test(P.line.description) && /each one dated thing they did or wrote/.test(P.evidence.description))(museImport.MUSE_SCHEMA.properties.patterns.items.properties) &&

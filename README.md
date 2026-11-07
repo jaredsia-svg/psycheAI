@@ -10046,6 +10046,15 @@ doesn't: the card's few lines pass through to the friend "with a key we never re
 account record now says the server knows which account ids have synced with each other. psycheai.io/muse-docs says
 the script locks the card and the Sync under the link's code, which app.psycheai.io never receives.
 
+### The frame is not the point
+
+The Muse skill's check-answer refused one read's ideal-partner needs four runs in a row, each time a different pair
+(psycheai-app README "The frame is not the point"): every need's detail said "so you need a partner who…", and
+`samePoint`'s run test (six words in common, three of them of substance) counted "need", "partner" and "who" as
+substance. The run test now leaves out the frame words the title test already leaves out, plus need, needs and rather
+(`RUN_FRAME`, `lib/museimport.js`). `evidenceProblems` also names every summary in a list, not only the first, so one
+pass fixes them all.
+
 ### A Muse Sync no longer shares activity times
 
 psycheai-app release 175 added when each person is active to a Sync's card, and the FAQ, home page, llms.txt,
