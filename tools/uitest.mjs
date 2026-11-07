@@ -2899,7 +2899,7 @@ try {
       check('further down, the Muse way again: where the data goes in Muse (the welcome\'s four points) and the prompt with its Copy button before the files',
         await guidePage.evaluate(() => {
           const data = document.querySelector('#muse-data'), cta = document.querySelector('#muse-cta'), files = document.querySelector('#request-data');
-          return !!(data && cta && files) && /None of your data sent to PsycheAI\. Your Psyche Card and Report are made right in Muse\. Only if you choose to Sync are your card’s few lines and motivation scores shared\./.test(data.textContent.replace(/\s+/g, ' ')) &&
+          return !!(data && cta && files) && /None of your data sent to PsycheAI\. Your Psyche Card and Report are made right in Muse\. Only if you choose to Sync are your card’s few lines, motivation scores and activity times shared\./.test(data.textContent.replace(/\s+/g, ' ')) &&
             cta.querySelector('#cta-prompt').textContent === 'Install psycheai.io/skill and generate my Psyche' && !!cta.querySelector('button[data-copy="cta-prompt"]') &&
             (cta.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
         }));
@@ -10670,7 +10670,7 @@ try {
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the Muse answer says none of their posts, messages or report reach PsycheAI, so there is nothing of theirs to take, and the one exception (a Sync)',
-    /None of your posts, messages or report go to PsycheAI, so there is nothing of yours for anyone\s+to take from us\. Only if you choose to Sync are your card’s few lines and motivation scores shared, locked under your Sync\s+link\./.test(about));
+    /None of your posts, messages or report go to PsycheAI, so there is nothing of yours for anyone\s+to take from us\. Only if you choose to Sync are your card’s few lines, motivation scores and activity times shared, locked under your Sync\s+link\./.test(about));
   check('the page names Google Vertex AI, the provider the site runs on, as the party that reads the digest',
     /to Google Vertex AI’s enterprise tier, which does\s+not train on it/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
