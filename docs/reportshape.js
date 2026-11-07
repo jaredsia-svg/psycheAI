@@ -6,9 +6,10 @@
 (function (root) {
   'use strict';
 
-  // The four premium sections arrive with the written report and are filed
-  // apart from it, under `premiumAnalysis`.
-  const PREMIUM_KEYS = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
+  // The premium sections arrive with the written report and are filed apart
+  // from it, under `premiumAnalysis`: the four, and the regret intermission's
+  // answer (README "Two intermissions").
+  const PREMIUM_KEYS = ['wellness', 'attachment', 'idealPartner', 'careerAssessment', 'regret'];
 
   function unlockedSections(profile) {
     const paid = profile && profile.premiumAnalysis;
@@ -18,6 +19,7 @@
     if (paid.attachment) unlocked.attachment = paid.attachment;
     if (paid.idealPartner) unlocked.idealPartner = paid.idealPartner;
     if (paid.careerAssessment) unlocked.careerAssessment = paid.careerAssessment;
+    if (typeof paid.regret === 'string' && paid.regret.trim()) unlocked.regret = paid.regret;
     return unlocked;
   }
 

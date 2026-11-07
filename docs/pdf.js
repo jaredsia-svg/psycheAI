@@ -2099,6 +2099,15 @@
     }
 
     // 03: how you connect.
+    // The roast as an intermission after Part 02, a page of its own, as on
+    // My Report (README "Two intermissions"). The PDF has no covers: it is
+    // made only for an unlocked report, and it is the reader's own copy.
+    const roasted = Boolean(source.bonus && source.bonus.harsh);
+    if (roasted) {
+      out.page();
+      out.eyebrow(TEXT.intermission.toUpperCase(), ACCENT_2);
+      renderRoast(out, source.bonus);
+    }
     out.part(S.parts.connect, numeral('connect'));
     const relationship = source.relationship || {};
     const attachment = unlocked.attachment ? gentleAttachmentOf(unlocked.attachment) : unlocked.attachment;
@@ -2211,6 +2220,15 @@
         { title: S.careerFitDraining, color: WARN, fill: WARN_WASH, rows: pointRows(fitRows(fit.draining)) });
     }
 
+    // The regret, part of the paid report, as an intermission after Part 04.
+    if (unlocked.regret) {
+      out.page();
+      out.eyebrow(TEXT.intermission.toUpperCase(), ACCENT_2);
+      standalone(TEXT.regret, TEXT.regretSub);
+      String(unlocked.regret).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+        .forEach(p => out.body(p, { size: 10.4, leading: 15.6 }));
+    }
+
     // 05: putting it together.
     out.part(S.parts.together, numeral('together'));
     const development = source.development || {};
@@ -2276,7 +2294,7 @@
     }));
 
     // The appendix: Evidence and method on a page of its own after the
-    // parts, then the roast alone on the last page.
+    // parts, then the questions asked of PsycheAI.
     const confidence = source.confidence || {};
     const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
     out.keep(() => {
@@ -2303,17 +2321,11 @@
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
-    // As on My Report: Appendix 1 the roast, on a page of its own, then
-    // Appendix 2 the questions asked of PsycheAI, each with its answer and steps.
-    const roasted = Boolean(source.bonus && source.bonus.harsh);
-    if (source.bonus) {
-      out.page();
-      out.eyebrow(numeral('appendix') + '  ' + S.ask.appendixPrefix(roasted ? 1 : 0).replace(/: $/, ''), ACCENT_2);
-      renderRoast(out, source.bonus);
-    }
+    // As on My Report: the appendix holds the questions asked of PsycheAI,
+    // each with its answer and steps. The roast is the intermission after Part 02.
     const asked = (stamp.asked || []).filter(item => item && item.q && item.a);
     if (asked.length) {
-      standalone(S.ask.appendixTitle(roasted ? 2 : 0), S.ask.appendixCount(asked.length));
+      standalone(S.ask.appendixTitle(0), S.ask.appendixCount(asked.length));
       asked.forEach(item => {
         out.point(item.q, item.a, { detailSize: 9.2, detailLeading: 13 });
         (item.steps || []).forEach(step => out.bullet(step));

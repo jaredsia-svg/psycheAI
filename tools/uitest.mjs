@@ -6372,18 +6372,18 @@ try {
   // unlock. The DOM is what is checked, not the pixels: a CSS blur would
   // look identical and protect nothing, since select-all copies it, a screen
   // reader announces it and view-source hands it over.
-  check('all four paid sections sit in their parts under their own covers before anything is paid for',
+  check('all five paid sections sit under their own covers before anything is paid for: four in their parts, the regret in its intermission after Part 04',
     (await page.locator('#profile-body .paid-consolidated').count()) === 0 &&
     await page.evaluate(() => {
       const cards = [...document.querySelectorAll('#profile-body .paid-card')];
-      return cards.length === 4 && cards.every(card => !card.querySelector('.premium-cover').hidden &&
-        card.querySelector('.premium-body').hidden && card.closest('.part-card')) &&
-        JSON.stringify(cards.map(card => card.dataset.paid)) === JSON.stringify(['wellness', 'attachment', 'idealPartner', 'careerAssessment']);
+      return cards.length === 5 && cards.every(card => !card.querySelector('.premium-cover').hidden &&
+        card.querySelector('.premium-body').hidden && card.closest(card.dataset.paid === 'regret' ? '.intermission[data-intermission="regret"]' : '.part-card')) &&
+        JSON.stringify(cards.map(card => card.dataset.paid)) === JSON.stringify(['wellness', 'attachment', 'idealPartner', 'careerAssessment', 'regret']);
     }));
   check('and every cover\'s button is the one US$5 unlock',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')].map(b => b.textContent.trim());
-      return buttons.length === 4 && buttons.every(text => text === buttons[0] && text.includes('US$5'));
+      return buttons.length === 5 && buttons.every(text => text === buttons[0] && text.includes('US$5'));
     }),
     await page.locator('#profile-body .premium-unlock').first().innerText());
   // The specific thing a paywall — or a consent gate — must not do: ship
@@ -6403,16 +6403,19 @@ try {
   // The order, by the rendered DOM: wellbeing in Who you are, attachment and
   // the ideal partner in How you connect, the career assessment in How you
   // work, and the roast last, in the appendix.
-  check('the paid sections follow the parts — wellbeing, attachment, ideal partner, career — and the roast closes the report in the appendix',
+  check('the paid sections follow the parts — wellbeing, attachment, ideal partner, career — with the roast an intermission after Part 02 and the regret one after Part 04 (README "Two intermissions")',
     await page.evaluate(() => {
       const part = key => (document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]') || { closest: () => null })
         .closest('.part-card');
       const where = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'].map(key => (part(key) || {}).dataset);
+      const top = Array.from(document.querySelectorAll('#profile-body > *'));
+      const at = sel => top.findIndex(n => n.matches(sel));
       const roast = document.querySelector('#profile-body .bonus-card');
-      const last = [...document.querySelectorAll('#profile-body .paid-card')].pop();
       return where.map(d => d && d.partCard).join() === 'who,connect,connect,career' &&
-        Boolean(roast && roast.closest('.part-card[data-part-card="appendix"]')) &&
-        Boolean(last.compareDocumentPosition(roast) & Node.DOCUMENT_POSITION_FOLLOWING);
+        Boolean(roast && roast.closest('.intermission[data-intermission="roast"]')) && !document.querySelector('#profile-body .roast-appendix') &&
+        at('.intermission[data-intermission="roast"]') === at('.part-card[data-part-card="drives"]') + 1 &&
+        at('.intermission[data-intermission="regret"]') === at('.part-card[data-part-card="career"]') + 1 &&
+        at('.part-card[data-part-card="together"]') === at('.intermission[data-intermission="regret"]') + 1;
     }));
   // ---- wellness, attachment, ideal partner and career, behind one US$5 unlock ----
   //
@@ -6695,7 +6698,7 @@ try {
       (await cardPage.locator('#premium-dialog').isVisible()) &&
       (await cardPage.evaluate(() => {
         const covers = [...document.querySelectorAll('#profile-body .paid-card .premium-cover')];
-        return covers.length === 4 && covers.every(cover => !cover.hidden);
+        return covers.length === 5 && covers.every(cover => !cover.hidden);
       })));
 
     // Same mounted card, same button, only the confirm result changes — a
@@ -7056,7 +7059,7 @@ try {
   check('a reader who paid but lost the analysis is not shown a price again',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')];
-      return buttons.length === 4 && buttons.every(b => !/US\$5/.test(b.textContent));
+      return buttons.length === 5 && buttons.every(b => !/US\$5/.test(b.textContent));
     }),
     (await page.locator('#profile-body .premium-unlock').first().innerText()));
   check('the button offers to fetch what was already bought',
@@ -10090,7 +10093,7 @@ try {
   check('the reader gets the sections they paid for',
     (await page.evaluate(() => Object.keys(
       JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis).sort().join(','))) ===
-      'attachment,careerAssessment,idealPartner,wellness');
+      'attachment,careerAssessment,idealPartner,regret,wellness');
 
   // ---- the unlock pays for the free sections too, when data was added ----
   //
@@ -11640,10 +11643,11 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview, the five parts and the appendix (06) are the only disclosures, the roast inside the appendix — and on a laptop all seven start open',
+      check('structured: the overview, the five parts and the appendix (06) are the only disclosures, the roast an intermission after 02 — and on a laptop all seven start open',
         shape.toggles === 7 && shape.inner === 0 &&
         shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,career:open,together:open,appendix:open' &&
-        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .bonus-card.roast-appendix').count()) === 1 &&
+        (await sp.locator('#profile-body .intermission[data-intermission="roast"] .bonus-card.roast-intermission').count()) === 1 &&
+        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .bonus-card').count()) === 0 &&
         (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .part-num').textContent()) === '06', JSON.stringify(shape));
       check('structured: on a laptop the left column\'s box starts level with the report\'s header',
         await sp.evaluate(() => Math.abs(document.querySelector('#profile-body .part-nav').getBoundingClientRect().top -
@@ -12141,16 +12145,16 @@ try {
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('My Report ends with an appendix of the questions asked, each answer folded under its question',
         await sp.evaluate(() => { const a = document.querySelector('#profile-body .ask-appendix');
-          const roast = document.querySelector('#profile-body .roast-appendix');
+          const roast = document.querySelector('#profile-body .roast-intermission');
           // Both under the header every section has: an icon, an h2 title, a line under it.
           const head = el => el && el.querySelector(':scope > .card-head .card-icon') && el.querySelector(':scope > .card-head h2');
-          return Boolean(a) && /^Appendix 2: Ask PsycheAI$/.test(a.querySelector('.card-head h2').textContent) &&
+          return Boolean(a) && /^Appendix: Ask PsycheAI$/.test(a.querySelector('.card-head h2').textContent) &&
             /^2 questions$/.test(a.querySelector('.card-head .card-sub').textContent) && Boolean(head(a)) &&
-            // The roast wears My Psyche's secret-roast design, its title in that design's own heading.
+            // The roast wears My Psyche's secret-roast design, as the intermission after Part 02 (README "Two intermissions").
             Boolean(roast) && roast.classList.contains('secret-roast') &&
-            /^Appendix 1: Let us roast you/.test(roast.querySelector('h2.secret-roast-title').textContent) &&
+            /^Let us roast you/.test(roast.querySelector('h2.secret-roast-title').textContent) &&
             Boolean(roast.querySelector('.secret-roast-reveal')) &&
-            Boolean(roast.closest('.part-card[data-part-card="appendix"]')) && Boolean(a.closest('.part-card[data-part-card="appendix"]')) &&
+            Boolean(roast.closest('.intermission[data-intermission="roast"]')) && Boolean(a.closest('.part-card[data-part-card="appendix"]')) &&
             Boolean(roast.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) &&
             a.querySelectorAll('details.ask-log').length === 2 && !a.querySelector('details.ask-log[open]'); }));
       {
@@ -12166,9 +12170,9 @@ try {
           let out = ''; for (let i = 0; i < bytes.length; i += 8192) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
           return out;
         });
-        check('the downloaded Psyche Report carries the same appendix of questions and answers, after the roast',
-          pdfText.includes('(Appendix 2: Ask PsycheAI)') && pdfText.includes('(What gets in my way most?)') &&
-            pdfText.indexOf('(Appendix 2: Ask PsycheAI)') > pdfText.indexOf('Appendix 1'),
+        check('the downloaded Psyche Report carries the same appendix of questions and answers, after the roast\'s intermission',
+          pdfText.includes('(Appendix: Ask PsycheAI)') && pdfText.includes('(What gets in my way most?)') &&
+            pdfText.indexOf('Let us roast you') >= 0 && pdfText.indexOf('(Appendix: Ask PsycheAI)') > pdfText.indexOf('Let us roast you'),
           (pdfText.match(/\(Appendix[^)]*\)/) || ['no appendix'])[0]);
       }
       check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
@@ -12543,8 +12547,8 @@ try {
         return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: Part 5 is the last part, then the appendix (06) with the roast in it; Evidence and method is on My Psyche',
-        order[0] >= 0 && order[1] === order[0] + 1 && order[2] === 'roast' && order[3] === 0 &&
+      check('structured: Part 5 is the last part, then the appendix (06) without the roast, which is the intermission after 02; Evidence and method is on My Psyche',
+        order[0] >= 0 && order[1] === order[0] + 1 && order[2] === '' && order[3] === 0 &&
           (await sp.locator('#profile-body > .bonus-card').count()) === 0, order.join());
       await sp.click('#nav-profile');
       await openMethod(sp);
@@ -12799,9 +12803,9 @@ try {
           landed.every(entry => entry.endsWith(':true')), landed.join(' '));
       }
       // Unlocked, the roast is My Report's Appendix 1, once, still behind its reveal.
-      check('structured: My Report carries the roast once, as Appendix 1, behind its reveal',
+      check('structured: My Report carries the roast once, as the intermission after Part 02, behind its reveal',
         (await sp.locator('#profile-body .bonus-card').count()) === 1 &&
-          (await sp.locator('#profile-body .roast-appendix .bonus-reveal').count()) === 1);
+          (await sp.locator('#profile-body .intermission[data-intermission="roast"] .roast-intermission .bonus-reveal').count()) === 1);
       // On a phone My Report has no part nav at all: nothing floats over it.
       {
         await sp.setViewportSize({ width: 390, height: 844 });
@@ -12989,9 +12993,9 @@ try {
       const at = text => structuredPdf.lastIndexOf(text);
       const pdfOrder = ['Overview', 'Your signature patterns', 'Who you are', 'not clinically validated',
         'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
-        'Values & beliefs', 'How you connect', 'Attachment style', 'How you deal with conflict', 'Strengths and friction', 'What you bring', 'Who suits you',
-        'YOUR EDGE', 'What holds you back', 'Putting it together', 'Development plan', 'Your plan',
-        'Evidence and method', 'Let us roast you'];
+        'Values & beliefs', 'Let us roast you', 'How you connect', 'Attachment style', 'How you deal with conflict', 'Strengths and friction', 'What you bring', 'Who suits you',
+        'YOUR EDGE', 'What holds you back', 'What will you regret most', 'Putting it together', 'Development plan', 'Your plan',
+        'Evidence and method'];
       check('structured PDF: the page\'s sections in the page\'s order',
         pdfOrder.every((text, i, all) => at(text) >= 0 && (i === 0 || at(text) > at(all[i - 1]))),
         pdfOrder.map(text => text + '@' + at(text)).join(', '));
@@ -13037,10 +13041,12 @@ try {
       check('structured PDF: every section heading shares its page with its first block',
         opens.every(([title, first]) => pageOf(first) > 0 && pages[pageOf(first)].includes(title)),
         opens.map(([title, first]) => first + '@' + pageOf(first) + ':' + (pageOf(first) > 0 && pages[pageOf(first)].includes(title))).join(', '));
-      check('structured PDF: Evidence and method sits under an Appendix heading, and the roast is alone on the last page',
+      check('structured PDF: Evidence and method sits under an Appendix heading, and the roast is an intermission page of its own before How you connect',
         pages[pages.findIndex((pg, i) => i > 0 && pg.includes('Evidence and method'))].includes('Appendix') &&
-          pages[pages.length - 1].includes('APPENDIX') && pages[pages.length - 1].includes('Let us roast you') &&
-          !pages[pages.length - 1].includes('Evidence and method'),
+          !pages[pages.length - 1].includes('Let us roast you') &&
+          pages.findIndex((pg, i) => i > 0 && pg.includes('Let us roast you')) > 0 &&
+          pages.findIndex((pg, i) => i > 0 && pg.includes('Let us roast you')) <
+            pages.findIndex((pg, i) => i > 0 && pg.replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes('How you connect')),
         pages.length + ' pages');
       check('structured PDF: the contents list names part 06, the appendix',
         pages[0].includes('06') && pages[0].includes('Appendix') && !pages[0].includes('Let us roast you'), pages[0].slice(-300));

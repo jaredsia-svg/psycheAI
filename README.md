@@ -10212,3 +10212,30 @@ site first ran on Render. The service now sets `PSYCHEAI_TRUST_PROXY=3`, and the
 counts by entry 1 (public)". A visitor who adds their own `X-Forwarded-For` entries only adds to the left,
 which counting from the right never reaches. app.psycheai.io's one limit by address (new skill accounts)
 reads `cf-connecting-ip`, which Cloudflare sets and overwrites, so it needed no change.
+
+### Two intermissions: the roast after Part 02, the regret after Part 04 (7 Nov 2026)
+
+Readers love the roast, and it sat in the appendix (Part 06), after everything, where many never got to it. My
+Report now has two intermissions between its parts, each under a small "Intermission" label, not numbered and not
+in the part nav, and each closed until the reader opens it:
+
+- **The roast, after "02 What drives you"**, about a third of the way in: the same card as on My Psyche
+  (`secretRoastHtml`, `{ intermission: true }`), its writing put in the page only on "Reveal my roast". The honest
+  friend's advice stays straight after the send-up, so the unkind register never runs into "03 How you connect".
+  It left the appendix, which now holds only the questions asked of PsycheAI, unnumbered ("Appendix: Ask
+  PsycheAI"). The sample report still has no roast; it stays under the card on My Psyche.
+- **"What will you regret most when you're old?", after "04 How you work"**, part of the paid report: a new
+  `regret` field in the paid call's schema (`STRUCTURED_FULL_SCHEMA`, so the pinned and one-call schemas carry it
+  too), one string, the cheapest kind of field for Gemini's unstated schema-size limit. `REGRET_RULES` in
+  `lib/prompts.js` say how it's written: two or three short paragraphs on the one regret their own patterns point
+  to, from evidence the sections already use, as what people who live this way tend to regret and never a
+  prediction; never about children, marriage, faith, health, sexuality or anyone's death, never a diagnosis; and
+  it ends with one thing to do this month, before "05 Putting it together" turns it into the plan. It is filed with
+  the four paid sections (`PREMIUM_KEYS` in `docs/reportshape.js`, `PAID_SECTIONS` in `docs/app.js`): unlocked,
+  its question shows with "Read it", and the answer is put in the page only then ("Close it" takes it out again);
+  locked, its premium cover sits in the intermission.
+- **The PDF** follows: the roast on a page of its own after Part 02 and the regret after Part 04, each under
+  "INTERMISSION", and the appendix with the questions only.
+- **Muse** gets the same: the read guide (`lib/museimport.js`) asks for `regret` in a few lines (the spec's size
+  cap went from 25,200 to 25,600 for it), and the skill's report file draws both intermissions (psycheai-app README
+  "Two intermissions"). The one-call prompt's reserve grew from 41,800 to 42,400 tokens with the new rules.

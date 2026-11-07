@@ -1,5 +1,5 @@
 {
-  "_comment": "The four premium sections for the fictional person in docs/sample.json, hand-written. Used by tools/uitest.mjs to render a fully unlocked structured report and by the screenshot tool. Not generated, and not anybody's real data.",
+  "_comment": "The five premium sections for the fictional person in docs/sample.json, hand-written. Used by tools/uitest.mjs to render a fully unlocked structured report and by the screenshot tool. Not generated, and not anybody's real data.",
   "wellness": {
     "lifeTrajectory": {
       "band": "steady",
@@ -152,5 +152,6 @@
         "detail": "Look for the role where running things is the work, not the overflow on top of it."
       }
     ]
-  }
+  },
+  "regret": "If the quiet-organiser pattern holds, the regret most likely to find you is not a missed chance but a missing person: you. Four years of posts plan trips, birthdays and deadlines for everyone else, and 41 of 47 deadlines were closed, yet no caption in all that time says what you wanted, or that the load was heavy.\n\nPeople who live this way rarely regret the help they gave. They regret that nobody, themselves included, ever got to know what they would have chosen. One thing to do this month: plan one day around something only you want, put it in the calendar before anyone else's plans, and tell one person about it afterwards."
 }

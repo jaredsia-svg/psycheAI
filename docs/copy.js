@@ -688,6 +688,17 @@
     // labels say "read"/"hide" rather than anything about a charge.
     bonusReveal: 'Read it anyway',
     bonusHide: 'Hide this again',
+    // Two intermissions in the report (7 Nov 2026, README "Two intermissions"):
+    // the roast after Part 02, and the regret, part of the paid report, after
+    // Part 04. Each closed until the reader opens it.
+    intermission: 'Intermission',
+    regret: 'What will you regret most when you\'re old?',
+    regretSub: 'The one regret your own patterns point to, and what to do about it now.',
+    regretCoverTitle: 'What will you regret most when you\'re old?',
+    regretCoverBlurb: 'A short, honest look at the regret your own patterns point to – drawn from the ' +
+      'same evidence as the rest of your report – and one thing to do this month to make it less likely.',
+    regretReveal: 'Read it',
+    regretHide: 'Close it',
     bonusHarsh: 'The least charitable assessment of you',
     bonusAdvice: 'What an honest friend would tell you',
     // Stays on screen beside the writing rather than only appearing on the

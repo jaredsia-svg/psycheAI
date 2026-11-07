@@ -1168,6 +1168,15 @@
       coverTitle: () => TEXT.careerCoverTitle, coverBlurb: () => TEXT.careerCoverBlurb,
       body: careerAssessmentBodyHtml,
     },
+    {
+      // The regret intermission (README "Two intermissions"), part of the paid
+      // report. Locked, its cover sits in the intermission between Parts 04
+      // and 05; unlocked, regretIntermissionHtml draws it, closed until opened.
+      key: 'regret', icon: '🕰️', cardClass: 'regret-card',
+      title: () => TEXT.regret, sub: () => TEXT.regretSub,
+      coverTitle: () => TEXT.regretCoverTitle, coverBlurb: () => TEXT.regretCoverBlurb,
+      body: data => paragraphs(data),
+    },
   ];
 
   /**
@@ -2857,8 +2866,9 @@
     if (!bonus || !bonus.harsh) return '';
     const R = TEXT.secretRoast;
     const appendix = Boolean(options && options.appendix);
-    const titleId = appendix ? 'appendix-roast-title' : 'secret-roast-title';
-    return '<section class="card section-card bonus-card secret-roast' + (appendix ? ' roast-appendix" data-appendix="roast"' : ' screen-only"') +
+    const between = Boolean(options && options.intermission);
+    const titleId = between ? 'intermission-roast-title' : appendix ? 'appendix-roast-title' : 'secret-roast-title';
+    return '<section class="card section-card bonus-card secret-roast' + (between ? ' roast-intermission"' : appendix ? ' roast-appendix" data-appendix="roast"' : ' screen-only"') +
       ' aria-labelledby="' + titleId + '">' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
@@ -4609,7 +4619,31 @@
       return;
     }
     const hide = event.target.closest('.bonus-hide');
-    if (hide) hideRoast(hide);
+    if (hide) { hideRoast(hide); return; }
+    // The regret intermission: its answer is put in the page only when opened.
+    const open = event.target.closest('.regret-reveal');
+    if (open) {
+      const regret = event.target.closest('#sample-body') ? sampleUnlocked(sampleReport).regret : paidAnalysis().regret;
+      if (!regret) return;
+      const card = open.closest('.regret-card');
+      setHtml(card.querySelector('.regret-body'), paragraphs(regret) +
+        '<div class="btn-row"><button class="btn btn-outline regret-hide" type="button">' + esc(TEXT.regretHide) + '</button></div>');
+      card.querySelector('.regret-body').hidden = false;
+      card.querySelector('.regret-cover').hidden = true;
+      open.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    const close = event.target.closest('.regret-hide');
+    if (close) {
+      const card = close.closest('.regret-card');
+      const body = card.querySelector('.regret-body');
+      body.innerHTML = '';
+      body.hidden = true;
+      card.querySelector('.regret-cover').hidden = false;
+      const reveal = card.querySelector('.regret-reveal');
+      reveal.setAttribute('aria-expanded', 'false');
+      reveal.focus();
+    }
   });
 
   // The part nav: jump to a part — opening it if the reader had shut it — in
@@ -7352,8 +7386,7 @@
   // the questions asked of PsycheAI. Not one of the report's parts (the
   // header's count and the sample leave it out), but in the nav beside them.
   const partNumeral = key => String(key === 'appendix' ? PART_ORDER.length : Math.max(0, PART_ORDER.indexOf(key))).padStart(2, '0');
-  const hasAppendix = (report, ownPage) => Boolean(ownPage && report &&
-    ((report.bonus && report.bonus.harsh) || askReady()));
+  const hasAppendix = (report, ownPage) => Boolean(ownPage && report && askReady());
   // Below this width a full report opens with its parts shut (renderProfile).
   const PHONE_REPORT = '(max-width: 759px)';
 
@@ -7362,6 +7395,24 @@
    * its numbered heading is the toggle, and every section inside stays open.
    * Numeral and title only: the sections inside say what they are.
    */
+  /**
+   * An intermission between two parts (README "Two intermissions"): not a
+   * part, so no numeral and no place in the nav, under a small "Intermission"
+   * label. What it holds stays closed until the reader opens it.
+   */
+  function intermissionHtml(kind, inner) {
+    return '<section class="intermission" data-intermission="' + esc(kind) + '">' +
+      '<p class="intermission-eyebrow">' + esc(TEXT.intermission) + '</p>' + inner + '</section>';
+  }
+  /** The regret, unlocked: its question, then the answer only once opened (regretReveal). */
+  function regretIntermissionHtml() {
+    return '<div class="card section-card regret-card intermission-card">' +
+      '<h2 class="intermission-title">' + esc(TEXT.regret) + '</h2>' +
+      '<div class="regret-cover"><p>' + esc(TEXT.regretSub) + '</p>' +
+      '<button class="btn btn-outline regret-reveal" type="button" aria-expanded="false">' + esc(TEXT.regretReveal) + '</button></div>' +
+      '<div class="regret-body" hidden></div></div>';
+  }
+
   function partCardHtml(key, inner, askable) {
     const part = Copy.STRUCTURED.parts[key];
     // On the reader's own My Report: a way to ask about this part, the
@@ -8317,6 +8368,11 @@
       drivesLinesHtml(S.drivesInterests, (report.interests || []).filter(item => item && item.name)
         .map(item => [item.name, Copy.leadSentence(item.detail || '')[0]])) + mark('drives', S.titles.motivators) + '</div>';
     html += partCardHtml('drives', part, askable);
+    // The roast as an intermission after Part 02, on the reader's own report
+    // (the sample keeps it on My Psyche, under the card): closed until revealed.
+    if (ownPage && report.bonus && report.bonus.harsh) {
+      html += intermissionHtml('roast', secretRoastHtml(report.bonus, { intermission: true }));
+    }
 
     // Part 3: how you connect.
     const relationship = report.relationship || {};
@@ -8341,6 +8397,10 @@
       workStructuredBody(career, coaching) + mark('career', S.titles.work) + '</div>';
     if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
     html += partCardHtml('career', part, askable);
+    // The regret, part of the paid report, as an intermission after Part 04:
+    // closed until opened when unlocked, its premium cover when not.
+    html += intermissionHtml('regret', unlocked.regret ? regretIntermissionHtml()
+      : paidCard(paid('regret'), unlocked, { sample, flat: true }));
 
     // Part 5: putting it together.
     part = '';
@@ -8361,14 +8421,11 @@
     // sample, which has no My Psyche, keeps it at the end of Part 05.
     if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part, askable);
-    // Part 06, the appendix, on the reader's own My Report: the roast first
-    // (free since the card, read on My Psyche until the report was unlocked),
-    // then the questions asked of PsycheAI (refreshAskAppendix keeps it
-    // current). Each under the same section header as every other section.
+    // Part 06, the appendix, on the reader's own My Report: the questions asked
+    // of PsycheAI (refreshAskAppendix keeps it current). The roast is the
+    // intermission after Part 02 now (README "Two intermissions").
     if (hasAppendix(report, ownPage)) {
-      const roast = report.bonus && report.bonus.harsh
-        ? secretRoastHtml(report.bonus, { appendix: true, title: Copy.STRUCTURED.ask.appendixPrefix(1) + TEXT.bonus }) : '';
-      html += partCardHtml('appendix', roast + (askable ? '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>' : ''), false);
+      html += partCardHtml('appendix', '<div class="ask-appendix-slot">' + askAppendixHtml() + '</div>', false);
     }
     return html;
   }
@@ -11784,7 +11841,7 @@
   /** Appendix 2 after the roast on My Report; unnumbered on a report without one. */
   function askAppendixNumber() {
     const report = state.profile && state.profile.report;
-    return report && report.bonus && report.bonus.harsh ? 2 : 0;
+    return 0;   // the roast left the appendix for the intermission (README "Two intermissions")
   }
   function refreshAskAppendix() {
     document.querySelectorAll('.ask-appendix-slot').forEach(slot => setHtml(slot, askAppendixHtml()));

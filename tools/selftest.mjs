@@ -1788,7 +1788,8 @@ const sampleSchema = {
   properties: Object.assign({ bonus: prompts.FREE_SCHEMA.properties.bonus }, prompts.PROFILE_SCHEMA.properties,
     Object.fromEntries(prompts.STRUCTURED_KEYS.map(key => [key, prompts.STRUCTURED_FULL_SCHEMA.properties[key]])),
     { topMotivators: prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators,
-      premiumAnalysis: inlineRefs(prompts.PREMIUM_SCHEMA, prompts.PREMIUM_SCHEMA.$defs || {}) }),
+      premiumAnalysis: (pa => ({ ...pa, properties: { ...pa.properties, regret: prompts.STRUCTURED_FULL_SCHEMA.properties.regret } }))(
+        inlineRefs(prompts.PREMIUM_SCHEMA, prompts.PREMIUM_SCHEMA.$defs || {})) }),
 };
 // The one place the sample departs from a real report: no studio, and the
 // Ballad of Mulan as her source instead (a field the model is never given).
@@ -7116,7 +7117,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   // The base prompt and the thread, with only the listed splices and cuts:
   // each one a field the structured schema leaves out or a page it lacks.
   {
-    let expected = prompts.FULL_SYSTEM_BASE + '\n\n' + prompts.STRUCTURED_ADDON;
+    let expected = prompts.FULL_SYSTEM_BASE + '\n\n' + prompts.STRUCTURED_ADDON + '\n\n' + prompts.REGRET_RULES;
     for (const [from, to] of prompts.STRUCTURED_SPLICES) expected = expected.replace(from, to);
     for (const [from, to] of prompts.STRUCTURED_CUTS) {
       const at = expected.indexOf(from);
@@ -9787,7 +9788,7 @@ check('the schema requires evidence on where they align and differ',
   // rules said plainly"), about 150 tokens more to read.
   const roleSetting = /\byou are\b|ignore (all|any|previous)|system prompt|nothing else\.?$/im;
   check('the read guide is a short spec of the read with the merged schema, not a prompt', g.spec === museImport.READ_SPEC && g.schema === museImport.MUSE_SCHEMA &&
-    !('system' in g) && g.spec.length < 25200 && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
+    !('system' in g) && g.spec.length < 25600 && /What will you regret most when you're old/.test(g.spec) && 'regret' in g.schema.properties && /## Facebook they added/.test(g.spec) && /ranked with Instagram's by how much is in each/.test(g.spec) && JSON.stringify(g.schema).length < 33000 && !roleSetting.test(g.spec), String(g.spec.length) + ' / ' + JSON.stringify(g.schema).length);
   check('the Sync guide is a short spec with PsycheAI\'s brief and schema, not a prompt', sg.spec === museImport.SYNC_SPEC && sg.schema === museImport.MUSE_SYNC_SCHEMA &&
     JSON.stringify(Object.keys(sg.schema.properties)) === JSON.stringify([...Object.keys(prompts.COMPATIBILITY_SCHEMA.properties), 'inCommon']) &&
     !('inCommon' in prompts.COMPATIBILITY_SCHEMA.properties) && !sg.schema.required.includes('inCommon') &&

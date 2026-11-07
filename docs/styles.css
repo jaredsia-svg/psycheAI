@@ -5702,3 +5702,22 @@ details.more[open] > summary::after { content: ' ▴'; }
   .muse-prompt-row .paste { flex: 1 1 auto; font-size: .86rem; padding: .55rem .65rem; line-height: 1.35; }
   .muse-prompt-row .btn { flex: 0 0 auto; padding-left: .9rem; padding-right: .9rem; min-width: 4.6rem; }
 }
+
+/* Two intermissions in the report (README "Two intermissions"): the roast after
+   Part 02 and the regret after Part 04. A small centred label between rules,
+   then a card that stays closed until the reader opens it. */
+.intermission { margin: 1.6rem 0; }
+.intermission-eyebrow {
+  display: flex; align-items: center; gap: .8rem; margin: 0 0 .8rem;
+  font-size: .74rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--accent);
+}
+.intermission-eyebrow::before, .intermission-eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.regret-card { text-align: center; }
+.intermission-title {
+  margin: 0 0 .5rem; font-size: clamp(1.35rem, 4.6vw, 1.75rem); line-height: 1.2; text-wrap: balance;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.regret-cover p { margin: 0 auto 1rem; max-width: 46ch; color: var(--ink-soft); }
+.regret-body { text-align: left; }
+.regret-body .btn-row { justify-content: center; }

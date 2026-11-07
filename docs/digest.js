@@ -1062,7 +1062,7 @@
   //
   // against $0.259 for the two calls it replaces. If its answer fails its
   // checks the unlock falls back to those two calls, and that run costs both.
-  const MERGED_FIXED_INPUT_TOKENS = 41800;
+  const MERGED_FIXED_INPUT_TOKENS = 42400;   // 41,800 until the regret's rules joined the prompt (7 Nov 2026)
   const MERGED_MAX_OUTPUT_TOKENS = 30000;
   const MERGED_COST_CAP = 0.185;
 
