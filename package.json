@@ -19,7 +19,8 @@
     "promo": "bash promo/build.sh",
     "promo:privacy": "bash promo/privacy.sh",
     "promo:shorts": "bash promo/shorts.sh",
-    "promo:card": "node promo/capture.mjs"
+    "promo:card": "node promo/capture.mjs",
+    "promo:howto": "bash promo/howto.sh"
   },
   "engines": {
     "node": ">=18"

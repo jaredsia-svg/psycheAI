@@ -196,6 +196,34 @@ swoosh into each, and the last card gets the main video's ending (riser, hit, fu
 louder with an octave above, and the music swelling on the hit). The words pop in a line at a time
 rather than word by word: on "It's sent encrypted to Google Vertex AI" the word timer lost its place.
 
+## The Muse how-to reel
+
+A short reel (about 25 seconds) showing how PsycheAI works in Muse, step by step:
+
+```
+npm run promo:howto              # after a first npm run promo, which sets up .cache
+npm run promo:howto -- --vo      # remake its voice too
+```
+
+`out/PsycheAI-muse-howto.mp4` (post this), `out/PsycheAI-muse-howto-music-only.mp4` and `out/PsycheAI-muse-howto-cover.jpg`.
+`howto.py` is `privacy.py` with its own lines: the same voice, timing and music (the privacy reel's groove), built into
+build/howto. `howto-stage.html` draws it on the privacy reel's light theme, a STEP pill and headline over a phone.
+
+The phone is a drawn mock-up of the Muse chat, never a recording: it was made from a real run's screen recording and
+screenshots (7 Nov 2026), which showed a real person's handle, name, report and a friend's Sync, so nothing from them is
+used. The chat holds the site's sample person (Emily Carter, Mulan, `assets/card.png`), a made-up friend (Sam, the
+sample Odysseus card), and the mascot (`assets/muse-mascot.jpg`) as Muse's picture.
+
+| Line | On screen |
+| --- | --- |
+| How do you get your Psyche in Muse? | the question; the sample card floats in on "Psyche" |
+| Paste one line into your Muse chat. | Step 1: the phone rises; "Install psycheai.io/skill and generate my Psyche" is typed into the bar and sent |
+| Choose to include your messages, for a sharper read. | Step 2: PsycheAI's welcome, shortened, with its two buttons; "Include my messages (Recommended)" is tapped on "include" |
+| Muse reads your Instagram right in your account, with names removed. | Step 3: "On it…", a bar filling; *Names removed · nothing uploaded* under the phone |
+| In about five minutes, your Psyche Card and Report are ready. | Step 4: *About 5 minutes*; "Your Psyche Card and Report are ready.", the card, the report and its file |
+| Then sync with friends to see how you click. | Step 5: "Your Sync with Sam is ready." and the Sync, both cards in it |
+| Paste this prompt into Muse to begin. | the mark, *Get your Psyche*, the prompt as the button, *Paste it into Muse to begin*, *Private to you · Delete it any time* |
+
 ## The short reels
 
 ```
