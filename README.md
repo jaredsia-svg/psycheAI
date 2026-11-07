@@ -10239,3 +10239,7 @@ in the part nav, and each closed until the reader opens it:
 - **Muse** gets the same: the read guide (`lib/museimport.js`) asks for `regret` in a few lines (the spec's size
   cap went from 25,200 to 25,600 for it), and the skill's report file draws both intermissions (psycheai-app README
   "Two intermissions"). The one-call prompt's reserve grew from 41,800 to 42,400 tokens with the new rules.
+
+### The same point, not the same frame; the regret is not the roast again (8 Nov 2026)
+
+A Muse read's helper ran check-answer 8 times in 97 seconds, 7 of them refusing the ideal partner's fourth need as "the same point" as another ("Someone who shows up, not just says it" against "Someone who is steady with money"). `samePoint` (lib/museimport.js, and the skill's `same_point`) counted "someone" and "who" as words of substance, so any two needs began half the same. Frame words (`TITLE_FRAME`: someone, somebody, who, partner, person, people, keep, keeps) no longer count, and a short title (two or three words that count) is the same point when all but one match, which catches "Close one open bet" beside "Pick one open bet" that three-in-four never could. The mock read's second development titles were renamed so the placeholders don't share "Mock …". The regret came straight after a roast on the same habit, with the same examples: `REGRET_RULES` now asks for a different pattern or part of their life where the evidence allows, or the same habit from another side with other moments, and the Muse guide's regret line says the same.
