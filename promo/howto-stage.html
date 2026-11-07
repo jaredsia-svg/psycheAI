@@ -94,6 +94,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
 #typed { flex: 0 1 auto; }
 #typed:empty { display: none; }
 /* what the voice is talking about: the rest of the screen dims around it, a spotlight */
+#ring { position: absolute; z-index: 9; pointer-events: none; opacity: 0; border: 5px solid #e0457b; box-shadow: 0 0 22px rgba(224,69,123,.45); }
 #spot { position: absolute; z-index: 9; pointer-events: none; border-radius: 26px; opacity: 0; box-shadow: 0 0 0 2000px rgba(42,18,56,.42); }
 /* Muse's permission card, drawn */
 .perm { width: 540px; padding: 22px 22px 18px; border-radius: 30px; background: #fff; box-shadow: 0 10px 28px rgba(90,40,120,.16); }
@@ -172,11 +173,11 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="browser"><div class="url"><span>psycheai.io</span></div>
       <div class="site"><div class="siteNav"><b>PsycheAI</b><span>Psyche · Report · Syncs</span></div>
         <h3>Your personal AI coach <span class="grad">that already knows you.</span></h3>
-        <div class="box"><small>PASTE PROMPT INTO MUSE</small><div class="boxRow"><div class="prompt">Install psycheai.io/skill and generate my Psyche</div><div id="copy">Copy</div></div>
+        <div class="box"><small>PASTE PROMPT INTO MUSE</small><div class="boxRow" id="boxRow"><div class="prompt">Install psycheai.io/skill and generate my Psyche</div><div id="copy">Copy</div></div>
           <p>Tap <b>Always allow this site</b> · ~5 minutes</p></div>
         <img class="siteCard" src="assets/card.png"></div>
       <div id="toast">Copied</div></div>
-    <div id="spot"></div>
+    <div id="spot"></div><div id="ring"></div>
   </div></div>
   <div id="tap"></div>
   <div class="pill" id="pSafe" style="top:1668px">✓ Safe: lets Muse fetch PsycheAI's <em>signed</em> files</div>
@@ -307,8 +308,8 @@ function render(t) {
   $('tap').style.left = (r.left + r.width * (tid === 'optMsg' || tid === 'always' ? 0.45 : 0.5)) + 'px'; $('tap').style.top = (r.top + r.height / 2) + 'px';
   set('tap', tapK, 'scale(' + (1.3 - 0.4 * prog(t, at - 0.25, at)) + ')');
   // Step 2's reassurance, as "Always allow" is tapped.
-  [['pSafe', 0], ['pSafe2', 0.45]].forEach(([id, d]) => { const p = back(prog(t, T.alwaysAt + 0.2 + d, T.alwaysAt + 0.55 + d)), out = prog(t, s4.start - 0.1, s4.start + 0.1);
-    set(id, t > T.alwaysAt + 0.2 + d ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.05, p) + ')'); });
+  [['pSafe', 0], ['pSafe2', 0.3]].forEach(([id, d]) => { const p = back(prog(t, s3.vo + d, s3.vo + 0.35 + d)), out = prog(t, s4.start - 0.1, s4.start + 0.1);
+    set(id, t > s3.vo + d ? clamp(p * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.05, p) + ')'); });
 
   // Step 3: the read runs (the bar fills), and what it means, under the phone.
   $('progress').firstChild.style.width = 100 * easeIO(prog(t, T.m2 + 0.3, s6.vo)) + '%';
@@ -322,21 +323,27 @@ function render(t) {
   // What the voice is talking about stays bright and the rest of the screen dims around it, the window gliding from
   // one to the next: the new chat button, Copy, the sent prompt, Always allow, Include my messages, the read, the card
   // and report together, the Sync.
-  const LIT = [['compose', s1.vo, T.sideOut, 40], ['copy', s2.vo, T.backAt, 22], ['m0b', T.sent + 0.2, s3.start, 26], ['always', T.alwaysAt - 0.6, s4.start, 30],
-    ['optMsg', s4.vo - 0.1, s5.start, 18], ['m2b', T.m2 + 0.3, s6.start, 26], [['cardImg', 'm5h'], T.m4 + 0.2, s7.start, 22], ['m7h', T.m7 + 0.2, FINAL, 20]];
+  // spot: the rest dims (a screen with more on it); ring: just an outline (the menu and the website, where dimming
+  // the rest isn't needed). The sent prompt, the card and report, and the Sync fill the screen, so neither.
+  const LIT = [['compose', s1.vo, T.sideOut, 40, 'ring'], ['boxRow', s2.vo, T.backAt, 22, 'ring'], ['always', T.alwaysAt - 0.6, s4.start, 30, 'spot'],
+    ['optMsg', s4.vo - 0.1, s5.start, 18, 'spot'], ['m2b', T.m2 + 0.3, s6.start, 26, 'spot']];
   const sc = $('screen').getBoundingClientRect(), scale = sc.width / $('screen').offsetWidth;
-  let spot = null;
-  LIT.forEach(([ids, a, b, rad]) => { const k = prog(t, a, a + 0.3) * (1 - prog(t, b - 0.25, b));
-    if (k <= 0.001 || (spot && spot.k >= k)) return;
-    const rs = [].concat(ids).map(id => $(id).getBoundingClientRect()).filter(r => r.width > 0);
-    if (!rs.length) return;
-    const L = Math.min(...rs.map(r => r.left)), T0 = Math.min(...rs.map(r => r.top)), R = Math.max(...rs.map(r => r.right)), B = Math.max(...rs.map(r => r.bottom));
-    spot = { k, x: (L - sc.left) / scale - 8, y: (T0 - sc.top) / scale - 8, w: (R - L) / scale + 16, h: (B - T0) / scale + 16, rad }; });
-  if (spot) { const prev = render.spot, d = render.last !== undefined && prev && t - (render.spotT || 0) < 0.2 ? 1 - Math.exp(-(t - render.spotT) * 10) : 1;
-    const g = ['x', 'y', 'w', 'h'].reduce((o, key) => (o[key] = prev ? prev[key] + (spot[key] - prev[key]) * d : spot[key], o), {});
-    render.spot = g; render.spotT = t;
-    Object.assign($('spot').style, { left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', borderRadius: spot.rad + 'px', opacity: spot.k }); }
-  else { $('spot').style.opacity = 0; render.spot = null; }
+  ['spot', 'ring'].forEach(mode => {
+    let hit = null;
+    LIT.filter(x => x[4] === mode).forEach(([ids, a, b, rad]) => { const k = prog(t, a, a + 0.3) * (1 - prog(t, b - 0.25, b));
+      if (k <= 0.001 || (hit && hit.k >= k)) return;
+      const rs = [].concat(ids).map(id => $(id).getBoundingClientRect()).filter(r => r.width > 0);
+      if (!rs.length) return;
+      const L = Math.min(...rs.map(r => r.left)), T0 = Math.min(...rs.map(r => r.top)), R = Math.max(...rs.map(r => r.right)), B = Math.max(...rs.map(r => r.bottom));
+      const pad = mode === 'ring' ? 6 : 8;
+      hit = { k, x: (L - sc.left) / scale - pad, y: (T0 - sc.top) / scale - pad, w: (R - L) / scale + 2 * pad, h: (B - T0) / scale + 2 * pad, rad }; });
+    const key = 'g' + mode, kt = 't' + mode;
+    if (hit) { const prev = render[key], d = prev && t - (render[kt] || 0) < 0.2 ? 1 - Math.exp(-(t - render[kt]) * 10) : 1;
+      const g = ['x', 'y', 'w', 'h'].reduce((o, q) => (o[q] = prev ? prev[q] + (hit[q] - prev[q]) * d : hit[q], o), {});
+      render[key] = g; render[kt] = t;
+      Object.assign($(mode).style, { left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', borderRadius: hit.rad + 'px', opacity: hit.k }); }
+    else { $(mode).style.opacity = 0; render[key] = null; }
+  });
 
   // The last card: the mark spins in, the line, the prompt to paste, the two facts.
   const e = t - FINAL;
