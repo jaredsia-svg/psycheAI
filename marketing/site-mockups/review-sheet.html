@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review sheet mock-up</title>
+<!-- A mock-up of a more detailed "Review what gets sent" sheet (25 October 2026, second version). Not wired to the
+     app: the numbers are sample data and every control works on them only. Sized as the popout it would be: the body
+     scrolls inside it, the size, read quality and buttons stay pinned at the bottom. -->
+<style>
+:root { --card: #fff; --ink: #241a2e; --ink-soft: #6b6076; --line: #e7dfec; --accent: #7b3fa0; --pink: #c2407a;
+  --ok: #2f8a57; --ok-bg: #e8f6ee; --warn: #b4572a; --grad: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: rgba(36,26,46,.45); font: 15px/1.4 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink);
+  display: flex; justify-content: center; align-items: center; padding: 16px; }
+.sheet { width: 100%; max-width: 560px; max-height: min(92vh, 860px); display: flex; flex-direction: column; background: var(--card);
+  border-radius: 22px; box-shadow: 0 30px 80px rgba(36,26,46,.35); overflow: hidden; }
+.body { flex: 1; overflow-y: auto; padding: 20px 20px 10px; }
+h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.01em; }
+.status { display: flex; gap: 10px; align-items: center; margin: 10px 0 0; padding: 9px 12px; border-radius: 12px; background: var(--ok-bg); color: #1f5e3b; font-size: .84rem; }
+.status b { color: var(--ok); }
+.status .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(47,138,87,.18); }
+details.where { margin-top: 6px; font-size: .83rem; color: var(--ink-soft); }
+details.where summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.where ul { margin: 4px 0 0; padding-left: 18px; }
+.sec { margin-top: 16px; }
+.sec-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sec-h h3 { margin: 0; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.sec-h small { color: var(--ink-soft); font-size: .78rem; }
+/* Years: the bars are the buttons; three shortcuts beside the heading. */
+.years { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; align-items: end; height: 58px; }
+.yr { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; border: 0; background: none; padding: 0; font: inherit; height: 100%; justify-content: flex-end; }
+.yr i { display: block; width: 100%; border-radius: 5px 5px 2px 2px; background: var(--grad); transition: opacity .15s, filter .15s; }
+.yr small { font-size: .7rem; color: var(--ink-soft); }
+.yr.out i { opacity: .18; filter: grayscale(1); }
+.yr.out small { text-decoration: line-through; }
+.yr-note { margin-top: 4px; font-size: .76rem; color: var(--ink-soft); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: .78rem; cursor: pointer; color: var(--ink); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: #f6effa; color: var(--accent); font-weight: 600; }
+/* Words. */
+.kw { display: flex; gap: 6px; }
+.kw input { flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 11px; padding: 8px 11px; font: inherit; font-size: .9rem; }
+.kw button { border: 0; border-radius: 11px; padding: 0 14px; background: var(--ink); color: #fff; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.kwchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.kwchips:empty { display: none; }
+.kwchip { display: inline-flex; align-items: center; gap: 6px; background: #fde4ef; color: var(--pink); border-radius: 999px; padding: 3px 5px 3px 11px; font-size: .8rem; font-weight: 600; }
+.kwchip button { border: 0; background: rgba(194,64,122,.15); color: var(--pink); width: 18px; height: 18px; border-radius: 50%; cursor: pointer; line-height: 1; padding: 0; }
+/* What's included: one list, least personal at the top, a scale down its left edge. */
+.list { position: relative; border: 1.5px solid var(--line); border-radius: 14px; padding-left: 6px; overflow: hidden; }
+.list::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: linear-gradient(#5fbf8a, #c79bec 55%, #e0457b); }
+.row { border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row-main { display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+.name { flex: 1; min-width: 0; border: 0; background: none; padding: 0; font: inherit; text-align: left; cursor: pointer; color: inherit; }
+.name b { font-weight: 650; font-size: .92rem; }
+.name span { color: var(--ink-soft); font-size: .8rem; margin-left: 6px; }
+.name::after { content: '›'; display: inline-block; margin-left: 6px; color: var(--ink-soft); transition: transform .15s; }
+.row.open .name::after { transform: rotate(90deg); }
+.row.off .name b { color: var(--ink-soft); text-decoration: line-through; }
+.need { font-size: .72rem; color: var(--ink-soft); }
+.sw { position: relative; flex: none; width: 42px; height: 25px; border-radius: 13px; border: 0; background: var(--accent); cursor: pointer; transition: background .15s; }
+.sw::after { content: ''; position: absolute; top: 3px; left: 20px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: left .15s; }
+.sw[aria-checked="false"] { background: #d6d0dc; }
+.sw[aria-checked="false"]::after { left: 3px; }
+.sw:disabled { opacity: .5; cursor: not-allowed; }
+.items { display: none; padding: 0 12px 10px; }
+.row.open .items { display: block; }
+.note { font-size: .76rem; color: var(--ink-soft); margin: 2px 0 4px; }
+.item { display: flex; align-items: center; gap: 8px; padding: 5px 9px; border-radius: 9px; background: #faf7fb; margin-top: 4px; font-size: .82rem; }
+.item q { flex: 1; min-width: 0; quotes: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .when { color: var(--ink-soft); font-size: .72rem; }
+.item .x { border: 0; background: none; color: var(--ink-soft); cursor: pointer; font-size: .95rem; padding: 0 2px; }
+.item.gone { opacity: .45; }
+.item.gone q { text-decoration: line-through; }
+.ph { color: var(--pink); font-weight: 700; }
+.chat { display: flex; align-items: center; gap: 10px; padding: 5px 2px; font-size: .84rem; }
+.chat .who2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat .who2 b { font-weight: 650; }
+.chat .who2 small { margin-left: 6px; color: var(--ink-soft); font-size: .76rem; }
+.chat .sw { width: 36px; height: 21px; }
+.chat .sw::after { width: 15px; height: 15px; left: 18px; }
+.chat .sw[aria-checked="false"]::after { left: 3px; }
+.ends { display: flex; justify-content: space-between; font-size: .7rem; color: var(--ink-soft); margin-top: 4px; padding: 0 2px; }
+/* Pinned at the bottom. */
+.sheet.typing .foot { display: none; }
+.foot { flex: none; border-top: 1.5px solid var(--line); padding: 10px 20px 14px; background: #fff; }
+.meter { display: flex; align-items: center; gap: 10px; font-size: .8rem; }
+.meter .lbl { color: var(--ink-soft); white-space: nowrap; }
+.meter .bar { display: block; flex: 1; height: 8px; border-radius: 4px; background: #eee8f2; overflow: hidden; }
+.meter .fill { display: block; height: 100%; border-radius: 4px; background: var(--grad); transition: width .25s; }
+.meter .q { font-weight: 800; min-width: 48px; text-align: right; }
+.facts { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: .78rem; color: var(--ink-soft); }
+.facts a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.btns { display: flex; gap: 8px; margin-top: 10px; }
+.btn { flex: 1; border-radius: 999px; padding: 11px; font: inherit; font-weight: 800; cursor: pointer; border: 2px solid var(--accent); background: #fff; color: var(--accent); }
+.btn.go { flex: 2; border: 0; color: #fff; background: var(--grad); }
+@media (max-width: 480px) {
+  body { padding: 0; align-items: stretch; }
+  .sheet { max-width: none; max-height: none; border-radius: 0; }
+  .body { padding: 16px 14px 8px; }
+  .foot { padding: 10px 14px 14px; }
+  .name b { font-size: .88rem; }
+  .name span { margin-left: 4px; }
+  .row-main { padding: 9px 10px; }
+}
+</style></head>
+<body>
+<div class="sheet" role="dialog" aria-labelledby="t">
+  <div class="body">
+    <h2 id="t">Review what gets sent</h2>
+    <div class="status"><span class="dot"></span><div><b>Nothing sent yet.</b> Names, contacts and links already removed.</div></div>
+    <details class="where"><summary>Where does it go?</summary>
+      <ul><li>Google Vertex AI (enterprise), encrypted. It never trains on it.</li><li>PsycheAI keeps no copy; your results come back here only.</li></ul></details>
+
+    <div class="sec">
+      <div class="sec-h"><h3>Which years</h3><div class="chips" id="range-chips">
+        <button class="chip" data-from="2019">All</button><button class="chip" data-from="2024">3 yrs</button><button class="chip" data-from="2026">1 yr</button></div></div>
+      <div class="years" id="years"></div>
+      <div class="yr-note" id="yr-note"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><h3>Leave out anything mentioning</h3></div>
+      <form class="kw" id="kw-form"><input id="kw-in" placeholder="A name, place or topic" aria-label="A word to leave out"><button>Leave out</button></form>
+      <div class="kwchips" id="kw-chips"></div>
+      <div class="yr-note" id="kw-note"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><h3>What’s included</h3><small>Tap to preview</small></div>
+      <div class="list" id="list"></div>
+      <div class="ends"><span>↑ Least personal</span><span>Most personal ↓</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="meter"><span class="lbl">Read quality</span><span class="bar"><span class="fill" id="q-fill"></span></span><span class="q" id="q-txt"></span></div>
+    <div class="facts"><span id="size"></span><a href="#">Download what’s sent</a></div>
+    <div class="btns"><button class="btn">Back</button><button class="btn go">Send this</button></div>
+  </div>
+</div>
+<script>
+// Sample data, least personal first. Per year 2019–2026: how many items of each; "w" its share of the read-quality meter.
+const YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+const TYPES = [
+  { id: 'act', t: 'Activity & timing', c: 'numbers only', w: 5, by: [1, 1, 1, 1, 1, 1, 1, 1], bytes: 40,
+    items: [['Most active 9–11pm on weekdays', 0], ['214 posts · 6,402 likes · 388 saves', 0]] },
+  { id: 'top', t: 'Instagram’s guesses', w: 5, by: [0, 0, 0, 0, 0, 0, 0, 30], bytes: 25,
+    items: [['Running', 2026], ['Personal finance', 2026], ['Coffee', 2026]] },
+  { id: 'acc', t: 'Accounts you like', w: 10, by: [2, 3, 3, 4, 5, 7, 9, 7], bytes: 40,
+    items: [['@natgeo', 2025], ['@runnersworld', 2025], ['@minimalistbaker', 2024]] },
+  { id: 'liked', t: 'Posts you liked', w: 15, by: [0, 0, 0, 0, 0, 40, 60, 35], bytes: 180,
+    items: [['5 habits of people who never burn out', 2025], ['#slowliving #homecafe', 2026], ['How to tell a friend you need space', 2024]] },
+  { id: 'cap', t: 'Your posts & comments', req: true, w: 30, by: [6, 8, 9, 10, 12, 14, 12, 8], bytes: 260,
+    items: [['Finally finished the half marathon 🏃', 2025], ['Sunday reset: plants, playlist, pasta', 2024], ['[P1] this is the best news 🎉', 2023]] },
+  { id: 'srch', t: 'Your searches', w: 10, by: [0, 0, 1, 2, 3, 6, 8, 5], bytes: 40,
+    items: [['marathon training plan', 2025], ['anxiety tips', 2024], ['tokyo cafes', 2026]] },
+  { id: 'dm', t: 'Direct messages', c: 'yours only', w: 25, by: [20, 25, 30, 35, 40, 50, 60, 40], bytes: 150,
+    chats: [['[N1]', 120, 'Sarah Kim'], ['[N2]', 84, 'Mum'], ['[N3]', 46, 'Jordan Lee'], ['[N4]', 30, 'Book club (group)'], ['[N5]', 20, 'Alex Tan']],
+    items: [['ok but honestly I think I need a break from all of it', 2025], ['[N2] you were right, as usual 😅', 2024], ['can’t wait for saturday!!', 2026]] },
+];
+const state = { on: Object.fromEntries(TYPES.map(t => [t.id, true])), off: new Set(), chats: {}, gone: new Set(), kws: [], open: new Set() };
+TYPES.find(t => t.id === 'dm').chats.forEach(([n]) => state.chats[n] = true);
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en');
+const kwHits = () => state.kws.length * 4;   // in the mock-up, each word leaves out a few lines
+
+function count(t) {
+  let n = t.by.reduce((a, c, i) => a + (state.off.has(YEARS[i]) ? 0 : c), 0);
+  if (t.chats) { const all = t.chats.reduce((a, c) => a + c[1], 0), kept = t.chats.reduce((a, c) => a + (state.chats[c[0]] ? c[1] : 0), 0); n = Math.round(n * kept / all); }
+  return Math.max(0, n - [...state.gone].filter(k => k.startsWith(t.id + ':')).length);
+}
+function render() {
+  $('#list').innerHTML = TYPES.map(t => {
+    const on = state.on[t.id], n = count(t), open = state.open.has(t.id);
+    const lines = t.items.map(([q, y], i) => { const key = t.id + ':' + i, gone = state.gone.has(key) || (y && state.off.has(y));
+      return '<div class="item' + (gone ? ' gone' : '') + '"><q>' + q.replace(/\[(P|N)\d\]/g, m => '<span class="ph">' + m + '</span>') + '</q>' +
+        (y ? '<span class="when">' + y + '</span>' : '') + '<button class="x" data-x="' + key + '" aria-label="' + (gone ? 'Put back' : 'Leave out') + '">' + (gone ? '↺' : '✕') + '</button></div>'; }).join('');
+    const chats = t.chats ? '<div class="note">Names show only here; each goes as its number. Only your messages are sent.</div>' + t.chats.map(([c, k, real]) =>
+      '<div class="chat"><span class="who2"><b>' + real + '</b><small>' + k + ' · <span class="ph">' + c + '</span></small></span><button class="sw" role="switch" data-chat="' + c +
+      '" aria-checked="' + state.chats[c] + '" aria-label="Chat with ' + real + '"' + (on ? '' : ' disabled') + '></button></div>').join('') : '';
+    const sub = t.c ? t.c : fmt(n);
+    return '<div class="row' + (on ? '' : ' off') + (open ? ' open' : '') + '"><div class="row-main">' +
+      '<button class="name" data-peek="' + t.id + '"><b>' + t.t + '</b><span>' + (t.chats && on ? fmt(n) + ', ' : '') + sub + '</span></button>' +
+      (t.req ? '<span class="need">Needed</span>' : '') +
+      '<button class="sw" role="switch" data-t="' + t.id + '" aria-checked="' + on + '"' + (t.req ? ' disabled' : '') + ' aria-label="' + t.t + '"></button></div>' +
+      '<div class="items">' + (t.chats ? chats : '<div class="note">✕ leaves a line out.</div>' + lines) + '</div></div>';
+  }).join('');
+  const tot = YEARS.map((y, i) => TYPES.reduce((a, t) => a + t.by[i], 0)), max = Math.max(...tot);
+  $('#years').innerHTML = YEARS.map((y, i) => '<button class="yr' + (state.off.has(y) ? ' out' : '') + '" data-y="' + y + '" aria-pressed="' + !state.off.has(y) + '" aria-label="' + y + '">' +
+    '<i style="height:' + Math.max(6, Math.round(40 * tot[i] / max)) + 'px"></i><small>’' + String(y).slice(2) + '</small></button>').join('');
+  const fromOf = f => YEARS.every(y => state.off.has(y) === (y < f));
+  document.querySelectorAll('#range-chips .chip').forEach(c => c.setAttribute('aria-pressed', fromOf(+c.dataset.from)));
+  $('#yr-note').textContent = state.off.size ? [...state.off].sort().map(y => '’' + String(y).slice(2)).join(', ') + ' left out' : '';
+  $('#kw-chips').innerHTML = state.kws.map(k => '<span class="kwchip">' + k + '<button data-kw="' + k + '" aria-label="Remove ' + k + '">×</button></span>').join('');
+  $('#kw-note').textContent = state.kws.length ? kwHits() + ' posts & messages removed' : 'Removes the whole post or message';
+  let bytes = 6000, q = 0;
+  TYPES.forEach(t => { if (!state.on[t.id]) return; const n = count(t), full = t.by.reduce((a, c) => a + c, 0); bytes += n * t.bytes; q += t.w * Math.min(1, n / full); });
+  bytes = Math.max(0, bytes - kwHits() * 150); q = Math.round(q);
+  $('#q-fill').style.width = q + '%';
+  $('#q-txt').textContent = q >= 75 ? 'Strong' : q >= 50 ? 'Good' : q >= 30 ? 'Fair' : 'Thin';
+  $('#q-txt').style.color = q >= 50 ? 'var(--accent)' : 'var(--warn)';
+  $('#size').textContent = '~' + Math.round(bytes / 1000) + ' KB of text · no photos or videos';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.t) state.on[b.dataset.t] = b.getAttribute('aria-checked') !== 'true';
+  else if (b.dataset.chat) state.chats[b.dataset.chat] = b.getAttribute('aria-checked') !== 'true';
+  else if (b.dataset.peek) state.open.has(b.dataset.peek) ? state.open.delete(b.dataset.peek) : state.open.add(b.dataset.peek);
+  else if (b.dataset.x) state.gone.has(b.dataset.x) ? state.gone.delete(b.dataset.x) : state.gone.add(b.dataset.x);
+  else if (b.dataset.y) { const y = +b.dataset.y; state.off.has(y) ? state.off.delete(y) : state.off.add(y); if (state.off.size === YEARS.length) state.off.delete(y); }
+  else if (b.dataset.from) state.off = new Set(YEARS.filter(y => y < +b.dataset.from));
+  else if (b.dataset.kw) state.kws = state.kws.filter(k => k !== b.dataset.kw);
+  else return;
+  render();
+});
+$('#kw-in').addEventListener('focus', () => $('.sheet').classList.add('typing'));
+$('#kw-in').addEventListener('blur', () => $('.sheet').classList.remove('typing'));
+$('#kw-form').addEventListener('submit', e => { e.preventDefault(); const v = $('#kw-in').value.trim(); if (v && !state.kws.includes(v)) state.kws.push(v); $('#kw-in').value = ''; render(); });
+// ?state=edited: choices made (from 2024, "Sam" left out, chat [N3] off, a line removed, the messages opened).
+if (/state=edited/.test(location.search)) { state.off = new Set([2019, 2020, 2022]); state.kws = ['Sam']; state.chats['[N3]'] = false; state.open.add('dm'); state.gone.add('dm:0'); }
+render();
+</script>
+</body></html>

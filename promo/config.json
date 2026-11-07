@@ -1,0 +1,5 @@
+{
+  "reel": {"button": "psycheai.io ↗", "spoken": "Try it at {B} dot I O.", "theme": "light"},
+  "site": {"button": "Try it below ↓", "spoken": "Try it below.", "theme": "light"},
+  "muse": {"button": "Install psycheai.io/skill and generate my Psyche", "spoken": "Paste this prompt to begin.", "theme": "light", "script": "muse", "onBeat": true, "end": "Get your Psyche in Muse."}
+}

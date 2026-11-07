@@ -1,0 +1,41 @@
+/* Why not just upload it to ChatGPT? The same question to both, their answers side by side, then the differences. */
+.vs-card h2 { margin-bottom: 4px; }
+.vs-card .vs-sub { margin: 0 0 16px; color: var(--ink-soft); }
+.vs-q { margin: 0 0 14px auto; width: fit-content; max-width: 92%; padding: 10px 16px; border-radius: 16px 16px 4px 16px; font-weight: 700;
+  color: #fff; background: linear-gradient(90deg, #8a3fd0, #e0457b); }
+.vs-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .vs-answers { grid-template-columns: 1fr; } }
+.vs-ans { position: relative; border-radius: 16px; padding: 14px 16px 16px; font-size: .92rem; line-height: 1.45; }
+.vs-ans h3 { margin: 0 0 8px; font-size: 1rem; }
+.vs-ans p { margin: 0 0 8px; }
+.vs-ans ul { margin: 0; padding-left: 20px; }
+.vs-ans li { margin: 2px 0; font-weight: 650; }
+.vs-them { background: #f4f2f6; border: 1px solid var(--line); color: #4b4553; }
+.vs-them h3 { color: #4b4553; }
+.vs-us { background: #fff; border: 1.5px solid #e4c8f2; box-shadow: 0 8px 24px rgba(138,63,208,.1); }
+.vs-us h3 { color: var(--accent); }
+.vs-us p { font-style: italic; }
+.vs-us b { font-style: normal; color: #c2407a; }
+.vs-stamp { position: absolute; right: 12px; top: 12px; padding: 2px 10px; border-radius: 999px; font-size: .74rem; font-weight: 800; }
+.vs-them .vs-stamp { color: #6b6b73; border: 1.5px solid #a8a3ae; background: #fff; }
+.vs-us .vs-stamp { color: #fff; background: linear-gradient(90deg, #e0457b, #8a3fd0); }
+.vs-note { margin: 10px 0 0; font-size: .78rem; color: var(--ink-soft); text-align: center; }
+.vs-diff { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: .9rem; }
+.vs-row { display: grid; grid-template-columns: 24% 1fr 1fr; border-top: 1px solid var(--line); }
+.vs-row:first-child { border-top: 0; }
+.vs-row > span { padding: 10px 12px; line-height: 1.4; }
+.vs-headrow { background: #faf6fc; font-size: .82rem; font-weight: 800; letter-spacing: .03em; }
+.vs-headrow .vs-c1 { color: #6b6b73; } .vs-headrow .vs-c2 { color: var(--accent); }
+.vs-k { font-weight: 700; color: var(--ink-soft); font-size: .84rem; }
+.vs-row:not(.vs-headrow) .vs-c1 { color: #6b5f63; }
+.vs-row:not(.vs-headrow) .vs-c1::before { content: '✕ '; color: #b3261e; font-weight: 800; }
+.vs-row:not(.vs-headrow) .vs-c2 { font-weight: 650; background: #fdf9ff; }
+.vs-row:not(.vs-headrow) .vs-c2::before { content: '✓ '; color: var(--good); font-weight: 800; }
+/* On a phone, still a table: three narrower columns, smaller type. */
+@media (max-width: 640px) {
+  .vs-diff { font-size: .78rem; }
+  .vs-row { grid-template-columns: 24% 1fr 1fr; }
+  .vs-row > span { padding: 8px 7px; }
+  .vs-k { font-size: .74rem; }
+  .vs-headrow { font-size: .74rem; }
+}
