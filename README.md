@@ -10046,6 +10046,13 @@ doesn't: the card's few lines pass through to the friend "with a key we never re
 account record now says the server knows which account ids have synced with each other. psycheai.io/muse-docs says
 the script locks the card and the Sync under the link's code, which app.psycheai.io never receives.
 
+### A Muse Sync no longer shares activity times
+
+psycheai-app release 175 added when each person is active to a Sync's card, and the FAQ, home page, llms.txt,
+/muse-docs and the Muse privacy page said so. Release 176 took it out again (psycheai-app README "A Sync no longer
+shares activity times": the line in SKILL.md read as tracking to Muse's safety check), so those pages say again that a
+Sync shares only the card's few lines and motivation scores.
+
 ### What you share, in a Muse Sync
 
 A Muse Sync is now a page the PsycheAI skill lays out in the user's own workspace (psycheai-app README "The Sync is a
