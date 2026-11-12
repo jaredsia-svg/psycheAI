@@ -7260,19 +7260,21 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
       said === 'Your top three, strongest first: Stimulation (novelty, challenge and excitement), Security (safety and stability).' &&
         Object.values(globalThis.PsycheCopy.STRUCTURED.motivators).every(m => m.meaning && m.meaning.length < 45), said);
   }
-  check('the card picks a character on the reader\'s likely side or the neither group, and only the neither group when unsure',
+  check('the card picks a character on the reader\'s stated side or the neither group, and from every character when they haven\'t stated it: gender is never guessed (12 November 2026)',
     prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 &&
       prompts.CHARACTER_SIDES.neither.join() === 'Baymax,The Tin Man,Remy,Pikachu' &&
       prompts.STRUCTURED_FREE_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) &&
       prompts.CHARACTER_SIDES.women.concat(prompts.CHARACTER_SIDES.men, prompts.CHARACTER_SIDES.neither)
         .every(name => prompts.CHARACTER_SIDE_RULE.includes(name)) &&
       /Either may also get one of the characters who are neither: Baymax/.test(prompts.CHARACTER_SIDE_RULE) &&
-      /If you cannot tell with reasonable confidence, or they present as neither, choose only from those four/.test(prompts.CHARACTER_SIDE_RULE),
+      /gender is never guessed\. Use a side only when the person states their gender themselves in their own data: pronouns in their bio, or a gender they have given/.test(prompts.CHARACTER_SIDE_RULE) &&
+      /When they have not stated it, or state something else, every character above is open to them/.test(prompts.CHARACTER_SIDE_RULE) &&
+      !/judge, privately|most likely a woman|how friends address them/.test(prompts.CHARACTER_SIDE_RULE + prompts.CHARACTER_GENDER_RULE),
     prompts.CHARACTER_SIDE_RULE.slice(0, 200));
-  check('and never writes that judgement down: the rule says so, and the privacy rule allows only this private use',
-    /never state, hint at or explain it anywhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
-      /Gender only decides which characters to choose among, and is never written/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
-      /privately choosing the character's side \(see \*\*essence\*\*\), never written/.test(prompts.FULL_SYSTEM) &&
+  check('and never writes gender down: the rule says so, and the privacy rule allows only a stated gender, for the character\'s side',
+    /Gender is not something to write about: it appears nowhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
+      /Gender only decides which characters to choose among, only when they state it themselves, and is never guessed or written/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /Gender's one use is choosing the character's side, and only when they state it themselves \(see \*\*essence\*\*\); it is never guessed and never written/.test(prompts.FULL_SYSTEM) &&
       // The report's character rule is the card's side rule since 18 Oct 2026.
       prompts.FULL_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) && !prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
       !/pick the character before you write anything else/.test(prompts.FULL_SYSTEM + prompts.MERGED_SYSTEM) &&
@@ -9875,10 +9877,10 @@ check('the schema requires evidence on where they align and differ',
       /## Reading plan/.test(museImport.READ_SPEC) && /the 10 busiest conversations in their inbox, judged by how much is in each, not by which is newest/.test(museImport.READ_SPEC) && /A first read aims for about 110,000 characters/.test(museImport.READ_SPEC) && /A target is what a read reaches, not a ceiling to stop short of/.test(museImport.READ_SPEC) && /sent word for word to several people .* is one thing they did, kept once/.test(museImport.READ_SPEC) && /## Before saving/.test(museImport.READ_SPEC) && /\*\*Every citation is in the digest\.\*\*/.test(museImport.READ_SPEC) && /No one theme anchors more than three sections, counting the patterns, how they work, what holds them back, development, the plan and the send-up/.test(museImport.READ_SPEC) && /Where their own words show their field/.test(museImport.READ_SPEC) && /the times on the digest's lines/.test(museImport.READ_SPEC) && /about 200,000 characters of the person's own words at most/.test(museImport.READ_SPEC) && /up to about 115,000 characters of their own/.test(museImport.READ_SPEC) && /Posts and stories, up to about 85,000 characters/.test(museImport.READ_SPEC) && /growing over later reads to about 15,000/.test(museImport.READ_SPEC) && /never the other way/.test(museImport.READ_SPEC) && /An evidence item is one such moment/.test(museImport.READ_SPEC) && /Every line speaks to the person as "you", evidence items and ledger rows included/.test(museImport.READ_SPEC) && /never a guess at their gender/.test(museImport.READ_SPEC) && /never the reading itself/.test(museImport.READ_SPEC) && /across every year the account has, not just the latest pages/.test(museImport.READ_SPEC) && /under about 30 characters \(an emoji, "Sunday vibes", "nice one"\) counts for its date, not as words/.test(museImport.READ_SPEC) && !/\b(stop at|Skip what|thin evenly)\b/.test(museImport.READ_SPEC) && /across every year the account has/.test(museImport.READ_SPEC));
   check('the read is text only: photos and videos are not analysed', /\*\*Text only\.\*\*/.test(museImport.READ_SPEC) && /The photos and videos themselves are not analysed/.test(museImport.READ_SPEC) && /any text added on top of a story or post \(typed, pasted or in a text sticker, read in full\)/.test(museImport.READ_SPEC) &&
     /A story with no words on it counts only for its date/.test(museImport.READ_SPEC));
-  check('the spec carries the character side rule: 12 for women, 12 for men, 4 for anyone, judged privately and never written',
+  check('the spec carries the character side rule: 12 for women, 12 for men, 4 for anyone, from a stated gender only (their own data or their Meta account details), never guessed and never written',
     /## Character/.test(museImport.READ_SPEC) && museImport.READ_SPEC.includes(prompts.CHARACTER_SIDES.women.join(', ')) &&
     museImport.READ_SPEC.includes(prompts.CHARACTER_SIDES.men.join(', ')) && museImport.READ_SPEC.includes(prompts.CHARACTER_SIDES.neither.join(', ')) &&
-    /their Meta account details/.test(museImport.READ_SPEC) && /never state, hint at or explain it/.test(museImport.READ_SPEC) &&
+    /in their own data and their Meta account details: pronouns in their bio, or a gender they have given/.test(museImport.READ_SPEC) && /it appears nowhere you write/.test(museImport.READ_SPEC) && !/judge, privately/.test(museImport.READ_SPEC) &&
     prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 && prompts.CHARACTER_SIDES.neither.length === 4);
   check('the Muse roast is deliberately blunt, under the same harsh labels as any roast, without the phrases Muse\'s safety check refused',
     /deliberately blunt and pointed/.test(JSON.stringify(museImport.MUSE_SCHEMA)) && /Do not soften it/.test(JSON.stringify(museImport.MUSE_SCHEMA)) &&

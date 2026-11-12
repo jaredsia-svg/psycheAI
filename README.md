@@ -7168,6 +7168,16 @@ a card to anchor to; with one, the card's character is pinned and nothing is cho
 adds about 250 tokens to the free prompt (`FREE_FIXED_INPUT_TOKENS` 6,700, `FREE_COST_CAP` $0.053 —
 about 0.02¢ a run in practice).
 
+**12 November 2026: gender is never guessed.** The side above was a private judgement from someone's name, pronouns, how they
+write and how friends address them, and the rule told the model never to say so. Inferring gender quietly, and hiding it, is
+what the Muse skill's own rules forbid (psycheai-app's CLAUDE.md: gender is "asked, never inferred"), and Muse's safety
+review of the skill singled out the hidden judgement. Now `CHARACTER_SIDE_RULE` uses a side only when the person states
+their gender themselves in their own data (pronouns in their bio, or a gender they have given; the Muse guide adds their
+Meta account details): a stated woman's choice is the twelve women plus the four who are neither, a stated man's the
+twelve men plus the four; anyone who hasn't stated it, or states something else, has every character open, chosen by
+temperament alone. `CHARACTER_GENDER_RULE`, in the retired base prompts, says the same. Gender still appears nowhere in
+what is written, and the privacy rules now say it's never guessed as well as never written.
+
 Retired characters are no longer offered to the model but keep their scene and emblem
 (`RETIRED_CHARACTERS`), so a card written before they went still draws. The five new scenes follow
 the same rule as the rest — symbols, never likenesses: a spellbook over a castle of lit windows, a
