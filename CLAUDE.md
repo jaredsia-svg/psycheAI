@@ -93,3 +93,8 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 - **No therapy claims:** PsycheAI is coaching and insight, never therapy, treatment or diagnosis, because several US states restrict AI therapy. Disclaimers are fine. A selftest scans every page, caption and reel script for clinical claim phrases.
 - **Privacy wording:** user-facing privacy claims must stay literally true (e.g. the review sheet and the "Load your data" note). The tests check several of them against the code.
 - **Branch:** work happens on the long-lived branch `claude/instagram-personality-compatibility-oqhpa3`, which Render auto-deploys from. Pushing deploys.
+
+## Muse safety check
+
+`lib/museimport.js`'s guide is pinned into the PsycheAI skill (psycheai-app `skill/guide.json`), and Muse runs a safety check on every file it reads. Follow psycheai-app's CLAUDE.md, "Muse safety check: never trip it", for any change to that guide: no pass-through or precedence wording ("word for word", "exactly as given", "unchanged", "takes precedence"), no instructions to send, schedule or hide anything, and no install lines or links beside private data. psycheai-app's selftest fails if a trigger-shaped phrase grows past its baseline.
+
