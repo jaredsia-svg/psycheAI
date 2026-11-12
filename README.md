@@ -7168,6 +7168,8 @@ a card to anchor to; with one, the card's character is pinned and nothing is cho
 adds about 250 tokens to the free prompt (`FREE_FIXED_INPUT_TOKENS` 6,700, `FREE_COST_CAP` $0.053 —
 about 0.02¢ a run in practice).
 
+**12 November 2026: the Muse pages say likes and saves are read.** psycheai-app skill release 192 reads the hashtags and a few short, filtered captions of the posts someone likes and saves (never who posted them), so /muse ("Reads") and /muse-docs ("Reading") now say so, keeping both literally true.
+
 **12 November 2026: gender is never guessed.** The side above was a private judgement from someone's name, pronouns, how they
 write and how friends address them, and the rule told the model never to say so. Inferring gender quietly, and hiding it, is
 what the Muse skill's own rules forbid (psycheai-app's CLAUDE.md: gender is "asked, never inferred"), and Muse's safety
