@@ -10048,6 +10048,15 @@ llms.txt (from `tools/seo-pages.mjs`), and the carousel. The promo config says /
 already posted still show /muse, which still works. The Cloudflare Worker's /skill/* route doesn't take bare /skill,
 so it stays this server's.
 
+
+### Install lines with https://
+
+On 13 Nov 2026 the prompt became "Install https://psycheai.io/skill and generate my Psyche" (psycheai-app README
+"Install lines with https://"). On some Muse accounts the bare "psycheai.io/skill" read as a search term: Muse searched
+the web, and the results (this home page and the reels, which carry paste-into-Muse text) were stopped by Muse's safety
+check before anything was installed. With https:// Muse opens the address directly. Every copy box and mention of the
+prompt says it: the home page, /muse, /muse-docs, the FAQ, the search pages and llms.txt (from `tools/seo-pages.mjs`),
+the carousel and the promo config for the next render. The bare address still works for what's already out.
 ### A Muse Sync is locked on the device
 
 The PsycheAI skill now locks a Sync in the user's own Muse workspace before anything is sent (psycheai-app README

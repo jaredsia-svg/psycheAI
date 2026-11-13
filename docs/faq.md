@@ -4,7 +4,7 @@ description: "Answers about PsycheAI: what it is, what file you need, what happe
 canonical: https://psycheai.io/faq
 author: "Jared, founder of PsycheAI"
 published: 2026-10-12
-updated: 2026-11-07
+updated: 2026-11-13
 ---
 
 # Frequently asked questions
@@ -19,7 +19,7 @@ A personal AI coach that already knows you. It reads your own Instagram and writ
 
 ### How do I start?
 
-Open a new chat in Meta Muse and paste “Install psycheai.io/skill and generate my Psyche”. When Muse asks, tap Always allow this site. No sign-up, no password, no upload.
+Open a new chat in Meta Muse and paste “Install https://psycheai.io/skill and generate my Psyche”. When Muse asks, tap Always allow this site. No sign-up, no password, no upload.
 
 ### How long does it take?
 
@@ -99,6 +99,6 @@ Founder with a private equity and venture capital background, building AI tools 
 
 ---
 
-Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/skill)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+Get your Psyche free in Muse: paste "Install https://psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/skill)). No Muse? [Load your files on the website](https://psycheai.io/#files).
 
 [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)

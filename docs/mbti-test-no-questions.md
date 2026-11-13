@@ -61,6 +61,6 @@ Your first Psyche Card and Psyche Report are free. Re-runs are US$5.
 
 ---
 
-Get your Psyche free in Muse: paste "Install psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/skill)). No Muse? [Load your files on the website](https://psycheai.io/#files).
+Get your Psyche free in Muse: paste "Install https://psycheai.io/skill and generate my Psyche" into Meta Muse ([how it works](https://psycheai.io/skill)). No Muse? [Load your files on the website](https://psycheai.io/#files).
 
 [See a sample report](https://psycheai.io/sample-report) · [FAQ](https://psycheai.io/faq)

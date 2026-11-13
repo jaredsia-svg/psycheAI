@@ -1,6 +1,6 @@
 {
   "reel": {"button": "psycheai.io ↗", "spoken": "Try it at {B} dot I O.", "theme": "light"},
   "site": {"button": "Try it below ↓", "spoken": "Try it below.", "theme": "light"},
-  "howto": {"button": "Install psycheai.io/skill and generate my Psyche", "theme": "light"},
-  "muse": {"button": "Install psycheai.io/skill and generate my Psyche", "spoken": "Paste this prompt to begin.", "theme": "light", "script": "muse", "onBeat": true, "end": "Get your Psyche in Muse."}
+  "howto": {"button": "Install https://psycheai.io/skill and generate my Psyche", "theme": "light"},
+  "muse": {"button": "Install https://psycheai.io/skill and generate my Psyche", "spoken": "Paste this prompt to begin.", "theme": "light", "script": "muse", "onBeat": true, "end": "Get your Psyche in Muse."}
 }

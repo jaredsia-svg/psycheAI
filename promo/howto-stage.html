@@ -146,7 +146,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="notch"></div>
     <div id="top"><div id="ava"></div><b>Muse</b></div>
     <div id="view"><div id="chat">
-      <div class="msg me" id="m0"><span class="bub" id="m0b">Install psycheai.io/skill and generate my Psyche</span></div>
+      <div class="msg me" id="m0"><span class="bub" id="m0b">Install https://psycheai.io/skill and generate my Psyche</span></div>
       <div class="msg ai" id="mP"><div class="perm"><div class="permTop"><span class="permIcon"></span><b>Allow Muse to share information with app.psycheai.io?</b></div>
         <p>To install PsycheAI and make your Psyche.</p><span class="pbtn blue fold">Allow once</span><span class="pbtn" id="always">Always allow this site</span><span class="pbtn fold">Deny</span></div></div>
       <div class="msg ai" id="m1"><span class="bub"><p>I'm PsycheAI, your personal AI coach that already knows you.</p>
@@ -174,7 +174,7 @@ body { font-family: Inter, sans-serif; color: #2a1238; }
     <div id="browser"><div class="url"><span>psycheai.io</span></div>
       <div class="site"><div class="siteNav"><b>PsycheAI</b><span>Psyche · Report · Syncs</span></div>
         <h3>Your personal AI coach <span class="grad">that already knows you.</span></h3>
-        <div class="box"><small>PASTE PROMPT INTO MUSE</small><div class="boxRow" id="boxRow"><div class="prompt">Install psycheai.io/skill and generate my Psyche</div><div id="copy">Copy</div></div>
+        <div class="box"><small>PASTE PROMPT INTO MUSE</small><div class="boxRow" id="boxRow"><div class="prompt">Install https://psycheai.io/skill and generate my Psyche</div><div id="copy">Copy</div></div>
           <p>Tap <b>Always allow this site</b> · ~5 minutes</p></div>
         <img class="siteCard" src="assets/card.png"></div>
       <div id="toast">Copied</div></div>
@@ -226,7 +226,7 @@ function head(i, t) {
 }
 // When each thing happens. S[1] the side chat, S[2] the website, S[3] Always allow, S[4] messages, S[5] the read,
 // S[6] the card and report, S[7] the Sync, S[8] the end.
-const PROMPT = 'Install psycheai.io/skill and generate my Psyche';
+const PROMPT = 'Install https://psycheai.io/skill and generate my Psyche';
 function times() {
   const [s0, s1, s2, s3, s4, s5, s6, s7] = S;
   const newAt = said(1, 'new', s1.vo + 1) + 0.05;
