@@ -1,0 +1,78 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The Instagram post of the privacy page's diagram (1080 x 1350, 4:5): node promo/post.mjs */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1350px; overflow: hidden; }
+body { font-family: Inter, sans-serif; color: #2a1238; background: radial-gradient(130% 80% at 50% 0%, #f3dcff 0%, #fdf7fc 58%, #f7effd 100%); position: relative; }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); mix-blend-mode: multiply; }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#brand { position: absolute; left: 0; right: 0; top: 64px; display: flex; justify-content: center; align-items: center; gap: 16px; font-size: 36px; font-weight: 850; letter-spacing: .01em; }
+#brand svg { width: 58px; height: 58px; }
+h1 { position: absolute; left: 0; right: 0; top: 136px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.02; }
+.lede { position: absolute; left: 110px; right: 110px; top: 232px; text-align: center; font-size: 31px; font-weight: 600; line-height: 1.35; color: #6b3f8f; }
+ol { position: absolute; left: 76px; right: 76px; top: 392px; z-index: 1; list-style: none; display: grid; gap: 14px; }
+/* the dashed line joining the four icons */
+ol::before { content: ''; position: absolute; left: 72px; top: 60px; bottom: 60px; border-left: 5px dashed #d8bdec; }
+li { position: relative; display: grid; grid-template-columns: 104px 1fr; align-items: center; gap: 24px; min-height: 136px; padding: 14px 30px 14px 20px;
+  border-radius: 34px; background: #fff; box-shadow: 0 16px 40px rgba(90, 40, 120, .12); }
+.icon { position: relative; width: 100px; height: 100px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(140deg, #8a3fd0, #e0457b); box-shadow: 0 0 0 10px #f1e3fb, 0 14px 30px rgba(224, 69, 123, .3); }
+.icon svg { width: 52px; height: 52px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.num { position: absolute; right: -8px; top: -8px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #fff;
+  color: #8a3fd0; font-size: 24px; font-weight: 900; box-shadow: 0 4px 12px rgba(90, 40, 120, .2); }
+li b { display: block; font-size: 34px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.12; }
+li span.d { display: block; margin-top: 6px; font-size: 24px; font-weight: 550; line-height: 1.35; color: #6b5a7b; }
+/* Two zones behind the steps: 1 to 3 happen on the phone with no internet, 4 and 5 are the only part online. */
+.zone { position: absolute; z-index: -1; border-radius: 44px; }
+#zoneOff { background: rgba(47, 138, 87, .09); border: 3px solid #b5dfc6; }
+.zoneLabel { position: absolute; z-index: 5; padding: 6px 18px; border-radius: 999px; font-size: 22px; font-weight: 800; white-space: nowrap; }
+#labelOff { background: #e8f6ee; color: #2f8a57; border: 3px solid #b5dfc6; }
+#labelOn { background: #f4ebfc; color: #7b3fa0; border: 3px solid #d9c2ef; }
+#zoneOn { background: rgba(138, 63, 208, .08); border: 3px solid #d9c2ef; }
+li:nth-child(4) { margin-top: 52px; }
+#foot { position: absolute; left: 0; right: 0; bottom: 48px; text-align: center; font-size: 30px; font-weight: 750; color: #6b3f8f; }
+#foot em { font-style: normal; color: #e0457b; }
+</style></head>
+<body>
+  <div class="blob" style="width:700px;height:700px;left:-260px;top:-120px;background:#ffd6e7;opacity:.55"></div>
+  <div class="blob" style="width:640px;height:640px;right:-260px;top:520px;background:#e6dcff;opacity:.6"></div>
+  <div class="blob" style="width:520px;height:520px;left:-120px;bottom:-200px;background:#ffd2b0;opacity:.35"></div>
+
+  <div id="brand"><svg viewBox="0 0 140 140" id="mark"></svg>PsycheAI</div>
+  <h1>How your <span class="grad">data</span> flows</h1>
+  <p class="lede">Your files are read on your phone. Only a short, de&#8209;identified summary ever leaves it.</p>
+  <ol>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M14 6h14l8 8v26a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M28 6v8h8"/><path d="M17 25h14M17 32h10"/></svg><span class="num">1</span></span>
+      <div><b>Loaded on your phone, not uploaded</b><span class="d">Your Instagram, WhatsApp, Google or Facebook files are opened right in your browser.</span></div></li>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M10 14h28M10 22h22M10 30h14"/><path d="M30 30l9 9M39 30l-9 9"/></svg><span class="num">2</span></span>
+      <div><b>A short de-identified summary is made</b><span class="d">Just 100–200 KB of text. Names, handles, emails and numbers are removed.</span></div></li>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><rect x="7" y="9" width="12" height="12" rx="3"/><path d="M10 15l2.5 2.5L17 12"/><path d="M25 15h16"/><rect x="7" y="27" width="12" height="12" rx="3"/><path d="M25 33h16"/></svg><span class="num">3</span></span>
+      <div><b>You choose what is sent</b><span class="d">Review the summary and untick anything you would rather not share.</span></div></li>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><rect x="12" y="22" width="24" height="18" rx="3.5"/><path d="M17 22v-5a7 7 0 0 1 14 0v5"/><circle cx="24" cy="31" r="2.5"/></svg><span class="num">4</span></span>
+      <div><b>Only that summary is sent, encrypted</b><span class="d">To Google Vertex AI enterprise, which never trains on it.</span></div></li>
+    <li><span class="icon"><svg viewBox="0 0 48 48"><path d="M24 40S8 30 8 19a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z"/></svg><span class="num">5</span></span>
+      <div><b>Your results come back to your phone</b><span class="d">Your card, report and Syncs are saved only there. PsycheAI keeps no copy.</span></div></li>
+  </ol>
+  <div class="zone" id="zoneOff"></div>
+  <div class="zone" id="zoneOn"></div>
+  <!-- In front of the cards, so each label's whole border shows. -->
+  <div class="zoneLabel" id="labelOff">✈️ No internet needed</div>
+  <div class="zoneLabel" id="labelOn">🔒 The only part online · encrypted</div>
+  <div id="foot">The code is public · <em>psycheai.io</em></div>
+<script>
+const MARK = __MARK__;
+document.getElementById('mark').innerHTML = MARK.paths.map(d => '<path d="' + d + '" fill="none" stroke="#7b3fa0" stroke-width="4"/>').join('') +
+  '<circle cx="70" cy="70" r="12" fill="#ffd36e"/>';
+// Each zone wraps its cards, measured once the fonts are in.
+window.ready = document.fonts.ready.then(() => {
+  const cards = [...document.querySelectorAll('li')].map(li => li.getBoundingClientRect());
+  const wrap = (id, from, to) => { const z = document.getElementById(id), a = cards[from], b = cards[to];
+    Object.assign(z.style, { left: (a.left - 20) + 'px', top: (a.top - 22) + 'px', width: (a.width + 40) + 'px', height: (b.bottom - a.top + 42) + 'px' });
+    // The label sits on the zone's top edge at the right, over the card below it.
+    const label = document.getElementById(id.replace('zone', 'label')), box = label.getBoundingClientRect();
+    Object.assign(label.style, { left: (a.right + 20 - 30 - box.width) + 'px', top: (a.top - 22 - box.height / 2) + 'px' }); };
+  wrap('zoneOff', 0, 2); wrap('zoneOn', 3, 4);
+});
+</script></body></html>
