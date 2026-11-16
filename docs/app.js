@@ -3023,9 +3023,19 @@
         '<div><h3>' + esc(T.title) + ' <span class="insight-free-pill">' + esc(T.free) + '</span><span class="it-new">' + esc(T.badge) + '</span></h3>' +
         '<p class="it-lede">' + esc(T.lede) + '</p></div></div>' +
       '<p class="it-hook">' + esc(T.hook) + '</p>' +
-      '<ul class="it-sources">' + T.sources.map(([icon, what, why]) =>
-        '<li><span class="it-icon" aria-hidden="true">' + Copy.iconHtml(icon) + '</span><b>' + esc(what) + '</b><span>' + esc(why) + '</span></li>').join('') + '</ul>' +
-      '<p class="it-truth"><span>' + esc(T.agree) + '</span> <span>' + esc(T.differ) + '</span></p>' +
+      '<div class="it-body">' +
+        // The three things it reads, at a triangle's corners; what their agreeing means in its middle.
+        '<div class="it-tri" role="group" aria-label="' + esc(T.sources.map(x => x[1]).join(', ')) + '">' +
+          '<svg class="it-tri-lines" viewBox="0 0 280 250" aria-hidden="true" focusable="false"><polygon points="140,52 52,198 228,198"/></svg>' +
+          T.sources.map(([icon, what, why], n) => '<div class="it-node it-node-' + n + '"><span class="it-dot" aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' +
+            '<b>' + esc(what) + '</b><span>' + esc(why) + '</span></div>').join('') +
+          '<p class="it-mid"><span>' + esc(T.agree) + '</span><span>' + esc(T.differ) + '</span></p>' +
+        '</div>' +
+        // The five chapters: the core of it.
+        '<div class="it-chapters"><p class="it-chapters-title">' + esc(T.chaptersTitle) + '</p><ol>' +
+          T.chapters.map(([name, what], n) => '<li><span class="it-num" aria-hidden="true">' + String(n + 1).padStart(2, '0') + '</span>' +
+            '<div><b>' + esc(name) + '</b><span>' + esc(what) + '</span></div></li>').join('') + '</ol></div>' +
+      '</div>' +
       '<ul class="it-chips">' + T.chips.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' +
       '<p class="it-note">' + esc(T.note) + '</p>' +
     '</div>')(I.together);
