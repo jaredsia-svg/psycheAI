@@ -3793,6 +3793,40 @@ details.more[open] > summary::after { content: ' ▴'; }
   vertical-align: .1em; font-size: .72rem; font-weight: 800; letter-spacing: .02em;
   color: var(--good); background: var(--good-soft); }
 .insight-ask { margin-top: .6rem; }
+/* Psyche Together under Ask PsycheAI (16 Nov 2026): a card of its own, in the brand's gradient. */
+.insight-together { margin-top: .9rem; padding: 1.05rem 1.1rem 1rem; border-radius: 16px; position: relative; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--accent-2) 10%, var(--bg-alt)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg-alt)) 50%, var(--bg-alt) 100%); }
+.it-head { display: flex; gap: .75rem; align-items: center; }
+.it-mark { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.it-mark .line-icon { width: 22px; height: 22px; }
+.insight-together h3 { margin: 0; font-size: 1.02rem; display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; }
+.insight-together h3 .insight-free-pill { margin-left: .1rem; }
+.it-new { display: inline-block; padding: .08rem .5rem; border-radius: 999px; font-size: .68rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.it-lede { margin: .12rem 0 0; font-size: .88rem; color: var(--ink-soft); }
+.it-hook { margin: .8rem 0 .7rem; padding-left: .7rem; border-left: 3px solid var(--accent-2); font-size: .86rem; line-height: 1.45; color: var(--ink); font-style: italic; }
+.insight-together .it-sources { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.it-sources li { display: flex; flex-direction: column; gap: .15rem; padding: .65rem .7rem; border-radius: 12px; background: var(--bg-alt); border: 1px solid var(--line); font-size: .8rem; color: var(--ink-soft); line-height: 1.35; }
+.it-sources b { color: var(--ink); font-size: .84rem; }
+.it-icon { color: var(--accent); }
+.it-icon .line-icon { width: 20px; height: 20px; }
+.it-truth { margin: .75rem 0 .6rem; font-size: .86rem; font-weight: 650; color: var(--ink); }
+.it-truth span + span { color: var(--accent); }
+.insight-together .it-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.it-chips li { padding: .2rem .6rem; border-radius: 999px; font-size: .76rem; font-weight: 650; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-alt)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.it-note { margin: .65rem 0 0; font-size: .76rem; color: var(--ink-soft); }
+@media (max-width: 560px) {
+  .insight-together { padding: .9rem .9rem .85rem; }
+  .insight-together .it-sources { grid-template-columns: 1fr; gap: .4rem; }
+  .it-sources li { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: .45rem; padding: .5rem .65rem; }
+  .it-sources li span:last-child { flex-basis: 100%; padding-left: 1.7rem; }
+}
+@media (max-width: 420px) {
+  .it-mark { display: none; }
+}
 .insight-ask .ask-mark { display: block; width: 1.9rem; height: 1.9rem; border-radius: 9px; }
 
 /* The part nav, back under the summary card: each part by its heading. */
@@ -5701,6 +5735,16 @@ details.more[open] > summary::after { content: ' ▴'; }
   .muse-prompt-row { flex-wrap: nowrap; gap: .45rem; }
   .muse-prompt-row .paste { flex: 1 1 auto; font-size: .86rem; padding: .55rem .65rem; line-height: 1.35; }
   .muse-prompt-row .btn { flex: 0 0 auto; padding-left: .9rem; padding-right: .9rem; min-width: 4.6rem; }
+}
+
+/* On a wider screen the prompt fits on one line beside a compact Copy button (16 Nov 2026). */
+@media (min-width: 900px) {
+  .muse-prompt-row { flex-wrap: nowrap; gap: .5rem; align-items: center; }
+  .muse-prompt-row .paste { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .8rem; padding: .55rem .7rem; line-height: 1.4; }
+  .muse-prompt-row .btn { flex: 0 0 auto; min-height: 40px; padding: .45rem 1.1rem; font-size: .92rem; }
+}
+@media (min-width: 1260px) {
+  .muse-prompt-row .paste { font-size: .88rem; padding: .55rem .75rem; }
 }
 
 /* Two intermissions in the report (README "Two intermissions"): the roast after

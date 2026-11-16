@@ -3016,7 +3016,19 @@
       '<span class="insight-compat-icon" aria-hidden="true"><span class="ask-mark"></span></span>' +
       '<div><h3>' + esc(I.askTitle) + ' <span class="insight-free-pill">' + esc(I.askFree) + '</span></h3>' +
         '<p>' + esc(I.askBlurb) + '</p></div>' +
-    '</div>';
+    '</div>' +
+    // Psyche Together, under it (README "Psyche Together on the front page"): what it reads, what it finds, what you get.
+    ((T) => '<div class="insight-together">' +
+      '<div class="it-head"><span class="it-mark" aria-hidden="true">' + Copy.iconHtml('💞') + '</span>' +
+        '<div><h3>' + esc(T.title) + ' <span class="insight-free-pill">' + esc(T.free) + '</span><span class="it-new">' + esc(T.badge) + '</span></h3>' +
+        '<p class="it-lede">' + esc(T.lede) + '</p></div></div>' +
+      '<p class="it-hook">' + esc(T.hook) + '</p>' +
+      '<ul class="it-sources">' + T.sources.map(([icon, what, why]) =>
+        '<li><span class="it-icon" aria-hidden="true">' + Copy.iconHtml(icon) + '</span><b>' + esc(what) + '</b><span>' + esc(why) + '</span></li>').join('') + '</ul>' +
+      '<p class="it-truth"><span>' + esc(T.agree) + '</span> <span>' + esc(T.differ) + '</span></p>' +
+      '<ul class="it-chips">' + T.chips.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' +
+      '<p class="it-note">' + esc(T.note) + '</p>' +
+    '</div>')(I.together);
   }
 
   /**

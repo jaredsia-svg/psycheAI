@@ -1335,6 +1335,23 @@
       // Short enough to sit beside the name on a phone (27 October 2026).
       askFree: 'Free in Muse',
       compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
+      // Psyche Together, under Ask PsycheAI (16 Nov 2026, README "Psyche Together on the front page"): the reel's points, short.
+      together: {
+        title: 'Psyche Together',
+        free: 'Free in Muse',
+        badge: 'New',
+        lede: 'Your AI relationship coach, built from both your Psyches.',
+        hook: 'In Gottman\u2019s research, couples who stayed together turned towards each other\u2019s small bids 86% of the time. Couples who split: 33%. What\u2019s your number?',
+        sources: [
+          ['📘', 'Both your Psyche Reports', 'who you each are'],
+          ['💬', 'Your chat with each other', 'what you actually say'],
+          ['📓', 'A private questionnaire each', 'how it feels to each of you'],
+        ],
+        agree: 'Where all three agree, that\u2019s your strength.',
+        differ: 'Where they don\u2019t, that\u2019s your blind spot.',
+        chips: ['5 chapters', 'Backed by research', 'A 28-day plan', 'A check-in 4 weeks later'],
+        note: 'About 5 minutes each, in your own Muse. Coaching, not counselling.',
+      },
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
