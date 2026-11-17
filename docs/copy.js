@@ -1360,7 +1360,7 @@
           ['Conflict & Repair', 'What you disagree about, your cycle, how you repair'],
         ],
         chips: ['Backed by research', 'A 28-day plan', 'A check-in 4 weeks later'],
-        note: 'About 5 minutes each, in your own Muse. Coaching, not counselling.',
+        note: 'About 2 minutes each, in your own Muse. Coaching, not counselling.',
       },
     },
     partNavLabel: 'Parts of this report',
