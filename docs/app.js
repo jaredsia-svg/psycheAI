@@ -3020,7 +3020,7 @@
     // Psyche Together, under it (README "Psyche Together on the front page"): what it reads, what it finds, what you get.
     ((T) => '<div class="insight-together">' +
       '<div class="it-head"><span class="it-mark" aria-hidden="true">' + Copy.iconHtml('💞') + '</span>' +
-        '<div><h3>' + esc(T.title) + ' <span class="insight-free-pill">' + esc(T.free) + '</span><span class="it-new">' + esc(T.badge) + '</span></h3>' +
+        '<div><h3>' + esc(T.title) + ' <span class="insight-price it-price">' + esc(T.price(Prices.label(CURRENCY, 'unlock'))) + '</span><span class="it-new">' + esc(T.badge) + '</span></h3>' +
         '<p class="it-lede">' + esc(T.lede) + '</p></div></div>' +
       '<p class="it-hook">' + esc(T.hook) + '</p>' +
       '<div class="it-body">' +
@@ -3038,6 +3038,7 @@
       '</div>' +
       '<ul class="it-chips">' + T.chips.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' +
       '<p class="it-note">' + esc(T.note) + '</p>' +
+      '<a class="it-sample" href="' + esc(T.sampleUrl) + '" target="_blank" rel="noopener">' + esc(T.sample) + ' \u2192</a>' +
     '</div>')(I.together);
   }
 

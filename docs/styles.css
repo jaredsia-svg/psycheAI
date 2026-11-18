@@ -3838,6 +3838,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 .it-chips li { padding: .2rem .6rem; border-radius: 999px; font-size: .76rem; font-weight: 650; color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-alt)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
 .it-note { margin: .55rem 0 0; font-size: .76rem; color: var(--ink-soft); }
+/* The sample report, for a made-up couple, on PsycheAI's own app (18 Nov 2026). */
+.it-sample { display: inline-block; margin-top: .75rem; padding: .5rem 1rem; border-radius: 999px; font-size: .88rem; font-weight: 700; text-decoration: none;
+  color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.it-sample:hover { filter: brightness(1.05); }
+.insight-together h3 .insight-price { margin-left: .1rem; }
 @media (max-width: 720px) {
   .it-body { grid-template-columns: 1fr; gap: .9rem; }
 }

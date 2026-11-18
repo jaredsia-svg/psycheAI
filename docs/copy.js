@@ -1338,7 +1338,9 @@
       // Psyche Together, under Ask PsycheAI (16 Nov 2026, README "Psyche Together on the front page"): the reel's points, short.
       together: {
         title: 'Psyche Together',
-        free: 'Free in Muse',
+        // US$5 for both (18 Nov 2026, README "Psyche Together's price"): the reader's own currency, from docs/prices.js
+        // (the same amounts as the report), bought on PsycheAI's own page, never inside Muse.
+        price: p => p + ' for both',
         badge: 'New',
         lede: 'Your AI relationship coach, built from both your Psyches.',
         hook: 'Couples who stay together turn towards each other\u2019s small bids 86% of the time. Couples who split: 33% (Gottman). What\u2019s your number?',
@@ -1361,6 +1363,8 @@
         ],
         chips: ['Backed by research', 'A 28-day plan', 'A check-in 4 weeks later'],
         note: 'About 2 minutes each, in your own Muse. Coaching, not counselling.',
+        sample: 'See a sample report',
+        sampleUrl: 'https://app.psycheai.io/together/sample',
       },
     },
     partNavLabel: 'Parts of this report',
