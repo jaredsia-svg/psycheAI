@@ -1,0 +1,422 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The ChatGPT reel (shorts.py chatgpt): where your data goes with each, then what you get back. Dark for ChatGPT
+   (its app in dark mode, then its servers), the brand's bright colours for PsycheAI, wiped in by a burst of rings. Every claim about ChatGPT is the FAQ's, about its personal plans. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f1f8; }
+body { font-family: Inter, sans-serif; color: #2a1238; }
+.el { position: absolute; display: none; }
+.blob { position: absolute; border-radius: 50%; filter: blur(100px); }
+#b1 { width: 820px; height: 820px; left: -260px; top: 900px; background: #ffd6e7; }
+#b2 { width: 760px; height: 760px; right: -240px; top: 1200px; background: #e6dcff; }
+#grey { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 20%, #2c2a31, #121115); }
+#ring { position: absolute; z-index: 45; border-radius: 50%; display: none; pointer-events: none;
+  box-shadow: 0 0 0 22px #ff7a45, 0 0 0 44px #e0457b, 0 0 0 66px #8a3fd0; }
+#cap1 { color: #fff; }
+#cap1 .dim { color: #a9a6b0; }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.caption { z-index: 30; left: 70px; right: 70px; top: 230px; text-align: center; font-size: 64px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
+/* 0: the ChatGPT app on a phone, dark mode, the export attached. Generic, no logo: the name in plain text. */
+#gpt { z-index: 20; left: 0; top: 0; width: 1080px; height: 1920px; background: #212121; color: #ececec; overflow: hidden; }
+#gpt .sb { position: absolute; left: 80px; right: 70px; top: 40px; display: flex; justify-content: space-between; align-items: center; font-size: 40px; font-weight: 650; }
+#gpt .sb i { display: inline-block; vertical-align: middle; margin-left: 14px; background: #ececec; border-radius: 4px; }
+#gpt .hd { position: absolute; left: 50px; right: 50px; top: 150px; display: flex; align-items: center; gap: 34px; font-size: 48px; font-weight: 650; }
+#gpt .hd .menu { width: 56px; height: 34px; border-top: 6px solid #ececec; border-bottom: 6px solid #ececec; position: relative; }
+#gpt .hd .menu::after { content: ''; position: absolute; left: 0; width: 34px; top: 8px; border-top: 6px solid #ececec; }
+#gpt .hd .chev { color: #8e8e8e; font-weight: 500; margin-left: -18px; }
+#gpt .hd .new { margin-left: auto; width: 58px; height: 58px; border: 6px solid #ececec; border-radius: 18px; }
+#gpt .hello { position: absolute; left: 0; right: 0; top: 800px; text-align: center; font-size: 68px; font-weight: 650; letter-spacing: -0.02em; }
+#gpt .comp { position: absolute; left: 34px; right: 34px; top: 1180px; padding: 34px 34px 30px; border-radius: 60px; background: #303030; box-shadow: 0 -10px 60px rgba(0,0,0,.35); }
+#gpt .file { display: inline-flex; align-items: center; gap: 24px; padding: 18px 34px 18px 18px; border-radius: 30px; background: #212121; border: 2px solid #444; }
+#gpt .file .ic { width: 96px; height: 96px; border-radius: 22px; background: #ff5588; display: grid; place-items: center; }
+#gpt .file .ic b { width: 40px; height: 50px; border-radius: 6px; background: #fff; position: relative; }
+#gpt .file .ic b::after { content: ''; position: absolute; left: 16px; top: 6px; width: 8px; height: 30px; background: repeating-linear-gradient(#ff5588 0 5px, #fff 5px 10px); }
+#gpt .file .nm { font-size: 38px; font-weight: 650; }
+#gpt .file .nm small { display: block; font-size: 30px; font-weight: 500; color: #9b9b9b; margin-top: 4px; }
+#gpt .txt { min-height: 130px; margin: 30px 8px 0; font-size: 46px; font-weight: 450; line-height: 1.3; }
+#gpt .txt .ph { color: #8e8e8e; }
+#gpt .txt .caret { display: inline-block; width: 4px; height: 52px; margin-left: 3px; vertical-align: middle; background: #ececec; }
+#gpt .row { display: flex; align-items: center; gap: 24px; margin-top: 20px; }
+#gpt .plus { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #555; display: grid; place-items: center; font-size: 54px; font-weight: 300; color: #ececec; }
+#gpt .mic { margin-left: auto; display: flex; align-items: center; gap: 7px; height: 50px; }
+#gpt .mic i { width: 7px; border-radius: 4px; background: #ececec; }
+#gpt .send { width: 92px; height: 92px; border-radius: 50%; background: #ececec; color: #1a1a1a; display: grid; place-items: center; font-size: 54px; font-weight: 900; }
+#gpt .home { position: absolute; left: 50%; bottom: 26px; width: 300px; height: 12px; margin-left: -150px; border-radius: 6px; background: #ececec; }
+#gpt .note { position: absolute; left: 0; right: 0; top: 1610px; text-align: center; font-size: 28px; color: #8e8e8e; }
+#finger { z-index: 35; font-size: 170px; filter: drop-shadow(0 20px 30px rgba(0,0,0,.5)); }
+/* 1-2: the export into the cloud. */
+#zip { z-index: 20; left: 400px; top: 1300px; width: 280px; height: 280px; }
+.ig { display: block; width: 100%; height: 100%; filter: drop-shadow(0 26px 50px rgba(214,36,159,.32)); }
+#zipLabel { z-index: 20; left: 0; right: 0; top: 1620px; text-align: center; font-size: 40px; font-weight: 800; color: #c9c5cf; }
+#cloud { z-index: 15; left: 40px; top: 400px; width: 1000px; height: 560px; }
+#cloud svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 30px 60px rgba(0,0,0,.55)); }
+#cloud .name { position: absolute; left: 0; right: 0; top: 515px; display: flex; justify-content: center; align-items: center; gap: 16px;
+  font-size: 40px; font-weight: 850; color: #c4c0cb; letter-spacing: .01em; }
+#cloud .name i { display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: #d9625a; box-shadow: 0 0 0 6px rgba(217,98,90,.18); }
+.item { z-index: 22; padding: 18px 30px; border-radius: 999px; font-size: 40px; font-weight: 800; white-space: nowrap; background: #232127; color: #f2f0f5;
+  border: 2px solid #48444f; box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+.warn { z-index: 25; left: 90px; right: 90px; padding: 34px 40px; border-radius: 36px; background: #2a1517; border: 4px solid #ff5a4f; color: #ff8a80;
+  font-size: 50px; font-weight: 900; line-height: 1.2; box-shadow: 0 0 60px rgba(255,90,79,.35); }
+.warn small { display: block; margin-top: 8px; font-size: 34px; font-weight: 650; color: #e2b8b4; }
+/* 3: the phone. */
+#phone { z-index: 20; left: 330px; top: 520px; width: 420px; height: 720px; border-radius: 70px; border: 14px solid #2a1238; background: #fff;
+  box-shadow: 0 40px 100px rgba(90,40,120,.3); }
+#phone .notch { position: absolute; left: 50%; top: 18px; width: 140px; height: 30px; margin-left: -70px; border-radius: 16px; background: #2a1238; }
+#phone .inside { position: absolute; left: 110px; top: 150px; width: 170px; height: 170px; }
+#phone .lock { position: absolute; left: 0; right: 0; top: 380px; text-align: center; font-size: 32px; font-weight: 850; color: #7b3fa0; }
+#phone .lock span { display: block; font-size: 30px; font-weight: 650; color: #6b6076; margin-top: 6px; }
+#badge { z-index: 27; left: 660px; top: 470px; width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; font-size: 76px;
+  background: linear-gradient(135deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 50px rgba(224,69,123,.45); border: 8px solid #fff; }
+#noNet { z-index: 26; left: 50%; top: 1310px; padding: 18px 40px; border-radius: 999px; background: #e8f6ee; color: #2f8a57; border: 3px solid #b5dfc6;
+  font-size: 46px; font-weight: 850; white-space: nowrap; }
+#deid { z-index: 22; left: 60px; right: 60px; top: 560px; padding: 38px 44px 30px; border-radius: 44px; background: #fff;
+  border: 5px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
+  box-shadow: 0 30px 80px rgba(138,63,208,.22); transform-origin: 50% 0; }
+#deid .ttl { font-size: 30px; font-weight: 900; letter-spacing: .1em; color: #8a3fd0; margin-bottom: 18px; }
+#deid .ttl span { letter-spacing: 0; font-weight: 700; color: #8b8096; margin-left: 10px; }
+#deid .r { display: flex; align-items: center; gap: 24px; padding: 16px 0; border-top: 2px solid #f0eaf4; font-size: 42px; font-weight: 700; color: #2a1238; white-space: nowrap; }
+#deid .k { width: 190px; flex: none; font-size: 30px; font-weight: 750; color: #8b8096; }
+#deid .sw { position: relative; display: inline-block; }
+#deid .raw { position: relative; display: inline-block; }
+#deid .bar { position: absolute; left: -6px; top: 4px; bottom: 4px; width: 0; border-radius: 8px; background: #2a1238; }
+#deid .strike { position: absolute; left: -4px; top: 52%; height: 6px; width: 0; border-radius: 3px; background: #e0457b; }
+#deid .new { position: absolute; left: 0; top: 50%; padding: 4px 18px; border-radius: 14px; background: #fde4ef; color: #c2407a; font-weight: 900; opacity: 0; white-space: nowrap; }
+#deid .gone { margin-left: 18px; padding: 4px 16px; border-radius: 14px; background: #f1eef4; color: #8b8096; font-size: 30px; font-weight: 800; opacity: 0; }
+#review { z-index: 22; left: 70px; right: 70px; top: 450px; padding: 36px 44px 34px; border-radius: 44px; background: #fff;
+  box-shadow: 0 30px 80px rgba(90,40,120,.22); transform-origin: 50% 0; }
+#review h3 { font-size: 50px; font-weight: 900; letter-spacing: -0.02em; }
+#review .note { display: flex; align-items: center; gap: 14px; margin: 18px 0 10px; padding: 16px 20px; border-radius: 22px; background: #f6effa;
+  font-size: 30px; font-weight: 750; color: #4a2366; }
+#review .r { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; border-top: 2px solid #f0eaf4;
+  font-size: 40px; font-weight: 750; color: #2a1238; }
+#review .r.off span:first-child { color: #a79fb0; text-decoration: line-through; text-decoration-color: rgba(167,159,176,.6); }
+#review .sw2 { position: relative; width: 104px; height: 60px; border-radius: 30px; background: #8a3fd0; flex: none; }
+#review .sw2 i { position: absolute; top: 6px; left: 50px; width: 48px; height: 48px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.2); }
+#review .lbl { margin: 26px 0 12px; font-size: 26px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; color: #8b7a99; }
+#review .kw { height: 84px; padding: 0 26px; border-radius: 22px; border: 3px solid #e6d6f0; display: flex; align-items: center; font-size: 40px; font-weight: 700; }
+#kwCaret { display: inline-block; width: 4px; height: 46px; margin-left: 3px; background: #8a3fd0; }
+#review .kwrow { display: flex; align-items: center; gap: 14px; height: 72px; margin-top: 6px; }
+.kwChip { flex: none; padding: 8px 22px; border-radius: 999px; background: #fde4ef; color: #c2407a; font-size: 36px; font-weight: 850; white-space: nowrap; }
+.kwChip em { font-style: normal; opacity: .6; }
+#review .r small { margin-left: 10px; font-size: 30px; font-weight: 850; color: #e0457b; text-decoration: none; }
+/* As the app's sheet lays it out (26 October 2026): which years, a bar each; a word to leave out; what's included,
+   a switch a type of data, least personal first, a scale down its left edge. */
+#review .head2 { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 12px; }
+#review .head2 .lbl { margin: 0; }
+.yc { display: inline-block; margin-left: 10px; padding: 4px 18px; border-radius: 999px; border: 3px solid #eadcf3; font-size: 26px; font-weight: 800; color: #6d5a7c; }
+.yc.on { border-color: #8a3fd0; color: #8a3fd0; background: #f4ecfb; }
+#years { display: flex; gap: 10px; align-items: flex-end; height: 100px; }
+.yr { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
+.yr i { display: block; width: 100%; border-radius: 10px 10px 4px 4px; background: linear-gradient(160deg, #e0457b, #8a3fd0); }
+.yr small { font-size: 24px; font-weight: 800; color: #8b7a99; }
+#yearsOff { height: 36px; margin-top: 8px; font-size: 28px; font-weight: 700; color: #8b7a99; }
+#incl { position: relative; border: 3px solid #f0eaf4; border-radius: 28px; padding-left: 12px; overflow: hidden; }
+#incl::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12px; background: linear-gradient(#3fae74, #b783e0 55%, #e0457b); }
+#incl .r { padding: 12px 24px; }
+#incl .r:first-child { border-top: 0; }
+#incl .more { display: inline-block; margin-left: 14px; color: #8b7a99; }
+#chats { height: 0; overflow: hidden; padding-left: 30px; background: #faf5fd; }
+#chats .r { padding: 8px 24px 8px 0; font-size: 34px; }
+#chats .sw2 { width: 88px; height: 50px; } #chats .sw2 i { top: 5px; left: 42px; width: 40px; height: 40px; }
+#review .go { margin-top: 26px; padding: 28px; border-radius: 999px; text-align: center; color: #fff; font-size: 42px; font-weight: 900;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.35); }
+#tap { z-index: 35; font-size: 150px; filter: drop-shadow(0 20px 30px rgba(90,40,120,.35)); }
+#kb { z-index: 24; left: 50%; top: 1250px; padding: 22px 44px; border-radius: 999px; background: #fff; text-align: center; white-space: nowrap;
+  font-size: 50px; font-weight: 900; color: #c2407a; box-shadow: 0 20px 50px rgba(138,63,208,.2); }
+#kb span { margin-left: 14px; font-size: 34px; font-weight: 750; color: #6b6076; }
+#ent { z-index: 24; left: 230px; right: 230px; top: 400px; padding: 30px; border-radius: 36px; text-align: center; color: #fff; font-size: 42px; font-weight: 850;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.4); }
+#ent small { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; opacity: .92; }
+/* 4: nothing kept. */
+#vault { z-index: 20; left: 120px; right: 120px; top: 440px; padding: 36px 40px 30px; border-radius: 44px; background: #fff; text-align: center;
+  border: 5px solid transparent; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box;
+  box-shadow: 0 30px 80px rgba(138,63,208,.22); }
+#vault b { display: block; font-size: 46px; font-weight: 900; margin-bottom: 18px; }
+#vault .zero { display: flex; align-items: baseline; justify-content: center; gap: 22px; margin-top: 8px; font-size: 44px; font-weight: 750; color: #4a2366; }
+#vault .zero span { font-size: 92px; font-weight: 900; color: #c2407a; min-width: 70px; }
+#hack { z-index: 20; left: 120px; right: 120px; top: 920px; padding: 34px 40px; border-radius: 40px; text-align: center; color: #fff;
+  background: linear-gradient(120deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 24px 60px rgba(224,69,123,.35); }
+#hack .ic { display: block; font-size: 80px; }
+#hack b { display: block; margin-top: 8px; font-size: 46px; font-weight: 900; line-height: 1.15; }
+/* 4 (before): the answers. */
+.ans { z-index: 20; left: 70px; right: 70px; padding: 36px 42px; border-radius: 40px; font-size: 44px; line-height: 1.3; }
+.ans .who { display: block; margin-bottom: 14px; font-size: 34px; font-weight: 900; font-style: normal; }
+#ansA { top: 520px; background: #fff; border: 3px solid #d6d3da; color: #4b4553; font-style: italic; font-weight: 550; }
+#ansA .who { color: #6b6b73; }
+#ansB { top: 1060px; background: #fff; border: 5px solid transparent; color: #2a1238; font-style: italic; font-weight: 650;
+  background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #ff7a45, #e0457b, #8a3fd0) border-box; box-shadow: 0 30px 80px rgba(138,63,208,.25); }
+#ansB b { font-style: normal; color: #c2407a; }
+.stamp { z-index: 30; padding: 12px 30px; border-radius: 20px; font-size: 42px; font-weight: 900; white-space: nowrap; }
+#stA { right: 100px; top: 470px; color: #6b6b73; border: 6px solid #9a9aa3; background: rgba(255,255,255,.92); }
+#stB { right: 100px; top: 1010px; color: #fff; background: linear-gradient(90deg, #ff7a45, #e0457b, #8a3fd0); box-shadow: 0 16px 40px rgba(224,69,123,.4); }
+/* Impact: the stamp on the hook, a flash on each hit, the upload bar. */
+#stop { z-index: 40; left: 50%; top: 940px; padding: 26px 56px; border-radius: 28px; border: 10px solid #e0362c; color: #e0362c; background: rgba(255,255,255,.94);
+  font-size: 92px; font-weight: 950; letter-spacing: .02em; white-space: nowrap; box-shadow: 0 30px 80px rgba(224,54,44,.35); }
+#flash { position: absolute; inset: 0; z-index: 50; pointer-events: none; opacity: 0; }
+#up { z-index: 24; left: 140px; right: 140px; top: 1720px; }
+#up .lbl { display: flex; justify-content: space-between; font-size: 36px; font-weight: 850; color: #e6e3ea; margin-bottom: 14px; }
+#up .track { height: 30px; border-radius: 15px; background: rgba(255,255,255,.12); overflow: hidden; }
+#up .fill { height: 100%; width: 0; border-radius: 15px; background: #ff5a4f; box-shadow: 0 0 24px rgba(255,90,79,.6); }
+/* 5: the close. */
+#c1 { z-index: 30; left: 60px; right: 60px; top: 520px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.08; }
+#code { z-index: 30; left: 110px; right: 110px; top: 800px; padding: 30px 36px; border-radius: 36px; background: #fff; text-align: center;
+  box-shadow: 0 24px 60px rgba(90,40,120,.18); font-size: 44px; font-weight: 850; line-height: 1.2; }
+#code .ic { display: inline-block; margin-right: 12px; padding: 2px 14px; border-radius: 14px; background: #2a1238; color: #fff; font-size: 38px; font-weight: 900; }
+#code small { display: block; margin-top: 12px; font-size: 30px; font-weight: 700; color: #6b6076; }
+#tag { z-index: 30; left: 0; right: 0; top: 1110px; text-align: center; font-size: 56px; font-weight: 850; }
+#site { z-index: 30; left: 50%; top: 1230px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.4); }
+</style></head>
+<body>
+  <div class="blob" id="b1"></div><div class="blob" id="b2"></div>
+  <div id="grey"></div>
+  <div class="el" id="gpt">
+    <div class="sb"><span>9:41</span><span><i style="width:44px;height:26px"></i><i style="width:58px;height:28px;border-radius:8px"></i></span></div>
+    <div class="hd"><span class="menu"></span><span>ChatGPT</span><span class="chev">›</span><span class="new"></span></div>
+    <div class="hello" id="hello">What can I help with?</div>
+    <div class="comp" id="comp"><div class="file" id="file"><span class="ic"><b></b></span><span class="nm">instagram-export.zip<small>Zip Archive</small></span></div>
+      <div class="txt"><span id="typed"></span><span class="caret" id="caret"></span><span class="ph" id="ph">Ask anything</span></div>
+      <div class="row"><span class="plus">+</span><span class="mic"><i style="height:18px"></i><i style="height:38px"></i><i style="height:26px"></i><i style="height:46px"></i><i style="height:22px"></i></span><span class="send" id="send">↑</span></div></div>
+    <div class="home"></div>
+  </div>
+  <div class="el" id="finger">👆</div>
+  <div class="el" id="stop">✋ WAIT</div>
+  <div id="flash"></div>
+  <div id="ring"></div>
+
+  <div class="el caption" id="cap1">With <span class="dim">ChatGPT</span>,<br>everything goes up.</div>
+  <div class="el" id="cloud"></div>
+  <div class="el" id="zip"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig1" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig1)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div>
+  <div class="el" id="zipLabel">Your Instagram export</div>
+  <div id="items"></div>
+  <div class="el" id="up"><div class="lbl"><span>Uploading…</span><span id="pct">0%</span></div><div class="track"><div class="fill" id="fill"></div></div></div>
+  <div class="el warn" id="w1">May be used to train its models</div>
+  <div class="el warn" id="w2">Kept on its servers<small>until you delete it, then up to 30 days more</small></div>
+
+  <div class="el caption" id="cap3">Now watch<br><span class="grad">PsycheAI.</span></div>
+  <div class="el" id="phone"><div class="notch"></div><div class="inside"><svg class="ig" viewBox="0 0 100 100"><defs><radialGradient id="ig2" cx="28%" cy="108%" r="140%"><stop offset="0" stop-color="#fdd56b"/><stop offset=".12" stop-color="#fdc35b"/><stop offset=".42" stop-color="#f5513f"/><stop offset=".62" stop-color="#d6249f"/><stop offset=".92" stop-color="#5b4ae0"/></radialGradient></defs><rect width="100" height="100" rx="26" fill="url(#ig2)"/><rect x="21" y="21" width="58" height="58" rx="17" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="50" cy="50" r="13.5" fill="none" stroke="#fff" stroke-width="7.5"/><circle cx="67.5" cy="32.5" r="4.6" fill="#fff"/></svg></div><div class="lock">🔒 Read locally<span>on your phone</span></div></div>
+  <div class="el" id="badge">🔒</div>
+  <div class="el" id="noNet">✈️ No internet needed</div>
+
+  <div class="el caption" id="capD">A summary,<br><span class="grad">made on your phone.</span></div>
+  <div class="el" id="deid"><div class="ttl">YOUR SUMMARY<span>· de-identified</span></div>
+    <div class="r"><span class="k">Name</span><span class="raw" data-fx="bar" data-m="1" data-d="0.1">Jamie Lee<i class="bar"></i></span></div>
+    <div class="r"><span class="k">Messages</span><span>with</span><span class="sw" data-fx="swap" data-m="2"><span class="raw">Sarah Kim<i class="strike"></i></span><span class="new">[N1]</span></span></div>
+    <div class="r"><span class="k">Comment</span><span class="sw" data-fx="swap" data-m="2" data-d="0.25"><span class="raw">@tom.r<i class="strike"></i></span><span class="new">[P1]</span></span><span>loved this!</span></div>
+    <div class="r"><span class="k">Email</span><span class="raw" data-fx="cut" data-m="3">jamie.lee@gmail.com<i class="strike"></i></span><span class="gone">removed</span></div>
+    <div class="r"><span class="k">Phone</span><span class="raw" data-fx="cut" data-m="3" data-d="0.2">+1 415 555 0134<i class="strike"></i></span><span class="gone">removed</span></div>
+    <div class="r"><span class="k">Link</span><span class="raw" data-fx="cut" data-m="3" data-d="0.4">instagram.com/p/C8x<i class="strike"></i></span><span class="gone">removed</span></div>
+  </div>
+  <div class="el caption" id="capR">Leave out any year,<br><span class="grad">topic or type of data.</span></div>
+  <div class="el" id="review"><h3>Review what gets sent</h3>
+    <div class="head2"><span class="lbl">Which years</span><span><b class="yc on" id="ycAll">All</b><b class="yc">3 yrs</b><b class="yc">1 yr</b></span></div>
+    <div id="years"><span class="yr"><i style="height:20px"></i><small>’19</small></span><span class="yr"><i style="height:32px"></i><small>’20</small></span><span class="yr"><i style="height:43px"></i><small>’21</small></span><span class="yr"><i style="height:63px"></i><small>’22</small></span><span class="yr"><i style="height:54px"></i><small>’23</small></span><span class="yr"><i style="height:72px"></i><small>’24</small></span><span class="yr"><i style="height:61px"></i><small>’25</small></span><span class="yr"><i style="height:29px"></i><small>’26</small></span></div>
+    <div id="yearsOff">’19, ’20 left out</div>
+    <div class="lbl">Leave out anything mentioning</div>
+    <div class="kw"><span id="kwTyped"></span><b id="kwCaret"></b></div>
+    <div class="kwrow"><span class="kwChip" id="kwChip1">diagnosis <em>×</em></span><span class="kwChip" id="kwChip2">medication <em>×</em></span></div>
+    <div class="head2"><span class="lbl">What’s included</span></div>
+    <div id="incl">
+    <div class="r" id="rv2"><span>Your searches</span><span class="sw2"><i></i></span></div>
+    <div class="r"><span>Your posts &amp; comments</span><span class="sw2"><i></i></span></div>
+    <div class="r"><span>Direct messages<b class="more">›</b></span><span class="sw2"><i></i></span></div>
+    <!-- the row opened, as tapping its name does in the app: a switch a chat -->
+    <div id="chats"><div class="r"><span>Sarah Kim <small>[t1]</small></span><span class="sw2"><i></i></span></div><div class="r" id="rvChat"><span>Jordan Lee <small>[t2]</small></span><span class="sw2"><i></i></span></div></div>
+    </div>
+    <div class="go" id="go">Send this</div></div>
+  <div class="el" id="tap">👆</div>
+  <div class="el" id="ent">Google Vertex AI<small>enterprise · never trains on it</small></div>
+  <div class="el" id="kb">~150 KB of text<span>· no photos or videos</span></div>
+
+  <div class="el caption" id="cap4"><span class="grad">PsycheAI</span><br>keeps no copy.</div>
+  <div class="el" id="vault"><b>PsycheAI’s servers</b><div class="zero"><span>0</span>accounts</div><div class="zero"><span>0</span>reports kept</div></div>
+  <div class="el" id="hack"><span class="ic">🛡️</span><b>Even if a hack occurs,<br>there’s no data to steal.</b></div>
+
+  <div class="el" id="c1">Your data<br><span class="grad">stays yours.</span></div>
+  <div class="el" id="code"><span class="ic">&lt;/&gt;</span>The code is public<small>for you to inspect, on GitHub</small></div>
+  <div class="el" id="tag">Your personal AI coach</div>
+  <div class="el" id="site">psycheai.io ↗</div>
+<script>
+const TL = __TIMELINE__;
+const S = TL.scenes, BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  if (tf !== undefined) el.style.transform = tf; };
+const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
+const [ASK, UP, KEPT, PHONE, DEID, REVIEW, ANS, CLOSE] = S;
+// When a word is said in a scene (its first occurrence), for taps timed to it.
+const said = (s, w, fb) => { const x = s.words.find(([v]) => v.toLowerCase().replace(/[^a-z]/g, '') === w); return x ? x[1] : fb; };
+const live = (s, t) => t >= s.start - 0.05 && t < s.end;
+const out = (s, t) => prog(t, s.end - 0.12, s.end);   // quick cuts
+
+const QUESTION = 'Here’s my whole Instagram export. Tell me who I am.';
+// The cloud: one shape (overlapping circles in one fill, shadowed as a whole, so no seams), soft white to cool grey.
+$('cloud').innerHTML = '<svg viewBox="0 0 1000 560"><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="490" gradientUnits="userSpaceOnUse">' +
+  '<stop offset="0" stop-color="#5a5762"/><stop offset="1" stop-color="#34313a"/></linearGradient></defs><g fill="url(#cg)">' +
+  '<circle cx="250" cy="250" r="170"/><circle cx="480" cy="180" r="180"/><circle cx="720" cy="240" r="160"/><circle cx="860" cy="360" r="110"/>' +
+  '<circle cx="140" cy="380" r="110"/><rect x="140" y="250" width="720" height="240" rx="110"/></g></svg>';
+mk('name', '<i></i>ChatGPT’s servers', $('cloud'));
+const ITEMS = [['👤 Your name', 0], ['💬 Friends’ private messages', 1], ['@ Their handles', 1], ['📷 Your photos', 1], ['🎥 Your videos', 1]];
+const items = ITEMS.map(([h]) => mk('item el', h, $('items')));
+const SPOTS = [[265, 610], [715, 610], [265, 705], [715, 705], [490, 800]];   // where each lands in the cloud: two rows of two and one centred, the label under them
+
+// A shake and a flash on every hit: the hook's stamp, each warning, the switch to PsycheAI, the zeros.
+const HITS = () => [[ASK.marks[1], '#e0362c'], [UP.vo, null], [KEPT.vo, '#e0362c'], [KEPT.marks[1], '#e0362c'], [PHONE.start, '#ffffff'], [ANS.vo, null]];
+function render(t) {
+  { let sh = 0, fl = 0, col = '#fff';
+    HITS().forEach(([h, c]) => { const d = t - h; if (d >= 0 && d < 0.5) { sh = Math.max(sh, (1 - d / 0.5) ** 2); if (c && d < 0.35) { const f = (1 - d / 0.35) * (c === '#ffffff' ? 0.9 : 0.3); if (f > fl) { fl = f; col = c; } } } });
+    // A zoom punch on every cut.
+    let z = 0; S.forEach(c => { const d = t - c.start; if (c.start > 0 && d >= 0 && d < 0.3) z = Math.max(z, 1 - ease(d / 0.3)); });
+    document.body.style.transform = sh || z ? 'translate(' + Math.sin(t * 90) * 18 * sh + 'px,' + Math.cos(t * 77) * 14 * sh + 'px) scale(' + (1 + 0.03 * sh + 0.07 * z) + ')' : '';
+    $('flash').style.opacity = fl; $('flash').style.background = col; }
+  // Dark while ChatGPT has the data; at the switch a burst of the brand's rings wipes it away from the centre.
+  { const w = ease(prog(t, PHONE.start, PHONE.start + 0.5)), r = 1500 * w;
+    $('grey').style.display = w < 1 ? 'block' : 'none';
+    $('grey').style.webkitMaskImage = w > 0 ? 'radial-gradient(circle at 50% 46%, transparent ' + r + 'px, #000 ' + (r + 2) + 'px)' : 'none';
+    const ring = $('ring'); ring.style.display = w > 0 && w < 1 ? 'block' : 'none';
+    Object.assign(ring.style, { left: (540 - r) + 'px', top: (883 - r) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: 1 - w * w }); }
+  $('b1').style.transform = 'translate(' + Math.sin(t * .5) * 120 + 'px,' + Math.cos(t * .4) * 140 + 'px)';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .45) * 140 + 'px,' + Math.sin(t * .35) * 160 + 'px)';
+
+  // 0: the ChatGPT app, the export attached, the question typed, a finger reaching for send as WAIT lands.
+  { const s = ASK, a = back(prog(t, s.start, s.start + 0.3));
+    show('gpt', live(s, t) ? 1 - out(s, t) : 0);
+    $('file').style.transform = 'scale(' + Math.min(1.05, a) + ')';
+    const n = Math.round(QUESTION.length * prog(t, s.vo, s.marks[1] - 0.6));
+    $('typed').textContent = QUESTION.slice(0, n); $('ph').style.display = n ? 'none' : 'inline';
+    $('caret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.1 : 1;
+    const f = easeIO(prog(t, s.marks[1] - 0.75, s.marks[1] - 0.1));
+    show('finger', live(s, t) && f > 0 ? 1 - out(s, t) : 0);
+    if (f > 0 && live(s, t)) { const b = $('send').getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;   // the fingertip onto send
+      $('finger').style.left = (x + 60 * (1 - f) - 80) + 'px'; $('finger').style.top = (y + 420 * (1 - f) - 34) + 'px'; }
+    const st = back(prog(t, s.marks[1] - 0.12, s.marks[1] + 0.12)), big = 1 + 1.6 * (1 - Math.min(1, prog(t, s.marks[1] - 0.12, s.marks[1] + 0.1)));
+    show('stop', live(s, t) && t >= s.marks[1] - 0.12 ? clamp(st * 3) * (1 - out(s, t)) : 0, 'translateX(-50%) rotate(-7deg) scale(' + big + ')'); }
+
+  // 1-2: the export opens and its contents fly up into the cloud, which stays for the two warnings.
+  { const on = t >= UP.start - 0.05 && t < KEPT.end, o = prog(t, KEPT.end - 0.25, KEPT.end);
+    const c = back(prog(t, UP.start, UP.start + 0.4));
+    show('cap1', on ? clamp(c * 2) * (1 - o) : 0);
+    show('cloud', on ? clamp(c * 2) * (1 - o) : 0, 'scale(' + (0.9 + 0.1 * Math.min(1, c)) + ')');
+    const zipOn = t >= UP.start - 0.05 && t < UP.end;
+    show('zip', zipOn ? clamp(c * 2) * (1 - out(UP, t)) : 0, 'rotate(' + Math.sin(t * 9) * 4 * prog(t, UP.vo, UP.marks[1]) + 'deg)');
+    show('zipLabel', zipOn ? clamp(c * 2) * (1 - out(UP, t)) : 0);
+    items.forEach((d, i) => { const a = UP.marks[1] + i * 0.38 - 0.1, f = easeIO(prog(t, a, a + 0.7)), pop = back(prog(t, a - 0.05, a + 0.2));
+      const [x1, y1] = SPOTS[i], x0 = 540, y0 = 1380;
+      d.style.left = (x0 + (x1 - x0) * f) + 'px'; d.style.top = (y0 + (y1 - y0) * f) + 'px';
+      show(d, on && t >= a - 0.05 ? clamp(pop * 2) * (1 - o) : 0, 'translate(-50%,-50%) scale(' + Math.min(1.05, pop) * (1 - 0.15 * f) + ')'); });
+    const u = easeIO(prog(t, UP.marks[1] - 0.2, UP.end - 0.2));
+    show('up', zipOn ? clamp(c * 2) * (1 - out(UP, t)) : 0); $('fill').style.width = (u * 100) + '%'; $('pct').textContent = Math.round(u * 100) + '%';
+    [['w1', KEPT.vo], ['w2', KEPT.marks[1]]].forEach(([id, a], i) => { const p = back(prog(t, a - 0.15, a + 0.25));
+      $(id).style.top = (1060 + i * 260) + 'px';
+      show(id, t >= a - 0.15 && t < KEPT.end ? clamp(p * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, p)) + ') rotate(' + (i ? 1 : -1) + 'deg)'); }); }
+
+  // 3: the export read on the phone: it locks as "read locally" is said, with no internet needed (as in the privacy video).
+  { const s = PHONE, on = live(s, t), o = out(s, t), a = back(prog(t, s.start, s.start + 0.45));
+    const slam = back(prog(t, s.start + 0.05, s.start + 0.35));
+    show('cap3', on && t >= s.start + 0.05 ? clamp(slam * 3) * (1 - o) : 0, 'scale(' + (1 + 0.8 * (1 - Math.min(1, slam))) + ')');
+    show('phone', on ? clamp(a * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, a)) * 200 + 'px)');
+    const k = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.2));
+    show('badge', on && t >= s.marks[1] - 0.1 ? clamp(k * 2) * (1 - o) : 0, 'scale(' + (1 + 1.2 * (1 - Math.min(1, k))) + ') rotate(' + (1 - Math.min(1, k)) * -30 + 'deg)');
+    const nn = back(prog(t, s.marks[1] + 0.45, s.marks[1] + 0.75));
+    show('noNet', on && t >= s.marks[1] + 0.45 ? clamp(nn * 2) * (1 - o) : 0, 'translateX(-50%) scale(' + Math.min(1.05, nn) + ')'); }
+
+  // 3b: the de-identification, each step as the voice names it (the FAQ's list): the name blacked out, friends
+  // turned into [N1] and [P1], contacts and links struck out; then the summary flies into the enterprise AI.
+  { const s = DEID, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
+    show('capD', on ? clamp(c * 2) * (1 - o) : 0);
+    $('deid').querySelectorAll('[data-fx]').forEach(el => {
+      const at = s.marks[+el.dataset.m] + 0.15 + (+el.dataset.d || 0), p = ease(prog(t, at, at + 0.45)), fx = el.dataset.fx;
+      if (fx === 'bar') el.querySelector('.bar').style.width = 'calc((100% + 12px) * ' + p + ')';
+      if (fx === 'swap') { el.querySelector('.strike').style.width = 'calc((100% + 8px) * ' + clamp(p * 2) + ')';
+        el.querySelector('.raw').style.opacity = 1 - prog(t, at + 0.25, at + 0.45);
+        const n = back(prog(t, at + 0.3, at + 0.55)), nw = el.querySelector('.new');
+        nw.style.opacity = clamp(n * 2); nw.style.transform = 'translateY(-50%) scale(' + (0.4 + 0.6 * Math.min(1.08, n)) + ')';
+        // The gap closes onto the shorter tag, so the line reads on without a hole.
+        const rw = el.querySelector('.raw'), sh = easeIO(prog(t, at + 0.3, at + 0.6));
+        if (rw.offsetWidth && !rw.dataset.w && !el.style.width) rw.dataset.w = rw.offsetWidth;   // measured only while laid out
+        const w0 = +rw.dataset.w || 0;
+        if (!sh || !w0 || !nw.offsetWidth) el.style.width = ''; else el.style.width = (w0 + (nw.offsetWidth - w0) * sh) + 'px'; }
+      if (fx === 'cut') { el.querySelector('.strike').style.width = 'calc((100% + 8px) * ' + p + ')';
+        el.style.opacity = 1 - 0.65 * prog(t, at + 0.35, at + 0.6);
+        const g = el.nextElementSibling; g.style.opacity = prog(t, at + 0.35, at + 0.6); } });
+    const d = back(prog(t, s.vo - 0.2, s.vo + 0.15));
+    show('deid', on ? clamp(d * 2) * (1 - o) : 0, 'translateY(' + (1 - Math.min(1, d)) * 60 + 'px)');
+    // "A summary is made": its rows written in one after another.
+    $('deid').querySelectorAll('.r').forEach((r, i) => { const w = back(prog(t, s.vo + 0.35 + i * 0.16, s.vo + 0.6 + i * 0.16));
+      r.style.opacity = clamp(w * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, w)) * -40 + 'px)'; });
+    const kb = back(prog(t, s.marks[3] + 1.0, s.marks[3] + 1.3));
+    show('kb', on && t >= s.marks[3] + 1.0 ? clamp(kb * 2) * (1 - o) : 0, 'translateX(-50%) scale(' + (0.7 + 0.3 * Math.min(1.05, kb)) + ')'); }
+
+  // 3c: the review sheet. The finger taps the two earliest years off on "year"; two topics are typed as
+  // "topic" is said and become chips; the finger switches "Your searches" off on "type", then, the direct
+  // messages opened, Jordan Lee's chat, then presses Send this; only then does the sheet shrink and rise into the enterprise AI.
+  { const s = REVIEW, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
+    show('capR', on ? clamp(c * 2) * (1 - o) : 0);
+    // The first two years switched off as "year" is said, so "All" no longer applies.
+    const T0 = said(s, 'year', s.marks[1] + 0.6), bars = [...$('years').children];
+    bars.forEach((bar, i) => { const k = i < 2 ? ease(prog(t, T0 + i * 0.25, T0 + i * 0.25 + 0.15)) : 0;
+      bar.querySelector('i').style.opacity = 1 - 0.8 * k; bar.querySelector('i').style.filter = 'grayscale(' + k + ')';
+      bar.querySelector('small').style.textDecoration = k > 0.5 ? 'line-through' : ''; });
+    $('ycAll').classList.toggle('on', t < T0);
+    $('yearsOff').style.opacity = prog(t, T0 + 0.35, T0 + 0.55);
+    // Two sensitive topics, typed one after the other from "topic", each becoming a chip.
+    const WORDS = ['diagnosis', 'medication'], typeAt = said(s, 'topic', s.marks[1] + 1.0), PER = 0.5;
+    const w = Math.min(WORDS.length - 1, Math.floor(Math.max(0, t - typeAt) / PER)), into = t - typeAt - w * PER;
+    $('kwTyped').textContent = t < typeAt || t >= typeAt + WORDS.length * PER - 0.12 || into > 0.4 ? '' : WORDS[w].slice(0, Math.round(WORDS[w].length * prog(into, 0, 0.32)));
+    $('kwCaret').style.opacity = Math.floor(t * 2.6) % 2 ? 0.15 : 1;
+    WORDS.forEach((_, i) => { const chip = back(prog(t, typeAt + i * PER + 0.4, typeAt + i * PER + 0.6));
+      $('kwChip' + (i + 1)).style.opacity = clamp(chip * 2); $('kwChip' + (i + 1)).style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.05, chip)) + ')'; });
+    const T1 = said(s, 'type', (s.marks[2] || s.marks[1]) + 0.8), T3 = Math.max(said(s, 'data', T1 + 0.4) + 1.65, s.voEnd + 0.1);
+    // Then the direct messages open, as tapping the row's name does, and one chat is switched off.
+    const T2o = said(s, 'data', T1 + 0.4) + 0.15, T2 = T2o + 0.8, opened = ease(prog(t, T2o, T2o + 0.35));
+    $('chats').style.height = 132 * opened + 'px'; $('incl').querySelector('.more').style.transform = 'rotate(' + 90 * opened + 'deg)';
+    [['rv2', T1, 50], ['rvChat', T2, 42]].forEach(([id, at, x]) => { const k = ease(prog(t, at, at + 0.15)), row = $(id);
+      row.querySelector('i').style.left = (x - (x - 6) * k) + 'px';
+      row.querySelector('.sw2').style.background = k > 0.5 ? '#d6d0dc' : '#8a3fd0'; row.classList.toggle('off', k > 0.5); });
+    $('go').style.transform = 'scale(' + (1 - 0.06 * Math.sin(Math.PI * prog(t, T3 - 0.05, T3 + 0.15))) + ')';
+    const e = back(prog(t, T3 + 0.05, T3 + 0.35)), f = easeIO(prog(t, T3 + 0.25, T3 + 1.0)), gone = prog(t, T3 + 0.8, T3 + 1.05);
+    const d = back(prog(t, s.vo - 0.2, s.vo + 0.15));
+    show('review', on && gone < 1 ? clamp(d * 2) * (1 - gone) * (1 - o) : 0, 'translateY(' + ((1 - Math.min(1, d)) * 60 - 200 * f) + 'px) scale(' + (1 - 0.8 * f) + ')');
+    // The finger: in from below to the first switch, on to the second, then to Send this, and away.
+    const pt = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+    if (on && $('review').style.display === 'block') {
+      const P0 = [900, 2000], Y0 = pt(bars[0]), Y1 = pt(bars[1]), P1 = pt($('rv2').querySelector('.sw2')), P2 = pt($('rvChat').querySelector('.sw2')), P3 = pt($('go'));
+      const legs = [[T0 - 0.5, T0, P0, Y0], [T0 + 0.05, T0 + 0.25, Y0, Y1], [T1 - 0.5, T1, Y1, P1], [T2 - 0.45, T2, P1, P2], [T3 - 0.5, T3, P2, P3], [T3 + 0.2, T3 + 0.6, P3, [900, 2100]]];
+      let pos = P0; legs.forEach(([a, b, A, B]) => { if (t >= a) { const k = easeIO(prog(t, a, b)); pos = [A[0] + (B[0] - A[0]) * k, A[1] + (B[1] - A[1]) * k]; } });
+      const press = [T0, T0 + 0.25, T1, T2, T3].some(x => t >= x - 0.05 && t < x + 0.12) ? 0.9 : 1;
+      $('tap').style.left = (pos[0] - 80) + 'px'; $('tap').style.top = (pos[1] - 34) + 'px';
+      show('tap', t >= T0 - 0.5 && t < T3 + 0.6 ? 1 - o : 0, 'scale(' + press + ')');
+    } else show('tap', 0);
+    const gulp = Math.sin(Math.PI * prog(t, T3 + 0.8, T3 + 1.1)) * 0.08;
+    show('ent', on && t >= T3 + 0.05 ? clamp(e * 2) * (1 - o) : 0, 'scale(' + (Math.min(1.05, e) + gulp) + ')');
+  }
+
+  // 4: PsycheAI's servers keep nothing (only zeros, never another number), and a hack finds nothing.
+  { const s = ANS, on = live(s, t), o = out(s, t), c = back(prog(t, s.start, s.start + 0.35));
+    show('cap4', on ? clamp(c * 2) * (1 - o) : 0);
+    const v = back(prog(t, s.vo, s.vo + 0.4));
+    show('vault', on ? clamp(v * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, v)) + ')');
+    [...$('vault').querySelectorAll('.zero')].forEach((z, i) => { const p = back(prog(t, s.vo + 0.15 + i * 0.25, s.vo + 0.45 + i * 0.25));
+      z.style.opacity = clamp(p * 2); z.style.transform = 'scale(' + (0.7 + 0.3 * Math.min(1.05, p)) + ')'; });
+    const h = back(prog(t, s.marks[1] - 0.2, s.marks[1] + 0.2));
+    show('hack', on && t >= s.marks[1] - 0.2 ? clamp(h * 2) * (1 - o) : 0, 'scale(' + (0.85 + 0.15 * Math.min(1, h)) + ')'); }
+
+  // 5: the close.
+  { const s = CLOSE, on = t >= s.start - 0.05, a = back(prog(t, s.vo - 0.15, s.vo + 0.25)), d = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
+    // The code card, unspoken, while the first line is said (no pause between the lines since 25 October 2026).
+    const kc = s.vo + 0.6, k = back(prog(t, kc, kc + 0.35));
+    show('c1', on ? clamp(a * 2) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
+    show('code', on && t >= kc ? clamp(k * 2) : 0, 'translateY(' + (1 - Math.min(1, k)) * 50 + 'px)');
+    show('tag', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0);
+    show('site', on && t >= s.marks[1] - 0.1 ? clamp(d * 2) : 0, 'translateX(-50%) scale(' + Math.min(1.05, d) + ')'); }
+}
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>

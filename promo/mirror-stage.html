@@ -1,0 +1,279 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* The mirror reel (shorts.py mirror): what I say about myself against what my data says, three times, then who
+   PsycheAI says I am. Night-blue ground; what I say in a chat bubble, what the data says in a panel below it. */
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0c0a1c; }
+body { font-family: Inter, sans-serif; color: #fff; }
+.el { position: absolute; display: none; }
+#ground { position: absolute; inset: 0; }
+.blob { position: absolute; border-radius: 50%; filter: blur(110px); }
+#b1 { width: 760px; height: 760px; left: -240px; top: -120px; background: rgba(110,60,220,.55); }
+#b2 { width: 720px; height: 720px; right: -260px; top: 1150px; background: rgba(40,180,230,.35); }
+#world { position: absolute; inset: 0; }
+.grad { background: linear-gradient(90deg, #ff7a45, #e0457b 50%, #a46cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.data { background: linear-gradient(90deg, #5ef2ff, #8f9bff 55%, #d47bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#flash { position: absolute; inset: 0; z-index: 90; background: #fff; opacity: 0; pointer-events: none; }
+/* The hook. */
+#h1 { z-index: 20; left: 60px; right: 60px; top: 560px; text-align: center; font-size: 96px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; }
+#h2 { z-index: 20; left: 60px; right: 60px; top: 820px; text-align: center; font-size: 84px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; }
+.app { z-index: 21; width: 150px; text-align: center; }
+.app .ic { position: relative; width: 150px; height: 150px; border-radius: 40px; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+#ig .ic { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+#ig .ic::before { content: ''; position: absolute; inset: 33px; border: 10px solid #fff; border-radius: 30px; }
+#ig .ic::after { content: ''; position: absolute; left: 55px; top: 55px; width: 40px; height: 40px; border: 10px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#gg .ic { background: #fff; }
+#gg .ic::before { content: 'G'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 900 100px/1 Inter, sans-serif;
+  background: conic-gradient(from -45deg, #ea4335 0 25%, #4285f4 0 50%, #34a853 0 75%, #fbbc05 0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#wa .ic { background: #25d366; }
+#wa .ic::before { content: ''; position: absolute; left: 32px; top: 28px; width: 86px; height: 86px; border: 10px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#wa .ic::after { content: ''; position: absolute; left: 28px; top: 100px; width: 0; height: 0; border-left: 18px solid transparent; border-top: 24px solid #fff; transform: rotate(18deg); }
+/* The claims. */
+.lab { z-index: 20; left: 80px; font-size: 32px; font-weight: 850; letter-spacing: .14em; }
+#labSay { top: 250px; color: rgba(255,255,255,.6); }
+#labData { top: 620px; }
+#round { z-index: 20; right: 80px; top: 246px; padding: 8px 22px; border-radius: 999px; font-size: 30px; font-weight: 850; color: rgba(255,255,255,.75);
+  border: 2px solid rgba(255,255,255,.25); }
+.bubble { z-index: 22; right: 80px; top: 320px; max-width: 880px; padding: 34px 48px; border-radius: 56px 56px 14px 56px; font-size: 64px; font-weight: 850;
+  letter-spacing: -0.02em; line-height: 1.1; background: linear-gradient(135deg, #7b3fe4, #c2407a); box-shadow: 0 30px 80px rgba(120,50,200,.45); }
+.bubble .strike { position: absolute; left: 30px; right: 30px; top: 50%; height: 10px; margin-top: -5px; border-radius: 5px; background: #ff3d5a;
+  transform-origin: 0 50%; box-shadow: 0 0 20px rgba(255,61,90,.8); }
+.panel { z-index: 20; left: 70px; right: 70px; top: 690px; height: 640px; border-radius: 44px; overflow: hidden;
+  background: linear-gradient(170deg, rgba(30,28,58,.96), rgba(16,14,34,.96)); border: 2px solid rgba(110,200,255,.28); box-shadow: 0 40px 100px rgba(0,0,0,.5); }
+.panel .bar { position: absolute; left: 0; right: 0; top: 0; height: 110px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px;
+  font-size: 36px; font-weight: 800; border-bottom: 2px solid rgba(110,200,255,.15); background: #1b1937; z-index: 3; }
+.count { padding: 8px 24px; border-radius: 999px; font-size: 34px; font-weight: 900; color: #0c0a1c; background: #5ef2ff; }
+.punch { z-index: 40; left: 50px; right: 50px; top: 1400px; text-align: center; font-size: 86px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.06;
+  filter: drop-shadow(0 0 30px rgba(94,242,255,.35)); }
+/* 1: a chat, mostly his side of it. */
+#chat { position: absolute; left: 30px; right: 30px; top: 120px; bottom: 20px; overflow: hidden; }
+.cb { position: absolute; max-width: 74%; padding: 16px 26px; border-radius: 30px; font-size: 32px; font-weight: 650; line-height: 1.25; white-space: nowrap; }
+.cb.me { right: 0; background: linear-gradient(135deg, #7b3fe4, #c2407a); border-bottom-right-radius: 8px; }
+.cb.them { left: 0; background: rgba(255,255,255,.1); color: #d9d4ef; border-bottom-left-radius: 8px; }
+#peakTag { z-index: 23; padding: 12px 26px; border-radius: 22px; font-size: 40px; font-weight: 900; color: #0c0a1c; background: #5ef2ff; white-space: nowrap;
+  box-shadow: 0 0 40px rgba(94,242,255,.6); }
+/* 2: recent searches on Instagram. */
+#igList { position: absolute; left: 0; right: 0; top: 110px; }
+.row { position: absolute; left: 24px; right: 24px; height: 110px; display: flex; align-items: center; gap: 24px; padding: 0 22px; border-radius: 26px; }
+.row .pic { flex: none; width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, #ffb3c7, #c79bff); filter: blur(3px); }
+.row .nm { flex: 1; font-size: 36px; font-weight: 800; }
+.row .nm small { display: block; font-size: 26px; font-weight: 600; color: rgba(255,255,255,.5); }
+.row .x { font-size: 34px; color: rgba(255,255,255,.4); }
+/* 3: a search on Google, and when it was searched. */
+#gq { position: absolute; left: 34px; right: 34px; top: 140px; height: 104px; border-radius: 52px; display: flex; align-items: center; gap: 20px; padding: 0 36px;
+  background: rgba(255,255,255,.1); border: 2px solid rgba(94,242,255,.4); color: #fff; font-size: 42px; font-weight: 700; white-space: nowrap; }
+#gq .caret { display: inline-block; width: 4px; height: 50px; margin-left: 3px; vertical-align: middle; background: #5ef2ff; }
+#dates { position: absolute; left: 34px; right: 34px; top: 280px; }
+.when { position: absolute; left: 0; right: 0; height: 66px; display: flex; align-items: center; gap: 22px; padding: 0 26px; font-size: 32px; font-weight: 650;
+  color: rgba(255,255,255,.8); border-radius: 20px; background: rgba(255,255,255,.05); }
+.when b { color: #8f9bff; font-weight: 850; min-width: 150px; }
+.when span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The turn: the card, and who it says I am. */
+#turn { z-index: 30; left: 60px; right: 60px; top: 200px; text-align: center; font-size: 66px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
+#card { z-index: 25; left: 300px; top: 400px; width: 480px; border-radius: 26px; box-shadow: 0 0 80px rgba(143,155,255,.55), 0 40px 90px rgba(0,0,0,.5); }
+.chip { z-index: 31; left: 50%; padding: 22px 40px; border-radius: 999px; font-size: 48px; font-weight: 850; white-space: nowrap; color: #2a1238;
+  background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+/* The close. */
+#c1 { z-index: 30; left: 50px; right: 50px; top: 560px; text-align: center; font-size: 92px; font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; }
+#c2 { z-index: 30; left: 50px; right: 50px; top: 860px; text-align: center; font-size: 96px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; }
+#tag { z-index: 30; left: 0; right: 0; top: 1130px; text-align: center; font-size: 52px; font-weight: 800; color: rgba(255,255,255,.85); }
+#site { z-index: 30; left: 50%; top: 1240px; padding: 28px 64px; border-radius: 999px; font-size: 56px; font-weight: 900; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7a45, #e0457b 55%, #8a3fd0); box-shadow: 0 20px 60px rgba(224,69,123,.45); }
+</style></head>
+<body>
+  <div id="ground"><div class="blob" id="b1"></div><div class="blob" id="b2"></div></div>
+  <div id="world">
+    <div class="el" id="h1">I told an AI<br>who I am.</div>
+    <div class="el" id="h2">Then I let it read<br><span class="data">my data.</span></div>
+    <div class="el app" id="ig"><div class="ic"></div></div>
+    <div class="el app" id="wa"><div class="ic"></div></div>
+    <div class="el app" id="gg"><div class="ic"></div></div>
+
+    <div class="el lab" id="labSay">WHAT I THOUGHT</div>
+    <div class="el lab data" id="labData">WHAT MY DATA SAYS</div>
+    <div class="el" id="round"></div>
+    <div id="bubbles"></div>
+    <div id="punches"></div>
+    <div class="el panel" id="p1"><div class="bar"><span>💬 Messages</span><span class="count" id="n1">0 sent · 0 received</span></div>
+      <div id="chat"></div></div>
+    <div class="el" id="peakTag">5 : 1</div>
+    <div class="el panel" id="p2"><div class="bar"><span>🔍 Recent searches</span><span class="count" id="n2">0×</span></div><div id="igList"></div></div>
+    <div class="el panel" id="p3"><div class="bar"><span>💬 Search in messages</span><span class="count" id="n3">0×</span></div>
+      <div id="gq"><span>🔍</span><span><span id="gtyped"></span><span class="caret" id="gcaret"></span></span></div><div id="dates"></div></div>
+
+    <div class="el" id="turn">It’s time I spent more time<br><span class="grad">understanding myself.</span></div>
+    <img class="el" id="card" src="assets/card-odysseus.png">
+    <div id="chips"></div>
+
+    <div class="el" id="c1">You’re not who<br>you think you are.</div>
+    <div class="el" id="c2">Understand<br><span class="data">yourself better.</span></div>
+    <div class="el" id="tag">Your personal AI coach</div>
+    <div class="el" id="site">psycheai.io ↗</div>
+  </div>
+  <div id="flash"></div>
+<script>
+const TL = __TIMELINE__;
+// Since 24 October the reel opens on the first claim and goes from the third to the close: four scenes. The hook and
+// the card (with its three lines) are kept below for an earlier cut, as scenes that never come.
+const NEVER = at => ({ start: at, end: at + 1, vo: at, voEnd: at + 1, marks: [at, at + 0.5, at + 0.8], words: [] });
+const S = TL.scenes.length === 4 ? [NEVER(-100), ...TL.scenes.slice(0, 3), NEVER(1e6), TL.scenes[3]] : TL.scenes, BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const show = (id, o, tf) => { const el = typeof id === 'string' ? $(id) : id; el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  if (tf !== undefined) el.style.transform = tf; };
+const mk = (cls, html, parent) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d; };
+const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+const [HOOK, , , , TURN, CLOSE] = S;
+const PUNCH = [1, 2, 3].map(i => S[i].marks[1]);
+
+// What I say, and what the data says back.
+const CLAIMS = [
+  { say: 'I’m a great listener.', punch: '5 messages sent<br>for every 1 received.' },
+  { say: 'I’m easygoing and chill.', punch: '“Just to confirm”<br>96 times.' },
+  { say: 'I’m over my ex.', punch: 'Searched her profile<br>63 times this year.' },
+];
+const bubbles = CLAIMS.map(c => { const d = mk('el bubble', c.say + '<div class="strike"></div>', $('bubbles')); return d; });
+const punches = CLAIMS.map(c => mk('el punch data', c.punch, $('punches')));
+
+// 1: a friend's bad day, and his answers to it: three of his for every one of theirs.
+const CHAT = [['them', 'rough day tbh'], ['me', 'omg same'], ['me', 'so my boss today…'], ['me', 'and THEN he said'],
+  ['me', 'right?? anyway'], ['me', 'also my landlord'], ['them', 'haha ok'], ['me', 'long story 😂'], ['me', 'wait what was yours'],
+  ['me', 'sorry I got carried away'], ['me', 'tell me!!'], ['me', 'actually one more thing']];
+const cbs = CHAT.map(([who, tx]) => mk('cb ' + who, tx, $('chat')));
+// The ex (the third claim, panel p2): the same profile, over and over.
+const igRows = Array.from({ length: 9 }, (_, i) => mk('row', '<div class="pic"></div><div class="nm">h•••••_•••<small>Searched · ' +
+  ['2d', '4d', '6d', '1w', '1w', '2w', '3w', '1mo', '2mo'][i] + '</small></div><div class="x">✕</div>', $('igList')));
+// Easygoing (the second claim, panel p3): one phrase, in every chat.
+const GQ = 'just to confirm';
+const DATES = [['Sam', '7:15, not 7:30?'], ['Mum', 'you got my last message?'], ['Team', 'slide 4 before 5?'], ['Alex', 'you’re bringing the plates?'],
+  ['Jess', 'we’re splitting it 4 ways?'], ['Landlord', 'the 3rd, by noon?'], ['Dan', 'gate B, not C?'], ['Priya', 'the blue one, right?'], ['Group', 'everyone’s ok with 8?']];
+const dates = DATES.map(([w, x], i) => { const d = mk('when', '<b>' + w + '</b><span>“Just to confirm, ' + x + '”</span>', $('dates')); d.style.top = (i * 76) + 'px'; return d; });
+// Who it says I am.
+const CHIPS = ['🗣️ Needs to be heard', '📐 Needs things just right', '💭 Feels more than he shows'];
+const chips = CHIPS.map((c, i) => { const d = mk('el chip', c, $('chips')); d.style.top = (1290 + i * 128) + 'px'; return d; });
+
+function render(t) {
+  const ph = (t % BEAT) / BEAT, pulse = t >= S[1].start ? Math.exp(-ph * 6) : 0;
+  $('b1').style.transform = 'translate(' + Math.sin(t * .5) * 120 + 'px,' + Math.cos(t * .4) * 140 + 'px) scale(' + (1 + pulse * 0.05) + ')';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .45) * 140 + 'px,' + Math.sin(t * .35) * 160 + 'px) scale(' + (1 + pulse * 0.05) + ')';
+  // Warmer for who I actually am.
+  const warm = easeIO(prog(t, TURN.start - 0.2, TURN.start + 0.6));
+  $('b1').style.background = 'rgba(' + Math.round(110 + 114 * warm) + ',' + Math.round(60 + 9 * warm) + ',' + Math.round(220 - 97 * warm) + ',.55)';
+  $('flash').style.opacity = 0.5 * (1 - prog(t, TURN.start, TURN.start + 0.35)) * (t >= TURN.start ? 1 : 0);
+  // Each punchline shakes the world a little.
+  const hit = PUNCH.reduce((m, p) => Math.max(m, t >= p ? 1 - prog(t, p, p + 0.35) : 0), 0);
+  $('world').style.transform = hit ? 'translate(' + Math.sin(t * 90) * 14 * hit + 'px,' + Math.cos(t * 77) * 10 * hit + 'px)' : '';
+  hook(t);
+  claims(t, pulse);
+  turn(t, pulse);
+  close(t, pulse);
+}
+
+function hook(t) {
+  if (t >= HOOK.end) { ['h1', 'h2', 'ig', 'wa', 'gg'].forEach(id => show(id, 0)); return; }
+  const s = HOOK, m1 = s.marks[1], out = prog(t, s.end - 0.25, s.end);
+  const a = back(prog(t, s.vo - 0.15, s.vo + 0.25));
+  show('h1', clamp(a * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
+  const b = back(prog(t, m1 - 0.15, m1 + 0.25));
+  show('h2', clamp(b * 2) * (1 - out), 'scale(' + (0.8 + 0.2 * Math.min(1, b)) + ')');
+  // The data comes in: Instagram, WhatsApp and Google pop up below and fly into "my data".
+  [['ig', -1, 0], ['wa', 0, 0.12], ['gg', 1, 0.24]].forEach(([id, side, d]) => {
+    const a0 = m1 + 0.2 + d, pop = back(prog(t, a0, a0 + 0.3)), fly = easeIO(prog(t, a0 + 0.55, s.end - 0.1));
+    const x0 = 540 + side * 230 - 75, y0 = 1260, x1 = 540 - 75 + side * 60, y1 = 930;
+    Object.assign($(id).style, { left: (x0 + (x1 - x0) * fly) + 'px', top: (y0 + (y1 - y0) * fly) + 'px' });
+    show(id, clamp(pop * 2) * (1 - prog(fly, 0.7, 1)), 'scale(' + Math.min(1.05, pop) * (1 - 0.6 * fly) + ') rotate(' + side * 8 * (1 - fly) + 'deg)');
+  });
+}
+
+function claims(t, pulse) {
+  const on = t >= S[1].start - 0.05 && t < S[3].end;
+  const frame = back(prog(t, S[1].start - 0.05, S[1].start + 0.35)), frameOut = prog(t, S[3].end - 0.2, S[3].end);
+  show('labSay', on ? clamp(frame * 2) * (1 - frameOut) : 0);
+  show('labData', on ? clamp(frame * 2) * (1 - frameOut) : 0);
+  const k = [1, 2, 3].findIndex(i => t >= S[i].start - 0.05 && t < S[i].end);
+  if (k >= 0) $('round').textContent = (k + 1) + ' / 3';
+  show('round', on ? clamp(frame * 2) * (1 - frameOut) : 0);
+  [1, 2, 3].forEach((i, k) => {
+    const s = S[i], p = PUNCH[k], live = t >= s.start - 0.05 && t < s.end, out = prog(t, s.end - 0.2, s.end);
+    // The claim: said, in a bubble; struck through on the punchline.
+    const bi = back(prog(t, s.vo - 0.15, s.vo + 0.25));
+    show(bubbles[k], live ? clamp(bi * 2) * (1 - out) : 0, 'scale(' + (0.7 + 0.3 * Math.min(1, bi)) + ') rotate(' + (t >= p ? -1.5 * ease(prog(t, p, p + 0.2)) : 0) + 'deg)');
+    bubbles[k].style.transformOrigin = '100% 100%';
+    const strike = bubbles[k].querySelector('.strike');
+    strike.style.transform = 'scaleX(' + ease(prog(t, p, p + 0.22)) + ')';
+    bubbles[k].style.filter = t >= p ? 'saturate(' + (1 - 0.6 * prog(t, p, p + 0.3)) + ')' : '';
+    // The panel rises in; the punchline slams in under it.
+    const pin = back(prog(t, s.start + 0.05, s.start + 0.45));
+    // The panels in the order the claims come: the chat, the message search, then Instagram's searches.
+    show(['p1', 'p3', 'p2'][k], live ? clamp(pin * 2) * (1 - out) : 0, 'translateY(' + (1 - Math.min(1, pin)) * 200 + 'px)');
+    const pp = prog(t, p - 0.04, p + 0.22), slam = 1 + (1 - ease(pp)) * 1.0;
+    show(punches[k], live && t >= p - 0.04 ? clamp(pp * 3) * (1 - out) : 0, 'scale(' + (slam + pulse * 0.02) + ')');
+  });
+  // 1: the chat runs, one message after another pushing it up, the counts climbing; on the punchline his side
+  // dims and the ratio lands over it.
+  { const s = S[1], p = PUNCH[0], grow = prog(t, s.vo, p - 0.1);
+    const shown = prog(t, s.start + 0.2, p - 0.1) * cbs.length, visible = Math.min(cbs.length, Math.floor(shown) + 1);
+    const heights = cbs.map(c => c.offsetHeight + 14), lift = heights.slice(0, visible).reduce((a, h) => a + h, 0);
+    let y = 0;
+    cbs.forEach((c, i) => { const pp = back(clamp(shown - i)); c.style.top = (480 - lift + y) + 'px'; y += heights[i];
+      c.style.opacity = (i < visible ? clamp(pp * 2) : 0) * (t >= p && c.classList.contains('me') ? 0.5 : 1);
+      c.style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1, pp)) + ')'; c.style.transformOrigin = c.classList.contains('me') ? '100% 100%' : '0 100%'; });
+    const run = easeIO(grow);
+    $('n1').textContent = Math.round(4812 * run).toLocaleString('en-US') + ' sent · ' + Math.round(962 * run).toLocaleString('en-US') + ' received';
+    const tg = back(prog(t, p, p + 0.3));
+    Object.assign($('peakTag').style, { left: '420px', top: '980px', fontSize: '84px', padding: '18px 44px', borderRadius: '34px' });
+    show('peakTag', t >= p && t < s.end ? clamp(tg * 2) * (1 - prog(t, s.end - 0.2, s.end)) : 0, 'scale(' + Math.min(1.08, tg) + ')'); }
+  // The ex: the same profile, row after row, the count running to 63.
+  { const s = S[3], p = PUNCH[2], run = prog(t, s.vo, p - 0.1);
+    $('n2').textContent = Math.round(63 * easeIO(run)) + '×';
+    const top = 20 - easeIO(run) * 4 * 118;
+    igRows.forEach((r, i) => { const a = s.start + 0.2 + i * 0.12, pp = back(prog(t, a, a + 0.25));
+      r.style.top = (top + i * 118) + 'px'; r.style.opacity = clamp(pp * 2); r.style.transform = 'translateX(' + (1 - Math.min(1, pp)) * 60 + 'px)';
+      r.style.background = t >= p ? 'rgba(94,242,255,' + (0.08 + 0.06 * Math.sin(t * 8 + i)) + ')' : 'transparent'; }); }
+  // Easygoing: "just to confirm" typed into the search, a message from every chat filling in, the count running to 96.
+  { const s = S[2], p = PUNCH[1], typed = Math.round(GQ.length * prog(t, s.vo + 0.1, s.marks[1] - 0.4));
+    $('gtyped').textContent = GQ.slice(0, typed);
+    $('gcaret').style.opacity = Math.floor(t * 2.6) % 2 === 0 ? 1 : 0.1;
+    const run = prog(t, s.vo + 0.3, p - 0.1);
+    $('n3').textContent = Math.round(96 * easeIO(run)) + '×';
+    dates.forEach((d, i) => { const a = s.vo + 0.3 + (p - s.vo - 0.5) * i / dates.length, pp = back(prog(t, a, a + 0.25));
+      d.style.opacity = clamp(pp * 2); d.style.transform = 'translateY(' + (1 - Math.min(1, pp)) * -20 + 'px)';
+      d.querySelector('b').style.color = t >= p && i === 0 ? '#5ef2ff' : ''; }); }
+}
+
+function turn(t, pulse) {
+  const s = TURN, on = t >= s.start - 0.05 && t < s.end, out = prog(t, s.end - 0.25, s.end);
+  const tl = back(prog(t, s.vo - 0.2, s.vo + 0.2));
+  show('turn', on ? clamp(tl * 2) * (1 - out) : 0, 'scale(' + (0.8 + 0.2 * Math.min(1, tl)) + ')');
+  const c = back(prog(t, s.start + 0.05, s.start + 0.6));
+  show('card', on ? clamp(c * 2) * (1 - out) : 0, 'translateY(' + ((1 - Math.min(1, c)) * 300 + Math.sin(t * 2.2) * 6) + 'px) scale(' +
+    (0.7 + 0.3 * Math.min(1, c)) * (1 + pulse * 0.01) + ') rotate(' + (1 - Math.min(1, c)) * -8 + 'deg)');
+  // The three lines land one by one once the voice has said its line, each answering a claim.
+  chips.forEach((d, i) => { const a = s.voEnd + 0.15 + i * 0.55, pp = back(prog(t, a, a + 0.3));
+    show(d, on && t >= a ? clamp(pp * 2) * (1 - out) : 0, 'translateX(-50%) scale(' + Math.min(1.06, pp) + ') rotate(' + (i % 2 ? 1.5 : -1.5) + 'deg)'); });
+}
+
+function close(t, pulse) {
+  const s = CLOSE, on = t >= s.start - 0.05;
+  if (!on) { ['c1', 'c2', 'tag', 'site'].forEach(id => show(id, 0)); return; }
+  const a = back(prog(t, s.vo - 0.15, s.vo + 0.25));
+  show('c1', clamp(a * 2), 'scale(' + (0.8 + 0.2 * Math.min(1, a)) + ')');
+  const b = back(prog(t, s.marks[1] - 0.1, s.marks[1] + 0.25));
+  show('c2', clamp(b * 2), 'scale(' + (0.7 + 0.3 * Math.min(1, b) + pulse * 0.015) + ')');
+  // The address as it is said, at the end of the second line (or as the third line, in an older cut).
+  const atSite = s.marks[2] || s.voEnd - 1.3;
+  const c = back(prog(t, atSite - 0.2, atSite + 0.2));
+  show('tag', clamp(c * 2), 'translateY(' + (1 - Math.min(1, c)) * 30 + 'px)');
+  const d = back(prog(t, atSite, atSite + 0.35));
+  show('site', clamp(d * 2), 'translateX(-50%) scale(' + (Math.min(1.05, d) + pulse * 0.04 * Math.min(1, d)) + ')');
+}
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>
