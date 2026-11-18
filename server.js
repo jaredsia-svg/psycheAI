@@ -2316,6 +2316,14 @@ function routeRequest(route, url, request, response) {
     return;
   }
 
+  // Psyche Together's public page (psycheai-app README "The Psyche Together page"): it lives at
+  // app.psycheai.io/psyche-together, beside the buy page and the sample couple's cards.
+  if (/^\/psyche-together\/?$/i.test(route) && (request.method === 'GET' || request.method === 'HEAD')) {
+    response.writeHead(302, { Location: 'https://app.psycheai.io/psyche-together', 'Cache-Control': 'public, max-age=3600' });
+    response.end();
+    return;
+  }
+
   // A sample of the report file the Muse skill makes (psycheai-app README "A sample report"):
   // it lives at app.psycheai.io/sample, where its inline style and script are allowed.
   if (/^\/muse-sample\/?$/i.test(route) && (request.method === 'GET' || request.method === 'HEAD')) {
